@@ -35,7 +35,14 @@ export function StatusPill({ status }: { status: "open" | "halted" | "auction" |
     closed: "bg-slate-600/30 text-slate-300 border-slate-600/60",
     unknown: "bg-slate-700/30 text-slate-400 border-slate-700/60",
   }[status];
-  return <span className={cn("rounded-full border px-2 py-0.5 text-xs capitalize", statusClass)}>{status}</span>;
+  const statusLabel = {
+    open: "Открыт",
+    halted: "Остановлен",
+    auction: "Аукцион",
+    closed: "Закрыт",
+    unknown: "Неизвестно",
+  }[status];
+  return <span className={cn("rounded-full border px-2 py-0.5 text-xs", statusClass)}>{statusLabel}</span>;
 }
 
 export function MetricCard({

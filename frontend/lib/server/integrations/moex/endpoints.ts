@@ -26,8 +26,9 @@ export function marketDataUrl(assetClass: AssetClass) {
   });
 }
 
-export function historyUrl(secid: string, from?: string, till?: string, start = 0) {
-  return withQuery(`/history/engines/stock/markets/shares/securities/${secid}.json`, {
+export function historyUrl(assetClass: AssetClass, secid: string, from?: string, till?: string, start = 0) {
+  const market = assetClass === "stock" ? "shares" : "forts";
+  return withQuery(`/history/engines/stock/markets/${market}/securities/${secid}.json`, {
     "iss.meta": "off",
     from,
     till,

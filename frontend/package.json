@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
     "ingest:moex": "tsx scripts/ingest-moex.ts"
   },
   "dependencies": {

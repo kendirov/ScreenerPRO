@@ -20,11 +20,11 @@ export default async function FuturesTickerPage({
         ticker: backendDetail.ticker,
         market: backendDetail.assetClass,
         title: backendDetail.shortName,
-        description: `MOEX ${backendDetail.assetClass} instrument from normalized backend feed.`,
+        description: `Инструмент MOEX (${backendDetail.assetClass === "stock" ? "акция" : "фьючерс"}) из нормализованного backend-потока.`,
         metrics: [
-          { label: "Last", value: backendDetail.snapshot?.lastPrice ?? 0, suffix: "", delta: backendDetail.snapshot?.percentChange ?? undefined },
-          { label: "Volume", value: backendDetail.snapshot?.volume ?? 0 },
-          { label: "Turnover", value: backendDetail.snapshot?.turnover ?? 0 },
+          { label: "Цена", value: backendDetail.snapshot?.lastPrice ?? 0, suffix: "", delta: backendDetail.snapshot?.percentChange ?? undefined },
+          { label: "Объем", value: backendDetail.snapshot?.volume ?? 0 },
+          { label: "Оборот", value: backendDetail.snapshot?.turnover ?? 0 },
           { label: "In-Play Score", value: backendDetail.metrics?.inPlayScore ?? 0 },
         ],
       }

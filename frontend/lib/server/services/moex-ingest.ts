@@ -74,6 +74,8 @@ export async function ingestSnapshots() {
   const run = await startIngestRun("snapshots");
   try {
     let inserted = 0;
+    const instrumentMap = new Map((await db.instrument.findMany({ select: { id: true, ticker: true } })).map((i) => [i.ticker, i.id]));
+    const snapshotAt = new Date();
     for (const assetClass of CLASSES) {
       const payload = moexPayloadSchema.parse(await moexGetJson(marketDataUrl(assetClass), 5));
       const securities = payload.securities;
@@ -81,16 +83,15 @@ export async function ingestSnapshots() {
       if (!securities || !marketdata) continue;
       const snapshots = mapSnapshots(securities.columns, securities.data, marketdata.columns, marketdata.data);
       for (const snapshot of snapshots) {
-        const instrument = await db.instrument.findFirst({ where: { ticker: snapshot.ticker } });
-        if (!instrument) continue;
-        const now = new Date();
+        const instrumentId = instrumentMap.get(snapshot.ticker);
+        if (!instrumentId) continue;
         await db.marketSnapshot.upsert({
-          where: { instrumentId_snapshotAt: { instrumentId: instrument.id, snapshotAt: now } },
+          where: { instrumentId_snapshotAt: { instrumentId, snapshotAt } },
           update: {},
           create: {
-            instrumentId: instrument.id,
+            instrumentId,
             source: "moex",
-            snapshotAt: now,
+            snapshotAt,
             sourceUpdatedAt: snapshot.sourceUpdatedAt,
             lastPrice: snapshot.lastPrice,
             previousClose: snapshot.previousClose,
@@ -109,7 +110,6 @@ export async function ingestSnapshots() {
         inserted++;
       }
     }
-    await computeAndPersistMetrics();
     await finishIngestRun(run.id, { inserted });
     return { inserted };
   } catch (error) {
@@ -123,44 +123,49 @@ export async function ingestDailyBars(days = 120) {
   try {
     const instruments = await db.instrument.findMany({
       where: { isActive: true },
-      select: { id: true, ticker: true },
+      select: { id: true, ticker: true, assetClass: true },
       take: 80,
     });
     const from = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString().slice(0, 10);
     let bars = 0;
-    for (const instrument of instruments) {
-      const payload = moexPayloadSchema.parse(await moexGetJson(historyUrl(instrument.ticker, from)));
-      const history = payload.history;
-      if (!history) continue;
-      const normalized = mapHistoryBars(history.columns, history.data);
-      for (const bar of normalized) {
-        await db.dailyBar.upsert({
-          where: { instrumentId_timeframe_barDate: { instrumentId: instrument.id, timeframe: "1d", barDate: bar.date } },
-          update: {
-            open: bar.open,
-            high: bar.high,
-            low: bar.low,
-            close: bar.close,
-            volume: bar.volume,
-            turnover: bar.turnover,
-            rawPayload: bar.rawPayload,
-          },
-          create: {
-            instrumentId: instrument.id,
-            timeframe: "1d",
-            barDate: bar.date,
-            open: bar.open,
-            high: bar.high,
-            low: bar.low,
-            close: bar.close,
-            volume: bar.volume,
-            turnover: bar.turnover,
-            source: "moex",
-            rawPayload: bar.rawPayload,
-          },
-        });
-        bars++;
+    const chunkSize = 20;
+    for (let i = 0; i < instruments.length; i += chunkSize) {
+      const chunk = instruments.slice(i, i + chunkSize);
+      for (const instrument of chunk) {
+        const payload = moexPayloadSchema.parse(await moexGetJson(historyUrl(instrument.assetClass, instrument.ticker, from)));
+        const history = payload.history;
+        if (!history) continue;
+        const normalized = mapHistoryBars(history.columns, history.data);
+        for (const bar of normalized) {
+          await db.dailyBar.upsert({
+            where: { instrumentId_timeframe_barDate: { instrumentId: instrument.id, timeframe: "1d", barDate: bar.date } },
+            update: {
+              open: bar.open,
+              high: bar.high,
+              low: bar.low,
+              close: bar.close,
+              volume: bar.volume,
+              turnover: bar.turnover,
+              rawPayload: bar.rawPayload,
+            },
+            create: {
+              instrumentId: instrument.id,
+              timeframe: "1d",
+              barDate: bar.date,
+              open: bar.open,
+              high: bar.high,
+              low: bar.low,
+              close: bar.close,
+              volume: bar.volume,
+              turnover: bar.turnover,
+              source: "moex",
+              rawPayload: bar.rawPayload,
+            },
+          });
+          bars++;
+        }
       }
+      logInfo("Daily bars chunk completed", { processed: Math.min(i + chunkSize, instruments.length), total: instruments.length });
     }
     await computeAndPersistMetrics();
     await finishIngestRun(run.id, { bars });

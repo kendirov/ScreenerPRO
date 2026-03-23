@@ -8,7 +8,7 @@ import type {
 export const screenerRows: ScreenerRow[] = [
   {
     ticker: "SBER",
-    shortName: "Sberbank",
+    shortName: "Сбербанк",
     assetClass: "stock",
     lastPrice: 312.8,
     previousClose: 308.42,
@@ -35,7 +35,7 @@ export const screenerRows: ScreenerRow[] = [
   },
   {
     ticker: "GAZP",
-    shortName: "Gazprom",
+    shortName: "Газпром",
     assetClass: "stock",
     lastPrice: 178.14,
     previousClose: 179.29,
@@ -62,7 +62,7 @@ export const screenerRows: ScreenerRow[] = [
   },
   {
     ticker: "SiM6",
-    shortName: "USD/RUB Futures",
+    shortName: "Фьючерс USD/RUB",
     assetClass: "future",
     lastPrice: 93_120,
     previousClose: 92_306,
@@ -89,7 +89,7 @@ export const screenerRows: ScreenerRow[] = [
   },
   {
     ticker: "RIM6",
-    shortName: "RTS Index Futures",
+    shortName: "Фьючерс на индекс РТС",
     assetClass: "future",
     lastPrice: 117_840,
     previousClose: 119_213,
@@ -116,7 +116,7 @@ export const screenerRows: ScreenerRow[] = [
   },
   {
     ticker: "LKOH",
-    shortName: "Lukoil",
+    shortName: "Лукойл",
     assetClass: "stock",
     lastPrice: 6920,
     previousClose: 6905,
@@ -147,25 +147,25 @@ export const instrumentDetails: Record<string, InstrumentDetail> = {
   SBER: {
     ticker: "SBER",
     market: "stock",
-    title: "Sberbank Common",
-    description: "Core liquidity proxy for local risk-on sentiment.",
+    title: "Обыкновенные акции Сбербанка",
+    description: "Ключевой ликвидный инструмент рынка акций MOEX.",
     metrics: [
-      { label: "Last", value: 312.8, suffix: " RUB", delta: 1.42 },
-      { label: "Avg Volume 20D", value: 58_400_000 },
+      { label: "Цена", value: 312.8, suffix: " RUB", delta: 1.42 },
+      { label: "Средний объем 20д", value: 58_400_000 },
       { label: "Beta", value: 1.17 },
-      { label: "Realized Vol 30D", value: 24.1, suffix: "%" },
+      { label: "Реализ. волат. 30д", value: 24.1, suffix: "%" },
     ],
   },
   SiM6: {
     ticker: "SiM6",
     market: "future",
-    title: "USD/RUB Futures",
-    description: "Primary FX hedge and macro volatility expression.",
+    title: "Фьючерс USD/RUB",
+    description: "Базовый инструмент для оценки валютной волатильности.",
     metrics: [
-      { label: "Last", value: 93_120, delta: 0.88 },
-      { label: "Open Interest", value: 1_240_000 },
+      { label: "Цена", value: 93_120, delta: 0.88 },
+      { label: "Открытый интерес", value: 1_240_000 },
       { label: "Contango", value: 0.32, suffix: "%" },
-      { label: "Realized Vol 30D", value: 19.8, suffix: "%" },
+      { label: "Реализ. волат. 30д", value: 19.8, suffix: "%" },
     ],
   },
 };

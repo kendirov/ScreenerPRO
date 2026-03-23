@@ -1,10 +1,8 @@
 import { PriceChartPlaceholder } from "@/components/charts/price-chart-placeholder";
-import { EntitlementBoundary } from "@/components/premium/entitlement-boundary";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { MetricCard, SectionHeader, EmptyState } from "@/components/ui/primitives";
 import { formatPct, formatPrice } from "@/lib/formatters/number";
-import { premiumFlagsMock } from "@/lib/mock/screener";
 import type { InstrumentDetail } from "@/lib/types/market";
 
 export function InstrumentLayout({ detail }: { detail: InstrumentDetail }) {
@@ -26,32 +24,28 @@ export function InstrumentLayout({ detail }: { detail: InstrumentDetail }) {
           <PriceChartPlaceholder />
           <Tabs defaultValue="overview" className="mt-4">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="volume">Volume</TabsTrigger>
-              <TabsTrigger value="volatility">Volatility</TabsTrigger>
-              <TabsTrigger value="open-interest">Open Interest</TabsTrigger>
-              <TabsTrigger value="premium">Premium</TabsTrigger>
+              <TabsTrigger value="overview">Обзор</TabsTrigger>
+              <TabsTrigger value="volume">Объем</TabsTrigger>
+              <TabsTrigger value="volatility">Волатильность</TabsTrigger>
+              <TabsTrigger value="open-interest">Открытый интерес</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="mt-4 text-sm text-slate-300">
-              Overview module placeholder with architecture ready for real query-bound data.
+              Базовый обзор инструмента. Блок подготовлен для подключения реальных аналитических модулей.
             </TabsContent>
             <TabsContent value="volume" className="mt-4">
-              <EmptyState title="Volume module" text="Depth profile and auction overlays plug in here later." />
+              <EmptyState title="Модуль объема" text="Профиль ликвидности и аукционные слои будут добавлены следующим этапом." />
             </TabsContent>
             <TabsContent value="volatility" className="mt-4">
-              <EmptyState title="Volatility module" text="Surface and realized-vol analytics placeholder." />
+              <EmptyState title="Модуль волатильности" text="Здесь появятся расчеты исторической и ожидаемой волатильности." />
             </TabsContent>
             <TabsContent value="open-interest" className="mt-4">
-              <EmptyState title="Open interest module" text="Open interest and positioning map placeholder." />
-            </TabsContent>
-            <TabsContent value="premium" className="mt-4">
-              <EntitlementBoundary isAllowed={premiumFlagsMock.deepRiskMetrics} />
+              <EmptyState title="Модуль открытого интереса" text="Блок подготовлен для будущего обогащения данными OI." />
             </TabsContent>
           </Tabs>
         </GlassPanel>
         <GlassPanel>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Insight Panel</h3>
-          <p className="mt-3 text-sm text-slate-400">Contextual analyst notes and machine insights will be rendered here.</p>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Панель контекста</h3>
+          <p className="mt-3 text-sm text-slate-400">Здесь будут отображаться заметки и сигналы по инструменту.</p>
         </GlassPanel>
       </div>
     </div>

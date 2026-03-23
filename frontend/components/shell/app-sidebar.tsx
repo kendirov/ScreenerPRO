@@ -11,7 +11,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden w-64 shrink-0 border-r border-slate-800/80 bg-slate-950/80 p-4 lg:block">
       <Link href="/" className="mb-8 block px-2 text-lg font-semibold tracking-tight text-slate-100">
-        Super Screener
+        Скринер ПРО
       </Link>
       <nav className="space-y-1">
         {sidebarNav.map((item) => {

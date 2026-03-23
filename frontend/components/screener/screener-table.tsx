@@ -12,27 +12,28 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ScreenerRow } from "@/lib/types/market";
 import { formatCompact, formatPct, formatPrice } from "@/lib/formatters/number";
-import { StatusPill } from "@/components/ui/primitives";
+import { EmptyState, StatusPill } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils/cn";
 
-const FILTERS = ["all", "stock", "future", "high volume", "high volatility", "in play"] as const;
+const FILTERS = ["Все", "Акции", "Фьючерсы", "Высокий объем", "Высокая волатильность", "В игре"] as const;
 type FilterKey = (typeof FILTERS)[number];
 
 export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "turnover", desc: true }]);
-  const [filter, setFilter] = React.useState<FilterKey>("all");
+  const [filter, setFilter] = React.useState<FilterKey>("Все");
   const parentRef = React.useRef<HTMLDivElement>(null);
 
   const filtered = React.useMemo(() => {
     switch (filter) {
-      case "stock":
-      case "future":
-        return rows.filter((row) => row.assetClass === filter);
-      case "high volume":
+      case "Акции":
+        return rows.filter((row) => row.assetClass === "stock");
+      case "Фьючерсы":
+        return rows.filter((row) => row.assetClass === "future");
+      case "Высокий объем":
         return rows.filter((row) => (row.metrics.volumeRatio ?? 0) >= 1.3);
-      case "high volatility":
+      case "Высокая волатильность":
         return rows.filter((row) => (row.metrics.relativeVolatility20d ?? 0) >= 1.2);
-      case "in play":
+      case "В игре":
         return rows.filter((row) => row.metrics.isInPlay);
       default:
         return rows;
@@ -43,7 +44,7 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
     () => [
       {
         accessorKey: "ticker",
-        header: "Ticker",
+        header: "Тикер",
         cell: ({ row }) => (
           <div>
             <p className="font-semibold text-slate-100">{row.original.ticker}</p>
@@ -51,13 +52,13 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
           </div>
         ),
       },
-      { accessorKey: "assetClass", header: "Market" },
-      { accessorKey: "lastPrice", header: "Last", cell: ({ getValue }) => formatPrice(getValue<number>() ?? 0) },
-      { accessorKey: "percentChange", header: "Day %", cell: ({ getValue }) => formatPct(getValue<number>() ?? 0) },
-      { accessorKey: "turnover", header: "Turnover", cell: ({ getValue }) => formatCompact(getValue<number>() ?? 0) },
-      { accessorKey: "metrics.volumeRatio", header: "Vol Ratio", cell: ({ row }) => (row.original.metrics.volumeRatio ?? 0).toFixed(2) },
-      { accessorKey: "metrics.relativeVolatility20d", header: "Volatility", cell: ({ row }) => `${(row.original.metrics.relativeVolatility20d ?? 0).toFixed(2)}x` },
-      { accessorKey: "tradingStatus", header: "Status", cell: ({ getValue }) => <StatusPill status={getValue<ScreenerRow["tradingStatus"]>()} /> },
+      { accessorKey: "assetClass", header: "Рынок", cell: ({ getValue }) => (getValue<string>() === "stock" ? "Акция" : "Фьючерс") },
+      { accessorKey: "lastPrice", header: "Цена", cell: ({ getValue }) => formatPrice(getValue<number>() ?? 0) },
+      { accessorKey: "percentChange", header: "День %", cell: ({ getValue }) => formatPct(getValue<number>() ?? 0) },
+      { accessorKey: "turnover", header: "Оборот", cell: ({ getValue }) => formatCompact(getValue<number>() ?? 0) },
+      { accessorKey: "metrics.volumeRatio", header: "Объем/ср.", cell: ({ row }) => (row.original.metrics.volumeRatio ?? 0).toFixed(2) },
+      { accessorKey: "metrics.relativeVolatility20d", header: "Волат.", cell: ({ row }) => `${(row.original.metrics.relativeVolatility20d ?? 0).toFixed(2)}x` },
+      { accessorKey: "tradingStatus", header: "Статус", cell: ({ getValue }) => <StatusPill status={getValue<ScreenerRow["tradingStatus"]>()} /> },
     ],
     [],
   );
@@ -110,6 +111,19 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
           </button>
         ))}
       </div>
+      {rows.length === 0 ? (
+        <div className="p-4">
+          <EmptyState
+            title="Нет данных для отображения"
+            text="Проверьте инициализацию данных или запустите демо-режим. Таблица не будет оставлена пустой без пояснения."
+          />
+        </div>
+      ) : null}
+      {rows.length > 0 && filtered.length === 0 ? (
+        <div className="p-4">
+          <EmptyState title="По текущему фильтру ничего не найдено" text="Сбросьте фильтр, чтобы увидеть все доступные инструменты." />
+        </div>
+      ) : null}
       <div ref={parentRef} className="h-[440px] overflow-auto">
         <div style={{ height: rowVirtualizer.getTotalSize() }} className="relative">
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
