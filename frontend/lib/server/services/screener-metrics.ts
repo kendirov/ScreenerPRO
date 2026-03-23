@@ -51,7 +51,7 @@ export async function computeAndPersistMetrics() {
       update: {
         turnoverRatio: metrics.turnoverRatio,
         volumeRatio: metrics.volumeRatio,
-        intradayRangePct: metrics.intradayRangePct,
+        intradayRangePct: metrics.dayRangePct,
         gapPct: metrics.gapPct,
         relativeVolatility20: metrics.relativeVolatility20d,
         inPlayScore: metrics.inPlayScore,
@@ -63,7 +63,7 @@ export async function computeAndPersistMetrics() {
         asOf: snapshot.snapshotAt,
         turnoverRatio: metrics.turnoverRatio,
         volumeRatio: metrics.volumeRatio,
-        intradayRangePct: metrics.intradayRangePct,
+        intradayRangePct: metrics.dayRangePct,
         gapPct: metrics.gapPct,
         relativeVolatility20: metrics.relativeVolatility20d,
         inPlayScore: metrics.inPlayScore,

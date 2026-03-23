@@ -1,5 +1,6 @@
 import type { AssetClass, InstrumentDetail, InstrumentHistoryBar, ScreenerMetricSet, ScreenerRow } from "@screenerpro/shared";
 import { db } from "@/lib/server/db";
+import { classifyStockLiquidity } from "@/lib/server/domain/liquidity";
 
 const screenerRowsCache: { rows: ScreenerRow[]; updatedAt: string | null } = {
   rows: [],
@@ -33,7 +34,7 @@ function metricSet(metric: {
   return {
     turnoverRatio: metric?.turnoverRatio ?? null,
     volumeRatio: metric?.volumeRatio ?? null,
-    intradayRangePct: metric?.intradayRangePct ?? null,
+    dayRangePct: metric?.intradayRangePct ?? null,
     gapPct: metric?.gapPct ?? null,
     relativeVolatility20d: metric?.relativeVolatility20 ?? null,
     inPlayScore: metric?.inPlayScore ?? null,
@@ -76,6 +77,10 @@ export async function getScreenerRows(assetClass: "all" | AssetClass): Promise<S
           open: snap?.open ?? lastBar?.open ?? null,
           high: snap?.high ?? lastBar?.high ?? null,
           low: snap?.low ?? lastBar?.low ?? null,
+          liquidityClass:
+            item.assetClass === "stock"
+              ? classifyStockLiquidity({ ticker: item.ticker, turnover: snap?.turnover ?? lastBar?.turnover ?? null, tradesCount: null })
+              : "unknown",
           tradingStatus: toTradingStatus(snap?.tradingStatus ?? null),
           lotSize: snap?.lotSize ?? item.lotSize,
           updatedAt: (snap?.createdAt ?? lastBar?.barDate ?? new Date()).toISOString(),
@@ -133,6 +138,10 @@ export async function getInstrumentDetail(ticker: string): Promise<InstrumentDet
           open: snap.open,
           high: snap.high,
           low: snap.low,
+          liquidityClass:
+            instrument.assetClass === "stock"
+              ? classifyStockLiquidity({ ticker: instrument.ticker, turnover: snap.turnover, tradesCount: null })
+              : "unknown",
           tradingStatus: toTradingStatus(snap.tradingStatus),
           lotSize: snap.lotSize,
           updatedAt: snap.createdAt.toISOString(),

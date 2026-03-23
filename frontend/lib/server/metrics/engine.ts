@@ -15,7 +15,7 @@ export interface MetricInputs {
 export interface DerivedMetricSet {
   turnoverRatio: number | null;
   volumeRatio: number | null;
-  intradayRangePct: number | null;
+  dayRangePct: number | null;
   gapPct: number | null;
   relativeVolatility20d: number | null;
   inPlayScore: number | null;
@@ -37,7 +37,7 @@ function stdev(values: number[]): number | null {
 export function computeDerivedMetrics(input: MetricInputs): DerivedMetricSet {
   const turnoverRatio = safeDivide(input.turnover, input.turnoverBaseline);
   const volumeRatio = safeDivide(input.volume, input.volumeBaseline);
-  const intradayRangePct =
+  const dayRangePct =
     input.high !== null && input.low !== null && input.previousClose && input.previousClose !== 0
       ? ((input.high - input.low) / input.previousClose) * 100
       : null;
@@ -49,7 +49,7 @@ export function computeDerivedMetrics(input: MetricInputs): DerivedMetricSet {
   const relativeVolatility20d = safeDivide(realizedVol20, input.volatility20dBaseline);
 
   const move = input.lastPrice !== null && input.previousClose && input.previousClose !== 0 ? Math.abs((input.lastPrice - input.previousClose) / input.previousClose) * 100 : 0;
-  const range = Math.abs(intradayRangePct ?? 0);
+  const range = Math.abs(dayRangePct ?? 0);
   const volAnomaly = Math.max(0, (volumeRatio ?? 1) - 1) * 100;
   const turnoverAnomaly = Math.max(0, (turnoverRatio ?? 1) - 1) * 100;
   const inPlayScore = Number((0.35 * move + 0.25 * range + 0.2 * volAnomaly + 0.2 * turnoverAnomaly).toFixed(2));
@@ -57,7 +57,7 @@ export function computeDerivedMetrics(input: MetricInputs): DerivedMetricSet {
   return {
     turnoverRatio,
     volumeRatio,
-    intradayRangePct,
+    dayRangePct,
     gapPct,
     relativeVolatility20d,
     inPlayScore: Number.isFinite(inPlayScore) ? inPlayScore : null,
