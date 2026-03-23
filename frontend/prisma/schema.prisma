@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum AssetClass {
+  stock
+  future
+}
+
+model Instrument {
+  id              String            @id @default(cuid())
+  stableKey       String            @unique
+  ticker          String
+  shortName       String?
+  assetClass      AssetClass
+  secid           String?
+  board           String?
+  engine          String?
+  market          String?
+  lotSize         Int?
+  isActive        Boolean           @default(true)
+  firstSeenAt     DateTime          @default(now())
+  lastSeenAt      DateTime          @default(now())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  sourceRecords   InstrumentSource[]
+  snapshots       MarketSnapshot[]
+  dailyBars       DailyBar[]
+  screenerMetrics ScreenerMetric[]
+  oiRecords       FuturesOpenInterestPlaceholder[]
+
+  @@index([ticker])
+  @@index([assetClass, isActive])
+}
+
+model InstrumentSource {
+  id             String     @id @default(cuid())
+  instrumentId   String
+  source         String
+  sourceEntityId String
+  rawMetadata    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  instrument     Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([source, sourceEntityId])
+  @@index([instrumentId])
+}
+
+model MarketSnapshot {
+  id              String     @id @default(cuid())
+  instrumentId    String
+  source          String
+  snapshotAt      DateTime
+  sourceUpdatedAt DateTime?
+  lastPrice       Float?
+  previousClose   Float?
+  absoluteChange  Float?
+  percentChange   Float?
+  volume          Float?
+  turnover        Float?
+  open            Float?
+  high            Float?
+  low             Float?
+  tradingStatus   String?
+  lotSize         Int?
+  rawPayload      String?
+  createdAt       DateTime   @default(now())
+  instrument      Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, snapshotAt])
+  @@index([instrumentId, snapshotAt])
+}
+
+model DailyBar {
+  id            String     @id @default(cuid())
+  instrumentId  String
+  timeframe     String     @default("1d")
+  barDate       DateTime
+  open          Float?
+  high          Float?
+  low           Float?
+  close         Float?
+  volume        Float?
+  turnover      Float?
+  source        String
+  rawPayload    String?
+  createdAt     DateTime   @default(now())
+  instrument    Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, timeframe, barDate])
+  @@index([instrumentId, timeframe, barDate])
+}
+
+model ScreenerMetric {
+  id                   String     @id @default(cuid())
+  instrumentId         String
+  asOf                 DateTime
+  turnoverRatio        Float?
+  volumeRatio          Float?
+  intradayRangePct     Float?
+  gapPct               Float?
+  relativeVolatility20 Float?
+  inPlayScore          Float?
+  isInPlay             Boolean    @default(false)
+  notes                String?
+  createdAt            DateTime   @default(now())
+  instrument           Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, asOf])
+  @@index([instrumentId, asOf])
+}
+
+model IngestRun {
+  id         String   @id @default(cuid())
+  provider   String
+  runType    String
+  status     String
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  details    String?
+  errorText  String?
+  createdAt  DateTime @default(now())
+}
+
+model FuturesOpenInterestPlaceholder {
+  id           String     @id @default(cuid())
+  instrumentId String
+  asOf         DateTime
+  openInterest Float?
+  source       String
+  createdAt    DateTime   @default(now())
+  instrument   Instrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, asOf])
+}

@@ -15,7 +15,7 @@ import { formatCompact, formatPct, formatPrice } from "@/lib/formatters/number";
 import { StatusPill } from "@/components/ui/primitives";
 import { cn } from "@/lib/utils/cn";
 
-const FILTERS = ["all", "stocks", "futures", "high volume", "high volatility", "in play"] as const;
+const FILTERS = ["all", "stock", "future", "high volume", "high volatility", "in play"] as const;
 type FilterKey = (typeof FILTERS)[number];
 
 export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
@@ -25,15 +25,15 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
 
   const filtered = React.useMemo(() => {
     switch (filter) {
-      case "stocks":
-      case "futures":
-        return rows.filter((row) => row.market === filter);
+      case "stock":
+      case "future":
+        return rows.filter((row) => row.assetClass === filter);
       case "high volume":
-        return rows.filter((row) => row.volumeRatio >= 1.3);
+        return rows.filter((row) => (row.metrics.volumeRatio ?? 0) >= 1.3);
       case "high volatility":
-        return rows.filter((row) => row.volatility >= 2.5);
+        return rows.filter((row) => (row.metrics.relativeVolatility20d ?? 0) >= 1.2);
       case "in play":
-        return rows.filter((row) => row.inPlay);
+        return rows.filter((row) => row.metrics.isInPlay);
       default:
         return rows;
     }
@@ -47,17 +47,17 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
         cell: ({ row }) => (
           <div>
             <p className="font-semibold text-slate-100">{row.original.ticker}</p>
-            <p className="text-xs text-slate-500">{row.original.name}</p>
+            <p className="text-xs text-slate-500">{row.original.shortName}</p>
           </div>
         ),
       },
-      { accessorKey: "market", header: "Market" },
-      { accessorKey: "lastPrice", header: "Last", cell: ({ getValue }) => formatPrice(getValue<number>()) },
-      { accessorKey: "dayChangePct", header: "Day %", cell: ({ getValue }) => formatPct(getValue<number>()) },
-      { accessorKey: "turnover", header: "Turnover", cell: ({ getValue }) => formatCompact(getValue<number>()) },
-      { accessorKey: "volumeRatio", header: "Vol Ratio" },
-      { accessorKey: "volatility", header: "Volatility", cell: ({ getValue }) => `${getValue<number>().toFixed(2)}%` },
-      { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusPill status={getValue<ScreenerRow["status"]>()} /> },
+      { accessorKey: "assetClass", header: "Market" },
+      { accessorKey: "lastPrice", header: "Last", cell: ({ getValue }) => formatPrice(getValue<number>() ?? 0) },
+      { accessorKey: "percentChange", header: "Day %", cell: ({ getValue }) => formatPct(getValue<number>() ?? 0) },
+      { accessorKey: "turnover", header: "Turnover", cell: ({ getValue }) => formatCompact(getValue<number>() ?? 0) },
+      { accessorKey: "metrics.volumeRatio", header: "Vol Ratio", cell: ({ row }) => (row.original.metrics.volumeRatio ?? 0).toFixed(2) },
+      { accessorKey: "metrics.relativeVolatility20d", header: "Volatility", cell: ({ row }) => `${(row.original.metrics.relativeVolatility20d ?? 0).toFixed(2)}x` },
+      { accessorKey: "tradingStatus", header: "Status", cell: ({ getValue }) => <StatusPill status={getValue<ScreenerRow["tradingStatus"]>()} /> },
     ],
     [],
   );
@@ -121,7 +121,7 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
                 style={{ transform: `translateY(${virtualRow.start}px)` }}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <div key={cell.id} className={cn(cell.column.id === "dayChangePct" && row.original.dayChangePct > 0 ? "text-emerald-300" : "")}>
+                  <div key={cell.id} className={cn(cell.column.id === "percentChange" && (row.original.percentChange ?? 0) > 0 ? "text-emerald-300" : "")}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </div>
                 ))}

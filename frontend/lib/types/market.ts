@@ -1,18 +1,13 @@
-export type InstrumentKind = "stocks" | "futures";
-export type TradingStatus = "open" | "halted" | "auction" | "closed";
-
-export interface ScreenerRow {
-  ticker: string;
-  name: string;
-  market: InstrumentKind;
-  lastPrice: number;
-  dayChangePct: number;
-  turnover: number;
-  volumeRatio: number;
-  volatility: number;
-  status: TradingStatus;
-  inPlay: boolean;
-}
+export type {
+  AssetClass as InstrumentKind,
+  InstrumentDetail as ApiInstrumentDetail,
+  InstrumentHistoryBar,
+  MarketSnapshot,
+  ScreenerFilterState,
+  ScreenerMetricSet,
+  ScreenerRow,
+  TradingStatus,
+} from "@screenerpro/shared";
 
 export interface InstrumentMetric {
   label: string;
@@ -23,7 +18,7 @@ export interface InstrumentMetric {
 
 export interface InstrumentDetail {
   ticker: string;
-  market: InstrumentKind;
+  market: "stock" | "future";
   title: string;
   description: string;
   metrics: InstrumentMetric[];

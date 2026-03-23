@@ -27,12 +27,13 @@ export function DataBadge({ label }: { label: string }) {
   return <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-200">{label}</span>;
 }
 
-export function StatusPill({ status }: { status: "open" | "halted" | "auction" | "closed" }) {
+export function StatusPill({ status }: { status: "open" | "halted" | "auction" | "closed" | "unknown" }) {
   const statusClass = {
     open: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
     halted: "bg-red-500/15 text-red-300 border-red-500/30",
     auction: "bg-amber-500/15 text-amber-300 border-amber-500/30",
     closed: "bg-slate-600/30 text-slate-300 border-slate-600/60",
+    unknown: "bg-slate-700/30 text-slate-400 border-slate-700/60",
   }[status];
   return <span className={cn("rounded-full border px-2 py-0.5 text-xs capitalize", statusClass)}>{status}</span>;
 }
