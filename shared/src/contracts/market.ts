@@ -11,6 +11,9 @@ export type LiquidityClass = z.infer<typeof liquidityClassSchema>;
 export const screenerMetricSetSchema = z.object({
   turnoverRatio: z.number().nullable(),
   volumeRatio: z.number().nullable(),
+  turnoverVsAverage: z.number().nullable(),
+  rangeVsAverage: z.number().nullable(),
+  tradesVsAverage: z.number().nullable(),
   dayRangePct: z.number().nullable(),
   gapPct: z.number().nullable(),
   relativeVolatility20d: z.number().nullable(),
@@ -104,6 +107,8 @@ export const screenerBenchmarkSchema = z.object({
   lastValue: z.number().nullable(),
   percentChange: z.number().nullable(),
   dayRangePct: z.number().nullable(),
+  aggregateTurnover: z.number().nullable(),
+  aggregateTrades: z.number().nullable(),
   updatedAt: z.string(),
   sourceUpdatedAt: z.string().nullable(),
 });

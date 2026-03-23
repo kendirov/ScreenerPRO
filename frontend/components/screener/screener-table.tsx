@@ -40,7 +40,7 @@ export function ScreenerTable({
   const rowsModel = table.getRowModel().rows;
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60">
+    <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
       {rows.length === 0 ? (
         <div className="p-4">
           <EmptyState title={emptyTitle} text={emptyText} />
@@ -49,9 +49,9 @@ export function ScreenerTable({
         <table className="w-full min-w-[840px] table-fixed border-collapse text-sm">
           <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm">
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-slate-800 text-xs text-slate-400">
+              <tr key={headerGroup.id} className="border-b border-slate-800 text-[11px] text-slate-400">
                 {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="px-4 py-3 text-left font-medium">
+                  <th key={header.id} className="px-3 py-2.5 text-left font-medium">
                     {header.isPlaceholder ? null : (
                       <button
                         className="w-full text-left transition hover:text-slate-200"
@@ -67,9 +67,9 @@ export function ScreenerTable({
           </thead>
           <tbody>
             {rowsModel.map((row) => (
-              <tr key={row.id} className="border-b border-slate-800/50 transition hover:bg-slate-800/50 focus-within:bg-slate-800/50">
+              <tr key={row.id} className="border-b border-slate-800/50 transition hover:bg-slate-800/45 focus-within:bg-slate-800/45">
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className={cn("px-4 py-3 align-top", (row.original.percentChange ?? 0) > 0 && cell.column.id === "percentChange" ? "text-emerald-300" : "")}>
+                  <td key={cell.id} className={cn("px-3 py-2.5 align-top", (row.original.percentChange ?? 0) > 0 && cell.column.id === "percentChange" ? "text-emerald-300" : "")}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

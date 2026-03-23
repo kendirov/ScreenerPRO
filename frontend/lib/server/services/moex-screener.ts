@@ -8,6 +8,8 @@ import type {
   TradingStatus,
 } from "@screenerpro/shared";
 import { screenerRows as demoRows } from "@/lib/mock/screener";
+import { db } from "@/lib/server/db";
+import { computeInPlaySignals } from "@/lib/server/domain/in-play-signals";
 import { classifyStockLiquidity } from "@/lib/server/domain/liquidity";
 import { fetchIssJson } from "@/lib/server/moex-iss/http";
 import { moexIssPayloadSchema } from "@/lib/server/moex-iss/schemas";
@@ -70,6 +72,55 @@ function computeDayRangePct(high: number | null, low: number | null, previousClo
   return ((high - low) / denominator) * 100;
 }
 
+function average(values: number[]): number | null {
+  if (!values.length) return null;
+  return values.reduce((acc, value) => acc + value, 0) / values.length;
+}
+
+type StockHistoricalBaseline = {
+  turnoverAverage: number | null;
+  rangeAveragePct: number | null;
+  tradesAverage: number | null;
+};
+
+async function fetchStockHistoricalBaselines(tickers: string[]): Promise<Map<string, StockHistoricalBaseline>> {
+  const baselineByTicker = new Map<string, StockHistoricalBaseline>();
+  if (!process.env.DATABASE_URL || tickers.length === 0) return baselineByTicker;
+
+  const instruments = await db.instrument.findMany({
+    where: {
+      ticker: { in: tickers },
+      assetClass: "stock",
+      isActive: true,
+    },
+    select: {
+      ticker: true,
+      dailyBars: { orderBy: { barDate: "desc" }, take: 25 },
+    },
+  });
+
+  for (const instrument of instruments) {
+    const bars = instrument.dailyBars;
+    const turnoverBaseline = average(bars.map((bar) => bar.turnover).filter((value): value is number => value !== null));
+    const rangeBaseline = average(
+      bars
+        .map((bar) => {
+          if (bar.high === null || bar.low === null || bar.close === null || bar.close <= 0) return null;
+          return ((bar.high - bar.low) / bar.close) * 100;
+        })
+        .filter((value): value is number => value !== null),
+    );
+
+    baselineByTicker.set(instrument.ticker, {
+      turnoverAverage: turnoverBaseline,
+      rangeAveragePct: rangeBaseline,
+      tradesAverage: null,
+    });
+  }
+
+  return baselineByTicker;
+}
+
 async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
   const payload = moexIssPayloadSchema.parse(
     await fetchIssJson(
@@ -84,7 +135,22 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
     if (ticker) marketByTicker.set(ticker, item);
   }
 
-  const deduped = new Map<string, ScreenerRow>();
+  const draftRows: Array<{
+    ticker: string;
+    shortName: string;
+    lastPrice: number | null;
+    previousClose: number | null;
+    percentChange: number | null;
+    turnover: number | null;
+    volume: number | null;
+    open: number | null;
+    high: number | null;
+    low: number | null;
+    tradesCount: number | null;
+    dayRangePct: number | null;
+    tradingStatus: TradingStatus;
+    lotSize: number | null;
+  }> = [];
   for (const raw of payload.securities.data) {
     const sec = rowToObject(payload.securities.columns, raw);
     const ticker = asString(sec.SECID);
@@ -103,13 +169,11 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
 
     if (lastPrice === null && turnover === null && volume === null) continue;
 
-    deduped.set(ticker, {
+    draftRows.push({
       ticker,
       shortName: asString(sec.SHORTNAME) ?? ticker,
-      assetClass: "stock",
       lastPrice,
       previousClose,
-      absoluteChange: lastPrice !== null && previousClose !== null ? lastPrice - previousClose : null,
       percentChange: computePercentChange(lastPrice, previousClose, asNumber(md.LASTTOPREVPRICE)),
       volume,
       turnover,
@@ -117,24 +181,58 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
       high,
       low,
       tradesCount,
-      liquidityClass: classifyStockLiquidity({ ticker, turnover, tradesCount }),
+      dayRangePct,
       tradingStatus: toTradingStatus(md.TRADINGSTATUS ?? sec.STATUS),
       lotSize: asNumber(sec.LOTSIZE),
-      updatedAt: nowIso,
-      sourceUpdatedAt: null,
-      metrics: {
-        turnoverRatio: null,
-        volumeRatio: null,
-        dayRangePct,
-        gapPct: null,
-        relativeVolatility20d: null,
-        inPlayScore: null,
-        isInPlay: (dayRangePct ?? 0) >= 2.5 && (turnover ?? 0) > 0,
-      },
     });
   }
 
-  return Array.from(deduped.values());
+  const baselines = await fetchStockHistoricalBaselines(draftRows.map((row) => row.ticker));
+  return draftRows.map((row) => {
+    const baseline = baselines.get(row.ticker) ?? { turnoverAverage: null, rangeAveragePct: null, tradesAverage: null };
+    const signal = computeInPlaySignals({
+      turnover: row.turnover,
+      tradesCount: row.tradesCount,
+      percentChange: row.percentChange,
+      dayRangePct: row.dayRangePct,
+      turnoverBaseline: baseline.turnoverAverage,
+      rangeBaselinePct: baseline.rangeAveragePct,
+      tradesBaseline: baseline.tradesAverage,
+    });
+
+    return {
+      ticker: row.ticker,
+      shortName: row.shortName,
+      assetClass: "stock",
+      lastPrice: row.lastPrice,
+      previousClose: row.previousClose,
+      absoluteChange: row.lastPrice !== null && row.previousClose !== null ? row.lastPrice - row.previousClose : null,
+      percentChange: row.percentChange,
+      volume: row.volume,
+      turnover: row.turnover,
+      open: row.open,
+      high: row.high,
+      low: row.low,
+      tradesCount: row.tradesCount,
+      liquidityClass: classifyStockLiquidity({ ticker: row.ticker, turnover: row.turnover, tradesCount: row.tradesCount }),
+      tradingStatus: row.tradingStatus,
+      lotSize: row.lotSize,
+      updatedAt: nowIso,
+      sourceUpdatedAt: null,
+      metrics: {
+        turnoverRatio: signal.turnoverVsAverage,
+        volumeRatio: null,
+        turnoverVsAverage: signal.turnoverVsAverage,
+        rangeVsAverage: signal.rangeVsAverage,
+        tradesVsAverage: signal.tradesVsAverage,
+        dayRangePct: row.dayRangePct,
+        gapPct: null,
+        relativeVolatility20d: null,
+        inPlayScore: signal.inPlayScore,
+        isInPlay: signal.isInPlay,
+      },
+    } satisfies ScreenerRow;
+  });
 }
 
 async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
@@ -192,6 +290,9 @@ async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
       metrics: {
         turnoverRatio: null,
         volumeRatio: null,
+        turnoverVsAverage: null,
+        rangeVsAverage: null,
+        tradesVsAverage: null,
         dayRangePct,
         gapPct: null,
         relativeVolatility20d: null,
@@ -204,8 +305,18 @@ async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
   return rows;
 }
 
-async function fetchStockBenchmarksFromIss(nowIso: string): Promise<ScreenerBenchmark[]> {
+function computeStockMarketAggregates(stocks: ScreenerRow[]) {
+  const aggregateTurnover = stocks.reduce<number>((acc, row) => acc + (row.turnover ?? 0), 0);
+  const aggregateTrades = stocks.reduce<number>((acc, row) => acc + (row.tradesCount ?? 0), 0);
+  return {
+    aggregateTurnover: aggregateTurnover > 0 ? aggregateTurnover : null,
+    aggregateTrades: aggregateTrades > 0 ? aggregateTrades : null,
+  };
+}
+
+async function fetchStockBenchmarksFromIss(nowIso: string, stocks: ScreenerRow[]): Promise<ScreenerBenchmark[]> {
   try {
+    const aggregates = computeStockMarketAggregates(stocks);
     const payload = moexIssPayloadSchema.parse(
       await fetchIssJson(
         "/engines/stock/markets/index/securities/IMOEX2.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME&marketdata.columns=SECID,CURRENTVALUE,LASTVALUE,LASTTOPREVPRICE,PREVPRICE,HIGH,LOW",
@@ -237,6 +348,8 @@ async function fetchStockBenchmarksFromIss(nowIso: string): Promise<ScreenerBenc
         lastValue,
         percentChange: computePercentChange(lastValue, previousClose, asNumber(md.LASTTOPREVPRICE)),
         dayRangePct: computeDayRangePct(high, low, previousClose),
+        aggregateTurnover: aggregates.aggregateTurnover,
+        aggregateTrades: aggregates.aggregateTrades,
         updatedAt: nowIso,
         sourceUpdatedAt: null,
       },
@@ -253,7 +366,8 @@ async function getMoexSnapshot() {
   }
 
   const nowIso = new Date().toISOString();
-  const [stocks, futures, benchmarks] = await Promise.all([fetchStocksFromIss(nowIso), fetchFuturesFromIss(nowIso), fetchStockBenchmarksFromIss(nowIso)]);
+  const [stocks, futures] = await Promise.all([fetchStocksFromIss(nowIso), fetchFuturesFromIss(nowIso)]);
+  const benchmarks = await fetchStockBenchmarksFromIss(nowIso, stocks);
 
   if (stocks.length + futures.length === 0) {
     throw new Error("MOEX returned no usable rows");

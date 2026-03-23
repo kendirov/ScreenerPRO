@@ -27,6 +27,9 @@ export const screenerRows: ScreenerRow[] = [
     metrics: {
       turnoverRatio: 1.28,
       volumeRatio: 1.31,
+      turnoverVsAverage: 1.28,
+      rangeVsAverage: 1.22,
+      tradesVsAverage: 1.11,
       dayRangePct: 1.78,
       gapPct: 0.19,
       relativeVolatility20d: 1.16,
@@ -55,6 +58,9 @@ export const screenerRows: ScreenerRow[] = [
     metrics: {
       turnoverRatio: 0.94,
       volumeRatio: 0.92,
+      turnoverVsAverage: 0.94,
+      rangeVsAverage: 0.88,
+      tradesVsAverage: 0.91,
       dayRangePct: 0.95,
       gapPct: -0.27,
       relativeVolatility20d: 0.84,
@@ -83,6 +89,9 @@ export const screenerRows: ScreenerRow[] = [
     metrics: {
       turnoverRatio: 1.48,
       volumeRatio: 1.72,
+      turnoverVsAverage: null,
+      rangeVsAverage: null,
+      tradesVsAverage: null,
       dayRangePct: 1.41,
       gapPct: 0.1,
       relativeVolatility20d: 1.34,
@@ -111,6 +120,9 @@ export const screenerRows: ScreenerRow[] = [
     metrics: {
       turnoverRatio: 1.36,
       volumeRatio: 1.49,
+      turnoverVsAverage: null,
+      rangeVsAverage: null,
+      tradesVsAverage: null,
       dayRangePct: 1.43,
       gapPct: -0.26,
       relativeVolatility20d: 1.52,
@@ -139,6 +151,9 @@ export const screenerRows: ScreenerRow[] = [
     metrics: {
       turnoverRatio: 0.82,
       volumeRatio: 0.76,
+      turnoverVsAverage: 0.82,
+      rangeVsAverage: 0.79,
+      tradesVsAverage: 0.77,
       dayRangePct: 0.87,
       gapPct: 0.07,
       relativeVolatility20d: 0.79,
@@ -177,16 +192,23 @@ export const instrumentDetails: Record<string, InstrumentDetail> = {
 
 export const academyEntries: AcademyEntry[] = [
   {
+    slug: "diapazon-i-oborot",
+    title: "Диапазон и оборот",
+    excerpt: "Интерактивный разбор того, как сочетать Диапазон % и оборот для intraday-сканирования.",
+    readTimeMin: 6,
+    level: "beginner",
+  },
+  {
     slug: "market-microstructure-moex",
-    title: "MOEX Microstructure: What Moves Tape Quality",
-    excerpt: "A practical walkthrough for reading flow, auctions, and intraday regime shifts.",
+    title: "Микроструктура MOEX: что двигает ленту",
+    excerpt: "Практический разбор аукционов, потока заявок и внутридневных рыночных режимов.",
     readTimeMin: 12,
     level: "intermediate",
   },
   {
     slug: "futures-basis-and-carry",
-    title: "Futures Basis and Carry in Practice",
-    excerpt: "Understand basis dynamics and convert them into tradable context.",
+    title: "Базис и перенос во фьючерсах",
+    excerpt: "Как читать динамику базиса и переводить ее в рабочий торговый контекст.",
     readTimeMin: 10,
     level: "advanced",
   },

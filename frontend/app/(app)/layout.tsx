@@ -1,13 +1,12 @@
+import type { ReactNode } from "react";
 import { AppSidebar } from "@/components/shell/app-sidebar";
-import { TopBar } from "@/components/shell/top-bar";
 
-export default function ProtectedAppLayout({ children }: { children: React.ReactNode }) {
+export default function AppGroupLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen lg:flex">
-      <AppSidebar />
-      <div className="flex-1">
-        <TopBar />
-        <main className="p-4 md:p-6">{children}</main>
+    <div className="min-h-screen bg-slate-950 text-slate-200">
+      <div className="mx-auto flex max-w-[1680px]">
+        <AppSidebar />
+        <main className="min-w-0 flex-1 px-4 py-4 lg:px-6 lg:py-5">{children}</main>
       </div>
     </div>
   );

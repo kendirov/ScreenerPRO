@@ -1,5 +1,5 @@
-import { HomePageScreener } from "@/components/screener/homepage-screener";
+import { HomePageScreenerClient } from "@/components/screener/homepage-screener-client";
 
 export default function ScreenerPage() {
-  return <HomePageScreener />;
+  return <HomePageScreenerClient />;
 }

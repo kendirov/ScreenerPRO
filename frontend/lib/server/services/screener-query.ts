@@ -34,6 +34,9 @@ function metricSet(metric: {
   return {
     turnoverRatio: metric?.turnoverRatio ?? null,
     volumeRatio: metric?.volumeRatio ?? null,
+    turnoverVsAverage: metric?.turnoverRatio ?? null,
+    rangeVsAverage: null,
+    tradesVsAverage: null,
     dayRangePct: metric?.intradayRangePct ?? null,
     gapPct: metric?.gapPct ?? null,
     relativeVolatility20d: metric?.relativeVolatility20 ?? null,
