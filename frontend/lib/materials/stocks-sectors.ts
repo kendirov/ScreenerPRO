@@ -126,7 +126,7 @@ export function buildStocksSectorsView(rows: ScreenerRow[]): StocksSectorsViewMo
     const marketTurnoverSharePct = asPct(turnover, Math.max(marketTurnover, 1));
     const marketTradesSharePct = asPct(trades, Math.max(marketTrades, 1));
     const isBroad = (breadthScore ?? 0) >= 0.2 || (breadthScore ?? 0) <= -0.2;
-    const moneyFlowType = (top3TurnoverSharePct ?? 1) <= 0.62 ? "real" : "concentrated";
+    const moneyFlowType: StocksSectorView["moneyFlowType"] = (top3TurnoverSharePct ?? 1) <= 0.62 ? "real" : "concentrated";
 
     const leadersByTurnover = [...members]
       .sort((a, b) => (b.turnover ?? 0) - (a.turnover ?? 0))

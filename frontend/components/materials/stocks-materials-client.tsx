@@ -103,9 +103,9 @@ export function StocksMaterialsClient() {
         </section>
       ) : null}
 
-      {!isSectorsMode && mode === "sectors" ? <SectorsModePanel groups={groups} selectedId={selectedGroup?.id ?? null} heatMetric={heatMetric} onSelect={setSelectedGroupId} /> : null}
-      {!isCapitalizationMode && mode === "capitalization" ? <CapitalizationModePanel groups={groups} selectedId={selectedGroup?.id ?? null} onSelect={setSelectedGroupId} /> : null}
-      {!isIndicesMode && mode === "indices" ? <IndicesModePanel groups={groups} selectedId={selectedGroup?.id ?? null} onSelect={setSelectedGroupId} /> : null}
+      {isSectorsMode ? <SectorsModePanel groups={groups} selectedId={selectedGroup?.id ?? null} heatMetric={heatMetric} onSelect={setSelectedGroupId} /> : null}
+      {isCapitalizationMode ? <CapitalizationModePanel groups={groups} selectedId={selectedGroup?.id ?? null} onSelect={setSelectedGroupId} /> : null}
+      {isIndicesMode ? <IndicesModePanel groups={groups} selectedId={selectedGroup?.id ?? null} onSelect={setSelectedGroupId} /> : null}
       {mode === "drivers" ? <DriversModePanel groups={groups} selectedId={selectedGroup?.id ?? null} onSelect={setSelectedGroupId} /> : null}
 
       {!isSectorsMode && !isCapitalizationMode && !isIndicesMode ? <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">

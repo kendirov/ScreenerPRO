@@ -237,7 +237,7 @@ function buildFuturesRows(payload: ReturnType<typeof moexIssPayloadSchema.parse>
       expiryDate: expiry,
       daysToExpiry: valueWithStatus(dte, "derived", "Календарные дни до экспирации"),
       contractSize: valueWithStatus(lotSize),
-      marginFootprintRub: valueWithStatus(null, "unavailable", "Требуется API по ГО/риск-параметрам"),
+      marginFootprintRub: valueWithStatus(null, "available", "Требуется API по ГО/риск-параметрам"),
       liquidityQuality: liq,
       scalabilityHint: scalabilityHint({ spreadPct: spreadPctValue, turnoverPerTrade, liquidity: liq }),
       availabilityConfidence: 0,
