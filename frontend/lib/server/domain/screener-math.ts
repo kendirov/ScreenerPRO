@@ -72,7 +72,8 @@ function reasonLabelForInPlay(item: Pick<MoexInPlayDerived, "turnoverPercentile"
     { key: "turnover", value: item.turnoverPercentile * SCORE_WEIGHTS.turnover },
     { key: "trades", value: item.tradesPercentile * SCORE_WEIGHTS.trades },
     { key: "range", value: item.rangePercentile * SCORE_WEIGHTS.range },
-  ].sort((a, b) => b.value - a.value);
+  ];
+  contributions.sort((a, b) => b.value - a.value);
 
   const first = REASON_RU_LABELS[contributions[0]?.key ?? "turnover"];
   const second = REASON_RU_LABELS[contributions[1]?.key ?? "range"];
