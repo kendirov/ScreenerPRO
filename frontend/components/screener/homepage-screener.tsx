@@ -1,151 +1,118 @@
 "use client";
 
 import * as React from "react";
-import type { ScreenerBenchmark } from "@screenerpro/shared";
 import { ScreenerTable } from "@/components/screener/screener-table";
-import { futuresColumns, stockColumns } from "@/components/screener/columns";
+import { FuturesFamilyTable } from "@/components/screener/futures-family-table";
+import { MarketRadar } from "@/components/screener/market-radar";
+import { stockColumns } from "@/components/screener/columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { tradingFormat } from "@/lib/formatters/trading";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 
-function useTickerFilter<T extends { ticker: string; shortName: string }>(rows: T[], query: string) {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return rows;
-  return rows.filter((row) => row.ticker.toLowerCase().includes(normalized) || row.shortName.toLowerCase().includes(normalized));
-}
+const ILLIQUID_RATIO = 0.02;
+const ILLIQUID_TURNOVER_FLOOR = 35_000_000;
+const ILLIQUID_MIN_TRADES = 1_200;
 
-type StockLiquidityFilter = "liquid" | "all";
-
-function useStockLiquidityFilter<T extends { liquidityClass: "liquid" | "illiquid" | "unknown" }>(rows: T[], mode: StockLiquidityFilter) {
-  if (mode === "all") return rows;
-  return rows.filter((row) => row.liquidityClass === "liquid");
+function tradingThresholdText(value: number): string {
+  return `${new Intl.NumberFormat("ru-RU", { notation: "compact", maximumFractionDigits: 1 }).format(value)} ₽`;
 }
 
 function SourceBadge({ text, tone }: { text: string; tone: "ok" | "warn" }) {
   return (
-    <span className={tone === "ok" ? "rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300" : "rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300"}>
+    <span
+      className={
+        tone === "ok"
+          ? "rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-200 shadow-[0_0_0_1px_rgba(16,185,129,0.08)_inset]"
+          : "rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200 shadow-[0_0_0_1px_rgba(245,158,11,0.08)_inset]"
+      }
+    >
       {text}
     </span>
   );
 }
 
-function BenchmarkStrip({ benchmark }: { benchmark: ScreenerBenchmark | null }) {
-  if (!benchmark) {
-    return (
-      <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-xs text-slate-400">
-        Эталон рынка временно недоступен.
-      </div>
-    );
-  }
-
-  const changeClass =
-    benchmark.percentChange !== null && benchmark.percentChange > 0
-      ? "text-emerald-300"
-      : benchmark.percentChange !== null && benchmark.percentChange < 0
-        ? "text-rose-300"
-        : "text-slate-200";
-
-  return (
-    <div className="rounded-lg border border-slate-800/90 bg-slate-900/55 px-3 py-2">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-        <div className="min-w-[190px]">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Рынок</p>
-          <p className="font-semibold text-slate-100">
-            {benchmark.code} <span className="font-normal text-slate-400">{benchmark.name}</span>
-          </p>
-        </div>
-        <div className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-300">
-          <p>
-            <span className="text-slate-500">Значение</span>{" "}
-            <span className="font-mono tabular-nums text-slate-100">{tradingFormat.formatDynamicPrice(benchmark.lastValue)}</span>
-          </p>
-          <p>
-            <span className="text-slate-500">Изм.</span>{" "}
-            <span className={`font-mono tabular-nums ${changeClass}`}>{tradingFormat.formatSignedPercent(benchmark.percentChange)}</span>
-          </p>
-          <p>
-            <span className="text-slate-500">Диапазон</span>{" "}
-            <span className="font-mono tabular-nums text-slate-100">{tradingFormat.formatSignedPercent(benchmark.dayRangePct)}</span>
-          </p>
-          <p>
-            <span className="text-slate-500">Оборот</span>{" "}
-            <span className="font-mono tabular-nums text-slate-100">{tradingFormat.formatTurnoverRub(benchmark.aggregateTurnover)}</span>
-          </p>
-          <p>
-            <span className="text-slate-500">Сделки</span>{" "}
-            <span className="font-mono tabular-nums text-slate-100">{tradingFormat.formatInteger(benchmark.aggregateTrades)}</span>
-          </p>
-        </div>
-      </div>
-      <p className="mt-1 text-[10px] text-slate-500/90">
-        Оборот и сделки - агрегаты по текущей выборке акций скринера.
-      </p>
-    </div>
-  );
-}
-
 export function HomePageScreener() {
-  const [search, setSearch] = React.useState("");
-  const [stockLiquidity, setStockLiquidity] = React.useState<StockLiquidityFilter>("liquid");
+  const [instrumentTab, setInstrumentTab] = React.useState<"stocks" | "futures">("stocks");
+  const [hideIlliquid, setHideIlliquid] = React.useState(true);
   const stocksQuery = useScreenerQuery("stock");
   const futuresQuery = useScreenerQuery("future");
 
-  const stocksByText = useTickerFilter(stocksQuery.data?.rows ?? [], search);
-  const stocks = useStockLiquidityFilter(stocksByText, stockLiquidity);
-  const futures = useTickerFilter(futuresQuery.data?.rows ?? [], search);
-  const stockBenchmark = stocksQuery.data?.benchmarks[0] ?? null;
+  const stocks = React.useMemo(() => {
+    const rows = stocksQuery.data?.rows ?? [];
+    const maxTurnoverNow = rows.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0);
+    const illiquidThresholdTurnover = Math.max(maxTurnoverNow * ILLIQUID_RATIO, ILLIQUID_TURNOVER_FLOOR);
+    if (!hideIlliquid) return rows;
+    return rows.filter((row) => {
+      const turnover = row.turnover ?? 0;
+      const tradesCount = row.tradesCount ?? 0;
+      const isIlliquid = turnover < illiquidThresholdTurnover && tradesCount < ILLIQUID_MIN_TRADES;
+      return !isIlliquid;
+    });
+  }, [stocksQuery.data?.rows, hideIlliquid]);
+  const illiquidHint = React.useMemo(() => {
+    const rows = stocksQuery.data?.rows ?? [];
+    const maxTurnoverNow = rows.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0);
+    const threshold = Math.max(maxTurnoverNow * ILLIQUID_RATIO, ILLIQUID_TURNOVER_FLOOR);
+    return tradingThresholdText(threshold);
+  }, [stocksQuery.data?.rows]);
+  const futures = futuresQuery.data?.rows ?? [];
+  const stockUniverse = stocksQuery.data?.rows ?? [];
+  const imoexRangePct = stocksQuery.data?.benchmarks?.[0]?.dayRangePct ?? null;
   const status = stocksQuery.data?.status ?? futuresQuery.data?.status ?? null;
 
   return (
-    <div className="space-y-2.5">
-      <div className="rounded-md border border-slate-800/80 bg-slate-900/30 px-3 py-1.5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
-          <span className="font-medium text-slate-200">Скринер MOEX</span>
-          {status?.source === "moex" ? <SourceBadge text="MOEX ISS" tone="ok" /> : <SourceBadge text="Fallback" tone="warn" />}
-          <span className="text-slate-500">Акции {stocksQuery.data?.status.stockRows ?? 0}</span>
-          <span className="text-slate-500">Фьючерсы {futuresQuery.data?.status.futuresRows ?? 0}</span>
-          {status?.fallbackReason ? <span className="text-amber-300/90">Причина: {status.fallbackReason}</span> : null}
-          <span className="ml-auto text-slate-500">Обновлено {status ? new Date(status.fetchTimestamp).toLocaleTimeString("ru-RU") : "—"}</span>
-        </div>
-      </div>
-
-      <Tabs defaultValue="stocks" className="space-y-2">
-        <div className="flex flex-col gap-2 rounded-lg border border-slate-800/90 bg-slate-900/45 p-2 lg:flex-row lg:items-center">
-          <TabsList className="w-fit shrink-0">
-            <TabsTrigger value="stocks">Акции</TabsTrigger>
-            <TabsTrigger value="futures">Фьючерсы</TabsTrigger>
+    <div className="space-y-2">
+      <Tabs value={instrumentTab} onValueChange={(value) => setInstrumentTab(value as "stocks" | "futures")} className="space-y-2">
+        <div className="rounded-xl border border-white/5 bg-slate-950/45 px-2 py-1.5 shadow-[0_10px_24px_rgba(2,6,23,0.2)] backdrop-blur-md">
+          <TabsList className="relative h-10 w-fit shrink-0 rounded-xl border border-white/5 bg-black/35 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),inset_0_-1px_0_rgba(2,6,23,0.55)]">
+            <span
+              className={`pointer-events-none absolute bottom-1 top-1 z-0 w-[calc(50%-4px)] rounded-lg bg-[linear-gradient(145deg,rgba(51,65,85,0.9),rgba(15,23,42,0.94))] shadow-[inset_0_0_0_1px_rgba(148,163,184,0.18),0_0_20px_rgba(99,102,241,0.16)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                instrumentTab === "stocks" ? "translate-x-0" : "translate-x-[calc(100%+2px)]"
+              }`}
+            />
+            <TabsTrigger
+              value="stocks"
+              className="relative z-10 h-8 rounded-lg px-4 text-sm font-medium text-slate-400 transition-colors duration-200 hover:text-slate-100 data-[state=active]:border-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-100"
+            >
+              Акции
+            </TabsTrigger>
+            <TabsTrigger
+              value="futures"
+              className="relative z-10 h-8 rounded-lg px-4 text-sm font-medium text-slate-400 transition-colors duration-200 hover:text-slate-100 data-[state=active]:border-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-100"
+            >
+              Фьючерсы
+            </TabsTrigger>
           </TabsList>
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Фильтр по тикеру или названию..."
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-200 outline-none transition focus:border-cyan-400"
-          />
+        </div>
+        <div className="rounded-xl border border-white/5 bg-[linear-gradient(110deg,rgba(2,6,23,0.7),rgba(2,6,23,0.52)_45%,rgba(15,23,42,0.36)_100%)] px-3 py-2 shadow-[0_10px_24px_rgba(2,6,23,0.25)] backdrop-blur-md">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-300">
+            <span className="font-semibold tracking-wide text-slate-100">Скринер MOEX</span>
+            {status?.source === "moex" ? <SourceBadge text="MOEX ISS" tone="ok" /> : <SourceBadge text="Fallback" tone="warn" />}
+            <span className="rounded-md border border-slate-700/80 bg-slate-900/55 px-1.5 py-0.5 text-slate-300">Акции {stocksQuery.data?.status.stockRows ?? 0}</span>
+            <span className="rounded-md border border-slate-700/80 bg-slate-900/55 px-1.5 py-0.5 text-slate-300">Фьючерсы {futuresQuery.data?.status.futuresRows ?? 0}</span>
+            {status?.fallbackReason ? <span className="text-amber-200/95">Причина: {status.fallbackReason}</span> : null}
+            <span className="ml-auto font-mono tabular-nums text-slate-400">Обновлено {status ? new Date(status.fetchTimestamp).toLocaleTimeString("ru-RU") : "—"}</span>
+          </div>
         </div>
         <TabsContent value="stocks">
-          <div className="mb-2">
-            <BenchmarkStrip benchmark={stockBenchmark} />
+          <div className="sticky top-[4.05rem] z-30 mb-2 space-y-2 border-b border-white/5 bg-slate-950/80 pb-1.5 backdrop-blur-md">
+            <MarketRadar rows={stocks} allRows={stockUniverse} imoexRangePct={imoexRangePct} />
           </div>
-          <div className="mb-2 flex items-center justify-between rounded-lg border border-slate-800/90 bg-slate-900/45 p-1.5">
-            <div className="inline-flex rounded-md bg-slate-900 p-0.5">
-              <button
-                onClick={() => setStockLiquidity("liquid")}
-                className={`rounded-md px-2.5 py-1 text-xs transition ${
-                  stockLiquidity === "liquid" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                Ликвидные
-              </button>
-              <button
-                onClick={() => setStockLiquidity("all")}
-                className={`rounded-md px-2.5 py-1 text-xs transition ${
-                  stockLiquidity === "all" ? "bg-slate-800 text-slate-100" : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                Все
-              </button>
+          <div className="mb-2.5 rounded-xl border border-white/5 bg-slate-950/45 p-2 shadow-[0_8px_18px_rgba(2,6,23,0.18)] backdrop-blur-md">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <label className="inline-flex items-center gap-2 rounded-xl border border-white/5 bg-black/30 px-2.5 py-1.5 text-xs text-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={hideIlliquid}
+                    onChange={(event) => setHideIlliquid(event.target.checked)}
+                    className="h-3.5 w-3.5 rounded border-white/20 bg-slate-950 text-emerald-400 accent-emerald-500"
+                  />
+                  <span className="font-medium">Скрыть неликвиды</span>
+                </label>
+                <span className="text-[11px] text-slate-500">&lt; 2% от лидера + слабая лента ({illiquidHint})</span>
+              </div>
+              <span className="rounded-full border border-white/10 bg-black/35 px-2.5 py-1 font-mono text-[11px] tabular-nums text-slate-300">Показано: {stocks.length}</span>
             </div>
-            <span className="text-[11px] text-slate-500">Показано: {stocks.length}</span>
           </div>
           <ScreenerTable
             rows={stocks}
@@ -155,12 +122,7 @@ export function HomePageScreener() {
           />
         </TabsContent>
         <TabsContent value="futures">
-          <ScreenerTable
-            rows={futures}
-            columns={futuresColumns}
-            emptyTitle={futuresQuery.isLoading ? "Загрузка фьючерсов..." : "Нет доступных фьючерсов"}
-            emptyText={futuresQuery.error ? "MOEX временно недоступен. Используется fallback." : "По текущему фильтру ничего не найдено."}
-          />
+          <FuturesFamilyTable rows={futures} />
         </TabsContent>
       </Tabs>
     </div>

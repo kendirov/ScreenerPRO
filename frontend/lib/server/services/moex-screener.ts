@@ -10,7 +10,8 @@ import type {
 import { screenerRows as demoRows } from "@/lib/mock/screener";
 import { db } from "@/lib/server/db";
 import { computeInPlaySignals } from "@/lib/server/domain/in-play-signals";
-import { classifyStockLiquidity } from "@/lib/server/domain/liquidity";
+import { enrichMoexStocksWithInPlayMetrics } from "@/lib/server/domain/screener-math";
+import { classifyStockActivity, deriveStockActivityMetrics } from "@/lib/server/domain/stock-activity";
 import { fetchIssJson } from "@/lib/server/moex-iss/http";
 import { moexIssPayloadSchema } from "@/lib/server/moex-iss/schemas";
 
@@ -79,6 +80,7 @@ function average(values: number[]): number | null {
 
 type StockHistoricalBaseline = {
   turnoverAverage: number | null;
+  previousDayTurnover: number | null;
   rangeAveragePct: number | null;
   tradesAverage: number | null;
 };
@@ -113,6 +115,7 @@ async function fetchStockHistoricalBaselines(tickers: string[]): Promise<Map<str
 
     baselineByTicker.set(instrument.ticker, {
       turnoverAverage: turnoverBaseline,
+      previousDayTurnover: bars[0]?.turnover ?? null,
       rangeAveragePct: rangeBaseline,
       tradesAverage: null,
     });
@@ -188,8 +191,9 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
   }
 
   const baselines = await fetchStockHistoricalBaselines(draftRows.map((row) => row.ticker));
-  return draftRows.map((row) => {
-    const baseline = baselines.get(row.ticker) ?? { turnoverAverage: null, rangeAveragePct: null, tradesAverage: null };
+  const enrichedRows = enrichMoexStocksWithInPlayMetrics(draftRows);
+  return enrichedRows.map((row) => {
+    const baseline = baselines.get(row.ticker) ?? { turnoverAverage: null, previousDayTurnover: null, rangeAveragePct: null, tradesAverage: null };
     const signal = computeInPlaySignals({
       turnover: row.turnover,
       tradesCount: row.tradesCount,
@@ -199,6 +203,11 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
       rangeBaselinePct: baseline.rangeAveragePct,
       tradesBaseline: baseline.tradesAverage,
     });
+    const activityMetrics = deriveStockActivityMetrics({
+      currentTurnoverRub: row.turnover,
+      previousDayTurnoverRub: baseline.previousDayTurnover,
+      tradesCount: row.tradesCount,
+    }, new Date(nowIso));
 
     return {
       ticker: row.ticker,
@@ -214,7 +223,11 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
       high: row.high,
       low: row.low,
       tradesCount: row.tradesCount,
-      liquidityClass: classifyStockLiquidity({ ticker: row.ticker, turnover: row.turnover, tradesCount: row.tradesCount }),
+      stockActivityClass: classifyStockActivity({
+        currentTurnoverRub: row.turnover,
+        previousDayTurnoverRub: baseline.previousDayTurnover,
+        tradesCount: row.tradesCount,
+      }, new Date(nowIso)),
       tradingStatus: row.tradingStatus,
       lotSize: row.lotSize,
       updatedAt: nowIso,
@@ -225,11 +238,21 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
         turnoverVsAverage: signal.turnoverVsAverage,
         rangeVsAverage: signal.rangeVsAverage,
         tradesVsAverage: signal.tradesVsAverage,
+        turnoverPercentile: row.turnoverPercentile,
+        tradesPercentile: row.tradesPercentile,
+        rangePercentile: row.rangePercentile,
         dayRangePct: row.dayRangePct,
         gapPct: null,
         relativeVolatility20d: null,
-        inPlayScore: signal.inPlayScore,
-        isInPlay: signal.isInPlay,
+        inPlayScore: row.inPlayScore,
+        isInPlay: row.inPlayTags.includes("IN_PLAY"),
+        inPlayTags: row.inPlayTags,
+        reasonLabel: row.reasonLabel,
+        currentTurnoverRub: activityMetrics.currentTurnoverRub,
+        previousDayTurnoverRub: activityMetrics.previousDayTurnoverRub,
+        activityRatio: activityMetrics.activityRatio,
+        requiredActivityRatio: activityMetrics.requiredActivityRatio,
+        sessionProgress: activityMetrics.sessionProgress,
       },
     } satisfies ScreenerRow;
   });
@@ -279,7 +302,7 @@ async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
       turnover,
       openInterest: asNumber(md.OPENPOSITION),
       expiryDate: asString(sec.LASTDELDATE),
-      liquidityClass: "unknown",
+      stockActivityClass: "unknown",
       open: asNumber(md.OPEN),
       high,
       low,
@@ -293,11 +316,21 @@ async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
         turnoverVsAverage: null,
         rangeVsAverage: null,
         tradesVsAverage: null,
+        turnoverPercentile: null,
+        tradesPercentile: null,
+        rangePercentile: null,
         dayRangePct,
         gapPct: null,
         relativeVolatility20d: null,
         inPlayScore: null,
         isInPlay: (dayRangePct ?? 0) >= 2.5 && (turnover ?? 0) > 0,
+        inPlayTags: [],
+        reasonLabel: null,
+        currentTurnoverRub: turnover,
+        previousDayTurnoverRub: null,
+        activityRatio: null,
+        requiredActivityRatio: null,
+        sessionProgress: null,
       },
     });
   }
@@ -311,6 +344,30 @@ function computeStockMarketAggregates(stocks: ScreenerRow[]) {
   return {
     aggregateTurnover: aggregateTurnover > 0 ? aggregateTurnover : null,
     aggregateTrades: aggregateTrades > 0 ? aggregateTrades : null,
+  };
+}
+
+function normalizeScreenerMetrics(row: ScreenerRow): ScreenerRow {
+  return {
+    ...row,
+    metrics: {
+      ...row.metrics,
+      inPlayTags: Array.isArray(row.metrics.inPlayTags) ? row.metrics.inPlayTags : [],
+      reasonLabel: typeof row.metrics.reasonLabel === "string" ? row.metrics.reasonLabel : "",
+      inPlayScore: typeof row.metrics.inPlayScore === "number" && Number.isFinite(row.metrics.inPlayScore) ? row.metrics.inPlayScore : 0,
+      turnoverPercentile:
+        typeof row.metrics.turnoverPercentile === "number" && Number.isFinite(row.metrics.turnoverPercentile)
+          ? row.metrics.turnoverPercentile
+          : 0,
+      tradesPercentile:
+        typeof row.metrics.tradesPercentile === "number" && Number.isFinite(row.metrics.tradesPercentile)
+          ? row.metrics.tradesPercentile
+          : 0,
+      rangePercentile:
+        typeof row.metrics.rangePercentile === "number" && Number.isFinite(row.metrics.rangePercentile)
+          ? row.metrics.rangePercentile
+          : 0,
+    },
   };
 }
 
@@ -385,8 +442,8 @@ async function getMoexSnapshot() {
 
   lastSnapshot = {
     expiresAt: now + CACHE_TTL_MS,
-    stocks,
-    futures,
+    stocks: stocks.map(normalizeScreenerMetrics),
+    futures: futures.map(normalizeScreenerMetrics),
     benchmarks,
     status,
   };
@@ -396,8 +453,8 @@ async function getMoexSnapshot() {
 
 function getDemoSnapshot(reason: ScreenerDataStatus["fallbackReason"], message: string) {
   const nowIso = new Date().toISOString();
-  const stocks = demoRows.filter((row) => row.assetClass === "stock");
-  const futures = demoRows.filter((row) => row.assetClass === "future");
+  const stocks = demoRows.filter((row) => row.assetClass === "stock").map(normalizeScreenerMetrics);
+  const futures = demoRows.filter((row) => row.assetClass === "future").map(normalizeScreenerMetrics);
   return {
     stocks,
     futures,

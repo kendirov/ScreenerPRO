@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, ChartColumn, Cog, Gem, Library, ListChecks, Newspaper } from "lucide-react";
+import { BookOpen, CalendarDays, ChartColumn, Cog, Gem, Library, ListChecks, Newspaper, CandlestickChart, ChartCandlestick } from "lucide-react";
 import type { ComponentType } from "react";
 
 type NavVisibility = "visible" | "hidden";
@@ -11,7 +11,9 @@ type SidebarNavItem = {
 };
 
 export const sidebarNavConfig: SidebarNavItem[] = [
-  { href: "/screener", label: "Скринер", icon: ChartColumn, visibility: "visible" },
+  { href: "/screener", label: "Скринер: Обзор", icon: ChartColumn, visibility: "visible" },
+  { href: "/screener/stocks", label: "Скринер: Акции", icon: CandlestickChart, visibility: "visible" },
+  { href: "/screener/futures", label: "Скринер: Фьючерсы", icon: ChartCandlestick, visibility: "visible" },
   { href: "/academy", label: "Академия", icon: BookOpen, visibility: "visible" },
   { href: "/materials", label: "Материалы", icon: Library, visibility: "visible" },
   { href: "/pro", label: "Скринер PRO", icon: Gem, visibility: "hidden" },

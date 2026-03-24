@@ -29,7 +29,7 @@ export const sandboxStockColumns: ColumnDef<ScreenerRow>[] = [
   { accessorKey: "metrics.inPlayScore", header: "In Play Score", cell: ({ row }) => <span className={numberCellClass}>{tradingFormat.formatDynamicPrice(row.original.metrics.inPlayScore)}</span> },
   { accessorKey: "metrics.isInPlay", header: "In Play", cell: ({ row }) => <span className="text-xs text-slate-300">{row.original.metrics.isInPlay ? "да" : "нет"}</span> },
   { accessorKey: "tradingStatus", header: "Статус", cell: ({ getValue }) => <span className="text-xs text-slate-300">{getValue<string>()}</span> },
-  { accessorKey: "liquidityClass", header: "Ликвидность", cell: ({ getValue }) => <span className="text-xs text-slate-300">{getValue<string>()}</span> },
+  { accessorKey: "stockActivityClass", header: "Активность", cell: ({ getValue }) => <span className="text-xs text-slate-300">{getValue<string>()}</span> },
   { accessorKey: "lotSize", header: "Лот", cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatInteger(getValue<number | null>())}</span> },
 ];
 
