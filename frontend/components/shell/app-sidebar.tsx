@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { sidebarNav } from "@/lib/constants/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -11,18 +11,24 @@ const SIDEBAR_PINNED_KEY = "screenerpro.sidebar.pinned";
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const [isExpanded, setIsExpanded] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(SIDEBAR_PINNED_KEY) === "1";
+  });
 
   useEffect(() => {
-    const persistedState = window.localStorage.getItem(SIDEBAR_PINNED_KEY);
-    if (persistedState === "1") {
-      setIsExpanded(true);
-    }
-  }, []);
-
-  useEffect(() => {
+    if (!hydrated) return;
     window.localStorage.setItem(SIDEBAR_PINNED_KEY, isExpanded ? "1" : "0");
-  }, [isExpanded]);
+  }, [isExpanded, hydrated]);
+
+  if (!hydrated) {
+    return <aside className="hidden w-[74px] shrink-0 border-r border-slate-800/70 bg-slate-950/92 px-2 py-4 lg:flex lg:flex-col" />;
+  }
 
   return (
     <aside
