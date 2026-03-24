@@ -143,7 +143,7 @@ export function enrichMoexStocksWithInPlayMetrics<T extends MoexRawStockRow>(row
   );
 
   // TODO: add session-level sticky state for IN_PLAY enter>=78 / exit<74 hysteresis.
-  return derived.map((row) => {
+  return derived.map((row): T & MoexInPlayDerived => {
     const inPlayTags = [...row.inPlayTags];
     if (selectedIndices.has(row.__index) && !inPlayTags.includes("NOISE")) {
       inPlayTags.push("IN_PLAY");
@@ -156,11 +156,10 @@ export function enrichMoexStocksWithInPlayMetrics<T extends MoexRawStockRow>(row
       })
       : null;
 
-    const { __index, __eligibleForInPlay, ...rest } = row;
     return {
-      ...rest,
+      ...row,
       inPlayTags,
       reasonLabel,
-    };
+    } as T & MoexInPlayDerived;
   });
 }
