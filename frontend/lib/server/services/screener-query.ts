@@ -1,6 +1,6 @@
 import type { AssetClass, InstrumentDetail, InstrumentHistoryBar, ScreenerMetricSet, ScreenerRow } from "@screenerpro/shared";
 import { db } from "@/lib/server/db";
-import { classifyStockLiquidity } from "@/lib/server/domain/liquidity";
+import { classifyStockActivity, deriveStockActivityMetrics } from "@/lib/server/domain/stock-activity";
 
 const screenerRowsCache: { rows: ScreenerRow[]; updatedAt: string | null } = {
   rows: [],
@@ -30,6 +30,11 @@ function metricSet(metric: {
   relativeVolatility20: number | null;
   inPlayScore: number | null;
   isInPlay: boolean;
+  currentTurnoverRub?: number | null;
+  previousDayTurnoverRub?: number | null;
+  activityRatio?: number | null;
+  requiredActivityRatio?: number | null;
+  sessionProgress?: number | null;
 } | null): ScreenerMetricSet {
   return {
     turnoverRatio: metric?.turnoverRatio ?? null,
@@ -42,6 +47,11 @@ function metricSet(metric: {
     relativeVolatility20d: metric?.relativeVolatility20 ?? null,
     inPlayScore: metric?.inPlayScore ?? null,
     isInPlay: metric?.isInPlay ?? false,
+    currentTurnoverRub: metric?.currentTurnoverRub ?? null,
+    previousDayTurnoverRub: metric?.previousDayTurnoverRub ?? null,
+    activityRatio: metric?.activityRatio ?? null,
+    requiredActivityRatio: metric?.requiredActivityRatio ?? null,
+    sessionProgress: metric?.sessionProgress ?? null,
   };
 }
 
@@ -67,6 +77,11 @@ export async function getScreenerRows(assetClass: "all" | AssetClass): Promise<S
         const lastBar = item.dailyBars[0];
         const lastPrice = snap?.lastPrice ?? lastBar?.close ?? null;
         const previousClose = snap?.previousClose ?? lastBar?.close ?? null;
+        const activityMetrics = deriveStockActivityMetrics({
+          currentTurnoverRub: snap?.turnover ?? lastBar?.turnover ?? null,
+          previousDayTurnoverRub: lastBar?.turnover ?? null,
+          tradesCount: null,
+        });
         return {
           ticker: item.ticker,
           shortName: item.shortName ?? item.ticker,
@@ -80,15 +95,43 @@ export async function getScreenerRows(assetClass: "all" | AssetClass): Promise<S
           open: snap?.open ?? lastBar?.open ?? null,
           high: snap?.high ?? lastBar?.high ?? null,
           low: snap?.low ?? lastBar?.low ?? null,
-          liquidityClass:
+          stockActivityClass:
             item.assetClass === "stock"
-              ? classifyStockLiquidity({ ticker: item.ticker, turnover: snap?.turnover ?? lastBar?.turnover ?? null, tradesCount: null })
+              ? classifyStockActivity({
+                  currentTurnoverRub: snap?.turnover ?? lastBar?.turnover ?? null,
+                  previousDayTurnoverRub: lastBar?.turnover ?? null,
+                  tradesCount: null,
+                })
               : "unknown",
           tradingStatus: toTradingStatus(snap?.tradingStatus ?? null),
           lotSize: snap?.lotSize ?? item.lotSize,
           updatedAt: (snap?.createdAt ?? lastBar?.barDate ?? new Date()).toISOString(),
           sourceUpdatedAt: snap?.sourceUpdatedAt?.toISOString() ?? null,
-          metrics: metricSet(item.screenerMetrics[0] ?? null),
+          metrics: metricSet(
+            item.screenerMetrics[0]
+              ? {
+                  ...item.screenerMetrics[0],
+                  currentTurnoverRub: activityMetrics.currentTurnoverRub,
+                  previousDayTurnoverRub: activityMetrics.previousDayTurnoverRub,
+                  activityRatio: activityMetrics.activityRatio,
+                  requiredActivityRatio: activityMetrics.requiredActivityRatio,
+                  sessionProgress: activityMetrics.sessionProgress,
+                }
+              : {
+                  turnoverRatio: null,
+                  volumeRatio: null,
+                  intradayRangePct: null,
+                  gapPct: null,
+                  relativeVolatility20: null,
+                  inPlayScore: null,
+                  isInPlay: false,
+                  currentTurnoverRub: activityMetrics.currentTurnoverRub,
+                  previousDayTurnoverRub: activityMetrics.previousDayTurnoverRub,
+                  activityRatio: activityMetrics.activityRatio,
+                  requiredActivityRatio: activityMetrics.requiredActivityRatio,
+                  sessionProgress: activityMetrics.sessionProgress,
+                },
+          ),
         } satisfies ScreenerRow;
       })
       .filter((item): item is ScreenerRow => item.lastPrice !== null || item.volume !== null || item.turnover !== null);
@@ -141,9 +184,13 @@ export async function getInstrumentDetail(ticker: string): Promise<InstrumentDet
           open: snap.open,
           high: snap.high,
           low: snap.low,
-          liquidityClass:
+          stockActivityClass:
             instrument.assetClass === "stock"
-              ? classifyStockLiquidity({ ticker: instrument.ticker, turnover: snap.turnover, tradesCount: null })
+              ? classifyStockActivity({
+                  currentTurnoverRub: snap.turnover,
+                  previousDayTurnoverRub: null,
+                  tradesCount: null,
+                })
               : "unknown",
           tradingStatus: toTradingStatus(snap.tradingStatus),
           lotSize: snap.lotSize,

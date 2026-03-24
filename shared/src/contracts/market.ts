@@ -5,8 +5,8 @@ export type AssetClass = z.infer<typeof assetClassSchema>;
 
 export const tradingStatusSchema = z.enum(["open", "halted", "auction", "closed", "unknown"]);
 export type TradingStatus = z.infer<typeof tradingStatusSchema>;
-export const liquidityClassSchema = z.enum(["liquid", "illiquid", "unknown"]);
-export type LiquidityClass = z.infer<typeof liquidityClassSchema>;
+export const stockActivityClassSchema = z.enum(["active", "has_activity", "inactive", "unknown"]);
+export type StockActivityClass = z.infer<typeof stockActivityClassSchema>;
 
 export const screenerMetricSetSchema = z.object({
   turnoverRatio: z.number().nullable(),
@@ -19,6 +19,11 @@ export const screenerMetricSetSchema = z.object({
   relativeVolatility20d: z.number().nullable(),
   inPlayScore: z.number().nullable(),
   isInPlay: z.boolean(),
+  currentTurnoverRub: z.number().nullable(),
+  previousDayTurnoverRub: z.number().nullable(),
+  activityRatio: z.number().nullable(),
+  requiredActivityRatio: z.number().nullable(),
+  sessionProgress: z.number().nullable(),
 });
 export type ScreenerMetricSet = z.infer<typeof screenerMetricSetSchema>;
 
@@ -38,7 +43,7 @@ export const marketSnapshotSchema = z.object({
   tradesCount: z.number().nullable().optional(),
   openInterest: z.number().nullable().optional(),
   expiryDate: z.string().nullable().optional(),
-  liquidityClass: liquidityClassSchema,
+  stockActivityClass: stockActivityClassSchema,
   tradingStatus: tradingStatusSchema,
   lotSize: z.number().nullable(),
   updatedAt: z.string(),
@@ -79,7 +84,7 @@ export type InstrumentDetail = z.infer<typeof instrumentDetailSchema>;
 export const screenerFilterStateSchema = z.object({
   assetClass: z.enum(["all", "stock", "future"]).default("all"),
   onlyInPlay: z.boolean().default(false),
-  stockLiquidity: z.enum(["liquid", "all"]).default("liquid"),
+  stockActivity: z.enum(["active", "has_activity", "all"]).default("active"),
 });
 export type ScreenerFilterState = z.infer<typeof screenerFilterStateSchema>;
 

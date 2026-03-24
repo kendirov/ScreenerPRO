@@ -2,6 +2,13 @@ import type { MaterialsPage } from "@/lib/materials/contracts";
 
 export const materialsPages: MaterialsPage[] = [
   {
+    slug: "screener",
+    title: "Скринер",
+    description: "Логическая карта фильтра активности: режимы, пороги, формула и практическая интерпретация для интрадей.",
+    href: "/materials/screener",
+    status: "live",
+  },
+  {
     slug: "technical-characteristics",
     title: "Технические характеристики",
     description: "Лоты, шаги цены, стоимость шага, спред, оборот, комиссии и производные метрики по инструментам MOEX.",
