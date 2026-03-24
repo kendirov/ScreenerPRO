@@ -30,6 +30,11 @@ function metricSet(metric: {
   relativeVolatility20: number | null;
   inPlayScore: number | null;
   isInPlay: boolean;
+  turnoverPercentile?: number | null;
+  tradesPercentile?: number | null;
+  rangePercentile?: number | null;
+  inPlayTags?: string[];
+  reasonLabel?: string | null;
   currentTurnoverRub?: number | null;
   previousDayTurnoverRub?: number | null;
   activityRatio?: number | null;
@@ -42,11 +47,16 @@ function metricSet(metric: {
     turnoverVsAverage: metric?.turnoverRatio ?? null,
     rangeVsAverage: null,
     tradesVsAverage: null,
+    turnoverPercentile: metric?.turnoverPercentile ?? null,
+    tradesPercentile: metric?.tradesPercentile ?? null,
+    rangePercentile: metric?.rangePercentile ?? null,
     dayRangePct: metric?.intradayRangePct ?? null,
     gapPct: metric?.gapPct ?? null,
     relativeVolatility20d: metric?.relativeVolatility20 ?? null,
-    inPlayScore: metric?.inPlayScore ?? null,
+    inPlayScore: metric?.inPlayScore ?? 0,
     isInPlay: metric?.isInPlay ?? false,
+    inPlayTags: metric?.inPlayTags ?? [],
+    reasonLabel: metric?.reasonLabel ?? "",
     currentTurnoverRub: metric?.currentTurnoverRub ?? null,
     previousDayTurnoverRub: metric?.previousDayTurnoverRub ?? null,
     activityRatio: metric?.activityRatio ?? null,
