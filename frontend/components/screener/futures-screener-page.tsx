@@ -16,12 +16,12 @@ export function FuturesScreenerPage() {
   const pathname = usePathname();
 
   const viewParam = searchParams.get("view");
-  const mode: FuturesViewMode = viewParam === "all" ? "all" : "groups";
+  const mode: FuturesViewMode = viewParam === "groups" ? "groups" : "all";
 
   React.useEffect(() => {
     if (!viewParam) {
       const next = new URLSearchParams(searchParams.toString());
-      next.set("view", "groups");
+      next.set("view", "all");
       router.replace(`${pathname}?${next.toString()}`);
     }
   }, [pathname, router, searchParams, viewParam]);

@@ -56,6 +56,7 @@ export function FuturesAllTable({ rows }: { rows: ScreenerRow[] }) {
     { accessorKey: "lastPrice", header: "Цена", cell: ({ getValue }) => <span className="font-mono">{tradingFormat.formatDynamicPrice(getValue<number | null>())}</span> },
     { accessorKey: "percentChange", header: "%", cell: ({ getValue }) => <span className="font-mono">{tradingFormat.formatSignedPercent(getValue<number | null>())}</span> },
     { accessorKey: "turnover", header: "Оборот", cell: ({ getValue }) => <span className="font-mono">{compactRub(getValue<number | null>())}</span> },
+    { accessorKey: "tradesCount", header: "Сделки", cell: ({ getValue }) => <span className="font-mono">{tradingFormat.formatInteger(getValue<number | null>())}</span> },
     { accessorKey: "openInterest", header: "ОИ", cell: ({ getValue }) => <span className="font-mono">{tradingFormat.formatInteger(getValue<number | null>())}</span> },
     { accessorKey: "metrics.dayRangePct", header: "Диапазон %", cell: ({ row }) => <span className="font-mono">{tradingFormat.formatSignedPercent(row.original.metrics.dayRangePct)}</span> },
     { id: "dte", header: "DTE", accessorFn: (row) => dte(row.expiryDate), cell: ({ row }) => <span className="font-mono">{dte(row.original.expiryDate) ?? "—"}</span> },
