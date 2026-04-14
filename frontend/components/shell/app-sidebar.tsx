@@ -73,8 +73,9 @@ export function AppSidebar() {
       </p>
       <nav className="space-y-1">
         {sidebarNav.map((item) => {
-          const isScreenerOverview = item.href === "/screener";
-          const isActive = isScreenerOverview ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const hrefPath = item.href.split("?")[0] ?? item.href;
+          const isScreenerOverview = hrefPath === "/screener";
+          const isActive = isScreenerOverview ? pathname === hrefPath : pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
 
           return (
             <Link

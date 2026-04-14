@@ -13,11 +13,11 @@ type SidebarNavItem = {
 export const sidebarNavConfig: SidebarNavItem[] = [
   { href: "/screener", label: "Скринер: Обзор", icon: ChartColumn, visibility: "visible" },
   { href: "/screener/stocks", label: "Скринер: Акции", icon: CandlestickChart, visibility: "visible" },
-  { href: "/screener/futures", label: "Скринер: Фьючерсы", icon: ChartCandlestick, visibility: "visible" },
+  { href: "/screener/futures?view=all", label: "Скринер: Фьючерсы", icon: ChartCandlestick, visibility: "visible" },
   { href: "/academy", label: "Академия", icon: BookOpen, visibility: "visible" },
   { href: "/materials", label: "Материалы", icon: Library, visibility: "visible" },
   { href: "/pro", label: "Скринер PRO", icon: Gem, visibility: "hidden" },
-  { href: "/news", label: "Новости", icon: Newspaper, visibility: "hidden" },
+  { href: "/news", label: "Новости", icon: Newspaper, visibility: "visible" },
   { href: "/events", label: "События", icon: CalendarDays, visibility: "hidden" },
   { href: "/app/watchlist", label: "Наблюдение", icon: ListChecks, visibility: "hidden" },
   { href: "/app/settings", label: "Настройки", icon: Cog, visibility: "hidden" },
