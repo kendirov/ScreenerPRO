@@ -35,3 +35,20 @@ export function historyUrl(assetClass: AssetClass, secid: string, from?: string,
     start,
   });
 }
+
+/** Свечи FORTS — дневные и интрадей (OHLC/close). */
+export function futuresCandlesUrl(secid: string, from: string, till: string, interval = 24) {
+  return withQuery(`/engines/futures/markets/forts/securities/${secid}/candles.json`, {
+    "iss.meta": "off",
+    from,
+    till,
+    interval,
+  });
+}
+
+/** Доступные интервалы и границы свечей по инструменту. */
+export function futuresCandleBordersUrl(secid: string) {
+  return withQuery(`/engines/futures/markets/forts/securities/${secid}/candleborders.json`, {
+    "iss.meta": "off",
+  });
+}

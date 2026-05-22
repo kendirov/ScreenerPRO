@@ -4,7 +4,7 @@ import * as React from "react";
 import { ScreenerTable } from "@/components/screener/screener-table";
 import { FuturesFamilyTable } from "@/components/screener/futures-family-table";
 import { MarketRadar } from "@/components/screener/market-radar";
-import { stockColumns } from "@/components/screener/columns";
+import { createStockColumns } from "@/components/screener/columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 
@@ -58,6 +58,11 @@ export function HomePageScreener() {
   const stockUniverse = stocksQuery.data?.rows ?? [];
   const imoexRangePct = stocksQuery.data?.benchmarks?.[0]?.dayRangePct ?? null;
   const status = stocksQuery.data?.status ?? futuresQuery.data?.status ?? null;
+  const maxTurnover = React.useMemo(
+    () => stockUniverse.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0),
+    [stockUniverse],
+  );
+  const stockTableColumns = React.useMemo(() => createStockColumns(maxTurnover), [maxTurnover]);
 
   return (
     <div className="space-y-2">
@@ -116,7 +121,7 @@ export function HomePageScreener() {
           </div>
           <ScreenerTable
             rows={stocks}
-            columns={stockColumns}
+            columns={stockTableColumns}
             emptyTitle={stocksQuery.isLoading ? "Загрузка акций..." : "Нет доступных акций"}
             emptyText={stocksQuery.error ? "MOEX временно недоступен. Используется fallback." : "По текущему фильтру ничего не найдено."}
           />

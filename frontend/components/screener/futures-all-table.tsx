@@ -5,76 +5,97 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { ScreenerRow } from "@screenerpro/shared";
 import { ScreenerTable } from "@/components/screener/screener-table";
 import { buildFuturesFamilies } from "@/lib/domain/futures-family";
+import { futureActivityBadgeClass, getFutureActivityLabel } from "@/lib/domain/futures-screener-display";
 import { tradingFormat } from "@/lib/formatters/trading";
 
-function dte(expiryDate: string | null | undefined): number | null {
-  if (!expiryDate) return null;
-  const exp = new Date(expiryDate);
-  if (Number.isNaN(exp.getTime())) return null;
-  const diff = Math.ceil((exp.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-  return Number.isFinite(diff) ? diff : null;
-}
+const numberCellClass = "text-right font-mono tabular-nums text-[13px] text-slate-200";
 
 function compactRub(value: number | null): string {
   return tradingFormat.formatTurnoverRub(value).replace(/\s?₽/g, "");
 }
 
-function curveLabel(value: "contango" | "backwardation" | "flat"): string {
-  if (value === "contango") return "Contango";
-  if (value === "backwardation") return "Backwardation";
-  return "Flat";
-}
-
 export function FuturesAllTable({ rows }: { rows: ScreenerRow[] }) {
   const families = React.useMemo(() => buildFuturesFamilies(rows), [rows]);
   const metaByTicker = React.useMemo(() => {
-    const map = new Map<string, { base: string; shape: "contango" | "backwardation" | "flat"; spread: number | null }>();
+    const map = new Map<string, string>();
     for (const family of families) {
       for (const item of family.contracts) {
-        map.set(item.ticker, {
-          base: family.familyLabel,
-          shape: family.curve.curveShape,
-          spread: family.curve.frontNextSpread,
-        });
+        map.set(item.ticker, family.familyLabel);
       }
     }
     return map;
   }, [families]);
 
-  const columns = React.useMemo<ColumnDef<ScreenerRow>[]>(() => [
-    {
-      accessorKey: "ticker",
-      header: "Контракт",
-      cell: ({ row }) => <span className="font-semibold text-white">{row.original.ticker}</span>,
-    },
-    {
-      id: "base",
-      header: "База",
-      accessorFn: (row) => metaByTicker.get(row.ticker)?.base ?? "—",
-      cell: ({ row }) => <span>{metaByTicker.get(row.original.ticker)?.base ?? "—"}</span>,
-    },
-    { accessorKey: "lastPrice", header: "Цена", cell: ({ getValue }) => <span className="font-mono">{tradingFormat.formatDynamicPrice(getValue<number | null>())}</span> },
-    { accessorKey: "percentChange", header: "%", cell: ({ getValue }) => <span className="font-mono">{tradingFormat.formatSignedPercent(getValue<number | null>())}</span> },
-    { accessorKey: "turnover", header: "Оборот", cell: ({ getValue }) => <span className="font-mono">{compactRub(getValue<number | null>())}</span> },
-    { accessorKey: "openInterest", header: "ОИ", cell: ({ getValue }) => <span className="font-mono">{tradingFormat.formatInteger(getValue<number | null>())}</span> },
-    { accessorKey: "metrics.dayRangePct", header: "Диапазон %", cell: ({ row }) => <span className="font-mono">{tradingFormat.formatSignedPercent(row.original.metrics.dayRangePct)}</span> },
-    { id: "dte", header: "DTE", accessorFn: (row) => dte(row.expiryDate), cell: ({ row }) => <span className="font-mono">{dte(row.original.expiryDate) ?? "—"}</span> },
-    {
-      id: "shape",
-      header: "Форма",
-      accessorFn: (row) => metaByTicker.get(row.ticker)?.shape ?? "flat",
-      cell: ({ row }) => <span>{curveLabel(metaByTicker.get(row.original.ticker)?.shape ?? "flat")}</span>,
-    },
-    {
-      id: "spread",
-      header: "Спред к след.",
-      accessorFn: (row) => metaByTicker.get(row.ticker)?.spread ?? Number.NEGATIVE_INFINITY,
-      cell: ({ row }) => {
-        const value = metaByTicker.get(row.original.ticker)?.spread ?? null;
-        return <span className="font-mono">{typeof value === "number" ? tradingFormat.formatSignedPercent(value) : "—"}</span>;
+  const activityCtx = React.useMemo(() => {
+    const maxTurnover = rows.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0);
+    const maxTrades = rows.reduce((max, row) => Math.max(max, row.tradesCount ?? 0), 0);
+    return { maxTurnover, maxTrades };
+  }, [rows]);
+
+  const columns = React.useMemo<ColumnDef<ScreenerRow>[]>(
+    () => [
+      {
+        accessorKey: "ticker",
+        header: "Контракт",
+        cell: ({ row }) => <span className="font-semibold tracking-wide text-white">{row.original.ticker}</span>,
       },
-    },
-  ], [metaByTicker]);
+      {
+        id: "base",
+        header: "База",
+        accessorFn: (row) => metaByTicker.get(row.ticker) ?? "—",
+        cell: ({ row }) => <span className="text-slate-300">{metaByTicker.get(row.original.ticker) ?? "—"}</span>,
+      },
+      {
+        accessorKey: "lastPrice",
+        header: "Цена",
+        cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatDynamicPrice(getValue<number | null>())}</span>,
+      },
+      {
+        accessorKey: "percentChange",
+        header: "%",
+        cell: ({ getValue }) => {
+          const value = getValue<number | null>();
+          const cls = value !== null && value > 0 ? "text-emerald-400" : value !== null && value < 0 ? "text-rose-400" : "text-slate-300";
+          return <span className={`${numberCellClass} ${cls}`}>{tradingFormat.formatSignedPercent(value)}</span>;
+        },
+      },
+      {
+        accessorKey: "turnover",
+        header: "Оборот",
+        cell: ({ getValue }) => <span className={numberCellClass}>{compactRub(getValue<number | null>())}</span>,
+      },
+      {
+        accessorKey: "tradesCount",
+        header: "Сделки",
+        cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatInteger(getValue<number | null>())}</span>,
+      },
+      {
+        accessorKey: "openInterest",
+        header: "ОИ",
+        cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatInteger(getValue<number | null>())}</span>,
+      },
+      {
+        accessorKey: "metrics.dayRangePct",
+        header: "Диапазон %",
+        cell: ({ row }) => <span className={numberCellClass}>{tradingFormat.formatSignedPercent(row.original.metrics.dayRangePct)}</span>,
+      },
+      {
+        id: "activity",
+        header: "Статус",
+        cell: ({ row }) => {
+          const label = getFutureActivityLabel(row.original, activityCtx);
+          return (
+            <div className="text-right">
+              <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${futureActivityBadgeClass[label]}`}>
+                {label}
+              </span>
+            </div>
+          );
+        },
+      },
+    ],
+    [metaByTicker, activityCtx],
+  );
 
   return <ScreenerTable rows={rows} columns={columns} emptyTitle="Нет доступных фьючерсов" emptyText="По текущему фильтру ничего не найдено." />;
 }

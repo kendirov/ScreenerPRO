@@ -261,7 +261,7 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
 async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
   const payload = moexIssPayloadSchema.parse(
     await fetchIssJson(
-      "/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,LASTDELDATE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVWAPRICE,VOLTODAY,VALTODAY,OPENPOSITION,HIGH,LOW,OPEN,TRADINGSTATUS",
+      "/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,LASTDELDATE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVWAPRICE,VOLTODAY,VALTODAY,NUMTRADES,OPENPOSITION,HIGH,LOW,OPEN,TRADINGSTATUS",
     ),
   );
 
@@ -286,6 +286,7 @@ async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
     const low = asNumber(md.LOW);
     const volume = asNumber(md.VOLTODAY);
     const turnover = asNumber(md.VALTODAY);
+    const tradesCount = asNumber(md.NUMTRADES);
     const dayRangePct = computeDayRangePct(high, low, previousClose);
 
     if (lastPrice === null && turnover === null && volume === null) continue;
@@ -300,6 +301,7 @@ async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
       percentChange: computePercentChange(lastPrice, previousClose, asNumber(md.LASTTOPREVPRICE)),
       volume,
       turnover,
+      tradesCount,
       openInterest: asNumber(md.OPENPOSITION),
       expiryDate: asString(sec.LASTDELDATE),
       stockActivityClass: "unknown",

@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import type { ScreenerRow } from "@screenerpro/shared";
 import { EmptyState } from "@/components/ui/primitives";
+import { isStockInPlay } from "@/lib/domain/stock-screener-display";
 import { cn } from "@/lib/utils/cn";
 
 export function ScreenerTable({
@@ -78,7 +79,7 @@ export function ScreenerTable({
           <tbody>
             {rowsModel.map((row, rowIndex) => (
               (() => {
-                const inPlayStrong = (row.original.metrics.inPlayScore ?? 0) >= 85;
+                const inPlayStrong = row.original.assetClass === "stock" && isStockInPlay(row.original);
                 return (
                   <tr
                     key={row.id}

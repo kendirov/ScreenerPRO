@@ -21,7 +21,7 @@ export function FuturesScreenerPage() {
   React.useEffect(() => {
     if (!viewParam) {
       const next = new URLSearchParams(searchParams.toString());
-      next.set("view", "groups");
+      next.set("view", "all");
       router.replace(`${pathname}?${next.toString()}`);
     }
   }, [pathname, router, searchParams, viewParam]);
@@ -39,17 +39,17 @@ export function FuturesScreenerPage() {
           <div className="inline-flex rounded-xl border border-white/10 bg-black/25 p-1">
             <button
               type="button"
-              onClick={() => setMode("groups")}
-              className={`rounded-lg px-3 py-1.5 text-xs ${mode === "groups" ? "bg-slate-700 text-white" : "text-slate-400"}`}
-            >
-              Группы
-            </button>
-            <button
-              type="button"
               onClick={() => setMode("all")}
               className={`rounded-lg px-3 py-1.5 text-xs ${mode === "all" ? "bg-slate-700 text-white" : "text-slate-400"}`}
             >
               Все
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("groups")}
+              className={`rounded-lg px-3 py-1.5 text-xs ${mode === "groups" ? "bg-slate-700 text-white" : "text-slate-400"}`}
+            >
+              Группы
             </button>
           </div>
           <span className="font-mono text-[11px] text-slate-400">Фьючерсы: {rows.length}</span>

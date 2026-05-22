@@ -129,6 +129,64 @@ export interface NormalizedHistoryBar {
   rawPayload: string;
 }
 
+export interface NormalizedIntradayBar extends NormalizedHistoryBar {
+  timestamp: string;
+}
+
+function parseCandleBeginTimestamp(begin: string): { date: Date; timestamp: string } | null {
+  const trimmed = begin.trim();
+  const isoLike = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const parsed = new Date(isoLike);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  return { date: parsed, timestamp: parsed.toISOString() };
+}
+
+/** Интрадей-свечи FORTS: полный ISO timestamp в `begin`. */
+export function mapIntradayCandlesBars(columns: string[], rows: unknown[][]): NormalizedIntradayBar[] {
+  const results: NormalizedIntradayBar[] = [];
+  for (const rawRow of rows) {
+    const item = rowToObject(columns, rawRow);
+    const begin = str(item.begin) ?? str(item.end);
+    if (!begin) continue;
+    const parsed = parseCandleBeginTimestamp(begin);
+    if (!parsed) continue;
+    results.push({
+      date: parsed.date,
+      timestamp: parsed.timestamp,
+      open: num(item.open),
+      high: num(item.high),
+      low: num(item.low),
+      close: num(item.close),
+      volume: num(item.volume),
+      turnover: num(item.value),
+      rawPayload: JSON.stringify(item),
+    });
+  }
+  return results;
+}
+
+/** Свечи FORTS: дата в `begin`, OHLC в open/high/low/close. */
+export function mapCandlesBars(columns: string[], rows: unknown[][]): NormalizedHistoryBar[] {
+  const results: NormalizedHistoryBar[] = [];
+  for (const rawRow of rows) {
+    const item = rowToObject(columns, rawRow);
+    const begin = str(item.begin) ?? str(item.end);
+    if (!begin) continue;
+    const dateValue = begin.slice(0, 10);
+    results.push({
+      date: new Date(`${dateValue}T00:00:00.000Z`),
+      open: num(item.open),
+      high: num(item.high),
+      low: num(item.low),
+      close: num(item.close),
+      volume: num(item.volume),
+      turnover: num(item.value),
+      rawPayload: JSON.stringify(item),
+    });
+  }
+  return results;
+}
+
 export function mapHistoryBars(columns: string[], rows: unknown[][]): NormalizedHistoryBar[] {
   const results: NormalizedHistoryBar[] = [];
   for (const rawRow of rows) {

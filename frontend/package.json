@@ -13,7 +13,8 @@
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "ingest:moex": "tsx scripts/ingest-moex.ts"
+    "ingest:moex": "tsx scripts/ingest-moex.ts",
+    "verify:pair-divergence": "tsx scripts/verify-currency-pair-divergence.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
@@ -27,6 +28,9 @@
     "@tanstack/react-virtual": "^3.13.23",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "d3-force": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.577.0",
     "motion": "^12.38.0",
@@ -38,6 +42,9 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3-force": "^3.0.10",
+    "@types/d3-selection": "^3.0.11",
+    "@types/d3-zoom": "^3.0.8",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

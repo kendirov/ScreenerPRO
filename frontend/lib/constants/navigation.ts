@@ -1,9 +1,23 @@
-import { BookOpen, CalendarDays, ChartColumn, Cog, Gem, Library, ListChecks, Newspaper, CandlestickChart, ChartCandlestick } from "lucide-react";
+import {
+  BookOpen,
+  CalendarDays,
+  ChartColumn,
+  ChartCandlestick,
+  Cog,
+  Gem,
+  Library,
+  ListChecks,
+  Map,
+  ArrowLeftRight,
+  Newspaper,
+  CandlestickChart,
+  Layers,
+} from "lucide-react";
 import type { ComponentType } from "react";
 
 type NavVisibility = "visible" | "hidden";
 
-type SidebarNavItem = {
+export type SidebarNavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
@@ -24,3 +38,10 @@ export const sidebarNavConfig: SidebarNavItem[] = [
 ];
 
 export const sidebarNav = sidebarNavConfig.filter((item) => item.visibility === "visible");
+
+/** Экспериментальные страницы — отдельный тихий блок внизу sidebar. */
+export const labNavConfig: SidebarNavItem[] = [
+  { href: "/lab/market-map", label: "Карта рынка", icon: Map, visibility: "visible" },
+  { href: "/lab/currency-correlation", label: "Валютная связка", icon: ArrowLeftRight, visibility: "visible" },
+  { href: "/lab/orderflow-simulator", label: "Привод-симулятор", icon: Layers, visibility: "visible" },
+];

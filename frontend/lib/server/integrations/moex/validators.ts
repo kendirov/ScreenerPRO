@@ -8,6 +8,7 @@ const tableSchema = z.object({
 export const moexPayloadSchema = z.object({
   securities: tableSchema.optional(),
   marketdata: tableSchema.optional(),
+  candles: tableSchema.optional(),
   history: tableSchema.optional(),
   "history.cursor": z
     .object({
