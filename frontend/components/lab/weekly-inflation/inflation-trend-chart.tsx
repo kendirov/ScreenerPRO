@@ -24,10 +24,12 @@ export function InflationTrendChart({
   points,
   metrics,
   className,
+  embedded = false,
 }: {
   points: WeeklyInflationPoint[];
   metrics: WeeklyInflationDashboardMetrics;
   className?: string;
+  embedded?: boolean;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = React.useState<ChartTooltipState | null>(null);
@@ -85,12 +87,16 @@ export function InflationTrendChart({
   };
 
   return (
-    <section className={cn("lab-glass-panel p-4", className)}>
-      <LabSectionHeading>Недельный тренд</LabSectionHeading>
-      <p className="mb-3 text-[11px] text-lab-muted">
-        {series.length} нед. · столбцы headline · линия 4w avg · зона «условно нормально»
-        {metrics.avg4w != null ? ` · текущий 4w avg ${formatInflationPct(metrics.avg4w)}` : ""}
-      </p>
+    <section className={cn(embedded ? "p-4" : "lab-glass-panel p-4", className)}>
+      {!embedded ? (
+        <>
+          <LabSectionHeading>Недельный тренд</LabSectionHeading>
+          <p className="mb-3 text-[11px] text-lab-muted">
+            {series.length} нед. · столбцы headline · линия 4w avg · зона «условно нормально»
+            {metrics.avg4w != null ? ` · текущий 4w avg ${formatInflationPct(metrics.avg4w)}` : ""}
+          </p>
+        </>
+      ) : null}
 
       <div ref={containerRef} className="relative overflow-x-auto">
         <ChartTooltip tooltip={tooltip} />

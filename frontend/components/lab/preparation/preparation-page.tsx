@@ -10,9 +10,9 @@ import { EventRadar } from "@/components/lab/preparation/event-radar";
 import { ManualEventImport } from "@/components/lab/preparation/manual-event-import";
 import { PreparationBriefingFocus } from "@/components/lab/preparation/preparation-briefing-focus";
 import { PreparationCollapsibleSection } from "@/components/lab/preparation/preparation-collapsible-section";
-import { PreparationConsole } from "@/components/lab/preparation/preparation-console";
 import { PreparationInflationLabCard } from "@/components/lab/preparation/preparation-inflation-lab-card";
 import { PreparationInstrumentsPanel } from "@/components/lab/preparation/preparation-instruments-panel";
+import { PreparationPremarketGrid } from "@/components/lab/preparation/preparation-premarket-grid";
 import { PreparationReadHint } from "@/components/lab/preparation/preparation-read-hint";
 import { PreparationSourcePanel } from "@/components/lab/preparation/preparation-source-panel";
 import { PreparationSourceStatus } from "@/components/lab/preparation/preparation-source-status";
@@ -47,12 +47,13 @@ import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 
 const PAGE_PILLS = [
   { label: "ЧЕРНОВИК", tone: "meta" as const },
+  { label: "LAB", tone: "accent" as const },
   { label: "MOEX ISS", tone: "source" as const },
   { label: "Smart-Lab", tone: "meta" as const },
-  { label: "5 дней", tone: "accent" as const },
 ];
 
-const PAGE_DESCRIPTION = "Пульт перед эфиром — фокус, события, драйверы и порядок на первом экране.";
+const PAGE_DESCRIPTION =
+  "Премаркет-пульт: фокус, события, инструменты и порядок эфира — на одном экране.";
 
 export function PreparationPage() {
   const [mode, setMode] = React.useState<BriefingMode>("day");
@@ -168,13 +169,10 @@ export function PreparationPage() {
       <div className="space-y-2">
         <PreparationBriefingFocus focus={focusPack} onApplyToBriefing={applyFocusToBriefing} />
 
-        {selectionCount > 0 ? (
-          <p className="font-mono text-[10px] text-lab-violet/85">в эфире: {selectionCount}</p>
-        ) : null}
+        <PreparationInflationLabCard />
 
-        <PreparationConsole
+        <PreparationPremarketGrid
           events={visibleEvents}
-          drivers={DEMO_MARKET_DRIVERS}
           watchlist={watchlist}
           outline={outline}
           candlesResponse={candlesQuery.data}
@@ -186,33 +184,16 @@ export function PreparationPage() {
           eventSourceFilter={eventSourceFilter}
           onEventSourceChange={setEventSourceFilter}
           smartLabStatus={smartLabUiStatus}
-          inflationBrief={inflationBrief}
+          inflationAirOrderLine={inflationBrief.airOrderLine}
         />
 
-        <PreparationInflationLabCard />
-
-        <PreparationCollapsibleSection
-          title="Фокус-инструменты"
-          subtitle="Строки с 1д · 5д · оборотом"
-          accent="green"
-          defaultOpen
-        >
-          <PreparationInstrumentsPanel
-            rows={query.isError ? [] : rows}
-            hasLiveData={hasLiveData}
-            isLoading={query.isLoading}
-            selectedInstrumentIds={selectedInstrumentIds}
-            onToggleInstrument={toggleInstrument}
-            candlesResponse={candlesQuery.data}
-            candlesLoading={candlesQuery.isLoading}
-            defaultPanelMode="focus"
-            hideDiagnostics
-          />
-        </PreparationCollapsibleSection>
+        {selectionCount > 0 ? (
+          <p className="px-0.5 font-mono text-[10px] text-lab-violet/85">в эфире: {selectionCount}</p>
+        ) : null}
 
         <PreparationCollapsibleSection
           title="Подробный календарь"
-          subtitle="Фильтры · карточки · драйверы"
+          subtitle="Фильтры · карточки · доска драйверов"
           accent="amber"
           defaultOpen={false}
         >

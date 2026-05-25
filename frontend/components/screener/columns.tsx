@@ -3,74 +3,83 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ScreenerRow } from "@screenerpro/shared";
 import {
-  getStockActivityDisplayLabel,
-  isStockInPlay,
+  StockPercentCell,
+  StockPriceCell,
+  StockRangeCell,
+  StockTickerCell,
+  StockTradesCell,
+  StockTurnoverCell,
+  formatTurnoverCompact,
+} from "@/components/screener/stocks/stock-table-cells";
+import {
+  STOCK_DAY_RANGE_COLUMN_LABEL,
+  STOCK_DAY_RANGE_HEADER_TOOLTIP,
   STOCK_ILLIQUID_TURNOVER_FLOOR,
-  stockActivityDisplayBadgeClass,
 } from "@/lib/domain/stock-screener-display";
 import { tradingFormat } from "@/lib/formatters/trading";
 
-const numberCellClass = "text-right font-mono tabular-nums text-[13px] text-slate-200";
-
-function formatTurnoverCompact(value: number | null): string {
-  const formatted = tradingFormat.formatTurnoverRub(value);
-  return formatted.replace(/\s?₽/g, "");
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    align?: "left" | "right";
+    headerTooltip?: string;
+  }
 }
+
+/** Фиксированные доли ширины для table-fixed — 6 колонок данных + «Детали». */
+export const STOCK_TABLE_COLUMN_WIDTHS = ["20%", "12%", "9%", "20%", "15%", "13%", "11%"] as const;
+
+const futuresNumberClass = "text-right font-mono tabular-nums text-[13px] text-slate-200";
 
 export function createStockColumns(maxTurnover: number): ColumnDef<ScreenerRow>[] {
   return [
     {
       accessorKey: "ticker",
       header: "Тикер",
-      cell: ({ row }) => {
-        const hasInPlay = isStockInPlay(row.original);
-        return (
-          <div className="flex items-center gap-1.5" title={row.original.shortName}>
-            <p className="font-semibold tracking-[0.04em] text-white">{row.original.ticker}</p>
-            {hasInPlay ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-emerald-100">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300/90" />
-                В ИГРЕ
-              </span>
-            ) : null}
-          </div>
-        );
-      },
+      size: 88,
+      meta: { align: "left" },
+      cell: ({ row }) => <StockTickerCell row={row.original} maxTurnover={maxTurnover} />,
     },
-    { accessorKey: "lastPrice", header: "Цена", cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatDynamicPrice(getValue<number | null>())}</span> },
+    {
+      accessorKey: "lastPrice",
+      header: "Цена",
+      size: 72,
+      meta: { align: "right" },
+      cell: ({ getValue }) => <StockPriceCell value={getValue<number | null>()} />,
+    },
     {
       accessorKey: "percentChange",
       header: "%",
-      cell: ({ getValue }) => {
-        const value = getValue<number | null>();
-        const cls = value !== null && value > 0 ? "text-emerald-400" : value !== null && value < 0 ? "text-rose-400" : "text-slate-300";
-        return <span className={`${numberCellClass} ${cls}`}>{tradingFormat.formatSignedPercent(value)}</span>;
-      },
+      size: 64,
+      meta: { align: "right" },
+      cell: ({ getValue }) => <StockPercentCell value={getValue<number | null>()} />,
     },
     {
       accessorKey: "turnover",
-      header: "Оборот, ₽",
+      header: "Оборот",
+      size: 96,
+      meta: { align: "right" },
       cell: ({ getValue }) => (
-        <div className="ml-auto w-[180px] rounded-md bg-white/[0.02] px-2 py-1.5 text-right shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]">
-          <div className={numberCellClass}>{formatTurnoverCompact(getValue<number | null>())}</div>
-        </div>
+        <StockTurnoverCell value={getValue<number | null>()} maxTurnover={maxTurnover} />
       ),
     },
-    { accessorKey: "tradesCount", header: "Сделки", cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatInteger(getValue<number | null>())}</span> },
-    { accessorKey: "metrics.dayRangePct", header: "Диапазон %", cell: ({ row }) => <span className={numberCellClass}>{tradingFormat.formatSignedPercent(row.original.metrics.dayRangePct)}</span> },
     {
-      id: "activity",
-      header: "Активность",
-      cell: ({ row }) => {
-        const label = getStockActivityDisplayLabel(row.original, maxTurnover);
-        return (
-          <div className="text-right">
-            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${stockActivityDisplayBadgeClass[label]}`}>
-              {label}
-            </span>
-          </div>
-        );
+      accessorKey: "tradesCount",
+      header: "Сделки",
+      size: 80,
+      meta: { align: "right" },
+      cell: ({ row }) => <StockTradesCell row={row.original} />,
+    },
+    {
+      id: "dayRange",
+      accessorFn: (row) => row.metrics.dayRangePct,
+      header: STOCK_DAY_RANGE_COLUMN_LABEL,
+      size: 72,
+      meta: {
+        align: "right",
+        headerTooltip: STOCK_DAY_RANGE_HEADER_TOOLTIP,
       },
+      cell: ({ row }) => <StockRangeCell row={row.original} />,
     },
   ];
 }
@@ -88,14 +97,27 @@ export const futuresColumns: ColumnDef<ScreenerRow>[] = [
       </div>
     ),
   },
-  { accessorKey: "lastPrice", header: "Цена", cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatDynamicPrice(getValue<number | null>())}</span> },
+  {
+    accessorKey: "lastPrice",
+    header: "Цена",
+    cell: ({ getValue }) => (
+      <span className={futuresNumberClass}>{tradingFormat.formatDynamicPrice(getValue<number | null>())}</span>
+    ),
+  },
   {
     accessorKey: "percentChange",
     header: "%",
     cell: ({ getValue }) => {
       const value = getValue<number | null>();
-      const cls = value !== null && value > 0 ? "text-emerald-400" : value !== null && value < 0 ? "text-rose-400" : "text-slate-300";
-      return <span className={`${numberCellClass} ${cls}`}>{tradingFormat.formatSignedPercent(value)}</span>;
+      const cls =
+        value !== null && value > 0
+          ? "text-emerald-400"
+          : value !== null && value < 0
+            ? "text-rose-400"
+            : "text-slate-300";
+      return (
+        <span className={`${futuresNumberClass} ${cls}`}>{tradingFormat.formatSignedPercent(value)}</span>
+      );
     },
   },
   {
@@ -103,10 +125,22 @@ export const futuresColumns: ColumnDef<ScreenerRow>[] = [
     header: "Оборот, ₽",
     cell: ({ getValue }) => (
       <div className="ml-auto w-[180px] rounded-md bg-white/[0.02] px-2 py-1.5 text-right shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]">
-        <div className={numberCellClass}>{formatTurnoverCompact(getValue<number | null>())}</div>
+        <div className={futuresNumberClass}>{formatTurnoverCompact(getValue<number | null>())}</div>
       </div>
     ),
   },
-  { accessorKey: "openInterest", header: "ОИ", cell: ({ getValue }) => <span className={numberCellClass}>{tradingFormat.formatInteger(getValue<number | null>())}</span> },
-  { accessorKey: "metrics.dayRangePct", header: "Диапазон %", cell: ({ row }) => <span className={numberCellClass}>{tradingFormat.formatSignedPercent(row.original.metrics.dayRangePct)}</span> },
+  {
+    accessorKey: "openInterest",
+    header: "ОИ",
+    cell: ({ getValue }) => (
+      <span className={futuresNumberClass}>{tradingFormat.formatInteger(getValue<number | null>())}</span>
+    ),
+  },
+  {
+    accessorKey: "metrics.dayRangePct",
+    header: "Диапазон %",
+    cell: ({ row }) => (
+      <span className={futuresNumberClass}>{tradingFormat.formatSignedPercent(row.original.metrics.dayRangePct)}</span>
+    ),
+  },
 ];

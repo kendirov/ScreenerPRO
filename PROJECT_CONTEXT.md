@@ -69,13 +69,14 @@
 | `/materials/stocks` | `app/(app)/materials/stocks/page.tsx` | Карта акций |
 | `/materials/futures` | `app/(app)/materials/futures/page.tsx` | Карта фьючерсов |
 | `/sandbox` | `app/(app)/sandbox/page.tsx` | Диагностика скринера |
-| `/lab/market-map` | `app/(app)/lab/market-map/page.tsx` | **Лаборатории:** карта акций MOEX; shell `LabPageShell`, режимы Пузырьки / Координаты / Сигналы; данные из `/api/screener?assetClass=stock` |
+| `/lab/market-map` | `app/(app)/lab/market-map/page.tsx` | **Лаборатории:** карта потоков MOEX; shell `LabPageShell`, режимы **Потоки** (дефолт) / Координаты / Пузырьки; KPI Деньги·Импульс·Давление; compare «Сегодня vs вчера»; данные из `/api/screener` + `/api/lab/market-map/yesterday-context` |
 | `/lab/currency-correlation` | `app/(app)/lab/currency-correlation/page.tsx` | **Лаборатории:** **Валютная связка** — Si / CNY / ED; MOEX ISS: `…/intraday`, `…/history`, `…/weeks` (календарные недели, якорь week-open); графики: Ноги, Расхождение, Z-score, **Недели**, дневные режимы; lifecycle возврат/невозврат + недельный контекст |
 | `/lab/orderflow-simulator` | `app/(app)/lab/orderflow-simulator/page.tsx` | **Лаборатории:** **Привод-симулятор** — учебный терминал: график + узкий DOM (объём слева, цена справа) + круги сделок у стакана + footprint; виды **Привод / Стакан крупно (дефолт) / Учебный / Мультиокно**; **симуляция, не MOEX** — `docs/ORDERFLOW_SIMULATOR.md` |
 | `/lab/si-usdrub-lab` | `app/(app)/lab/si-usdrub-lab/page.tsx` | **Placeholder «скоро»** — SI-лаборатория (`LabComingSoonPage`) |
 | `/lab/session-liquidity-map` | `app/(app)/lab/session-liquidity-map/page.tsx` | **Placeholder «скоро»** — Пульс сессии (`LabComingSoonPage`) |
 | `/lab/preparation` | `app/(app)/lab/preparation/page.tsx` | **Лаборатории:** **Подготовка** — компактный пульт брифинга; фокус · события Smart-Lab (эксп.) · MOEX ISS + свечи 5д; драйверы (учебная модель); порядок эфира; карточка **Инфляционная лаборатория**; `docs/PREPARATION_DRAFT.md` |
 | `/lab/weekly-inflation` | `app/(app)/lab/weekly-inflation/page.tsx` | **Лаборатории:** **Инфляционная лаборатория** — первый рабочий черновик: 5 KPI, вывод на первом экране, графики (при данных), «Что это значит для рынка», «Источник данных», ручной импорт (свёрнут); v1 — только ручной CSV/JSON в localStorage; `docs/WEEKLY_INFLATION_LAB.md` |
+| `/lab/correlation-lab` | `app/(app)/lab/correlation-lab/page.tsx` | **Лаборатории:** **Матрица связей** — корреляции акций MOEX с индексом, рублём, нефтью, золотом, Америкой и секторами; Pearson по дневным доходностям (corr20/corr60, beta, breakScore); данные MOEX ISS candles; `docs/CORRELATION_LAB.md` |
 | `/app/watchlist` | `app/(app)/app/watchlist/page.tsx` | Watchlist (скрыт в nav) |
 | `/app/settings` | `app/(app)/app/settings/page.tsx` | Настройки (скрыт в nav) |
 
@@ -94,6 +95,8 @@
 | `/api/lab/currency-correlation/intraday?interval=&days=` | GET | `currency-correlation-intraday` — интрадей-свечи FORTS (fallback интервала 5→10→60→24) |
 | `/api/lab/preparation/candles?secids=&days=` | GET | `preparation-candles` — 5 торговых дней MOEX ISS для watchlist |
 | `/api/lab/preparation/smartlab-calendar?mode=&type=` | GET | `smartlab-calendar` — экспериментальный импорт календаря Smart-Lab (кэш ~45 мин) |
+| `/api/lab/correlation-lab/overview` | GET | `correlation-lab.buildCorrelationLabOverviewResponse` — факторные карточки, corr20/corr60 по MOEX ISS |
+| `/api/lab/correlation-lab/sources` | GET | `correlation-lab.buildCorrelationLabSourcesResponse` — статус источников (candles / planned) |
 | `/api/lab/currency-correlation/weeks?pair=&interval=&weeks=&anchor=` | GET | `currency-correlation-weeks` — недельные ряды спреда (текущая + прошлые недели, max 8) |
 
 Скрытые пункты sidebar (`hiddenNavConfig`, `visibility: "hidden"`): `/pro`, `/news`, `/events`, `/app/watchlist`, `/app/settings` — см. `lib/constants/navigation.ts`.
@@ -104,7 +107,9 @@
 
 **Визуальная тема «Лаборатория рынка» (2026-05):** premium neon glass в `app/globals.css` — tokens, `.lab-glass-panel`, `.lab-glass-card`, `.lab-status-chip`, glow. Shell: gradient + grid + noise. Единый glass chrome: `screener-page-chrome.tsx`, `materials-page-shell.tsx`, `lab-page-shell.tsx`. Контраст muted/dim усилен; hover/glow смягчены.
 
-**Зона `/lab` (черновики / эксперименты):** маршруты сохранены; в sidebar — блок «Черновики». Общий UI: `lab-page-shell.tsx` + `lab-ui.tsx` + `lab-coming-soon-page.tsx`. `/lab/market-map`, `/lab/currency-correlation`, `/lab/orderflow-simulator`, `/lab/preparation`, `/lab/weekly-inflation` — рабочие черновики. **Placeholder:** `/lab/si-usdrub-lab`, `/lab/session-liquidity-map`.
+**Минимализм цифр (2026-05, правило проекта):** во всех новых экранах ScreenerPRO — на поверхности только **2–3 ключевых числа**; вторичные поля уводим в tooltip, inspector или раскрываемые блоки; не показываем нули, если поле недоступно; не рисуем декоративные графики как реальные данные; **статусы данных обязательны**. **Полный стандарт:** `docs/UI_NUMBERS_MINIMALISM.md`. **Компоненты:** `frontend/components/ui/metrics-minimalism.tsx` (`CompactMetric`, `MetricTooltip`, `StatusChip`, `DataStatusBadge`). **Эталон:** `/screener/stocks`, `/lab/market-map`.
+
+**Зона `/lab` (черновики / эксперименты):** маршруты сохранены; в sidebar — блок «Черновики». Общий UI: `lab-page-shell.tsx` + `lab-ui.tsx` + `lab-coming-soon-page.tsx`. `/lab/market-map`, `/lab/currency-correlation`, `/lab/orderflow-simulator`, `/lab/preparation`, `/lab/weekly-inflation`, `/lab/correlation-lab` — рабочие черновики. **Placeholder:** `/lab/si-usdrub-lab`, `/lab/session-liquidity-map`.
 
 ---
 
@@ -124,7 +129,7 @@
 | `LabPageShell` | `components/lab/lab-page-shell.tsx` | Заголовок, описание, pills источника/статуса, слот переключателей режимов |
 | `lab-ui` | `components/lab/lab-ui.tsx` | `LabLoadingState`, `LabErrorState`, `LabEmptyState`, `LabSectionHeading`, `buildLabSourcePills` |
 | `LabModePlaceholder` | `components/lab/lab-page-shell.tsx` | Placeholder для режимов в разработке |
-| `MarketMapPage` | `components/lab/market-map-page.tsx` | `/lab/market-map` — переключатели Пузырьки / Координаты / Сигналы |
+| `MarketMapPage` | `components/lab/market-map-page.tsx` | `/lab/market-map` — Потоки / Координаты / Пузырьки, compare vs вчера, KPI |
 | `GravityMarketMap` | `components/lab/market-map/gravity-market-map.tsx` | Органическая карта пузырей (d3-force), режимы размера, инспектор |
 | `AxisMarketMap` | `components/lab/market-map/axis-market-map.tsx` | Scatter-карта: настраиваемые X/Y/размер/цвет, пресеты, зоны |
 | `MarketMapInspector` | `components/lab/market-map/market-map-inspector.tsx` | Панель по `MarketMapTile` (пузырьки) |
@@ -166,6 +171,9 @@
 | `InflationKpiStrip` | `components/lab/weekly-inflation/inflation-kpi-strip.tsx` | 5 KPI + краткий вывод |
 | `InflationManualImport` | `components/lab/weekly-inflation/inflation-manual-import.tsx` | Ручной CSV/JSON → localStorage |
 | `PreparationInflationLabCard` | `components/lab/preparation/preparation-inflation-lab-card.tsx` | Карточка на `/lab/preparation` — ссылка на инфляцию, режим или «данные не загружены» |
+| `CorrelationLabPage` | `components/lab/correlation-lab/correlation-lab-page.tsx` | `/lab/correlation-lab` — 6 факторных карточек, темы брифинга, inspector corr20/corr60 |
+| `CorrelationFactorGrid` | `components/lab/correlation-lab/correlation-factor-grid.tsx` | Сетка карточек факторов |
+| `CorrelationSourceStatus` | `components/lab/correlation-lab/correlation-source-status.tsx` | MOEX candles / planned sources |
 
 ### Скринер (пульт `/screener`)
 
@@ -177,7 +185,7 @@
 | `SignalHeroCard` | `components/screener/dashboard/signal-hero-card.tsx` | Главный сигнал (плотная карточка) |
 | `SignalRail` | `components/screener/dashboard/signal-rail.tsx` | Компактная лента 3–5 тикеров |
 
-**Зависимости данных (Vercel):** обязательная отрисовка `/screener` и `/lab/market-map` — **MOEX ISS** через `/api/screener` (без SQLite). Sparkline «5д» — опционально `/api/instruments/[ticker]/history` (Prisma/SQLite после ingest); при отсутствии — `SignalAura` + «история: нет». `package.json`: `d3-force`, `@types/d3-force`.
+**Зависимости данных (Vercel):** обязательная отрисовка `/screener` и `/lab/market-map` — **MOEX ISS** через `/api/screener` (без SQLite). Sparkline «5д» — опционально `/api/instruments/[ticker]/history` (Prisma/SQLite после ingest); при отсутствии истории sparkline не показывается (без постоянной подписи «история нет»). `package.json`: `d3-force`, `@types/d3-force`.
 
 ### Скринер (таблицы)
 

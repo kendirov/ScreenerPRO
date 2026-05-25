@@ -22,8 +22,8 @@ interface StockRadarMosaicProps {
 
 const STOCK_GRID: Record<"hero" | "medium" | "compact", string> = {
   hero: "col-span-12 min-h-[9rem] lg:col-span-7 lg:row-span-2 lg:min-h-[11rem]",
-  medium: "col-span-6 min-h-[6.75rem] lg:col-span-5 lg:min-h-[5rem]",
-  compact: "min-w-[10rem]",
+  medium: "col-span-6 min-h-[6.5rem] lg:col-span-5 lg:min-h-[5rem]",
+  compact: "min-w-[9.5rem]",
 };
 
 export function StockRadarMosaic({ rows, seriesByTicker }: StockRadarMosaicProps) {
@@ -47,15 +47,15 @@ export function StockRadarMosaic({ rows, seriesByTicker }: StockRadarMosaicProps
   const compact = rows.slice(3, 5);
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-12 gap-2">
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-12 gap-2.5">
         <StockTile row={hero} rank={1} size="hero" seriesByTicker={seriesByTicker} />
         {medium.map((row, i) => (
           <StockTile key={row.ticker} row={row} rank={i + 2} size="medium" seriesByTicker={seriesByTicker} />
         ))}
       </div>
       {compact.length > 0 ? (
-        <div className="-mx-0.5 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+        <div className="-mx-0.5 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
           {compact.map((row, i) => (
             <StockTile key={row.ticker} row={row} rank={i + 4} size="compact" seriesByTicker={seriesByTicker} />
           ))}
@@ -99,7 +99,7 @@ interface FuturesRadarMosaicProps {
 const FUTURE_GRID: Record<"hero" | "medium" | "compact", string> = {
   hero: "col-span-12 min-h-[8.5rem] lg:col-span-7 lg:row-span-2 lg:min-h-[10rem]",
   medium: "col-span-6 min-h-[6rem] lg:col-span-5 lg:min-h-[5rem]",
-  compact: "min-w-[10rem]",
+  compact: "min-w-[9.5rem]",
 };
 
 export function FuturesRadarMosaic({ rows, baseByTicker, seriesByTicker }: FuturesRadarMosaicProps) {
@@ -122,8 +122,8 @@ export function FuturesRadarMosaic({ rows, baseByTicker, seriesByTicker }: Futur
   const compact = rows.slice(3, 5);
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-12 gap-2">
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-12 gap-2.5">
         <FutureTile row={hero} rank={1} size="hero" baseByTicker={baseByTicker} seriesByTicker={seriesByTicker} />
         {medium.map((row, i) => (
           <FutureTile
@@ -137,7 +137,7 @@ export function FuturesRadarMosaic({ rows, baseByTicker, seriesByTicker }: Futur
         ))}
       </div>
       {compact.length > 0 ? (
-        <div className="-mx-0.5 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+        <div className="-mx-0.5 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
           {compact.map((row, i) => (
             <FutureTile
               key={row.ticker}

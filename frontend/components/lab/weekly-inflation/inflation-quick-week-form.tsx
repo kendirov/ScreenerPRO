@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { PlusCircle } from "lucide-react";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import {
   createDefaultQuickWeekForm,
   mergeWeeklyInflationPoints,
@@ -18,10 +19,12 @@ export function InflationQuickWeekForm({
   points,
   onPointsChange,
   className,
+  formRef,
 }: {
   points: WeeklyInflationPoint[];
   onPointsChange: (points: WeeklyInflationPoint[]) => void;
   className?: string;
+  formRef?: React.RefObject<HTMLFormElement | null>;
 }) {
   const [form, setForm] = React.useState<QuickWeekFormValues>(() => createDefaultQuickWeekForm());
   const [error, setError] = React.useState<string | null>(null);
@@ -47,16 +50,16 @@ export function InflationQuickWeekForm({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn("lab-glass-panel flex h-full flex-col p-4", className)}
-    >
-      <p className="text-sm font-medium text-lab-text">Быстрый ввод недели</p>
-      <p className="mt-1 text-[11px] text-lab-muted">
-        После публикации Росстата — одна строка без CSV.
-      </p>
+    <LabGlassPanel depth={20} variant="strong" className={cn("p-4", className)}>
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-lab-text">Добавить последнюю неделю</p>
+        <p className="mt-1 text-[11px] text-lab-muted">
+          После публикации Росстата — одна строка без CSV. KPI, графики и брифинг обновятся сразу.
+        </p>
+      </div>
 
-      <div className="mt-3 grid flex-1 gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <Field label="Период с">
           <input
             type="date"
@@ -96,7 +99,7 @@ export function InflationQuickWeekForm({
             className={inputClass}
           />
         </Field>
-        <Field label="Ссылка на источник" className="sm:col-span-2">
+        <Field label="Ссылка на источник" className="lg:col-span-2">
           <input
             type="url"
             value={form.sourceUrl}
@@ -112,12 +115,13 @@ export function InflationQuickWeekForm({
 
       <button
         type="submit"
-        className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-lab-violet/30 bg-lab-violet/10 px-3 py-1.5 text-sm text-lab-text hover:bg-lab-violet/15"
+        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-lab-cyan/35 bg-lab-cyan/12 px-4 py-2 text-sm text-lab-text shadow-[var(--lab-glow-cyan)] transition-colors hover:bg-lab-cyan/18"
       >
         <PlusCircle className="h-4 w-4" />
         Добавить
       </button>
-    </form>
+      </form>
+    </LabGlassPanel>
   );
 }
 

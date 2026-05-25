@@ -32,11 +32,13 @@ export function InflationSourceStatus({
   officialPublication,
   onApplyFetchedPoints,
   className,
+  embedded = false,
 }: {
   dashboard: WeeklyInflationDashboard;
   officialPublication: WeeklyInflationOfficialPublication | null;
   onApplyFetchedPoints?: (points: WeeklyInflationPoint[]) => void;
   className?: string;
+  embedded?: boolean;
 }) {
   const statusQuery = useWeeklyInflationSourceStatus();
   const [checkUrl, setCheckUrl] = React.useState(officialPublication?.url ?? "");
@@ -86,9 +88,21 @@ export function InflationSourceStatus({
   const otherAdapters = adapters.filter((a) => a.role === "calendar" || a.role === "commentary");
 
   return (
-    <section className={cn("lab-glass-panel p-4", className)}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <LabSectionHeading className="mb-0">Источник данных</LabSectionHeading>
+    <div className={cn(embedded ? "space-y-4 px-1 py-2" : "lab-glass-panel p-4", className)}>
+      {!embedded ? (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <LabSectionHeading className="mb-0">Источник данных</LabSectionHeading>
+          <button
+            type="button"
+            onClick={() => statusQuery.refetch()}
+            disabled={statusQuery.isFetching}
+            className="inline-flex items-center gap-1 rounded-lg border border-lab-border px-2 py-1 text-[11px] text-lab-muted hover:text-lab-text"
+          >
+            {statusQuery.isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            обновить статус
+          </button>
+        </div>
+      ) : (
         <button
           type="button"
           onClick={() => statusQuery.refetch()}
@@ -98,7 +112,7 @@ export function InflationSourceStatus({
           {statusQuery.isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           обновить статус
         </button>
-      </div>
+      )}
 
       <dl className="mb-4 grid gap-2 rounded-xl border border-lab-border/80 bg-lab-bg-deep/30 px-3 py-3 sm:grid-cols-2 lg:grid-cols-3">
         <MetaItem label="Источник цифры" value={numberSourceLabel} />
@@ -204,7 +218,7 @@ export function InflationSourceStatus({
           статус API: {new Date(statusQuery.data.updatedAt).toLocaleString("ru-RU")}
         </p>
       ) : null}
-    </section>
+    </div>
   );
 }
 

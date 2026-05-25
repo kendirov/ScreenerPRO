@@ -8,6 +8,7 @@ import {
   CircleDollarSign,
   Cog,
   Gem,
+  Grid3x3,
   Layers,
   Library,
   ListChecks,
@@ -16,6 +17,7 @@ import {
   Newspaper,
   NotebookPen,
   Percent,
+  Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -155,6 +157,22 @@ export const sidebarDraftsNav: SidebarNavGroup = {
       draftBadge: "draft",
       promotionTarget: "materials",
     },
+    {
+      href: "/lab/correlation-lab",
+      label: "Матрица связей",
+      icon: Grid3x3,
+      visibility: "visible",
+      draftBadge: "draft",
+      promotionTarget: "materials",
+    },
+    {
+      href: "/lab/event-reactions",
+      label: "Реакция на новости",
+      icon: Zap,
+      visibility: "visible",
+      draftBadge: "draft",
+      promotionTarget: "materials",
+    },
   ],
 };
 
@@ -241,6 +259,20 @@ export const labCatalogItems: LabCatalogItem[] = [
     title: "Инфляционная лаборатория",
     description: "Недельная инфляция РФ: тренд, категории, годовой темп и рыночная интерпретация.",
     href: "/lab/weekly-inflation",
+    status: "soon",
+  },
+  {
+    slug: "correlation-lab",
+    title: "Матрица связей",
+    description: "Корреляции акций MOEX с индексом, рублём, нефтью, золотом и секторами — по доходностям.",
+    href: "/lab/correlation-lab",
+    status: "soon",
+  },
+  {
+    slug: "event-reactions",
+    title: "Реакция на новости",
+    description: "Локальная база: новость → событие → тикер → реакция рынка по окнам времени.",
+    href: "/lab/event-reactions",
     status: "soon",
   },
 ];

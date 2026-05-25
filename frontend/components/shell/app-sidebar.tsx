@@ -224,14 +224,14 @@ export function AppSidebar() {
 
   if (!hydrated) {
     return (
-      <aside className="hidden w-[68px] shrink-0 border-r border-lab-border bg-lab-bg-deep/90 backdrop-blur-2xl lg:flex lg:flex-col" />
+      <aside className="hidden w-[68px] shrink-0 border-r border-lab-border bg-lab-surface/90 lab-depth-10 backdrop-blur-2xl lg:flex lg:flex-col" />
     );
   }
 
   return (
     <aside
       className={cn(
-        "relative hidden h-screen shrink-0 border-r border-lab-border bg-lab-bg-deep/85 backdrop-blur-2xl transition-[width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-0 lg:flex lg:flex-col",
+        "relative hidden h-screen shrink-0 border-r border-lab-border bg-lab-surface/88 lab-depth-10 backdrop-blur-2xl transition-[width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:sticky lg:top-0 lg:flex lg:flex-col",
         isExpanded ? "w-[220px] px-2.5 py-2.5" : "w-[68px] px-1.5 py-2.5",
       )}
     >

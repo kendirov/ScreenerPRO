@@ -1,59 +1,65 @@
-# AI_SESSION_STATE — ScreenerPRO
-
----
-
-## Текущая задача
-
-**Связка `/lab/weekly-inflation` ↔ `/lab/preparation`** — общий storage, карточка, порядок эфира, Telegram.
-
----
-
-## Что сделано (2026-05-25, preparation link)
-
-### Shared storage
-
-- `lib/domain/weekly-inflation-storage.ts`
-  - `loadWeeklyInflationPoints()` / `saveWeeklyInflationPoints()` — localStorage + event `weekly-inflation-updated`
-  - `getWeeklyInflationDashboard()` / `getLatestInflationBrief()`
-  - `WeeklyInflationBrief`: headline, 4w avg, annualized 4w, режим, `airOrderLine`, `telegramLine`
-
-### `/lab/preparation`
-
-- Карточка **«Недельная инфляция»**: последняя неделя · 4w avg · annualized 4w · режим · «Открыть лабораторию»
-- Empty: **«данные не загружены»**
-- **Порядок эфира**: строка «Инфляция / ставка» после «Контекст»
-- **Telegram summary**: строка инфляции, если данные есть
-- Hook `useWeeklyInflationBrief()` — sync между вкладками и после сохранения в lab
-
-### Прочее
-
-- `weekly-inflation-page.tsx` — save/load через storage helper
-- `buildTelegramSummary()` — опциональный `inflationTelegramLine`
-
----
-
-## Маршруты — статус
-
-| Маршрут | Статус |
-|---------|--------|
-| `/lab/weekly-inflation` | 🟢 ввод → localStorage → event |
-| `/lab/preparation` | 🟢 видит brief, порядок эфира, Telegram |
-
----
-
-## Проверка сборки
-
-- `pnpm -C frontend exec next build` — **OK** (2026-05-25)
-
----
-
-## TODO (осталось)
-
-- Стабильный API Росстат/ЕМИСС
-- Promotion в `/materials`
-
----
-
-## Последний промпт
-
-Связать weekly-inflation с preparation: storage helper, карточка, порядок эфира, Telegram.
+# AI_SESSION_STATE — ScreenerPRO
+
+---
+
+## Текущая задача
+
+**Матрица связей** — график пары «акция vs фактор» + блок разрыва связи (2026-05-25).
+
+---
+
+## Что сделано (pair chart)
+
+### Компоненты
+
+- `correlation-pair-chart.tsx` — линии акции/фактора (base 100), rolling corr, зоны разрыва, tooltip
+- `correlation-pair-stats-panel.tsx` — inspector: режим связи, corr/beta/breakScore, объяснение
+- `correlation-pair-break.ts` — детекция зон: разрыв / акция сильнее / не отреагировала; режимы: держится / слабеет / сломалась / нет
+
+### UX
+
+- На графике минимум цифр — точные значения в tooltip при hover
+- Зоны разрыва: amber (разрыв), rose (акция сильнее), muted (не отреагировала)
+- Подпись «не торговая рекомендация»
+- Inspector справа от графика в `CorrelationPairInspector`
+- Empty: «История недостаточна»
+
+### Проверка
+
+- `pnpm -C frontend exec next build` — **OK**
+- Тест в UI: `/lab/correlation-lab/ruble` → GAZP; `/gold` → PLZL; `/oil` → LKOH
+
+---
+
+## Маршруты (без изменений)
+
+| URL | Назначение |
+|-----|------------|
+| `/lab/correlation-lab` | Главная, 6 факторов |
+| `/lab/correlation-lab/[factorId]` | Деталь фактора + pair inspector |
+| `/api/lab/correlation/pair` | Данные для графика |
+
+---
+
+## Файлы
+
+- `frontend/components/lab/correlation-lab/correlation-pair-chart.tsx`
+- `frontend/components/lab/correlation-lab/correlation-pair-stats-panel.tsx`
+- `frontend/lib/domain/correlation-pair-break.ts`
+- `frontend/components/lab/correlation-lab/factor-detail/correlation-pair-inspector.tsx`
+
+---
+
+## TODO (следующий шаг)
+
+1. URL sync period/interval на detail page
+2. Highlight строк скринера по фактору
+3. Period switcher на главной
+4. CBR / external US reference layer
+
+---
+
+## Последний промпт
+
+График пары акция vs фактор, break zones, inspector режим связи, build, AI_SESSION_STATE.
+

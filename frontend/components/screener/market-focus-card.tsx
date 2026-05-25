@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import {
   MARKET_CARD_STATE_STYLES,
   resolveFutureSegmentTheme,
@@ -59,9 +60,32 @@ const TYPE_STATUS: Partial<Record<MarketCardType, string>> = {
   lab: "lab-status-chip lab-chip-lab",
 };
 
-function MetricCell({ label, value, compact }: { label: string; value: string; compact?: boolean }) {
+function MetricCell({
+  label,
+  value,
+  compact,
+  plain,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+  plain?: boolean;
+}) {
+  if (plain) {
+    return (
+      <div>
+        <p className={cn("uppercase tracking-wide text-lab-dim", compact ? "text-[8px]" : "text-[9px]")}>
+          {label}
+        </p>
+        <p className={cn("lab-number text-lab-text", compact ? "mt-0.5 text-[10px]" : "mt-0.5 text-sm")}>
+          {value}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-md border border-lab-border/60 bg-lab-bg-deep/35 px-2 py-1.5 backdrop-blur-sm">
+    <div className="rounded-md border border-lab-border/40 bg-lab-surface-soft/80 px-2 py-1.5 backdrop-blur-sm">
       <p className={cn("uppercase tracking-wide text-lab-dim", compact ? "text-[8px]" : "text-[9px]")}>
         {label}
       </p>
@@ -97,14 +121,18 @@ export function MarketFocusCard({
 }: MarketFocusCardProps) {
   if (empty) {
     return (
-      <div
+      <LabGlassPanel
+        depth={size === "hero" ? 30 : 20}
         className={cn(
-          "lab-glass-panel relative flex flex-col justify-center overflow-hidden border-dashed",
+          "relative flex flex-col justify-center overflow-hidden border-dashed",
           SIZE_SHELL[size],
           className,
         )}
       >
-        <div className="lab-accent-line absolute inset-x-0 top-0 opacity-40" aria-hidden />
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(139,92,246,0.08),transparent_70%)]"
+          aria-hidden
+        />
         {eyebrow ? (
           <p className={cn("lab-type-section text-[10px]", TYPE_EYEBROW[type])}>{eyebrow}</p>
         ) : null}
@@ -112,32 +140,29 @@ export function MarketFocusCard({
         {emptyDescription ? (
           <p className="lab-type-caption mt-1.5 max-w-sm text-xs leading-relaxed">{emptyDescription}</p>
         ) : null}
-      </div>
+      </LabGlassPanel>
     );
   }
 
   const state = stateProp ?? resolveMarketCardState(changePct);
   const styles = MARKET_CARD_STATE_STYLES[state];
   const segmentTheme = type === "future" ? resolveFutureSegmentTheme(futureSegment ?? status) : null;
-
-  const shell = cn(
-    "group relative block overflow-hidden rounded-xl border border-lab-border/80 bg-lab-surface-glass/75 backdrop-blur-xl transition-all duration-200",
-    SIZE_SHELL[size],
-    segmentTheme?.ring ?? styles.ring,
-    segmentTheme?.hoverGlow ?? styles.hoverGlow,
-    size === "hero" && (segmentTheme ? "" : styles.heroGlow),
-    size !== "hero" && "shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] hover:-translate-y-0.5",
-    className,
-  );
-
-  const accentLineClass = segmentTheme?.accentLine ?? styles.accentLine;
+  const depth = size === "hero" ? 30 : size === "medium" ? 20 : 10;
+  const variant = type === "future" ? "hot" : state === "warning" ? "amber" : "default";
   const statusChipClass =
     type === "future" && segmentTheme ? segmentTheme.chip : TYPE_STATUS[type] ?? "lab-status-chip";
 
-  const body = (
-    <>
-      <div className={cn("absolute inset-x-0 top-0 z-20 h-px opacity-90", accentLineClass)} aria-hidden />
+  const panelClass = cn(
+    "group relative overflow-hidden transition-all duration-200",
+    SIZE_SHELL[size],
+    segmentTheme?.ring ?? styles.ring,
+    segmentTheme?.hoverGlow ?? styles.hoverGlow,
+    size === "hero" && !segmentTheme && styles.heroGlow,
+    className,
+  );
 
+  const inner = (
+    <>
       <CardSparklineBackdrop
         sparklineValues={sparklineValues}
         changePct={changePct}
@@ -213,12 +238,18 @@ export function MarketFocusCard({
         {size !== "compact" && metrics.length > 0 ? (
           <div
             className={cn(
-              "mt-auto grid gap-2 border-t border-lab-border/50 pt-2",
-              size === "hero" ? "mt-3 grid-cols-3 pt-3" : "grid-cols-2",
+              "mt-auto grid gap-3",
+              size === "hero" ? "mt-3 grid-cols-3" : "grid-cols-2",
             )}
           >
             {metrics.map((m) => (
-              <MetricCell key={m.label} label={m.label} value={m.value} compact={size === "medium"} />
+              <MetricCell
+                key={m.label}
+                label={m.label}
+                value={m.value}
+                compact={size === "medium"}
+                plain={size === "hero"}
+              />
             ))}
           </div>
         ) : null}
@@ -252,11 +283,17 @@ export function MarketFocusCard({
 
   if (href) {
     return (
-      <Link href={href} className={shell}>
-        {body}
+      <Link href={href} className="block">
+        <LabGlassPanel depth={depth} variant={variant} interactive className={panelClass}>
+          {inner}
+        </LabGlassPanel>
       </Link>
     );
   }
 
-  return <div className={shell}>{body}</div>;
+  return (
+    <LabGlassPanel depth={depth} variant={variant} interactive className={panelClass}>
+      {inner}
+    </LabGlassPanel>
+  );
 }

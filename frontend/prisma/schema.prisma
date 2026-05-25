@@ -139,3 +139,248 @@ model FuturesOpenInterestPlaceholder {
 
   @@unique([instrumentId, asOf])
 }
+
+// --- Event Reaction Lab (local-first news → market reaction study) ---
+
+enum NewsSourceType {
+  markettwits
+  telegram_manual
+  moex
+  smartlab
+  broker
+  cbr
+  rosstat
+  manual
+  other
+}
+
+enum NewsSourceStatus {
+  active
+  planned
+  manual
+  experimental
+  broken
+}
+
+enum NewsSourceTrustLevel {
+  primary
+  secondary
+  noisy
+  manual
+}
+
+model NewsSource {
+  id           String               @id @default(cuid())
+  title        String
+  sourceType   NewsSourceType
+  url          String?
+  status       NewsSourceStatus     @default(manual)
+  trustLevel   NewsSourceTrustLevel @default(manual)
+  note         String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  rawNewsItems RawNewsItem[]
+
+  @@index([sourceType, status])
+}
+
+enum RawNewsItemStatus {
+  raw
+  parsed
+  linked
+  analyzed
+  ignored
+  error
+}
+
+model RawNewsItem {
+  id           String            @id @default(cuid())
+  sourceId     String?
+  externalId   String?
+  sourceUrl    String?
+  title        String?
+  text         String
+  rawHtml      String?
+  publishedAt  DateTime?
+  ingestedAt   DateTime          @default(now())
+  contentHash  String            @unique
+  status       RawNewsItemStatus @default(raw)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  source       NewsSource?       @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  marketEvents MarketEvent[]
+
+  @@index([status, ingestedAt])
+  @@index([sourceId])
+}
+
+enum MarketEventType {
+  dividend
+  earnings
+  guidance
+  buyback
+  sanction
+  rate
+  inflation
+  oil
+  gas
+  currency
+  geopolitics
+  forum
+  expiry
+  technical
+  other
+}
+
+enum EventImportance {
+  low
+  medium
+  high
+  critical
+}
+
+enum SurpriseLevel {
+  low
+  medium
+  high
+  unknown
+}
+
+model MarketEvent {
+  id             String                @id @default(cuid())
+  rawNewsItemId  String?
+  title          String
+  summary        String?
+  eventTime      DateTime
+  eventType      MarketEventType
+  isScheduled    Boolean               @default(false)
+  importance     EventImportance       @default(medium)
+  surpriseLevel  SurpriseLevel         @default(unknown)
+  marketRegime   String?
+  parsedJson     String?
+  confidence     Float?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  rawNewsItem    RawNewsItem?          @relation(fields: [rawNewsItemId], references: [id], onDelete: SetNull)
+  instrumentLinks EventInstrumentLink[]
+  reactions      EventReaction[]
+  findings       EventReactionFinding[]
+
+  @@index([eventTime])
+  @@index([eventType])
+  @@index([rawNewsItemId])
+}
+
+enum InstrumentMarket {
+  stock
+  future
+  currency
+  index
+  commodity
+  other
+}
+
+enum RelationType {
+  direct
+  sector
+  macro
+  derivative
+  watch
+}
+
+enum ExpectedDirection {
+  bullish
+  bearish
+  mixed
+  unknown
+}
+
+model EventInstrumentLink {
+  id                String            @id @default(cuid())
+  eventId           String
+  ticker            String
+  secid             String?
+  market            InstrumentMarket  @default(stock)
+  relationType      RelationType      @default(direct)
+  expectedDirection ExpectedDirection @default(unknown)
+  reason            String?
+  confidence        Float?
+  createdAt         DateTime          @default(now())
+  event             MarketEvent       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([ticker])
+}
+
+enum ReactionWindow {
+  pre_15m
+  pre_5m
+  plus_1m
+  plus_2m
+  plus_5m
+  plus_15m
+  plus_30m
+  plus_40m
+  plus_1d
+  plus_3d
+}
+
+enum ReactionDataStatus {
+  ok
+  partial
+  no_data
+  planned_tick_data
+}
+
+model EventReaction {
+  id                 String             @id @default(cuid())
+  eventId            String
+  ticker             String
+  secid              String?
+  market             InstrumentMarket   @default(stock)
+  window             ReactionWindow
+  basePrice          Float?
+  endPrice           Float?
+  priceChangePct     Float?
+  highAfterPct       Float?
+  lowAfterPct        Float?
+  rangePct           Float?
+  turnover           Float?
+  volume             Float?
+  trades             Float?
+  turnoverVsNormal   Float?
+  volumeVsNormal     Float?
+  tradesVsNormal     Float?
+  reactionScore      Float?
+  interpretation     String?
+  dataStatus         ReactionDataStatus @default(no_data)
+  createdAt          DateTime           @default(now())
+  event              MarketEvent        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, ticker, window])
+  @@index([eventId])
+  @@index([ticker])
+}
+
+enum FindingSeverity {
+  info
+  watch
+  important
+  critical
+}
+
+model EventReactionFinding {
+  id          String           @id @default(cuid())
+  eventId     String?
+  ticker      String?
+  title       String
+  body        String
+  severity    FindingSeverity  @default(info)
+  confidence  Float?
+  relatedJson String?
+  createdAt   DateTime         @default(now())
+  event       MarketEvent?     @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([createdAt])
+}

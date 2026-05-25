@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import { AxisMarketMap } from "@/components/lab/market-map/axis-market-map";
+import { FlowMapSummaryBar } from "@/components/lab/market-map/flow-map-summary";
+import { MarketFlowMap } from "@/components/lab/market-map/market-flow-map";
 import { GravityMarketMap } from "@/components/lab/market-map/gravity-market-map";
-import { LabModePlaceholder, LabPageShell } from "@/components/lab/lab-page-shell";
+import { LabPageShell } from "@/components/lab/lab-page-shell";
 import {
   buildLabSourcePills,
   LabErrorState,
@@ -11,8 +13,8 @@ import {
   LAB_INSTRUMENT_LIMIT,
 } from "@/components/lab/lab-ui";
 import { MarketMapSummaryBar } from "@/components/lab/market-map-summary";
+import { buildMarketFlowNodes, buildMarketFlowSummary, hasFlowYesterdayComparison, type FlowCompareMode } from "@/lib/domain/market-flow-map";
 import { stockRowsToMarketLabNodes } from "@/lib/domain/market-lab";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   buildMarketMapSummary,
   buildMarketMapTiles,
@@ -20,19 +22,22 @@ import {
   selectMarketMapTiles,
   type MarketMapMode,
 } from "@/lib/domain/market-map";
+import { useMarketFlowYesterdayQuery } from "@/lib/hooks/use-market-flow-yesterday-query";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
+import { yesterdayItemsToMap } from "@/lib/domain/market-flow-map";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils/cn";
 
-type MarketMapViewMode = "bubbles" | "coordinates" | "signals";
+type MarketMapViewMode = "flows" | "coordinates" | "bubbles";
 
 const VIEW_MODE_LABELS: Record<MarketMapViewMode, string> = {
-  bubbles: "Пузырьки",
+  flows: "Потоки",
   coordinates: "Координаты",
-  signals: "Сигналы",
+  bubbles: "Пузырьки",
 };
 
 export function MarketMapPage() {
-  const [viewMode, setViewMode] = React.useState<MarketMapViewMode>("bubbles");
+  const [viewMode, setViewMode] = React.useState<MarketMapViewMode>("flows");
   const [sizeMode, setSizeMode] = React.useState<MarketMapMode>("turnover");
   const query = useScreenerQuery("stock");
 
@@ -43,13 +48,53 @@ export function MarketMapPage() {
   );
   const summary = React.useMemo(() => buildMarketMapSummary(allTiles), [allTiles]);
 
+  const flowTickerCandidates = React.useMemo(() => {
+    return [...allTiles]
+      .sort((a, b) => (b.turnoverRub ?? 0) - (a.turnoverRub ?? 0))
+      .slice(0, LAB_INSTRUMENT_LIMIT)
+      .map((tile) => tile.ticker);
+  }, [allTiles]);
+
+  const yesterdayQuery = useMarketFlowYesterdayQuery(flowTickerCandidates, viewMode === "flows");
+
+  const yesterdayMap = React.useMemo(
+    () => yesterdayItemsToMap(yesterdayQuery.data?.items ?? []),
+    [yesterdayQuery.data?.items],
+  );
+
+  const flowNodes = React.useMemo(() => {
+    const rows = query.data?.rows ?? [];
+    if (viewMode !== "flows") {
+      return buildMarketFlowNodes(rows, undefined, LAB_INSTRUMENT_LIMIT);
+    }
+    return buildMarketFlowNodes(rows, yesterdayMap.size ? yesterdayMap : undefined, LAB_INSTRUMENT_LIMIT);
+  }, [query.data?.rows, viewMode, yesterdayMap]);
+
+  const flowSummary = React.useMemo(() => buildMarketFlowSummary(flowNodes), [flowNodes]);
+
+  const yesterdayAvailable = React.useMemo(() => hasFlowYesterdayComparison(flowNodes), [flowNodes]);
+  const [compareMode, setCompareMode] = React.useState<FlowCompareMode>("today");
+  const userPickedCompare = React.useRef(false);
+
+  React.useEffect(() => {
+    if (userPickedCompare.current || yesterdayQuery.isLoading) return;
+    setCompareMode(yesterdayAvailable ? "vs-yesterday" : "today");
+  }, [yesterdayAvailable, yesterdayQuery.isLoading]);
+
+  const handleCompareModeChange = React.useCallback((mode: FlowCompareMode) => {
+    userPickedCompare.current = true;
+    setCompareMode(mode);
+  }, []);
+
   const coordinateNodes = React.useMemo(() => {
     const tickers = new Set(visibleTiles.map((tile) => tile.ticker));
     return stockRowsToMarketLabNodes(query.data?.rows ?? []).filter((node) => tickers.has(node.ticker));
   }, [query.data?.rows, visibleTiles]);
 
-  const onMapCount = viewMode === "coordinates" ? coordinateNodes.length : visibleTiles.length;
-  const pills = buildLabSourcePills(query.data?.status, `на карте ${onMapCount} · лимит ${LAB_INSTRUMENT_LIMIT}`);
+  const onMapCount =
+    viewMode === "flows" ? flowNodes.length : viewMode === "coordinates" ? coordinateNodes.length : visibleTiles.length;
+
+  const pills = buildLabSourcePills(query.data?.status, `на карте ${onMapCount}`);
 
   const viewModeControl = (
     <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as MarketMapViewMode)}>
@@ -91,8 +136,8 @@ export function MarketMapPage() {
 
   return (
     <LabPageShell
-      title="Карта рынка"
-      description="Карта оборота, движения и денежного импульса по акциям MOEX"
+      title="Карта потоков · Карта рынка"
+      description="Деньги, движение и сдвиги относительно вчера — интрадей-обзор MOEX"
       pills={pills}
       modeControl={
         <div className="space-y-3">
@@ -101,6 +146,7 @@ export function MarketMapPage() {
         </div>
       }
     >
+      {viewMode === "flows" ? <FlowMapSummaryBar summary={flowSummary} /> : null}
       {viewMode === "bubbles" || viewMode === "coordinates" ? <MarketMapSummaryBar summary={summary} /> : null}
 
       {query.isLoading ? (
@@ -109,14 +155,17 @@ export function MarketMapPage() {
         <LabErrorState message="Не удалось загрузить данные скринера. Повторите позже." />
       ) : (
         <>
-          {viewMode === "bubbles" ? <GravityMarketMap tiles={visibleTiles} sizeMode={sizeMode} /> : null}
-          {viewMode === "coordinates" ? <AxisMarketMap nodes={coordinateNodes} /> : null}
-          {viewMode === "signals" ? (
-            <LabModePlaceholder
-              title="Режим «Сигналы»"
-              description="Слой торговых сигналов и in-play на карте рынка. Компонент в разработке."
+          {viewMode === "flows" ? (
+            <MarketFlowMap
+              nodes={flowNodes}
+              yesterdayLoading={yesterdayQuery.isLoading || yesterdayQuery.isFetching}
+              compareMode={compareMode}
+              onCompareModeChange={handleCompareModeChange}
+              yesterdayAvailable={yesterdayAvailable}
             />
           ) : null}
+          {viewMode === "bubbles" ? <GravityMarketMap tiles={visibleTiles} sizeMode={sizeMode} /> : null}
+          {viewMode === "coordinates" ? <AxisMarketMap nodes={coordinateNodes} /> : null}
         </>
       )}
     </LabPageShell>

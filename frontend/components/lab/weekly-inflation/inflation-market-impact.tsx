@@ -1,6 +1,7 @@
 "use client";
 
 import { LabSectionHeading } from "@/components/lab/lab-ui";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import { buildInflationMarketImpactBrief,
   INFLATION_IMPACT_DIRECTION_LABELS,
   INFLATION_IMPACT_SENSITIVITY_LABELS,
@@ -19,21 +20,28 @@ export function InflationMarketImpact({
 }) {
   const brief = buildInflationMarketImpactBrief(dashboard);
   const hasData = dashboard.points.some((p) => p.headlinePct != null);
-  if (!hasData) return null;
 
   return (
-    <section className={cn("lab-glass-panel p-4", className)}>
+    <LabGlassPanel depth={20} className={cn("p-4", className)}>
       <LabSectionHeading>Что это значит для рынка</LabSectionHeading>
-      <p className="mb-4 text-[11px] leading-relaxed text-lab-muted">
-        Сценарии для эфира — не торговая рекомендация.
-      </p>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            "lab-chip px-2 py-0.5 text-[10px]",
+            hasData ? "lab-chip-active" : "border-lab-violet/30 text-lab-violet",
+          )}
+        >
+          режим: {brief.regimeLabel}
+        </span>
+        <p className="text-[11px] text-lab-muted">Сценарии для эфира — не торговая рекомендация.</p>
+      </div>
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {brief.impacts.map((impact) => (
           <ImpactCard key={impact.asset} impact={impact} />
         ))}
       </div>
-    </section>
+    </LabGlassPanel>
   );
 }
 

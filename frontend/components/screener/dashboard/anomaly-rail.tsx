@@ -2,52 +2,57 @@
 
 import Link from "next/link";
 import type { ScreenerRow } from "@screenerpro/shared";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import { formatAnomalyReason, formatTurnoverCompact } from "@/lib/domain/screener-overview";
 import {
-  ANOMALY_REASON_MARKER,
   MARKET_CARD_STATE_STYLES,
   normalizeReasonTag,
   resolveStateFromRow,
 } from "@/lib/domain/market-card-visual";
-import { ReasonTagChip } from "@/components/screener/reason-tag-chip";
 import { tradingFormat } from "@/lib/formatters/trading";
 import { cn } from "@/lib/utils/cn";
 
-function reasonMarkerClass(reason: string): string {
+const REASON_DOT: Record<string, string> = {
+  оборот: "bg-lab-cyan",
+  сделки: "bg-lab-blue",
+  движение: "bg-lab-violet",
+  аномалия: "bg-lab-amber",
+  перекат: "bg-lab-violet",
+  активность: "bg-lab-dim",
+};
+
+function reasonDotClass(reason: string): string {
   const id = normalizeReasonTag(reason);
-  return ANOMALY_REASON_MARKER[id] ?? ANOMALY_REASON_MARKER.активность!;
+  return REASON_DOT[id] ?? REASON_DOT.активность!;
+}
+
+function statusLabel(row: ScreenerRow): string {
+  if (row.assetClass === "future") return "FORTS";
+  return row.metrics.isInPlay ? "в игре" : "TQBR";
 }
 
 export function AnomalyRail({ rows, className }: { rows: ScreenerRow[]; className?: string }) {
-  const displayRows = rows.slice(0, 5);
+  const displayRows = rows.slice(0, 4);
 
   if (!displayRows.length) {
     return (
-      <aside
-        className={cn(
-          "lab-glass-panel relative flex flex-col overflow-hidden border-lab-border-amber/25 px-2.5 py-3",
-          className,
-        )}
+      <LabGlassPanel
+        depth={20}
+        variant="amber"
+        className={cn("relative flex flex-col justify-center px-3 py-4", className)}
       >
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lab-amber/50 to-lab-violet/35 opacity-80" aria-hidden />
         <p className="lab-type-section text-[10px] text-lab-amber/90">Лента аномалий</p>
-        <p className="lab-type-caption mt-3 text-xs leading-relaxed">Спокойный фон — явных всплесков нет</p>
-      </aside>
+        <p className="lab-type-caption mt-2 text-xs leading-relaxed">Спокойный фон — явных всплесков нет</p>
+      </LabGlassPanel>
     );
   }
 
   return (
-    <aside
-      className={cn(
-        "lab-glass-panel relative flex flex-col overflow-hidden border-lab-border-violet/25 px-2 py-2",
-        className,
-      )}
-    >
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-lab-amber/55 to-lab-violet/40 opacity-85" aria-hidden />
-      <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-lab-amber/90">
+    <LabGlassPanel depth={20} variant="amber" className={cn("relative flex flex-col px-2 py-2.5", className)}>
+      <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-lab-amber/90">
         Лента аномалий
       </p>
-      <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:thin]">
+      <ul className="space-y-1">
         {displayRows.map((row) => {
           const reason = formatAnomalyReason(row);
           const href = row.assetClass === "stock" ? `/stocks/${row.ticker}` : `/futures/${row.ticker}`;
@@ -58,34 +63,33 @@ export function AnomalyRail({ rows, className }: { rows: ScreenerRow[]; classNam
               <Link
                 href={href}
                 className={cn(
-                  "flex items-start gap-2 rounded-md border border-transparent px-1.5 py-1.5 transition-all duration-200",
-                  "hover:border-lab-border-hot hover:bg-lab-surface-hot/40",
-                  state === "warning" && "hover:border-lab-amber/30 hover:bg-lab-amber/6",
+                  "grid grid-cols-[auto_1fr_auto] items-center gap-x-2 rounded-lg px-2 py-1.5 transition-colors duration-200",
+                  "hover:bg-lab-surface-soft/80",
+                  state === "warning" && "hover:bg-lab-amber/6",
                 )}
               >
                 <span
-                  className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", reasonMarkerClass(reason))}
+                  className={cn("h-1.5 w-1.5 shrink-0 rounded-full", reasonDotClass(reason))}
                   aria-hidden
                 />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-1">
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
                     <span className="lab-ticker text-xs">{row.ticker}</span>
                     <span className={cn("lab-number text-xs font-medium", MARKET_CARD_STATE_STYLES[state].percent)}>
                       {tradingFormat.formatSignedPercent(row.percentChange)}
                     </span>
                   </div>
-                  <div className="mt-0.5 flex items-center justify-between gap-1">
-                    <span className="lab-number text-[10px] text-lab-dim">
-                      {formatTurnoverCompact(row.turnover)}
-                    </span>
-                    <ReasonTagChip tag={reason} />
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[9px] text-lab-dim">
+                    <span className="truncate">{reason}</span>
+                    <span className="lab-number shrink-0">{formatTurnoverCompact(row.turnover)}</span>
                   </div>
                 </div>
+                <span className="lab-chip shrink-0 px-1 py-px text-[8px] text-lab-muted">{statusLabel(row)}</span>
               </Link>
             </li>
           );
         })}
       </ul>
-    </aside>
+    </LabGlassPanel>
   );
 }

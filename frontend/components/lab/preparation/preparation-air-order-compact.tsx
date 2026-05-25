@@ -2,12 +2,25 @@
 
 import * as React from "react";
 import { ListOrdered } from "lucide-react";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import {
   BRIEFING_SECTION_ORDER,
   BRIEFING_STATUS_LABELS,
   type BriefingOutlineItem,
 } from "@/lib/domain/preparation-briefing-outline";
 import { cn } from "@/lib/utils/cn";
+
+const COMPACT_SECTIONS = [
+  "context",
+  "events",
+  "external",
+  "commodities",
+  "currency",
+  "index",
+  "bluechips",
+  "inplay",
+  "summary",
+] as const satisfies readonly (typeof BRIEFING_SECTION_ORDER)[number][];
 
 const COMPACT_TITLES: Partial<Record<(typeof BRIEFING_SECTION_ORDER)[number], string>> = {
   context: "Контекст",
@@ -17,7 +30,6 @@ const COMPACT_TITLES: Partial<Record<(typeof BRIEFING_SECTION_ORDER)[number], st
   currency: "Валюта",
   index: "Индекс",
   bluechips: "Фишки",
-  sectors: "Сектора",
   inplay: "В игре",
   summary: "Итог",
 };
@@ -42,7 +54,7 @@ export function PreparationAirOrderCompact({
   className?: string;
 }) {
   const rows = React.useMemo(() => {
-    const ordered = BRIEFING_SECTION_ORDER.map(
+    const ordered = COMPACT_SECTIONS.map(
       (section) => outline.find((item) => item.section === section)!,
     ).filter(Boolean);
 
@@ -57,7 +69,7 @@ export function PreparationAirOrderCompact({
   }, [outline, inflationAirOrderLine]);
 
   return (
-    <div className={cn("lab-glass-panel flex h-full flex-col p-2.5", className)}>
+    <LabGlassPanel depth={20} className={cn("flex h-full flex-col p-2.5", className)}>
       <div className="mb-2 flex items-center gap-1.5">
         <ListOrdered className="h-3.5 w-3.5 text-lab-violet/80" />
         <h3 className="text-xs font-semibold text-lab-text">Порядок эфира</h3>
@@ -72,7 +84,7 @@ export function PreparationAirOrderCompact({
           ),
         )}
       </ol>
-    </div>
+    </LabGlassPanel>
   );
 }
 

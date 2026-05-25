@@ -17,27 +17,31 @@ export function InflationRecentWeeksTable({
   officialPublication,
   onDeleteWeek,
   className,
+  embedded = false,
 }: {
   points: WeeklyInflationPoint[];
   officialPublication: WeeklyInflationOfficialPublication | null;
   onDeleteWeek: (periodEnd: string) => void;
   className?: string;
+  embedded?: boolean;
 }) {
   const rows = buildRecentWeeksTableRows(points, officialPublication, 10);
 
   if (rows.length === 0) {
     return (
-      <section className={cn("lab-glass-panel p-4", className)}>
-        <LabSectionHeading>Последние недели</LabSectionHeading>
+      <div className={cn(embedded ? "px-1 py-2" : "lab-glass-panel p-4", className)}>
+        {!embedded ? <LabSectionHeading>Последние недели</LabSectionHeading> : null}
         <p className="text-[11px] text-lab-muted">Таблица появится после загрузки первой недели.</p>
-      </section>
+      </div>
     );
   }
 
   return (
-    <section className={cn("lab-glass-panel overflow-hidden p-4", className)}>
-      <LabSectionHeading>Последние недели</LabSectionHeading>
-      <p className="mb-3 text-[11px] text-lab-muted">Компактный список — до 10 последних недель.</p>
+    <div className={cn(embedded ? "overflow-hidden px-1 py-2" : "lab-glass-panel overflow-hidden p-4", className)}>
+      {!embedded ? <LabSectionHeading>Последние недели</LabSectionHeading> : null}
+      {!embedded ? (
+        <p className="mb-3 text-[11px] text-lab-muted">Компактный список — до 10 последних недель.</p>
+      ) : null}
 
       <div className="overflow-x-auto rounded-xl border border-lab-border/80">
         <table className="w-full min-w-[640px] text-left text-[11px]">
@@ -86,7 +90,7 @@ export function InflationRecentWeeksTable({
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
   );
 }
 

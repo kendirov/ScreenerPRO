@@ -5,6 +5,7 @@ import type { ScreenerRow } from "@screenerpro/shared";
 import { BriefingSelectionButton } from "@/components/lab/preparation/briefing-selection-button";
 import {
   computePreparationChanges,
+  MARKET_DATA_FRESHNESS_LABELS,
   resolveInstrumentDataStatus,
   shouldShowLiveScreenerMetrics,
 } from "@/lib/domain/market-data-status";
@@ -25,6 +26,7 @@ export function PreparationInstrumentRow({
   selected = false,
   onToggleBriefing,
   showBriefingToggle = true,
+  showDataStatus = false,
   className,
 }: {
   instrument: ResolvedPreparationInstrument;
@@ -34,6 +36,7 @@ export function PreparationInstrumentRow({
   selected?: boolean;
   onToggleBriefing?: () => void;
   showBriefingToggle?: boolean;
+  showDataStatus?: boolean;
   className?: string;
 }) {
   const row = instrument.screenerRow;
@@ -76,13 +79,22 @@ export function PreparationInstrumentRow({
         <MetricCell label="1д" value={changes.change1d} hint={changes.change1dHint} />
         <MetricCell label="5д" value={changes.change5d} hint={changes.change5dHint} />
 
-        <span className="hidden min-w-[52px] text-right font-mono text-[9px] text-lab-muted sm:inline">
+        <span className="hidden min-w-[48px] text-right font-mono text-[9px] text-lab-muted sm:inline">
           {formatTurnover(row, showLive)}
         </span>
 
-        <span className="min-w-0 flex-1 truncate text-[9px] text-lab-dim">
-          {REASON_TAG_LABELS[reasonTag]} · {instrument.reason}
-        </span>
+        {showDataStatus ? (
+          <span
+            className="hidden max-w-[88px] truncate font-mono text-[8px] text-lab-dim lg:inline"
+            title={dataStatus.label}
+          >
+            {shortDataStatusLabel(dataStatus.label)}
+          </span>
+        ) : (
+          <span className="min-w-0 flex-1 truncate text-[9px] text-lab-dim">
+            {REASON_TAG_LABELS[reasonTag]} · {instrument.reason}
+          </span>
+        )}
 
         {showBriefingToggle && onToggleBriefing ? (
           <BriefingSelectionButton selected={selected} onToggle={onToggleBriefing} compact />
@@ -122,4 +134,12 @@ function MetricCell({
 function formatTurnover(row: ScreenerRow | null, showLive: boolean): string {
   if (!showLive || !row?.turnover) return "—";
   return tradingFormat.formatTurnoverRub(row.turnover).replace(/\s?₽/g, "");
+}
+
+function shortDataStatusLabel(label: string): string {
+  if (label.includes("не подключён")) return "внешний";
+  if (label.includes("Данных сегодня нет")) return "нет сегодня";
+  if (label.includes("Последняя свеча")) return label.replace("Последняя свеча ", "свеча ");
+  if (label === "онлайн MOEX") return "live";
+  return MARKET_DATA_FRESHNESS_LABELS.live === label ? "live" : label.slice(0, 14);
 }

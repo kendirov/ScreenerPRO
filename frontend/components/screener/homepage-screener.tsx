@@ -6,6 +6,8 @@ import { FuturesFamilyTable } from "@/components/screener/futures-family-table";
 import { MarketRadar } from "@/components/screener/market-radar";
 import { createStockColumns } from "@/components/screener/columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { selectInPlayForRadar } from "@/lib/domain/stocks-screener-signals";
+import { useInPlayStockCandles } from "@/lib/hooks/use-in-play-stock-candles";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 
 const ILLIQUID_RATIO = 0.02;
@@ -56,13 +58,24 @@ export function HomePageScreener() {
   }, [stocksQuery.data?.rows]);
   const futures = futuresQuery.data?.rows ?? [];
   const stockUniverse = stocksQuery.data?.rows ?? [];
-  const imoexRangePct = stocksQuery.data?.benchmarks?.[0]?.dayRangePct ?? null;
   const status = stocksQuery.data?.status ?? futuresQuery.data?.status ?? null;
   const maxTurnover = React.useMemo(
     () => stockUniverse.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0),
     [stockUniverse],
   );
   const stockTableColumns = React.useMemo(() => createStockColumns(maxTurnover), [maxTurnover]);
+
+  const inPlayTickers = React.useMemo(
+    () => selectInPlayForRadar(stocks).slice(0, 8).map((row) => row.ticker),
+    [stocks],
+  );
+  const { seriesByTicker } = useInPlayStockCandles(inPlayTickers);
+  const candleLookup = React.useMemo(
+    () => ({
+      get: (ticker: string) => seriesByTicker.get(ticker.toUpperCase()) ?? null,
+    }),
+    [seriesByTicker],
+  );
 
   return (
     <div className="space-y-2">
@@ -100,7 +113,7 @@ export function HomePageScreener() {
         </div>
         <TabsContent value="stocks">
           <div className="sticky top-[4.05rem] z-30 mb-2 space-y-2 border-b border-white/5 bg-slate-950/80 pb-1.5 backdrop-blur-md">
-            <MarketRadar rows={stocks} allRows={stockUniverse} imoexRangePct={imoexRangePct} />
+            <MarketRadar rows={stocks} allRows={stockUniverse} candlesByTicker={candleLookup} />
           </div>
           <div className="mb-2.5 rounded-xl border border-white/5 bg-slate-950/45 p-2 shadow-[0_8px_18px_rgba(2,6,23,0.18)] backdrop-blur-md">
             <div className="flex items-center justify-between gap-2">

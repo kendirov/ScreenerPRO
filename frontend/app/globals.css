@@ -1,24 +1,27 @@
 @import "tailwindcss";
 
-/* ── Лаборатория рынка — premium neon glass tokens ── */
+/* ── Лаборатория рынка — Expensive Minimalism tokens ── */
 :root {
   /* Фоны */
-  --lab-bg: #030712;
-  --lab-bg-deep: #01030a;
-  --lab-surface: rgba(10, 16, 32, 0.78);
-  --lab-surface-glass: rgba(15, 23, 42, 0.58);
+  --lab-bg: #020617;
+  --lab-bg-deep: #00030a;
+  --lab-surface: rgba(15, 23, 42, 0.58);
+  --lab-surface-soft: rgba(255, 255, 255, 0.025);
+  --lab-surface-strong: rgba(255, 255, 255, 0.055);
+  --lab-surface-glass: var(--lab-surface);
   --lab-surface-hot: rgba(34, 13, 58, 0.55);
 
   /* Границы */
-  --lab-border: rgba(148, 163, 184, 0.16);
-  --lab-border-hot: rgba(34, 211, 238, 0.32);
-  --lab-border-violet: rgba(139, 92, 246, 0.45);
-  --lab-border-amber: rgba(245, 158, 11, 0.48);
+  --lab-border: rgba(148, 163, 184, 0.12);
+  --lab-border-strong: rgba(34, 211, 238, 0.32);
+  --lab-border-hot: var(--lab-border-strong);
+  --lab-border-violet: rgba(139, 92, 246, 0.36);
+  --lab-border-amber: rgba(245, 158, 11, 0.42);
 
   /* Текст */
-  --lab-text: #f4f7ff;
-  --lab-muted: #a3afc9;
-  --lab-dim: #6b7894;
+  --lab-text: #f8fbff;
+  --lab-muted: #9aa7c3;
+  --lab-dim: #5f6b86;
 
   /* Акценты */
   --lab-cyan: #22d3ee;
@@ -56,6 +59,8 @@
   --color-lab-bg: var(--lab-bg);
   --color-lab-bg-deep: var(--lab-bg-deep);
   --color-lab-surface: var(--lab-surface);
+  --color-lab-surface-soft: var(--lab-surface-soft);
+  --color-lab-surface-strong: var(--lab-surface-strong);
   --color-lab-surface-glass: var(--lab-surface-glass);
   --color-lab-surface-hot: var(--lab-surface-hot);
   --color-lab-surface-1: var(--lab-surface-1);
@@ -137,6 +142,12 @@ body {
   color: var(--lab-text);
 }
 
+/* ── Page & layout ── */
+.lab-page {
+  color: var(--lab-text);
+  min-width: 0;
+}
+
 /* ── Shell & backgrounds ── */
 .lab-shell {
   background: var(--lab-bg);
@@ -189,38 +200,146 @@ body {
 
 /* ── Glass surfaces ── */
 .lab-glass-panel {
-  background: var(--lab-surface-glass);
+  background: var(--lab-surface);
   border: 1px solid var(--lab-border);
   border-radius: 0.75rem;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 14px 44px rgba(1, 3, 10, 0.55);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
+  transition:
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease;
+}
+
+.lab-glass-panel:not(.lab-depth-10):not(.lab-depth-20):not(.lab-depth-30) {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 44px rgba(0, 3, 10, 0.55);
+}
+
+.lab-glass-panel--strong {
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.72) 0%, var(--lab-surface) 100%);
+  border-color: var(--lab-border-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 16px 48px rgba(0, 3, 10, 0.52),
+    0 0 0 1px rgba(34, 211, 238, 0.06);
+}
+
+.lab-glass-panel--hot {
+  background: linear-gradient(155deg, var(--lab-surface-hot) 0%, var(--lab-surface) 100%);
+  border-color: var(--lab-border-violet);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    var(--lab-glow-violet),
+    0 14px 40px rgba(0, 3, 10, 0.5);
+}
+
+.lab-glass-panel--danger {
+  background: rgba(251, 113, 133, 0.06);
+  border-color: rgba(251, 113, 133, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--lab-glow-red),
+    0 12px 36px rgba(0, 3, 10, 0.45);
+}
+
+.lab-glass-panel--success {
+  background: rgba(34, 197, 94, 0.06);
+  border-color: rgba(34, 197, 94, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--lab-glow-green),
+    0 12px 36px rgba(0, 3, 10, 0.45);
+}
+
+.lab-glass-panel--amber {
+  background: rgba(245, 158, 11, 0.06);
+  border-color: var(--lab-border-amber);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--lab-glow-amber),
+    0 12px 36px rgba(0, 3, 10, 0.45);
+}
+
+.lab-glass-panel--interactive:hover {
+  border-color: rgba(34, 211, 238, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 16px 44px rgba(0, 3, 10, 0.58),
+    0 0 20px rgba(34, 211, 238, 0.06);
+}
+
+/* ── Depth layers ── */
+.lab-depth-10 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 4px 16px rgba(0, 3, 10, 0.32),
+    0 1px 3px rgba(0, 3, 10, 0.22);
+}
+
+.lab-depth-20 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 28px rgba(0, 3, 10, 0.42),
+    0 2px 8px rgba(0, 3, 10, 0.26),
+    0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.lab-depth-30 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 44px rgba(0, 3, 10, 0.55),
+    0 4px 16px rgba(0, 3, 10, 0.32),
+    0 0 24px rgba(34, 211, 238, 0.04),
+    0 0 1px rgba(148, 163, 184, 0.1);
+}
+
+.lab-glass-panel.lab-depth-10 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 4px 16px rgba(0, 3, 10, 0.32),
+    0 1px 3px rgba(0, 3, 10, 0.22);
+}
+
+.lab-glass-panel.lab-depth-20 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 28px rgba(0, 3, 10, 0.42),
+    0 2px 8px rgba(0, 3, 10, 0.26),
+    0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.lab-glass-panel.lab-depth-30 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 44px rgba(0, 3, 10, 0.55),
+    0 4px 16px rgba(0, 3, 10, 0.32),
+    0 0 24px rgba(34, 211, 238, 0.04),
+    0 0 1px rgba(148, 163, 184, 0.1);
 }
 
 .lab-glass-card {
-  background: var(--lab-surface-glass);
+  background: var(--lab-surface);
   border: 1px solid var(--lab-border);
   border-radius: 0.875rem;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 32px rgba(1, 3, 10, 0.45);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 32px rgba(0, 3, 10, 0.42);
   backdrop-filter: blur(18px) saturate(130%);
   -webkit-backdrop-filter: blur(18px) saturate(130%);
   transition:
-    transform 0.22s ease,
     box-shadow 0.22s ease,
-    border-color 0.22s ease;
+    border-color 0.22s ease,
+    background-color 0.22s ease;
 }
 
 .lab-glass-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(34, 211, 238, 0.28);
+  border-color: rgba(34, 211, 238, 0.22);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 14px 40px rgba(1, 3, 10, 0.52),
-    0 0 18px rgba(34, 211, 238, 0.05);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 36px rgba(0, 3, 10, 0.48),
+    0 0 16px rgba(34, 211, 238, 0.05);
 }
 
 .lab-neon-border {
@@ -231,28 +350,26 @@ body {
 }
 
 .lab-neon-card {
-  background: linear-gradient(155deg, var(--lab-surface-hot) 0%, var(--lab-surface-glass) 100%);
+  background: linear-gradient(155deg, var(--lab-surface-hot) 0%, var(--lab-surface) 100%);
   border: 1px solid var(--lab-border-violet);
   border-radius: 0.875rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     var(--lab-glow-violet),
-    0 14px 40px rgba(1, 3, 10, 0.5);
+    0 14px 40px rgba(0, 3, 10, 0.5);
   backdrop-filter: blur(20px) saturate(145%);
   -webkit-backdrop-filter: blur(20px) saturate(145%);
   transition:
-    transform 0.22s ease,
     box-shadow 0.22s ease,
     border-color 0.22s ease;
 }
 
 .lab-neon-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--lab-border-hot);
+  border-color: var(--lab-border-strong);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     var(--lab-glow-cyan),
-    0 18px 48px rgba(1, 3, 10, 0.58);
+    0 16px 44px rgba(0, 3, 10, 0.55);
 }
 
 .lab-accent-line,
@@ -269,9 +386,25 @@ body {
   opacity: 0.75;
 }
 
+.lab-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: min(52vh, 420px);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  border: 1px dashed var(--lab-border);
+  border-radius: 0.875rem;
+  background: var(--lab-surface-soft);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  color: var(--lab-muted);
+}
+
 /* Legacy aliases — glass upgrade */
 .lab-panel {
-  background: var(--lab-surface-glass);
+  background: var(--lab-surface);
   border: 1px solid var(--lab-border);
   border-radius: 0.75rem;
   box-shadow:
@@ -294,52 +427,48 @@ body {
 }
 
 .lab-card {
-  background: var(--lab-surface-glass);
+  background: var(--lab-surface);
   border: 1px solid var(--lab-border);
   border-radius: 0.875rem;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 8px 28px rgba(1, 3, 10, 0.42);
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 28px rgba(0, 3, 10, 0.4);
   backdrop-filter: blur(16px) saturate(130%);
   -webkit-backdrop-filter: blur(16px) saturate(130%);
   transition:
-    transform 0.22s ease,
     box-shadow 0.22s ease,
     border-color 0.22s ease,
     background-color 0.22s ease;
 }
 
 .lab-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--lab-border-hot);
+  border-color: var(--lab-border-strong);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 12px 36px rgba(1, 3, 10, 0.55),
-    0 0 22px rgba(34, 211, 238, 0.07);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 12px 36px rgba(0, 3, 10, 0.5),
+    0 0 18px rgba(34, 211, 238, 0.06);
 }
 
 .lab-card-hot {
-  background: linear-gradient(145deg, var(--lab-surface-hot), var(--lab-surface-glass));
-  border: 1px solid var(--lab-border-hot);
+  background: linear-gradient(145deg, var(--lab-surface-hot), var(--lab-surface));
+  border: 1px solid var(--lab-border-strong);
   border-radius: 0.875rem;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
     var(--lab-glow-cyan),
-    0 12px 36px rgba(1, 3, 10, 0.5);
+    0 12px 36px rgba(0, 3, 10, 0.48);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   transition:
-    transform 0.22s ease,
     box-shadow 0.22s ease,
     border-color 0.22s ease;
 }
 
 .lab-card-hot:hover {
-  transform: translateY(-2px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
     var(--lab-glow-cyan),
-    0 16px 44px rgba(1, 3, 10, 0.58);
+    0 14px 40px rgba(0, 3, 10, 0.54);
 }
 
 /* ── Chips & badges ── */
@@ -471,10 +600,37 @@ body {
 }
 
 .lab-btn-active {
-  border: 1px solid var(--lab-border-hot);
+  border: 1px solid var(--lab-border-strong);
   background: rgba(34, 211, 238, 0.16);
   color: var(--lab-cyan);
   box-shadow: var(--lab-glow-cyan);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-glass-panel,
+  .lab-glass-card,
+  .lab-neon-card,
+  .lab-card,
+  .lab-card-hot,
+  .lab-chip,
+  .lab-btn-primary {
+    transition-duration: 0.01ms !important;
+  }
+
+  .lab-glass-card:hover,
+  .lab-neon-card:hover,
+  .lab-card:hover,
+  .lab-card-hot:hover,
+  .lab-btn-primary:hover {
+    transform: none;
+  }
+
+  .gravity-bubble-pulse,
+  .teaching-ring-pulse,
+  .teaching-zone-glow,
+  .teaching-price-dot {
+    animation: none !important;
+  }
 }
 
 @keyframes gravity-bubble-pulse {

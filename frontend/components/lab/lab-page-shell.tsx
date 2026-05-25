@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 
 export type LabStatusPill = {
   label: string;
@@ -37,11 +38,13 @@ export function LabPageShell({
 }: LabPageShellProps) {
   return (
     <div className={cn(compact ? "space-y-1" : "space-y-3", className)}>
-      <header
+      <LabGlassPanel
+        as="header"
+        depth={compact ? 10 : 20}
         className={cn(
           compact
-            ? "border-b border-lab-border bg-lab-bg-deep px-2 py-1"
-            : "lab-glass-panel relative overflow-hidden px-4 py-3",
+            ? "rounded-none border-x-0 border-t-0 bg-lab-bg-deep px-2 py-1 shadow-none backdrop-blur-none"
+            : "relative overflow-hidden px-4 py-3",
         )}
       >
         {!compact ? <div className="lab-accent-line absolute inset-x-0 top-0 opacity-45" aria-hidden /> : null}
@@ -56,7 +59,7 @@ export function LabPageShell({
               >
                 {title}
               </h1>
-              <span className="lab-status-chip lab-chip-lab px-1.5 py-0.5 text-[9px]">Лаб</span>
+              <span className="lab-status-chip lab-chip-lab px-1.5 py-0.5 text-[9px]">LAB</span>
             </div>
             {!compact && description ? (
               <p className="lab-type-caption mt-1 max-w-2xl text-sm leading-relaxed">{description}</p>
@@ -86,7 +89,7 @@ export function LabPageShell({
             {modeControl}
           </div>
         ) : null}
-      </header>
+      </LabGlassPanel>
 
       {children}
     </div>
@@ -103,16 +106,17 @@ export function LabModePlaceholder({
   className?: string;
 }) {
   return (
-    <div
+    <LabGlassPanel
+      depth={20}
       className={cn(
-        "lab-glass-panel flex min-h-[min(52vh,420px)] flex-col items-center justify-center border-dashed px-6 py-12 text-center",
+        "flex min-h-[min(52vh,420px)] flex-col items-center justify-center border-dashed px-6 py-12 text-center",
         className,
       )}
     >
       <p className="text-sm font-medium text-lab-text-main">{title}</p>
       {description ? <p className="lab-type-caption mt-2 max-w-md text-sm">{description}</p> : null}
       <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-lab-violet/70">лаборатория · черновик</p>
-    </div>
+    </LabGlassPanel>
   );
 }
 

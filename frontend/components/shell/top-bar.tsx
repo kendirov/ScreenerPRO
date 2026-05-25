@@ -1,9 +1,14 @@
 import { Bell, UserCircle2 } from "lucide-react";
 import { DataBadge, StatusPill } from "@/components/ui/primitives";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 
 export function TopBar() {
   return (
-    <header className="lab-glass-panel sticky top-0 z-40 rounded-none border-x-0 border-t-0 px-1.5 py-2 sm:px-2.5 lg:px-3">
+    <LabGlassPanel
+      as="header"
+      depth={10}
+      className="sticky top-0 z-40 rounded-none border-x-0 border-t-0 px-1.5 py-2 sm:px-2.5 lg:px-3"
+    >
       <div className="lab-accent-line mb-2 opacity-60" aria-hidden />
       <div className="flex items-center gap-2">
         <div className="lab-glass-card rounded-lg border-lab-border bg-lab-surface-glass/80 px-2 py-1.5 shadow-none hover:translate-y-0">
@@ -20,6 +25,6 @@ export function TopBar() {
           Пользователь
         </button>
       </div>
-    </header>
+    </LabGlassPanel>
   );
 }

@@ -36,6 +36,16 @@ export function historyUrl(assetClass: AssetClass, secid: string, from?: string,
   });
 }
 
+/** Дневная история индексов MOEX (IMOEX, RTSI, …). */
+export function indexHistoryUrl(secid: string, from?: string, till?: string, start = 0) {
+  return withQuery(`/history/engines/stock/markets/index/securities/${secid}.json`, {
+    "iss.meta": "off",
+    from,
+    till,
+    start,
+  });
+}
+
 /** Свечи FORTS — дневные и интрадей (OHLC/close). */
 export function futuresCandlesUrl(secid: string, from: string, till: string, interval = 24) {
   return withQuery(`/engines/futures/markets/forts/securities/${secid}/candles.json`, {
@@ -50,5 +60,15 @@ export function futuresCandlesUrl(secid: string, from: string, till: string, int
 export function futuresCandleBordersUrl(secid: string) {
   return withQuery(`/engines/futures/markets/forts/securities/${secid}/candleborders.json`, {
     "iss.meta": "off",
+  });
+}
+
+/** Интрадей-свечи акций TQBR. */
+export function stockCandlesUrl(secid: string, from: string, till: string, interval = 10) {
+  return withQuery(`/engines/stock/markets/shares/boards/TQBR/securities/${secid}/candles.json`, {
+    "iss.meta": "off",
+    from,
+    till,
+    interval,
   });
 }

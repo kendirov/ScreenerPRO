@@ -2,6 +2,7 @@
 
 import { CalendarDays } from "lucide-react";
 import { BriefingSelectionButton } from "@/components/lab/preparation/briefing-selection-button";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import {
   EVENT_CATEGORY_LABELS,
   EVENT_IMPACT_LABELS,
@@ -46,7 +47,7 @@ export function PreparationEventsTimeline({
         : "Нет событий — ручной импорт или Smart-Lab";
 
   return (
-    <div className={cn("lab-glass-panel flex h-full flex-col p-2.5", className)}>
+    <LabGlassPanel depth={20} className={cn("flex h-full flex-col p-2.5", className)}>
       <div className="mb-2 flex items-center gap-1.5">
         <CalendarDays className="h-3.5 w-3.5 text-lab-amber/80" />
         <h3 className="text-xs font-semibold text-lab-text">Ближайшие события</h3>
@@ -96,7 +97,11 @@ export function PreparationEventsTimeline({
                         <span className="rounded border border-lab-cyan/25 bg-lab-cyan/10 px-1 py-px font-mono text-[8px] text-lab-cyan">
                           Smart-Lab
                         </span>
-                      ) : null}
+                      ) : (
+                        <span className="rounded border border-lab-amber/30 bg-lab-amber/10 px-1 py-px font-mono text-[8px] text-lab-amber">
+                          ручной
+                        </span>
+                      )}
                     </div>
                     {affects ? (
                       <p className="mt-0.5 line-clamp-1 text-[9px] text-lab-dim">{affects}</p>
@@ -133,6 +138,6 @@ export function PreparationEventsTimeline({
           })}
         </ul>
       )}
-    </div>
+    </LabGlassPanel>
   );
 }

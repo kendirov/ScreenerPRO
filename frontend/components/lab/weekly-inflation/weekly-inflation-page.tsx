@@ -2,33 +2,31 @@
 
 import * as React from "react";
 import { LabPageShell } from "@/components/lab/lab-page-shell";
-import { LabEmptyState } from "@/components/lab/lab-ui";
 import { PreparationCollapsibleSection } from "@/components/lab/preparation/preparation-collapsible-section";
 import { InflationAnnualizedChart } from "@/components/lab/weekly-inflation/inflation-annualized-chart";
+import { InflationBriefingBridge } from "@/components/lab/weekly-inflation/inflation-briefing-bridge";
 import { InflationCategoryContribution } from "@/components/lab/weekly-inflation/inflation-category-contribution";
 import { InflationDataSourcesGuide } from "@/components/lab/weekly-inflation/inflation-data-sources-guide";
 import { InflationHeatmap } from "@/components/lab/weekly-inflation/inflation-heatmap";
-import { formatInflationHeadlineSummary, InflationKpiStrip } from "@/components/lab/weekly-inflation/inflation-kpi-strip";
+import { InflationHeroPanel } from "@/components/lab/weekly-inflation/inflation-hero-panel";
+import { InflationKpiStrip } from "@/components/lab/weekly-inflation/inflation-kpi-strip";
 import { InflationManualImport } from "@/components/lab/weekly-inflation/inflation-manual-import";
 import { InflationMarketImpact } from "@/components/lab/weekly-inflation/inflation-market-impact";
 import { InflationOfficialPublication } from "@/components/lab/weekly-inflation/inflation-official-publication";
 import { InflationQuickWeekForm } from "@/components/lab/weekly-inflation/inflation-quick-week-form";
 import { InflationRecentWeeksTable } from "@/components/lab/weekly-inflation/inflation-recent-weeks-table";
 import { InflationSourceStatus } from "@/components/lab/weekly-inflation/inflation-source-status";
-import { InflationTrendChart } from "@/components/lab/weekly-inflation/inflation-trend-chart";
 import {
   buildWeeklyInflationDashboard,
   clearManualPointsStorage,
   downloadWeeklyInflationCsvTemplate,
   extractCategoryComparison,
-  formatPeriodLabel,
   hasManualPoints,
   loadOfficialPublicationFromStorage,
   mergeWeeklyInflationPoints,
   removeWeeklyInflationPoint,
   saveOfficialPublicationToStorage,
   sortWeeklyInflationPoints,
-  WEEKLY_INFLATION_SOURCE_LABELS,
   type WeeklyInflationOfficialPublication,
   type WeeklyInflationPoint,
 } from "@/lib/domain/weekly-inflation";
@@ -37,18 +35,19 @@ import {
   saveWeeklyInflationPoints,
 } from "@/lib/domain/weekly-inflation-storage";
 
-const PAGE_DESCRIPTION = "Недельная инфляция РФ для брифинга: цифра, тренд и сценарий для рынка.";
-
-const EMPTY_MESSAGE =
-  "данные не загружены. Загрузите CSV вручную или проверьте экспериментальный источник Росстат/ЕМИСС.";
+const PAGE_DESCRIPTION =
+  "Недельная инфляция РФ: темп, импульс, цель ЦБ 4% и рыночный режим";
 
 export function WeeklyInflationPage() {
   const [points, setPoints] = React.useState<WeeklyInflationPoint[]>([]);
   const [officialPublication, setOfficialPublication] = React.useState<WeeklyInflationOfficialPublication | null>(null);
   const [hydrated, setHydrated] = React.useState(false);
-  const [dataLoadOpen, setDataLoadOpen] = React.useState(false);
+  const [csvImportOpen, setCsvImportOpen] = React.useState(false);
+  const [weeksTableOpen, setWeeksTableOpen] = React.useState(false);
+  const [sourceStatusOpen, setSourceStatusOpen] = React.useState(false);
 
-  const dataLoadSectionRef = React.useRef<HTMLDivElement>(null);
+  const quickFormRef = React.useRef<HTMLFormElement>(null);
+  const sourcesSectionRef = React.useRef<HTMLDivElement>(null);
   const csvSectionRef = React.useRef<HTMLElement>(null);
 
   React.useEffect(() => {
@@ -64,49 +63,52 @@ export function WeeklyInflationPage() {
 
   const dashboard = React.useMemo(() => buildWeeklyInflationDashboard(points), [points]);
   const hasData = dashboard.points.some((p) => p.headlinePct != null);
+  const showManualBadge = hasManualPoints(points);
 
   React.useEffect(() => {
     if (!hydrated) return;
-    setDataLoadOpen(!hasData);
+    setWeeksTableOpen(hasData);
   }, [hydrated, hasData]);
-  const showManualBadge = hasManualPoints(points);
 
-  const primarySource = dashboard.latest?.source ?? "manual";
-  const updatedLabel = dashboard.latest
-    ? formatPeriodLabel(dashboard.latest) ?? dashboard.latest.periodEnd
-    : "—";
+  const sourceBadgeLabel = hasData
+    ? showManualBadge
+      ? "источник: ручной"
+      : "источник: загружен"
+    : "источник: не загружен";
 
   const pills = React.useMemo(() => {
     const items = [
-      { label: "DRAFT", tone: "meta" as const },
+      { label: "ЧЕРНОВИК", tone: "meta" as const },
       { label: "LAB", tone: "accent" as const },
-      { label: `источник: ${WEEKLY_INFLATION_SOURCE_LABELS[primarySource]}`, tone: "source" as const },
-      { label: `обновлено: ${updatedLabel}`, tone: "time" as const },
+      { label: sourceBadgeLabel, tone: "source" as const },
+      { label: "ЦБ 4%", tone: "time" as const },
     ];
-    if (showManualBadge) {
-      items.push({ label: "ручные данные", tone: "meta" as const });
-    }
     if (officialPublication?.verifiedManually) {
       items.push({ label: "проверено вручную", tone: "source" as const });
     }
     return items;
-  }, [primarySource, updatedLabel, showManualBadge, officialPublication?.verifiedManually]);
+  }, [sourceBadgeLabel, officialPublication?.verifiedManually]);
 
   const sorted = sortWeeklyInflationPoints(dashboard.points);
   const latest = sorted.at(-1) ?? null;
   const previous = sorted.length >= 2 ? sorted.at(-2)! : null;
   const categoryRows = extractCategoryComparison(latest, previous);
-  const headlineSummary = formatInflationHeadlineSummary(dashboard);
 
-  const scrollToDataLoad = React.useCallback((focus?: "official-url" | "csv") => {
-    setDataLoadOpen(true);
+  const scrollToQuickForm = React.useCallback(() => {
+    quickFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     window.setTimeout(() => {
-      dataLoadSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      if (focus === "official-url") {
-        document.getElementById("weekly-inflation-official-url")?.focus();
-      } else if (focus === "csv") {
-        csvSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
+      quickFormRef.current?.querySelector<HTMLInputElement>('input[type="date"]')?.focus();
+    }, 200);
+  }, []);
+
+  const scrollToSources = React.useCallback(() => {
+    sourcesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const scrollToCsvImport = React.useCallback(() => {
+    setCsvImportOpen(true);
+    window.setTimeout(() => {
+      csvSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
   }, []);
 
@@ -141,39 +143,46 @@ export function WeeklyInflationPage() {
       <div className="space-y-3">
         <InflationKpiStrip dashboard={dashboard} />
 
-        {hasData ? (
-          <div className="lab-glass-panel border-lab-violet/20 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-[0.12em] text-lab-dim">Вывод</p>
-            <p className="mt-1 text-sm leading-snug text-lab-text">{headlineSummary}</p>
-          </div>
-        ) : (
-          <LabEmptyState message={EMPTY_MESSAGE} className="min-h-[min(28vh,240px)]" />
-        )}
-
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.9fr)]">
-          <InflationDataSourcesGuide
-            onInsertOfficialUrl={() => scrollToDataLoad("official-url")}
-            onOpenCsvImport={() => scrollToDataLoad("csv")}
-            onDownloadTemplate={downloadWeeklyInflationCsvTemplate}
-          />
-          <InflationQuickWeekForm points={points} onPointsChange={handlePointsChange} />
-        </div>
-
-        <InflationRecentWeeksTable
-          points={points}
-          officialPublication={officialPublication}
-          onDeleteWeek={handleDeleteWeek}
+        <InflationHeroPanel
+          hasData={hasData}
+          dashboard={dashboard}
+          onAddWeek={scrollToQuickForm}
+          onImportCsv={scrollToCsvImport}
+          onShowSources={scrollToSources}
         />
 
+        <InflationQuickWeekForm
+          formRef={quickFormRef}
+          points={points}
+          onPointsChange={handlePointsChange}
+        />
+
+        <div ref={sourcesSectionRef}>
+          <InflationDataSourcesGuide
+            onInsertOfficialUrl={() => {
+              setCsvImportOpen(true);
+              window.setTimeout(() => {
+                document.getElementById("weekly-inflation-official-url")?.focus();
+              }, 120);
+            }}
+            onOpenCsvImport={scrollToCsvImport}
+            onDownloadTemplate={downloadWeeklyInflationCsvTemplate}
+          />
+        </div>
+
+        <InflationBriefingBridge hasData={hasData} />
+
         {hasData ? (
-          <>
-            <InflationTrendChart points={dashboard.points} metrics={dashboard.metrics} />
-            <InflationAnnualizedChart points={dashboard.points} />
-            <InflationHeatmap points={dashboard.points} />
+          <div className="space-y-3">
+            <div className="grid gap-3 xl:grid-cols-2">
+              <InflationAnnualizedChart points={dashboard.points} />
+              <InflationHeatmap points={dashboard.points} />
+            </div>
             <InflationCategoryContribution categories={categoryRows} />
-            <InflationMarketImpact dashboard={dashboard} />
-          </>
+          </div>
         ) : null}
+
+        <InflationMarketImpact dashboard={dashboard} />
 
         {showManualBadge ? (
           <div className="rounded-xl border border-lab-amber/25 bg-lab-amber/8 px-3 py-2 text-sm text-lab-amber">
@@ -181,36 +190,61 @@ export function WeeklyInflationPage() {
           </div>
         ) : null}
 
-        <InflationSourceStatus
-          dashboard={dashboard}
-          officialPublication={officialPublication}
-          onApplyFetchedPoints={handleApplyFetchedPoints}
-        />
+        <PreparationCollapsibleSection
+          title="Последние недели"
+          subtitle="Компактный список · до 10 строк"
+          accent="cyan"
+          defaultOpen={hasData}
+          open={weeksTableOpen}
+          onOpenChange={setWeeksTableOpen}
+          badge={points.length > 0 ? `${points.length} нед.` : undefined}
+        >
+          <InflationRecentWeeksTable
+            points={points}
+            officialPublication={officialPublication}
+            onDeleteWeek={handleDeleteWeek}
+            embedded
+          />
+        </PreparationCollapsibleSection>
 
-        <div ref={dataLoadSectionRef}>
-          <PreparationCollapsibleSection
-            title="Загрузка данных"
-            subtitle="CSV · официальная ссылка · localStorage"
-            accent="violet"
-            defaultOpen={!hasData}
-            open={dataLoadOpen}
-            onOpenChange={setDataLoadOpen}
-            badge={points.length > 0 ? `${points.length} нед.` : undefined}
-          >
-            <InflationOfficialPublication
-              publication={officialPublication}
-              onSave={handleSaveOfficialPublication}
-              urlInputId="weekly-inflation-official-url"
-            />
-            <InflationManualImport
-              points={points}
-              onPointsChange={handlePointsChange}
-              onClear={handleClear}
-              embedded
-              csvSectionRef={csvSectionRef}
-            />
-          </PreparationCollapsibleSection>
-        </div>
+        <PreparationCollapsibleSection
+          title="Расширенный импорт CSV"
+          subtitle="Полный ряд · drag/drop · official URL"
+          accent="violet"
+          defaultOpen={false}
+          open={csvImportOpen}
+          onOpenChange={setCsvImportOpen}
+          badge={points.length > 0 ? `${points.length} нед.` : undefined}
+        >
+          <InflationOfficialPublication
+            publication={officialPublication}
+            onSave={handleSaveOfficialPublication}
+            urlInputId="weekly-inflation-official-url"
+          />
+          <InflationManualImport
+            points={points}
+            onPointsChange={handlePointsChange}
+            onClear={handleClear}
+            embedded
+            csvSectionRef={csvSectionRef}
+          />
+        </PreparationCollapsibleSection>
+
+        <PreparationCollapsibleSection
+          title="Статус источников"
+          subtitle="Росстат / Fedstat · эксперимент"
+          accent="amber"
+          defaultOpen={false}
+          open={sourceStatusOpen}
+          onOpenChange={setSourceStatusOpen}
+        >
+          <InflationSourceStatus
+            dashboard={dashboard}
+            officialPublication={officialPublication}
+            onApplyFetchedPoints={handleApplyFetchedPoints}
+            embedded
+          />
+        </PreparationCollapsibleSection>
       </div>
     </LabPageShell>
   );

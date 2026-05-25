@@ -10,6 +10,7 @@ import {
   WEEKLY_INFLATION_SOURCE_LABELS,
   type WeeklyInflationDashboard,
 } from "@/lib/domain/weekly-inflation";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import { cn } from "@/lib/utils/cn";
 
 export function InflationKpiStrip({
@@ -24,7 +25,8 @@ export function InflationKpiStrip({
   const sourceLabel = latest ? WEEKLY_INFLATION_SOURCE_LABELS[latest.source] : "—";
 
   return (
-    <div className={cn("grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5", className)}>
+    <LabGlassPanel depth={10} className={cn("p-3", className)}>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       <KpiTile
         title="Последняя неделя"
         value={formatKpiValue(latest?.headlinePct ?? null)}
@@ -60,6 +62,7 @@ export function InflationKpiStrip({
         tone={resolveTargetTone(metrics.gapToTarget)}
       />
     </div>
+    </LabGlassPanel>
   );
 }
 
@@ -119,10 +122,10 @@ function KpiTile({
   }[tone];
 
   return (
-    <div className={cn("lab-glass-card relative overflow-hidden border px-3 py-2.5", border)}>
+    <div className={cn("relative overflow-hidden rounded-xl border bg-lab-surface-soft px-3 py-2.5", border)}>
       <div className={cn("absolute inset-x-0 top-0 h-px bg-gradient-to-r opacity-80", line)} aria-hidden />
       <p className="lab-type-caption text-[10px] uppercase tracking-[0.12em] text-lab-dim">{title}</p>
-      <p className={cn("mt-1 text-xl font-semibold tabular-nums tracking-tight", valueClass)}>{value}</p>
+      <p className={cn("lab-number mt-1 text-2xl font-semibold tracking-tight", valueClass)}>{value}</p>
       <p className="mt-1 text-[11px] leading-snug text-lab-muted">{caption}</p>
     </div>
   );

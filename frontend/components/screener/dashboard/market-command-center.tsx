@@ -13,9 +13,8 @@ import {
 } from "@/lib/domain/screener-overview";
 import { useSparklineHistories } from "@/lib/hooks/use-sparkline-histories";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
-import { cn } from "@/lib/utils/cn";
+import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 import { AnomalyRail } from "./anomaly-rail";
-import { auraPill, commandHeaderShell } from "./dashboard-styles";
 import { FutureFocusHeroCard } from "./future-focus-hero-card";
 import { LabsLaunchGrid } from "./labs-launch-grid";
 import { SessionPulseCard } from "./session-pulse-card";
@@ -37,8 +36,8 @@ function SectionHead({ title, href, hrefLabel }: { title: string; href?: string;
 
 function HeaderPill({ label, value }: { label: string; value: string }) {
   return (
-    <span className={auraPill}>
-      <span className="lab-type-caption">{label}</span>
+    <span className="lab-chip inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px]">
+      <span className="text-lab-dim">{label}</span>
       <span className="lab-number text-lab-text">{value}</span>
     </span>
   );
@@ -76,7 +75,7 @@ export function MarketCommandCenter() {
   const anomalyRows = React.useMemo(
     () =>
       selectAnomalyRail([...stocks, ...futures], {
-        limit: 5,
+        limit: 4,
         excludeTickers: [primaryStock?.ticker, heroFuture?.ticker].filter(Boolean) as string[],
       }),
     [stocks, futures, primaryStock, heroFuture],
@@ -110,7 +109,7 @@ export function MarketCommandCenter() {
 
   return (
     <div className="space-y-3">
-      <header className={cn(commandHeaderShell, "relative overflow-hidden px-4 py-3")}>
+      <LabGlassPanel depth={20} className="relative overflow-hidden px-4 py-3">
         <div className="lab-accent-line absolute inset-x-0 top-0 opacity-60" aria-hidden />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-[200px]">
@@ -130,12 +129,12 @@ export function MarketCommandCenter() {
             <HeaderPill label="В игре" value={String(inPlayStocks.length)} />
           </div>
         </div>
-      </header>
+      </LabGlassPanel>
 
       {isLoading ? (
-        <div className="lab-glass-panel border-dashed px-4 py-10 text-center">
+        <LabGlassPanel depth={10} className="border-dashed px-4 py-10 text-center">
           <p className="text-sm text-lab-muted">Загрузка данных MOEX…</p>
-        </div>
+        </LabGlassPanel>
       ) : (
         <>
           <section className="grid gap-2 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(188px,0.42fr)]">
@@ -148,7 +147,7 @@ export function MarketCommandCenter() {
               baseLabel={heroFuture ? (baseByTicker.get(heroFuture.ticker) ?? heroFuture.shortName ?? "—") : "—"}
               sparklineValues={heroFuture ? lookup.get(heroFuture.ticker) : null}
             />
-            <AnomalyRail rows={anomalyRows} className="min-h-[11.5rem] lg:max-h-[14rem]" />
+            <AnomalyRail rows={anomalyRows} className="min-h-[11.5rem] lg:min-h-[12rem]" />
           </section>
 
           <SessionPulseCard />
