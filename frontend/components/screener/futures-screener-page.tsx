@@ -4,6 +4,8 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FuturesFamilyTable } from "@/components/screener/futures-family-table";
 import { FuturesAllTable } from "@/components/screener/futures-all-table";
+import { ScreenerPageHeader } from "@/components/screener/screener-page-chrome";
+import { cn } from "@/lib/utils/cn";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 
 type FuturesViewMode = "groups" | "all";
@@ -34,27 +36,37 @@ export function FuturesScreenerPage() {
 
   return (
     <div className="space-y-2">
-      <div className="rounded-xl border border-white/5 bg-[linear-gradient(110deg,rgba(2,6,23,0.7),rgba(2,6,23,0.52)_45%,rgba(15,23,42,0.36)_100%)] px-3 py-2 shadow-[0_10px_24px_rgba(2,6,23,0.25)] backdrop-blur-md">
-        <div className="flex items-center justify-between">
-          <div className="inline-flex rounded-xl border border-white/10 bg-black/25 p-1">
-            <button
-              type="button"
-              onClick={() => setMode("all")}
-              className={`rounded-lg px-3 py-1.5 text-xs ${mode === "all" ? "bg-slate-700 text-white" : "text-slate-400"}`}
-            >
-              Все
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("groups")}
-              className={`rounded-lg px-3 py-1.5 text-xs ${mode === "groups" ? "bg-slate-700 text-white" : "text-slate-400"}`}
-            >
-              Группы
-            </button>
-          </div>
-          <span className="font-mono text-[11px] text-slate-400">Фьючерсы: {rows.length}</span>
+      <ScreenerPageHeader
+        title="Рынок · Фьючерсы"
+        right={<span className="lab-chip font-mono text-[11px]">Контрактов: {rows.length}</span>}
+      >
+        <div className="inline-flex rounded-lg border border-lab-border-soft bg-lab-surface-1 p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode("all")}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs transition",
+              mode === "all"
+                ? "lab-chip-active border-transparent bg-lab-cyan/12 text-lab-cyan shadow-none"
+                : "text-lab-text-muted hover:text-lab-text-main",
+            )}
+          >
+            Все
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("groups")}
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs transition",
+              mode === "groups"
+                ? "lab-chip-active border-transparent bg-lab-cyan/12 text-lab-cyan shadow-none"
+                : "text-lab-text-muted hover:text-lab-text-main",
+            )}
+          >
+            Группы
+          </button>
         </div>
-      </div>
+      </ScreenerPageHeader>
 
       {mode === "groups" ? <FuturesFamilyTable rows={rows} /> : <FuturesAllTable rows={rows} />}
     </div>

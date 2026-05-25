@@ -4,31 +4,30 @@ import Link from "next/link";
 import * as React from "react";
 import type { ScreenerRow } from "@screenerpro/shared";
 import {
-  buildBriefingCard,
   buildFuturesBaseMap,
   formatDataSourceLabel,
+  selectAnomalyRail,
   selectInPlayStocks,
   selectPrimaryInPlayStock,
-  selectStrongMovement,
   selectTopFutures,
 } from "@/lib/domain/screener-overview";
 import { useSparklineHistories } from "@/lib/hooks/use-sparkline-histories";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 import { cn } from "@/lib/utils/cn";
-import { BriefingCard } from "./briefing-card";
-import { auraPill, commandHeaderShell, sectionShell } from "./dashboard-styles";
+import { AnomalyRail } from "./anomaly-rail";
+import { auraPill, commandHeaderShell } from "./dashboard-styles";
 import { FutureFocusHeroCard } from "./future-focus-hero-card";
-import { MovementRail } from "./movement-rail";
-import { FuturesFocusMosaic, StockRadarMosaic } from "./signal-mosaic";
+import { LabsLaunchGrid } from "./labs-launch-grid";
+import { SessionPulseCard } from "./session-pulse-card";
+import { FuturesRadarMosaic, StockRadarMosaic } from "./signal-mosaic";
 import { SignalHeroCard } from "./signal-hero-card";
-import { SignalRail } from "./signal-rail";
 
 function SectionHead({ title, href, hrefLabel }: { title: string; href?: string; hrefLabel?: string }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-2 px-1">
-      <h2 className="text-sm font-semibold tracking-wide text-white/90">{title}</h2>
+    <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+      <h2 className="lab-type-section text-xs text-lab-text">{title}</h2>
       {href ? (
-        <Link href={href} className="text-[11px] text-white/40 transition hover:text-white/70">
+        <Link href={href} className="lab-type-caption text-[11px] transition hover:text-lab-cyan">
           {hrefLabel ?? "Подробнее →"}
         </Link>
       ) : null}
@@ -39,8 +38,8 @@ function SectionHead({ title, href, hrefLabel }: { title: string; href?: string;
 function HeaderPill({ label, value }: { label: string; value: string }) {
   return (
     <span className={auraPill}>
-      <span className="text-white/40">{label}</span>
-      <span className="font-mono tabular-nums text-white/80">{value}</span>
+      <span className="lab-type-caption">{label}</span>
+      <span className="lab-number text-lab-text">{value}</span>
     </span>
   );
 }
@@ -50,12 +49,14 @@ function collectSparklineTickers(input: {
   heroFuture: ScreenerRow | null;
   inPlay: ScreenerRow[];
   futures: ScreenerRow[];
+  anomalies: ScreenerRow[];
 }): string[] {
   const list: string[] = [];
   if (input.primary) list.push(input.primary.ticker);
   if (input.heroFuture) list.push(input.heroFuture.ticker);
   for (const row of input.inPlay) list.push(row.ticker);
   for (const row of input.futures) list.push(row.ticker);
+  for (const row of input.anomalies) list.push(row.ticker);
   return list;
 }
 
@@ -67,20 +68,30 @@ export function MarketCommandCenter() {
   const status = stocksQuery.data?.status ?? futuresQuery.data?.status;
 
   const primaryStock = React.useMemo(() => selectPrimaryInPlayStock(stocks), [stocks]);
-  const inPlayStocks = React.useMemo(() => selectInPlayStocks(stocks, 4), [stocks]);
-  const topFutures = React.useMemo(() => selectTopFutures(futures, 4), [futures]);
+  const inPlayStocks = React.useMemo(() => selectInPlayStocks(stocks, 7), [stocks]);
+  const topFutures = React.useMemo(() => selectTopFutures(futures, 5), [futures]);
   const heroFuture = topFutures[0] ?? null;
   const baseByTicker = React.useMemo(() => buildFuturesBaseMap(futures), [futures]);
-  const strongMovement = React.useMemo(() => selectStrongMovement([...stocks, ...futures], 10), [stocks, futures]);
 
-  const briefing = React.useMemo(
-    () => buildBriefingCard({ inPlayStocks, topFutures, baseByTicker }),
-    [inPlayStocks, topFutures, baseByTicker],
+  const anomalyRows = React.useMemo(
+    () =>
+      selectAnomalyRail([...stocks, ...futures], {
+        limit: 5,
+        excludeTickers: [primaryStock?.ticker, heroFuture?.ticker].filter(Boolean) as string[],
+      }),
+    [stocks, futures, primaryStock, heroFuture],
   );
 
   const sparklineTickers = React.useMemo(
-    () => collectSparklineTickers({ primary: primaryStock, heroFuture, inPlay: inPlayStocks, futures: topFutures }),
-    [primaryStock, heroFuture, inPlayStocks, topFutures],
+    () =>
+      collectSparklineTickers({
+        primary: primaryStock,
+        heroFuture,
+        inPlay: inPlayStocks,
+        futures: topFutures,
+        anomalies: anomalyRows,
+      }),
+    [primaryStock, heroFuture, inPlayStocks, topFutures, anomalyRows],
   );
   const { seriesByTicker } = useSparklineHistories(sparklineTickers);
   const lookup = React.useMemo(
@@ -95,86 +106,69 @@ export function MarketCommandCenter() {
     : "—";
   const sourceLabel = formatDataSourceLabel(status?.source);
 
-  const maxStockTurnover = React.useMemo(
-    () => stocks.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0),
-    [stocks],
-  );
-
-  const radarStocks = React.useMemo(() => {
-    if (!primaryStock) return inPlayStocks;
-    return inPlayStocks.filter((row) => row.ticker !== primaryStock.ticker);
-  }, [inPlayStocks, primaryStock]);
-
-  const signalRailRows = React.useMemo(() => {
-    const pool = primaryStock
-      ? inPlayStocks.filter((row) => row.ticker !== primaryStock.ticker)
-      : inPlayStocks;
-    return pool.slice(0, 5);
-  }, [inPlayStocks, primaryStock]);
-
-  const mosaicFutures = React.useMemo(() => {
-    if (!heroFuture) return topFutures;
-    return topFutures.filter((row) => row.ticker !== heroFuture.ticker).slice(0, 4);
-  }, [topFutures, heroFuture]);
+  const isLoading = stocksQuery.isLoading || futuresQuery.isLoading;
 
   return (
-    <div className="space-y-4">
-      <header className={cn(commandHeaderShell, "flex flex-wrap items-center justify-between gap-3 px-4 py-3")}>
-        <h1 className="text-base font-semibold tracking-wide text-white">Пульт рынка</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] text-white/45">
-            {sourceLabel}
-            <span className="mx-1.5 text-white/20">·</span>
-            <span className="font-mono tabular-nums text-white/55">{updatedAt}</span>
-          </span>
-          <HeaderPill label="Акции" value={String(stocks.length)} />
-          <HeaderPill label="Фьючерсы" value={String(futures.length)} />
-          <HeaderPill label="В игре" value={String(inPlayStocks.length)} />
+    <div className="space-y-3">
+      <header className={cn(commandHeaderShell, "relative overflow-hidden px-4 py-3")}>
+        <div className="lab-accent-line absolute inset-x-0 top-0 opacity-60" aria-hidden />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-[200px]">
+            <h1 className="lab-type-display text-lg">Пульт рынка</h1>
+            <p className="lab-type-caption mt-1 max-w-xl text-xs leading-relaxed">
+              Главный сигнал, фьючерс в фокусе и лента аномалий — live-радар MOEX.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="lab-status-chip lab-chip-moex">{sourceLabel}</span>
+            <span className="lab-chip">
+              <span className="text-lab-dim">обновлено </span>
+              <span className="lab-number text-lab-text">{updatedAt}</span>
+            </span>
+            <HeaderPill label="Акции" value={String(stocks.length)} />
+            <HeaderPill label="Фьючерсы" value={String(futures.length)} />
+            <HeaderPill label="В игре" value={String(inPlayStocks.length)} />
+          </div>
         </div>
       </header>
 
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(200px,0.5fr)]">
-        <SignalHeroCard
-          row={primaryStock}
-          sparklineValues={primaryStock ? lookup.get(primaryStock.ticker) : null}
-          maxTurnover={maxStockTurnover}
-        />
-        <FutureFocusHeroCard
-          row={heroFuture}
-          baseLabel={heroFuture ? (baseByTicker.get(heroFuture.ticker) ?? heroFuture.shortName ?? "—") : "—"}
-          sparklineValues={heroFuture ? lookup.get(heroFuture.ticker) : null}
-        />
-        <SignalRail rows={signalRailRows} className="lg:min-h-[9.5rem]" />
-      </section>
+      {isLoading ? (
+        <div className="lab-glass-panel border-dashed px-4 py-10 text-center">
+          <p className="text-sm text-lab-muted">Загрузка данных MOEX…</p>
+        </div>
+      ) : (
+        <>
+          <section className="grid gap-2 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(188px,0.42fr)]">
+            <SignalHeroCard
+              row={primaryStock}
+              sparklineValues={primaryStock ? lookup.get(primaryStock.ticker) : null}
+            />
+            <FutureFocusHeroCard
+              row={heroFuture}
+              baseLabel={heroFuture ? (baseByTicker.get(heroFuture.ticker) ?? heroFuture.shortName ?? "—") : "—"}
+              sparklineValues={heroFuture ? lookup.get(heroFuture.ticker) : null}
+            />
+            <AnomalyRail rows={anomalyRows} className="min-h-[11.5rem] lg:max-h-[14rem]" />
+          </section>
 
-      <section className={sectionShell}>
-        <SectionHead title="Радар акций" href="/screener/stocks" hrefLabel="Скринер акций →" />
-        {radarStocks.length > 0 ? (
-          <StockRadarMosaic rows={radarStocks} seriesByTicker={lookup} />
-        ) : primaryStock ? (
-          <p className="px-1 text-sm text-white/45">Один лидер — смотрите блок «Главный сигнал».</p>
-        ) : (
-          <StockRadarMosaic rows={[]} seriesByTicker={lookup} />
-        )}
-      </section>
+          <SessionPulseCard />
 
-      <section className={sectionShell}>
-        <SectionHead title="Фьючерсы в фокусе" href="/screener/futures" hrefLabel="Скринер фьючерсов →" />
-        {mosaicFutures.length > 0 ? (
-          <FuturesFocusMosaic rows={mosaicFutures} baseByTicker={baseByTicker} seriesByTicker={lookup} />
-        ) : heroFuture ? (
-          <p className="px-1 text-sm text-white/45">Топ контракт — в блоке «Фьючерс в фокусе».</p>
-        ) : (
-          <FuturesFocusMosaic rows={[]} baseByTicker={baseByTicker} seriesByTicker={lookup} />
-        )}
-      </section>
+          <section>
+            <SectionHead title="Радар акций" href="/screener/stocks" hrefLabel="Скринер акций →" />
+            <StockRadarMosaic rows={inPlayStocks} seriesByTicker={lookup} />
+          </section>
 
-      <section className={sectionShell}>
-        <SectionHead title="Лента движения" />
-        <MovementRail rows={strongMovement} />
-      </section>
+          <section>
+            <SectionHead title="Радар фьючерсов" href="/screener/futures" hrefLabel="Скринер фьючерсов →" />
+            <FuturesRadarMosaic rows={topFutures} baseByTicker={baseByTicker} seriesByTicker={lookup} />
+          </section>
 
-      <BriefingCard briefing={briefing} />
+          <section>
+            <SectionHead title="Черновики в работе" />
+            <LabsLaunchGrid />
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -59,6 +59,49 @@ export function selectStrongMovement(rows: ScreenerRow[], limit = 8): ScreenerRo
     .slice(0, limit);
 }
 
+function anomalyScore(row: ScreenerRow): number {
+  let score = Math.abs(row.metrics.dayRangePct ?? 0) * 2.5 + Math.abs(row.percentChange ?? 0) * 1.5;
+  if ((row.metrics.inPlayTags ?? []).includes("IN_PLAY")) score += 18;
+  if (Math.abs(row.percentChange ?? 0) >= 2.5) score += 12;
+  if ((row.metrics.turnoverPercentile ?? 0) >= 85) score += 6;
+  if ((row.metrics.tradesPercentile ?? 0) >= 85) score += 6;
+  return score;
+}
+
+/** Лента аномалий — топ по комбинированному скору движения и активности. */
+export function selectAnomalyRail(
+  rows: ScreenerRow[],
+  options?: { limit?: number; excludeTickers?: string[] },
+): ScreenerRow[] {
+  const limit = options?.limit ?? 7;
+  const exclude = new Set((options?.excludeTickers ?? []).map((t) => t.toUpperCase()));
+  return [...rows]
+    .filter((row) => !exclude.has(row.ticker.toUpperCase()))
+    .sort((a, b) => anomalyScore(b) - anomalyScore(a))
+    .slice(0, limit);
+}
+
+const ANOMALY_REASON_LABEL: Record<string, string> = {
+  оборот: "оборот",
+  сделки: "сделки",
+  диапазон: "движение",
+  импульс: "движение",
+};
+
+/** Причина для ленты аномалий. */
+export function formatAnomalyReason(row: ScreenerRow): string {
+  if (Math.abs(row.percentChange ?? 0) >= 2.5 || Math.abs(row.metrics.dayRangePct ?? 0) >= 4) {
+    return "аномалия";
+  }
+  const tags = parseInPlayReasonTags(row);
+  if (tags.length) return ANOMALY_REASON_LABEL[tags[0]!] ?? tags[0]!;
+  return row.metrics.reasonLabel?.split("+")[0]?.trim().toLowerCase() ?? "активность";
+}
+
+export function isRowAnomaly(row: ScreenerRow): boolean {
+  return Math.abs(row.percentChange ?? 0) >= 2.5 || Math.abs(row.metrics.dayRangePct ?? 0) >= 4;
+}
+
 export function buildFuturesBaseMap(rows: ScreenerRow[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const family of buildFuturesFamilies(rows)) {

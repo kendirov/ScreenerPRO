@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { MarketRadar } from "@/components/screener/market-radar";
+import { ScreenerPageHeader, ScreenerPanel } from "@/components/screener/screener-page-chrome";
 import { ScreenerTable } from "@/components/screener/screener-table";
 import { createStockColumns } from "@/components/screener/columns";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
@@ -50,35 +51,44 @@ export function StocksScreenerPage() {
 
   return (
     <div className="space-y-2">
-      <div className="rounded-xl border border-white/5 bg-[linear-gradient(110deg,rgba(2,6,23,0.7),rgba(2,6,23,0.52)_45%,rgba(15,23,42,0.36)_100%)] px-3 py-2 shadow-[0_10px_24px_rgba(2,6,23,0.25)] backdrop-blur-md">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-300">
-          <span className="font-semibold tracking-wide text-slate-100">Скринер MOEX: Акции</span>
-          <span className="rounded-md border border-slate-700/80 bg-slate-900/55 px-1.5 py-0.5 text-slate-300">Показано {stocks.length}</span>
-          <span className="ml-auto font-mono tabular-nums text-slate-400">Обновлено {status ? new Date(status.fetchTimestamp).toLocaleTimeString("ru-RU") : "—"}</span>
-        </div>
-      </div>
+      <ScreenerPageHeader
+        title="Рынок · Акции"
+        right={
+          <>
+            <span className="lab-chip">Показано {stocks.length}</span>
+            <span className="lab-chip">
+              <span className="text-lab-text-dim">обновлено </span>
+              <span className="lab-number text-lab-text-main">
+                {status ? new Date(status.fetchTimestamp).toLocaleTimeString("ru-RU") : "—"}
+              </span>
+            </span>
+          </>
+        }
+      />
 
-      <div className="sticky top-[4.05rem] z-30 mb-2 space-y-2 border-b border-white/5 bg-slate-950/80 pb-1.5 backdrop-blur-md">
+      <div className="sticky top-[4.05rem] z-30 mb-2 space-y-2 border-b border-lab-border bg-lab-bg-deep/90 pb-1.5 backdrop-blur-md">
         <MarketRadar rows={stocks} allRows={stockUniverse} imoexRangePct={imoexRangePct} />
       </div>
 
-      <div className="mb-2.5 rounded-xl border border-white/5 bg-slate-950/45 p-2 shadow-[0_8px_18px_rgba(2,6,23,0.18)] backdrop-blur-md">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <label className="inline-flex items-center gap-2 rounded-xl border border-white/5 bg-black/30 px-2.5 py-1.5 text-xs text-slate-200">
+      <ScreenerPanel className="mb-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="lab-chip inline-flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs text-lab-text-main">
               <input
                 type="checkbox"
                 checked={hideIlliquid}
                 onChange={(event) => setHideIlliquid(event.target.checked)}
-                className="h-3.5 w-3.5 rounded border-white/20 bg-slate-950 text-emerald-400 accent-emerald-500"
+                className="h-3.5 w-3.5 rounded border-lab-border-soft bg-lab-surface-1 accent-lab-green"
               />
               <span className="font-medium">Скрыть неликвиды</span>
             </label>
-            <span className="text-[11px] text-slate-500">&lt; 2% от лидера + слабая лента ({illiquidHint})</span>
+            <span className="lab-type-caption text-[11px]">
+              &lt; 2% от лидера + слабая лента ({illiquidHint})
+            </span>
           </div>
-          <span className="rounded-full border border-white/10 bg-black/35 px-2.5 py-1 font-mono text-[11px] tabular-nums text-slate-300">Показано: {stocks.length}</span>
+          <span className="lab-chip font-mono text-[11px] tabular-nums">Показано: {stocks.length}</span>
         </div>
-      </div>
+      </ScreenerPanel>
 
       <ScreenerTable
         rows={stocks}

@@ -15,8 +15,8 @@ export function SectionHeader({
   return (
     <div className="mb-4 flex items-end justify-between gap-4">
       <div>
-        <h2 className="text-xl font-semibold tracking-tight text-slate-100">{title}</h2>
-        {subtitle ? <p className="mt-1 text-sm text-slate-400">{subtitle}</p> : null}
+        <h2 className="lab-type-display text-xl">{title}</h2>
+        {subtitle ? <p className="lab-type-caption mt-1 text-sm">{subtitle}</p> : null}
       </div>
       {right}
     </div>
@@ -24,16 +24,16 @@ export function SectionHeader({
 }
 
 export function DataBadge({ label }: { label: string }) {
-  return <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs text-cyan-200">{label}</span>;
+  return <span className="lab-status-chip lab-chip-moex">{label}</span>;
 }
 
 export function StatusPill({ status }: { status: "open" | "halted" | "auction" | "closed" | "unknown" }) {
   const statusClass = {
-    open: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-    halted: "bg-red-500/15 text-red-300 border-red-500/30",
-    auction: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-    closed: "bg-slate-600/30 text-slate-300 border-slate-600/60",
-    unknown: "bg-slate-700/30 text-slate-400 border-slate-700/60",
+    open: "lab-status-chip lab-chip-live",
+    halted: "lab-status-chip border-lab-red/40 bg-lab-red/10 text-lab-red",
+    auction: "lab-status-chip lab-chip-soon",
+    closed: "lab-status-chip lab-chip-dev",
+    unknown: "lab-status-chip text-lab-dim",
   }[status];
   const statusLabel = {
     open: "Открыт",
@@ -42,7 +42,7 @@ export function StatusPill({ status }: { status: "open" | "halted" | "auction" |
     closed: "Закрыт",
     unknown: "Неизвестно",
   }[status];
-  return <span className={cn("rounded-full border px-2 py-0.5 text-xs", statusClass)}>{statusLabel}</span>;
+  return <span className={cn("lab-status-chip", statusClass)}>{statusLabel}</span>;
 }
 
 export function MetricCard({
@@ -56,32 +56,32 @@ export function MetricCard({
 }) {
   const isPositive = change?.startsWith("+");
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-xl font-semibold text-slate-100">{value}</p>
-      {change ? <p className={cn("mt-1 text-xs", isPositive ? "text-emerald-300" : "text-rose-300")}>{change}</p> : null}
+    <article className="lab-card p-4">
+      <p className="lab-type-caption uppercase tracking-wide">{label}</p>
+      <p className="lab-number mt-2 text-xl font-semibold">{value}</p>
+      {change ? <p className={cn("lab-number mt-1 text-xs", isPositive ? "text-lab-green" : "text-lab-red")}>{change}</p> : null}
     </article>
   );
 }
 
 export function EmptyState({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-700 p-8 text-center">
-      <p className="font-medium text-slate-200">{title}</p>
-      <p className="mt-2 text-sm text-slate-400">{text}</p>
+    <div className="lab-panel rounded-xl border-dashed p-8 text-center">
+      <p className="font-medium text-lab-text-main">{title}</p>
+      <p className="lab-type-caption mt-2 text-sm">{text}</p>
     </div>
   );
 }
 
 export function LoadingSkeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-lg bg-slate-800/80", className)} />;
+  return <div className={cn("animate-pulse rounded-lg bg-lab-surface-3/80", className)} />;
 }
 
 export function TooltipTerm({ term, definition }: { term: string; definition: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button className="border-b border-dotted border-slate-500 text-slate-300">{term}</button>
+        <button className="border-b border-dotted border-lab-text-dim text-lab-text-muted">{term}</button>
       </TooltipTrigger>
       <TooltipContent>{definition}</TooltipContent>
     </Tooltip>
@@ -89,22 +89,22 @@ export function TooltipTerm({ term, definition }: { term: string; definition: st
 }
 
 export function PremiumLockCard({
-  title = "Premium analytics",
-  text = "Unlock deeper factor metrics and strategy-grade signals.",
+  title = "Премиум-аналитика",
+  text = "Расширенные метрики и сигналы для продвинутой работы.",
 }: {
   title?: string;
   text?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6">
-      <div className="mb-3 inline-flex rounded-lg bg-violet-500/15 p-2 text-violet-300">
+    <div className="lab-glass-card p-6">
+      <div className="mb-3 inline-flex rounded-lg bg-lab-violet/15 p-2 text-lab-violet">
         <Lock className="h-4 w-4" />
       </div>
-      <h3 className="text-base font-semibold text-slate-100">{title}</h3>
-      <p className="mt-2 text-sm text-slate-400">{text}</p>
+      <h3 className="text-base font-semibold text-lab-text">{title}</h3>
+      <p className="lab-type-caption mt-2 text-sm">{text}</p>
       <Button className="mt-4" variant="outline">
         <Sparkles className="mr-2 h-4 w-4" />
-        Upgrade
+        Подключить
       </Button>
     </div>
   );

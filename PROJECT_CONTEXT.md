@@ -56,22 +56,26 @@
 
 | Маршрут | Файл | Назначение |
 |---------|------|------------|
-| `/screener` | `app/(app)/screener/page.tsx` → `ScreenerHomePage` | Обзор: топ in-play, фьючерсы, волатильность |
+| `/screener` | `app/(app)/screener/page.tsx` → `MarketCommandCenter` | **Пульт рынка** — cockpit: главный сигнал, фьючерс в фокусе, лента аномалий, пульс сессии (placeholder), радары, запуск лабораторий |
 | `/screener/stocks` | `app/(app)/screener/stocks/page.tsx` | Скринер акций |
 | `/screener/futures` | `app/(app)/screener/futures/page.tsx` | Скринер фьючерсов |
 | `/stocks/[ticker]` | `app/(app)/stocks/[ticker]/page.tsx` | Карточка акции |
 | `/futures/[ticker]` | `app/(app)/futures/[ticker]/page.tsx` | Карточка фьючерса |
 | `/academy` | `app/(app)/academy/page.tsx` | Каталог академии (mock) |
 | `/academy/[slug]` | `app/(app)/academy/[slug]/page.tsx` | Статья (mock `academyEntries`) |
-| `/materials` | `app/(app)/materials/page.tsx` | Лендинг материалов |
+| `/materials` | `app/(app)/materials/page.tsx` | **Витрина материалов** — секции «Лаборатории», «Справочники», «Для уроков»; каталог `showcase-catalog.ts`, карточки с мотивами (`materials-showcase-*`) |
 | `/materials/screener` | `app/(app)/materials/screener/page.tsx` | Документация логики скринера |
 | `/materials/technical-characteristics` | `app/(app)/materials/technical-characteristics/page.tsx` | Тех. характеристики |
 | `/materials/stocks` | `app/(app)/materials/stocks/page.tsx` | Карта акций |
 | `/materials/futures` | `app/(app)/materials/futures/page.tsx` | Карта фьючерсов |
 | `/sandbox` | `app/(app)/sandbox/page.tsx` | Диагностика скринера |
-| `/lab/market-map` | `app/(app)/lab/market-map/page.tsx` | **Черновики (LAB):** экспериментальная карта акций MOEX; shell `LabPageShell`, режимы Пузырьки / Координаты / Сигналы; данные из `/api/screener?assetClass=stock` |
-| `/lab/currency-correlation` | `app/(app)/lab/currency-correlation/page.tsx` | **Черновики (LAB):** **Валютная связка** — Si / CNY / ED; MOEX ISS: `…/intraday`, `…/history`, `…/weeks` (календарные недели, якорь week-open); графики: Ноги, Расхождение, Z-score, **Недели**, дневные режимы; lifecycle возврат/невозврат + недельный контекст |
-| `/lab/orderflow-simulator` | `app/(app)/lab/orderflow-simulator/page.tsx` | **Черновики (LAB):** **Привод-симулятор** — учебный терминал: график + узкий DOM (объём слева, цена справа) + круги сделок у стакана + footprint; виды **Привод / Стакан крупно (дефолт) / Учебный / Мультиокно**; **симуляция, не MOEX** — `docs/ORDERFLOW_SIMULATOR.md` |
+| `/lab/market-map` | `app/(app)/lab/market-map/page.tsx` | **Лаборатории:** карта акций MOEX; shell `LabPageShell`, режимы Пузырьки / Координаты / Сигналы; данные из `/api/screener?assetClass=stock` |
+| `/lab/currency-correlation` | `app/(app)/lab/currency-correlation/page.tsx` | **Лаборатории:** **Валютная связка** — Si / CNY / ED; MOEX ISS: `…/intraday`, `…/history`, `…/weeks` (календарные недели, якорь week-open); графики: Ноги, Расхождение, Z-score, **Недели**, дневные режимы; lifecycle возврат/невозврат + недельный контекст |
+| `/lab/orderflow-simulator` | `app/(app)/lab/orderflow-simulator/page.tsx` | **Лаборатории:** **Привод-симулятор** — учебный терминал: график + узкий DOM (объём слева, цена справа) + круги сделок у стакана + footprint; виды **Привод / Стакан крупно (дефолт) / Учебный / Мультиокно**; **симуляция, не MOEX** — `docs/ORDERFLOW_SIMULATOR.md` |
+| `/lab/si-usdrub-lab` | `app/(app)/lab/si-usdrub-lab/page.tsx` | **Placeholder «скоро»** — SI-лаборатория (`LabComingSoonPage`) |
+| `/lab/session-liquidity-map` | `app/(app)/lab/session-liquidity-map/page.tsx` | **Placeholder «скоро»** — Пульс сессии (`LabComingSoonPage`) |
+| `/lab/preparation` | `app/(app)/lab/preparation/page.tsx` | **Лаборатории:** **Подготовка** — компактный пульт брифинга; фокус · события Smart-Lab (эксп.) · MOEX ISS + свечи 5д; драйверы (учебная модель); порядок эфира; карточка **Инфляционная лаборатория**; `docs/PREPARATION_DRAFT.md` |
+| `/lab/weekly-inflation` | `app/(app)/lab/weekly-inflation/page.tsx` | **Лаборатории:** **Инфляционная лаборатория** — первый рабочий черновик: 5 KPI, вывод на первом экране, графики (при данных), «Что это значит для рынка», «Источник данных», ручной импорт (свёрнут); v1 — только ручной CSV/JSON в localStorage; `docs/WEEKLY_INFLATION_LAB.md` |
 | `/app/watchlist` | `app/(app)/app/watchlist/page.tsx` | Watchlist (скрыт в nav) |
 | `/app/settings` | `app/(app)/app/settings/page.tsx` | Настройки (скрыт в nav) |
 
@@ -88,11 +92,19 @@
 | `/api/dev/diagnostics` | GET | `moex-screener.getScreenerDiagnostics` |
 | `/api/lab/currency-correlation/history?tickers=&days=&interval=` | GET | `moex-futures-history` — дневные бары валютных фьючерсов для LAB-графика |
 | `/api/lab/currency-correlation/intraday?interval=&days=` | GET | `currency-correlation-intraday` — интрадей-свечи FORTS (fallback интервала 5→10→60→24) |
+| `/api/lab/preparation/candles?secids=&days=` | GET | `preparation-candles` — 5 торговых дней MOEX ISS для watchlist |
+| `/api/lab/preparation/smartlab-calendar?mode=&type=` | GET | `smartlab-calendar` — экспериментальный импорт календаря Smart-Lab (кэш ~45 мин) |
 | `/api/lab/currency-correlation/weeks?pair=&interval=&weeks=&anchor=` | GET | `currency-correlation-weeks` — недельные ряды спреда (текущая + прошлые недели, max 8) |
 
-Скрытые пункты sidebar (config `visibility: "hidden"`): `/pro`, `/news`, `/events`, `/app/watchlist`, `/app/settings` — см. `lib/constants/navigation.ts`.
+Скрытые пункты sidebar (`hiddenNavConfig`, `visibility: "hidden"`): `/pro`, `/news`, `/events`, `/app/watchlist`, `/app/settings` — см. `lib/constants/navigation.ts`.
 
-**Зона `/lab` (Черновики):** префикс маршрутов для экспериментов — отдельный тихий блок внизу `AppSidebar` (заголовок «Черновики», бейдж `LAB`, `labNavConfig` в `navigation.ts`). Общий UI: `lab-page-shell.tsx` + `lab-ui.tsx` (единые pills источника, loading/error/empty, лимит **60** инструментов на карте). Не влияет на основной `sidebarNav`. `/lab/market-map`: `useScreenerQuery("stock")` → MOEX ISS; **Пузырьки** — `GravityMarketMap` (d3-force); **Координаты** — `AxisMarketMap` (зоны, лидеры); **Сигналы** — placeholder. `/lab/currency-correlation` (**Валютная связка**): порядок UI — контракты → управление → карта расхождений → график (~74vh) → состояние пары → журнал → «Как читать»; якорь спреда (`currency-spread-anchor`, дефолт week-open); домен: `spread-lifecycle`, `spread-lifecycle-weekly`, `spread-trajectory`, `currency-correlation-weeks-compare`, `currency-correlation-divergence-map`. `/lab/orderflow-simulator` (**Привод-симулятор**, полировка DOM 2026-05): дефолт **Стакан крупно** (`domfocus`); **Привод** — график + `DomTapeStack` (круги слева от стакана, без пустой средней колонки) + footprint; шкала баров 20K, строки 16px, лоты 300–25K в формате `20K`; виды `educational | terminal | domfocus | multiwindow`; 7 учебных сценариев стакана; `docs/ORDERFLOW_SIMULATOR.md`. Данные **синтетические**, не MOEX.
+**Sidebar (2026-05):** основное меню в `sidebarMainNavGroups` — **Пульт**, **Рынок**, **Обучение**. Экспериментальные `/lab/*` — блок **`sidebarDraftsNav` («Черновики»)** закреплён внизу sidebar (вне scroll основного меню), amber/violet shelf, бейджи **ЛАБ / ЧЕРН. / СКОРО / В РАБ.** Promotion workflow — см. `navigation.ts`.
+
+**Витрина `/materials` (2026-05):** три секции в `showcase-catalog.ts` — **Готовые материалы** (ГОТОВО), **В разработке** (lab-черновики + баннер «Черновик. Страница может меняться.»), **Идеи на очереди** (ИДЕЯ, без href). Статусы: ГОТОВО, ЧЕРНОВИК, В РАЗРАБОТКЕ, ИДЕЯ, СКОРО.
+
+**Визуальная тема «Лаборатория рынка» (2026-05):** premium neon glass в `app/globals.css` — tokens, `.lab-glass-panel`, `.lab-glass-card`, `.lab-status-chip`, glow. Shell: gradient + grid + noise. Единый glass chrome: `screener-page-chrome.tsx`, `materials-page-shell.tsx`, `lab-page-shell.tsx`. Контраст muted/dim усилен; hover/glow смягчены.
+
+**Зона `/lab` (черновики / эксперименты):** маршруты сохранены; в sidebar — блок «Черновики». Общий UI: `lab-page-shell.tsx` + `lab-ui.tsx` + `lab-coming-soon-page.tsx`. `/lab/market-map`, `/lab/currency-correlation`, `/lab/orderflow-simulator`, `/lab/preparation`, `/lab/weekly-inflation` — рабочие черновики. **Placeholder:** `/lab/si-usdrub-lab`, `/lab/session-liquidity-map`.
 
 ---
 
@@ -102,10 +114,10 @@
 
 | Компонент | Файл | Роль |
 |-----------|------|------|
-| `AppSidebar` | `components/shell/app-sidebar.tsx` | Навигация, expand/collapse, `localStorage` ключ `screenerpro.sidebar.pinned` |
+| `AppSidebar` | `components/shell/app-sidebar.tsx` | Основное меню (`sidebarMainNavGroups`) + блок «Черновики» (`sidebarDraftsNav`); expand/collapse, `localStorage` ключ `screenerpro.sidebar.pinned` |
 | `TopBar` | `components/shell/top-bar.tsx` | Верхняя панель приложения |
 
-### Черновики (LAB)
+### Лаборатории
 
 | Компонент | Файл | Роль |
 |-----------|------|------|
@@ -138,6 +150,22 @@
 | `AnnotationsPanel` | `components/lab/orderflow-simulator/annotations-panel.tsx` | Ручные аннотации (стрелки, подсветки) |
 | `ScenarioJournalPanel` | `components/lab/orderflow-simulator/scenario-journal-panel.tsx` | Журнал «Ход сценария» |
 | `TeachingOverlay` | `components/lab/orderflow-simulator/teaching-overlay.tsx` | SVG-аннотации на графике (уровни, стрелки, зоны) |
+| `PreparationPage` | `components/lab/preparation/preparation-page.tsx` | `/lab/preparation` — фокус брифинга, консоль «Что важно», accordion-секции |
+| `PreparationBriefingFocus` | `components/lab/preparation/preparation-briefing-focus.tsx` | Автофокус 5–8 пунктов (scoring без AI) |
+| `PreparationConsole` | `components/lab/preparation/preparation-console.tsx` | События · драйверы · что открыть · порядок эфира |
+| `PreparationCollapsibleSection` | `components/lab/preparation/preparation-collapsible-section.tsx` | Сворачиваемые блоки страницы подготовки |
+| `PreparationInstrumentsPanel` | `components/lab/preparation/preparation-instruments-panel.tsx` | Watchlist + 5д свечи MOEX ISS |
+| `PreparationInstrumentCard` | `components/lab/preparation/preparation-instrument-card.tsx` | Карточка инструмента с метриками и «Добавить в эфир» |
+| `EventRadar` | `components/lab/preparation/event-radar.tsx` | Подробный календарь (Smart-Lab + ручные) |
+| `DriverBoard` | `components/lab/preparation/driver-board.tsx` | Драйверы по колонкам (учебная модель) |
+| `ManualEventImport` | `components/lab/preparation/manual-event-import.tsx` | Ручной ввод событий и paste-заметки |
+| `PreparationSourcePanel` | `components/lab/preparation/preparation-source-panel.tsx` | Реестр источников (MOEX, БКС, Финам, …) |
+| `BriefingOutlinePanel` | `components/lab/preparation/briefing-outline-panel.tsx` | Порядок брифинга из выбранных элементов |
+| `BriefingScriptPanel` | `components/lab/preparation/briefing-script-panel.tsx` | Черновик эфира и шаблон Telegram |
+| `WeeklyInflationPage` | `components/lab/weekly-inflation/weekly-inflation-page.tsx` | `/lab/weekly-inflation` — 5 KPI, вывод, графики при данных, рынок, источники, импорт свёрнут |
+| `InflationKpiStrip` | `components/lab/weekly-inflation/inflation-kpi-strip.tsx` | 5 KPI + краткий вывод |
+| `InflationManualImport` | `components/lab/weekly-inflation/inflation-manual-import.tsx` | Ручной CSV/JSON → localStorage |
+| `PreparationInflationLabCard` | `components/lab/preparation/preparation-inflation-lab-card.tsx` | Карточка на `/lab/preparation` — ссылка на инфляцию, режим или «данные не загружены» |
 
 ### Скринер (пульт `/screener`)
 
@@ -168,6 +196,9 @@
 | Компонент | Файл | Роль |
 |-----------|------|------|
 | `MaterialsPageShell` | `components/materials/materials-page-shell.tsx` | Общая обёртка (title, freshness, source badge) |
+| `MaterialsShowcasePage` | `components/materials/materials-showcase-page.tsx` | Витрина `/materials`: лаборатории, справочники, уроки |
+| `MaterialsShowcaseCard` | `components/materials/materials-showcase-card.tsx` | Карточка модуля с типом, статусом, мотивом |
+| `showcase-catalog` | `lib/materials/showcase-catalog.ts` | Каталог секций и пунктов витрины |
 | `TechnicalCharacteristicsClient` | `technical-characteristics-client.tsx` | UI фильтров + инспектор |
 | `TechnicalCharacteristicsTable` | `technical-characteristics-table.tsx` | Таблица, пресеты колонок, сортировка |
 | `StocksMaterialsClient` | `stocks-materials-client.tsx` | 4 режима карты акций |

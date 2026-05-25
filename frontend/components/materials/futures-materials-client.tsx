@@ -33,7 +33,7 @@ export function FuturesMaterialsClient() {
   const selectedChain = chains.find((chain) => chain.id === selectedUnderlying) ?? chains[0] ?? null;
   const status = technicalQuery.data?.status ?? futuresQuery.data?.status ?? null;
   const freshnessText = status ? `Обновлено ${new Date(status.fetchTimestamp).toLocaleTimeString("ru-RU")}` : "Ожидание данных";
-  const sourceLabel = status?.source === "moex" ? "MOEX ISS online" : "Fallback / временно недоступно";
+  const sourceLabel = status?.source === "moex" ? "MOEX ISS" : "Резервные данные";
   const sourceTone = status?.source === "moex" ? "ok" : "warn";
 
   return (

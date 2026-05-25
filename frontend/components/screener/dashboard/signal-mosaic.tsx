@@ -1,19 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import type { ScreenerRow } from "@screenerpro/shared";
-import { InstrumentCardVisual } from "@/components/screener/instrument-card-visual";
-import { formatReasonTagsForCard, formatTurnoverCompact } from "@/lib/domain/screener-overview";
+import { MarketFocusCard } from "@/components/screener/market-focus-card";
+import { formatAnomalyReason, formatTurnoverCompact } from "@/lib/domain/screener-overview";
+import {
+  screenerRowToFutureCard,
+  screenerRowToStockCard,
+  stockReasonTags,
+} from "@/lib/domain/market-card-visual";
 import { tradingFormat } from "@/lib/formatters/trading";
 import { cn } from "@/lib/utils/cn";
-import {
-  activeGlow,
-  auraGlass,
-  futureMosaicCellClass,
-  mosaicCellClass,
-  percentClass,
-  performanceAura,
-} from "./dashboard-styles";
 
 interface SparklineLookup {
   get: (ticker: string) => number[] | null | undefined;
@@ -24,160 +20,164 @@ interface StockRadarMosaicProps {
   seriesByTicker: SparklineLookup;
 }
 
+const STOCK_GRID: Record<"hero" | "medium" | "compact", string> = {
+  hero: "col-span-12 min-h-[9rem] lg:col-span-7 lg:row-span-2 lg:min-h-[11rem]",
+  medium: "col-span-6 min-h-[6.75rem] lg:col-span-5 lg:min-h-[5rem]",
+  compact: "min-w-[10rem]",
+};
+
 export function StockRadarMosaic({ rows, seriesByTicker }: StockRadarMosaicProps) {
   if (!rows.length) {
     return (
-      <p className="rounded-3xl bg-white/[0.02] px-4 py-10 text-center text-sm text-white/40 ring-1 ring-white/[0.05] backdrop-blur-3xl">
-        Явных лидеров нет
-      </p>
+      <MarketFocusCard
+        size="medium"
+        type="stock"
+        ticker="—"
+        changePct={null}
+        empty
+        emptyTitle="Явных лидеров нет"
+        emptyDescription="Радар обновится, когда появятся акции «в игре»"
+        className="border-dashed"
+      />
     );
   }
 
+  const hero = rows[0]!;
+  const medium = rows.slice(1, 3);
+  const compact = rows.slice(3, 5);
+
   return (
-    <div className="grid auto-rows-fr grid-cols-12 gap-2 md:gap-3">
-      {rows.map((row, index) => {
-        const tags = formatReasonTagsForCard(row);
-        const reason = tags[0] ?? row.metrics.reasonLabel ?? "активность";
-        const isLeader = index === 0;
-
-        return (
-          <Link
-            key={row.ticker}
-            href={`/stocks/${row.ticker}`}
-            className={cn(
-              auraGlass,
-              activeGlow("stock"),
-              performanceAura(row.percentChange),
-              "group relative block p-4",
-              mosaicCellClass(index, rows.length),
-            )}
-          >
-            <InstrumentCardVisual
-              row={row}
-              sparklineValues={seriesByTicker.get(row.ticker) ?? null}
-              variant="backdrop"
-              captionClassName="right-2 top-2"
-            />
-
-            <div className="relative z-10">
-              <span className="font-mono text-[10px] tabular-nums text-emerald-300/55">#{index + 1}</span>
-
-              <div
-                className={cn(
-                  "mt-1 flex items-baseline justify-between gap-2",
-                  isLeader ? "flex-col items-start sm:flex-row sm:items-end" : "",
-                )}
-              >
-                <span
-                  className={cn(
-                    "font-semibold tracking-tight text-white",
-                    isLeader ? "text-2xl sm:text-3xl" : "text-lg",
-                  )}
-                >
-                  {row.ticker}
-                </span>
-                <span
-                  className={cn(
-                    "font-mono font-medium tabular-nums",
-                    isLeader ? "text-lg sm:text-xl" : "text-sm",
-                    percentClass(row.percentChange),
-                  )}
-                >
-                  {tradingFormat.formatSignedPercent(row.percentChange)}
-                </span>
-              </div>
-
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-white/45">
-                <span>
-                  оборот{" "}
-                  <span className="font-mono text-white/75">{formatTurnoverCompact(row.turnover)}</span>
-                </span>
-                <span>
-                  сделки{" "}
-                  <span className="font-mono text-white/75">
-                    {tradingFormat.formatInteger(row.tradesCount ?? null)}
-                  </span>
-                </span>
-              </div>
-
-              <p className="mt-2 text-[10px] uppercase tracking-wide text-cyan-200/50">{reason}</p>
-            </div>
-          </Link>
-        );
-      })}
+    <div className="space-y-2">
+      <div className="grid grid-cols-12 gap-2">
+        <StockTile row={hero} rank={1} size="hero" seriesByTicker={seriesByTicker} />
+        {medium.map((row, i) => (
+          <StockTile key={row.ticker} row={row} rank={i + 2} size="medium" seriesByTicker={seriesByTicker} />
+        ))}
+      </div>
+      {compact.length > 0 ? (
+        <div className="-mx-0.5 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+          {compact.map((row, i) => (
+            <StockTile key={row.ticker} row={row} rank={i + 4} size="compact" seriesByTicker={seriesByTicker} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-interface FuturesFocusMosaicProps {
+function StockTile({
+  row,
+  rank,
+  size,
+  seriesByTicker,
+}: {
+  row: ScreenerRow;
+  rank: number;
+  size: "hero" | "medium" | "compact";
+  seriesByTicker: SparklineLookup;
+}) {
+  const base = screenerRowToStockCard(row, size);
+  return (
+    <MarketFocusCard
+      {...base}
+      rank={rank}
+      sparklineValues={seriesByTicker.get(row.ticker) ?? null}
+      turnover={formatTurnoverCompact(row.turnover)}
+      trades={tradingFormat.formatInteger(row.tradesCount ?? null)}
+      reasonTags={size === "compact" ? [formatAnomalyReason(row)] : stockReasonTags(row)}
+      className={cn(STOCK_GRID[size])}
+    />
+  );
+}
+
+interface FuturesRadarMosaicProps {
   rows: ScreenerRow[];
   baseByTicker: Map<string, string>;
   seriesByTicker: SparklineLookup;
 }
 
-export function FuturesFocusMosaic({ rows, baseByTicker, seriesByTicker }: FuturesFocusMosaicProps) {
+const FUTURE_GRID: Record<"hero" | "medium" | "compact", string> = {
+  hero: "col-span-12 min-h-[8.5rem] lg:col-span-7 lg:row-span-2 lg:min-h-[10rem]",
+  medium: "col-span-6 min-h-[6rem] lg:col-span-5 lg:min-h-[5rem]",
+  compact: "min-w-[10rem]",
+};
+
+export function FuturesRadarMosaic({ rows, baseByTicker, seriesByTicker }: FuturesRadarMosaicProps) {
   if (!rows.length) {
     return (
-      <p className="rounded-3xl bg-white/[0.02] px-4 py-8 text-center text-sm text-white/40 ring-1 ring-white/[0.05] backdrop-blur-3xl">
-        Нет данных по фьючерсам
-      </p>
+      <MarketFocusCard
+        size="medium"
+        type="future"
+        ticker="—"
+        changePct={null}
+        empty
+        emptyTitle="Нет данных по фьючерсам"
+        className="border-dashed"
+      />
     );
   }
 
+  const hero = rows[0]!;
+  const medium = rows.slice(1, 3);
+  const compact = rows.slice(3, 5);
+
   return (
-    <div className="grid auto-rows-fr grid-cols-12 gap-2 md:gap-3">
-      {rows.map((row, index) => {
-        const base = baseByTicker.get(row.ticker) ?? "—";
-        const oi = row.openInterest;
-        const isLeader = index === 0;
-
-        return (
-          <Link
+    <div className="space-y-2">
+      <div className="grid grid-cols-12 gap-2">
+        <FutureTile row={hero} rank={1} size="hero" baseByTicker={baseByTicker} seriesByTicker={seriesByTicker} />
+        {medium.map((row, i) => (
+          <FutureTile
             key={row.ticker}
-            href={`/futures/${row.ticker}`}
-            className={cn(
-              auraGlass,
-              activeGlow("future"),
-              performanceAura(row.percentChange),
-              "group relative block p-3.5",
-              futureMosaicCellClass(index, rows.length),
-            )}
-          >
-            <InstrumentCardVisual
+            row={row}
+            rank={i + 2}
+            size="medium"
+            baseByTicker={baseByTicker}
+            seriesByTicker={seriesByTicker}
+          />
+        ))}
+      </div>
+      {compact.length > 0 ? (
+        <div className="-mx-0.5 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
+          {compact.map((row, i) => (
+            <FutureTile
+              key={row.ticker}
               row={row}
-              sparklineValues={seriesByTicker.get(row.ticker) ?? null}
-              variant="backdrop"
-              captionClassName="right-2 top-2"
+              rank={i + 4}
+              size="compact"
+              baseByTicker={baseByTicker}
+              seriesByTicker={seriesByTicker}
             />
-
-            <div className="relative z-10">
-              <span className="font-mono text-[10px] text-indigo-300/55">#{index + 1}</span>
-              <p className={cn("mt-1 font-semibold tracking-tight text-white", isLeader ? "text-xl" : "text-base")}>
-                {row.ticker}
-              </p>
-              <p className="truncate text-[10px] text-white/40">{base}</p>
-              <p
-                className={cn(
-                  "mt-1 font-mono font-medium tabular-nums",
-                  isLeader ? "text-base" : "text-sm",
-                  percentClass(row.percentChange),
-                )}
-              >
-                {tradingFormat.formatSignedPercent(row.percentChange)}
-              </p>
-              <div className="mt-1.5 flex flex-wrap gap-x-3 text-[10px] text-white/45">
-                <span className="font-mono text-white/70">{formatTurnoverCompact(row.turnover)}</span>
-                <span className="font-mono text-white/70">
-                  {tradingFormat.formatInteger(row.tradesCount ?? null)} сд.
-                </span>
-              </div>
-              {oi != null && oi > 0 ? (
-                <p className="mt-1 font-mono text-[9px] text-white/35">ОИ {tradingFormat.formatInteger(oi)}</p>
-              ) : null}
-            </div>
-          </Link>
-        );
-      })}
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
+
+function FutureTile({
+  row,
+  rank,
+  size,
+  baseByTicker,
+  seriesByTicker,
+}: {
+  row: ScreenerRow;
+  rank: number;
+  size: "hero" | "medium" | "compact";
+  baseByTicker: Map<string, string>;
+  seriesByTicker: SparklineLookup;
+}) {
+  const baseLabel = baseByTicker.get(row.ticker) ?? row.shortName ?? "—";
+  const props = screenerRowToFutureCard(row, size, baseLabel);
+  return (
+    <MarketFocusCard
+      {...props}
+      rank={rank}
+      sparklineValues={seriesByTicker.get(row.ticker) ?? null}
+      className={cn(FUTURE_GRID[size])}
+    />
+  );
+}
+
+/** @deprecated — используйте FuturesRadarMosaic */
+export const FuturesFocusMosaic = FuturesRadarMosaic;

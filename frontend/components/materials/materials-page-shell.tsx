@@ -19,22 +19,23 @@ export function MaterialsPageShell({
 }) {
   return (
     <div className="space-y-3">
-      <header className="rounded-lg border border-slate-800/90 bg-slate-900/45 px-4 py-3">
-        <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+      <header className="lab-glass-panel relative overflow-hidden px-4 py-3">
+        <div className="lab-accent-line absolute inset-x-0 top-0 opacity-50" aria-hidden />
+        <div className="relative flex flex-wrap items-start gap-x-4 gap-y-2">
           <div className="min-w-[260px] flex-1">
-            <h1 className="text-xl font-semibold tracking-tight text-slate-100">{title}</h1>
-            <p className="mt-1 text-sm text-slate-400">{description}</p>
+            <h1 className="lab-type-display text-xl">{title}</h1>
+            <p className="lab-type-caption mt-1 text-sm">{description}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <span
               className={cn(
-                "rounded-md border px-2 py-1",
-                sourceTone === "ok" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-amber-500/30 bg-amber-500/10 text-amber-300",
+                "lab-status-chip",
+                sourceTone === "ok" ? "lab-chip-moex" : "lab-chip-soon",
               )}
             >
               {sourceLabel}
             </span>
-            <span className="rounded-md border border-slate-700/80 bg-slate-900/70 px-2 py-1 text-slate-400">{freshness}</span>
+            <span className="lab-chip text-lab-muted">{freshness}</span>
           </div>
         </div>
       </header>

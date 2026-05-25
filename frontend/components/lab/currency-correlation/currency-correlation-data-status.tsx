@@ -100,8 +100,8 @@ export function CurrencyCorrelationDataStatus({
         </li>
         <li className="text-amber-200/80">{diag.edSummary}</li>
         {diag.instruments.ED ? (
-          <li className="text-slate-500">
-            ED debug: {diag.instruments.ED.pointCount} точек · первая {diag.instruments.ED.firstPrice ?? "—"}{" "}
+          <li className="text-lab-dim">
+            ED: {diag.instruments.ED.pointCount} точек · первая {diag.instruments.ED.firstPrice ?? "—"}{" "}
             · последняя {diag.instruments.ED.lastPrice ?? "—"} ·{" "}
             {diag.instruments.ED.lastTimestamp ?? "—"} · {diag.instruments.ED.statusMessage}
           </li>
@@ -110,14 +110,14 @@ export function CurrencyCorrelationDataStatus({
         {intradayModel?.focusAlignmentStats ? (
           <>
             <li>
-              Пара {intradayModel.focusPair}: SI {intradayModel.focusAlignmentStats.leftPointCount}{" "}
+              Совпадений {intradayModel.focusPair}: SI {intradayModel.focusAlignmentStats.leftPointCount}{" "}
               св. · {intradayModel.focusAlignmentStats.rightInstrument}{" "}
               {intradayModel.focusAlignmentStats.rightPointCount} св.
             </li>
             <li>
-              Aligned: {intradayModel.focusAlignmentStats.alignedCount} · forward-fill:{" "}
-              {intradayModel.focusAlignmentStats.forwardFilledCount} · отброшено stale:{" "}
-              {intradayModel.focusAlignmentStats.staleDroppedCount} · max stale:{" "}
+              Совпало точек: {intradayModel.focusAlignmentStats.alignedCount} · заполнение вперёд:{" "}
+              {intradayModel.focusAlignmentStats.forwardFilledCount} · отброшено устар.:{" "}
+              {intradayModel.focusAlignmentStats.staleDroppedCount} · макс. устар.:{" "}
               {intradayModel.focusAlignmentStats.maxStaleMinutes} мин
             </li>
           </>

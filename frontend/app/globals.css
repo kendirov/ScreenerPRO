@@ -1,29 +1,480 @@
 @import "tailwindcss";
 
+/* ── Лаборатория рынка — premium neon glass tokens ── */
 :root {
-  --background: #020617;
-  --foreground: #e2e8f0;
+  /* Фоны */
+  --lab-bg: #030712;
+  --lab-bg-deep: #01030a;
+  --lab-surface: rgba(10, 16, 32, 0.78);
+  --lab-surface-glass: rgba(15, 23, 42, 0.58);
+  --lab-surface-hot: rgba(34, 13, 58, 0.55);
+
+  /* Границы */
+  --lab-border: rgba(148, 163, 184, 0.16);
+  --lab-border-hot: rgba(34, 211, 238, 0.32);
+  --lab-border-violet: rgba(139, 92, 246, 0.45);
+  --lab-border-amber: rgba(245, 158, 11, 0.48);
+
+  /* Текст */
+  --lab-text: #f4f7ff;
+  --lab-muted: #a3afc9;
+  --lab-dim: #6b7894;
+
+  /* Акценты */
+  --lab-cyan: #22d3ee;
+  --lab-blue: #3b82f6;
+  --lab-violet: #8b5cf6;
+  --lab-green: #22c55e;
+  --lab-red: #fb7185;
+  --lab-amber: #f59e0b;
+  --lab-lime: #a3e635;
+
+  /* Glow */
+  --lab-glow-cyan: 0 0 18px rgba(34, 211, 238, 0.28), 0 0 36px rgba(34, 211, 238, 0.1);
+  --lab-glow-violet: 0 0 18px rgba(139, 92, 246, 0.3), 0 0 36px rgba(139, 92, 246, 0.1);
+  --lab-glow-amber: 0 0 18px rgba(245, 158, 11, 0.28), 0 0 36px rgba(245, 158, 11, 0.1);
+  --lab-glow-green: 0 0 18px rgba(34, 197, 94, 0.28), 0 0 36px rgba(34, 197, 94, 0.1);
+  --lab-glow-red: 0 0 18px rgba(251, 113, 133, 0.28), 0 0 36px rgba(251, 113, 133, 0.1);
+
+  /* Алиасы совместимости (legacy Tailwind-классы) */
+  --lab-text-main: var(--lab-text);
+  --lab-text-muted: var(--lab-muted);
+  --lab-text-dim: var(--lab-dim);
+  --lab-border-soft: var(--lab-border);
+  --lab-border-strong: var(--lab-border-hot);
+  --lab-surface-1: rgba(10, 16, 32, 0.92);
+  --lab-surface-2: rgba(15, 23, 42, 0.86);
+  --lab-surface-3: rgba(22, 32, 56, 0.9);
+
+  --background: var(--lab-bg);
+  --foreground: var(--lab-text);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-lab-bg: var(--lab-bg);
+  --color-lab-bg-deep: var(--lab-bg-deep);
+  --color-lab-surface: var(--lab-surface);
+  --color-lab-surface-glass: var(--lab-surface-glass);
+  --color-lab-surface-hot: var(--lab-surface-hot);
+  --color-lab-surface-1: var(--lab-surface-1);
+  --color-lab-surface-2: var(--lab-surface-2);
+  --color-lab-surface-3: var(--lab-surface-3);
+  --color-lab-cyan: var(--lab-cyan);
+  --color-lab-blue: var(--lab-blue);
+  --color-lab-violet: var(--lab-violet);
+  --color-lab-green: var(--lab-green);
+  --color-lab-red: var(--lab-red);
+  --color-lab-amber: var(--lab-amber);
+  --color-lab-lime: var(--lab-lime);
+  --color-lab-text: var(--lab-text);
+  --color-lab-muted: var(--lab-muted);
+  --color-lab-dim: var(--lab-dim);
+  --color-lab-text-main: var(--lab-text);
+  --color-lab-text-muted: var(--lab-muted);
+  --color-lab-text-dim: var(--lab-dim);
+  --color-lab-border: var(--lab-border);
+  --color-lab-border-hot: var(--lab-border-hot);
+  --color-lab-border-violet: var(--lab-border-violet);
+  --color-lab-border-amber: var(--lab-border-amber);
+  --color-lab-border-soft: var(--lab-border);
+  --color-lab-border-strong: var(--lab-border-hot);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--lab-bg);
+  color: var(--lab-text);
   font-family: var(--font-geist-sans), sans-serif;
 }
 
 * {
-  border-color: rgb(30 41 59);
+  border-color: var(--lab-border);
 }
 
 ::selection {
-  background: rgb(34 211 238 / 0.2);
+  background: rgba(34, 211, 238, 0.22);
+  color: var(--lab-text);
+}
+
+/* ── Типографика ── */
+.lab-type-display {
+  font-size: clamp(1.375rem, 2.2vw, 1.875rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--lab-text);
+}
+
+.lab-type-section {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--lab-text);
+}
+
+.lab-type-caption {
+  font-size: 0.7125rem;
+  line-height: 1.45;
+  letter-spacing: 0.02em;
+  color: var(--lab-muted);
+}
+
+.lab-number {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--lab-text);
+  text-shadow: 0 0 1px rgba(244, 247, 255, 0.08);
+}
+
+.lab-ticker {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lab-text);
+}
+
+/* ── Shell & backgrounds ── */
+.lab-shell {
+  background: var(--lab-bg);
+  color: var(--lab-text);
+}
+
+.lab-gradient-bg {
+  background-color: var(--lab-bg-deep);
+  background-image:
+    radial-gradient(1100px 620px at 12% -8%, rgba(59, 130, 246, 0.16), transparent 58%),
+    radial-gradient(880px 520px at 92% 4%, rgba(139, 92, 246, 0.12), transparent 55%),
+    radial-gradient(640px 380px at 50% 105%, rgba(34, 211, 238, 0.06), transparent 52%),
+    linear-gradient(180deg, var(--lab-bg) 0%, var(--lab-bg-deep) 100%);
+}
+
+.lab-grid-bg {
+  background-color: var(--lab-bg);
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.035) 1px, transparent 1px),
+    radial-gradient(1200px 600px at 18% -10%, rgba(59, 130, 246, 0.14), transparent 62%),
+    radial-gradient(900px 520px at 100% 0%, rgba(139, 92, 246, 0.1), transparent 58%),
+    radial-gradient(700px 400px at 50% 100%, rgba(34, 211, 238, 0.05), transparent 55%);
+  background-size: 48px 48px, 48px 48px, auto, auto, auto;
+}
+
+.lab-noise-overlay,
+.lab-noise-bg {
+  position: relative;
+  isolation: isolate;
+}
+
+.lab-noise-overlay::before,
+.lab-noise-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.032;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+
+.lab-noise-overlay > *,
+.lab-noise-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Glass surfaces ── */
+.lab-glass-panel {
+  background: var(--lab-surface-glass);
+  border: 1px solid var(--lab-border);
+  border-radius: 0.75rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 44px rgba(1, 3, 10, 0.55);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+.lab-glass-card {
+  background: var(--lab-surface-glass);
+  border: 1px solid var(--lab-border);
+  border-radius: 0.875rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 32px rgba(1, 3, 10, 0.45);
+  backdrop-filter: blur(18px) saturate(130%);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.lab-glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(34, 211, 238, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 14px 40px rgba(1, 3, 10, 0.52),
+    0 0 18px rgba(34, 211, 238, 0.05);
+}
+
+.lab-neon-border {
+  border: 1px solid var(--lab-border-hot);
+  box-shadow:
+    inset 0 0 0 1px rgba(34, 211, 238, 0.08),
+    0 0 0 1px rgba(34, 211, 238, 0.12);
+}
+
+.lab-neon-card {
+  background: linear-gradient(155deg, var(--lab-surface-hot) 0%, var(--lab-surface-glass) 100%);
+  border: 1px solid var(--lab-border-violet);
+  border-radius: 0.875rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    var(--lab-glow-violet),
+    0 14px 40px rgba(1, 3, 10, 0.5);
+  backdrop-filter: blur(20px) saturate(145%);
+  -webkit-backdrop-filter: blur(20px) saturate(145%);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.lab-neon-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--lab-border-hot);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    var(--lab-glow-cyan),
+    0 18px 48px rgba(1, 3, 10, 0.58);
+}
+
+.lab-accent-line,
+.lab-glow-line {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.55) 22%,
+    rgba(139, 92, 246, 0.42) 50%,
+    rgba(245, 158, 11, 0.35) 78%,
+    transparent 100%
+  );
+  opacity: 0.75;
+}
+
+/* Legacy aliases — glass upgrade */
+.lab-panel {
+  background: var(--lab-surface-glass);
+  border: 1px solid var(--lab-border);
+  border-radius: 0.75rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 40px rgba(1, 3, 10, 0.48);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+.lab-panel-strong {
+  background: linear-gradient(155deg, rgba(15, 23, 42, 0.72) 0%, var(--lab-surface) 100%);
+  border: 1px solid var(--lab-border-hot);
+  border-radius: 0.875rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 16px 48px rgba(1, 3, 10, 0.52),
+    0 0 0 1px rgba(34, 211, 238, 0.06);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+.lab-card {
+  background: var(--lab-surface-glass);
+  border: 1px solid var(--lab-border);
+  border-radius: 0.875rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 28px rgba(1, 3, 10, 0.42);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    background-color 0.22s ease;
+}
+
+.lab-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--lab-border-hot);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 12px 36px rgba(1, 3, 10, 0.55),
+    0 0 22px rgba(34, 211, 238, 0.07);
+}
+
+.lab-card-hot {
+  background: linear-gradient(145deg, var(--lab-surface-hot), var(--lab-surface-glass));
+  border: 1px solid var(--lab-border-hot);
+  border-radius: 0.875rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    var(--lab-glow-cyan),
+    0 12px 36px rgba(1, 3, 10, 0.5);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.lab-card-hot:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    var(--lab-glow-cyan),
+    0 16px 44px rgba(1, 3, 10, 0.58);
+}
+
+/* ── Chips & badges ── */
+.lab-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--lab-border);
+  border-radius: 9999px;
+  background: rgba(8, 13, 28, 0.68);
+  padding: 0.2rem 0.625rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: var(--lab-muted);
+  backdrop-filter: blur(8px);
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.lab-chip:hover {
+  border-color: var(--lab-border-hot);
+  color: var(--lab-text);
+}
+
+.lab-chip-active {
+  border-color: var(--lab-border-hot);
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--lab-cyan);
+  box-shadow: var(--lab-glow-cyan);
+}
+
+.lab-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--lab-border);
+  border-radius: 9999px;
+  background: rgba(10, 16, 32, 0.72);
+  padding: 0.2rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--lab-muted);
+  backdrop-filter: blur(8px);
+}
+
+.lab-draft-chip {
+  border-color: var(--lab-border-amber);
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--lab-amber);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.08);
+}
+
+.lab-chip-lab {
+  border-color: var(--lab-border-violet);
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--lab-violet);
+}
+
+.lab-chip-draft {
+  border-color: var(--lab-border-amber);
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--lab-amber);
+}
+
+.lab-chip-soon {
+  border-color: var(--lab-border-amber);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--lab-amber);
+}
+
+.lab-chip-dev {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.65);
+  color: var(--lab-muted);
+}
+
+.lab-chip-live {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--lab-green);
+  box-shadow: var(--lab-glow-green);
+}
+
+.lab-chip-moex {
+  border-color: var(--lab-border-hot);
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--lab-cyan);
+}
+
+/* ── Buttons (utility) ── */
+.lab-btn-primary {
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.92) 0%, rgba(59, 130, 246, 0.82) 100%);
+  color: var(--lab-bg-deep);
+  box-shadow: var(--lab-glow-cyan);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.lab-btn-primary:hover {
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.42), var(--lab-glow-violet);
+  transform: translateY(-1px);
+}
+
+.lab-btn-secondary {
+  border: 1px solid var(--lab-border);
+  background: var(--lab-surface-glass);
+  color: var(--lab-text);
+  backdrop-filter: blur(12px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.lab-btn-secondary:hover {
+  border-color: var(--lab-border-hot);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.lab-btn-warning {
+  border: 1px solid var(--lab-border-amber);
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--lab-amber);
+}
+
+.lab-btn-warning:hover {
+  box-shadow: var(--lab-glow-amber);
+}
+
+.lab-btn-active {
+  border: 1px solid var(--lab-border-hot);
+  background: rgba(34, 211, 238, 0.16);
+  color: var(--lab-cyan);
+  box-shadow: var(--lab-glow-cyan);
 }
 
 @keyframes gravity-bubble-pulse {

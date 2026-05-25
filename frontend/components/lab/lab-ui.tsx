@@ -11,7 +11,7 @@ export const LAB_EMPTY_DATA_MESSAGE =
   "Нет данных для отображения. Проверьте подключение к MOEX ISS или повторите позже.";
 
 const stateShell =
-  "rounded-xl border border-dashed border-white/[0.08] bg-slate-950/45 px-6 py-10 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-sm";
+  "lab-panel rounded-xl border-dashed px-6 py-10 text-center";
 
 export function formatLabFreshness(status?: {
   sourceTimestamp?: string | null;
@@ -53,7 +53,7 @@ export function LabSectionHeading({ children, className }: { children: ReactNode
   return (
     <h2
       className={cn(
-        "mb-2 px-1 text-xs font-medium uppercase tracking-[0.12em] text-slate-600",
+        "mb-2 px-1 text-xs font-medium uppercase tracking-[0.12em] text-lab-text-dim",
         className,
       )}
     >
@@ -65,7 +65,7 @@ export function LabSectionHeading({ children, className }: { children: ReactNode
 export function LabLoadingState({ message = "Загрузка данных…" }: { message?: string }) {
   return (
     <div className={cn(stateShell, "min-h-[min(40vh,360px)] flex items-center justify-center")}>
-      <p className="text-sm text-slate-500">{message}</p>
+      <p className="lab-type-caption text-sm">{message}</p>
     </div>
   );
 }
@@ -75,10 +75,10 @@ export function LabErrorState({ message }: { message: string }) {
     <div
       className={cn(
         stateShell,
-        "min-h-[min(40vh,360px)] flex items-center justify-center border-rose-500/20 bg-rose-950/20",
+        "min-h-[min(40vh,360px)] flex items-center justify-center border-lab-red/25 bg-lab-red/5",
       )}
     >
-      <p className="max-w-md text-sm text-rose-300/90">{message}</p>
+      <p className="max-w-md text-sm text-lab-red">{message}</p>
     </div>
   );
 }
@@ -98,8 +98,8 @@ export function LabEmptyState({
         className,
       )}
     >
-      <p className="max-w-md text-sm leading-relaxed text-slate-500">{message}</p>
-      <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-violet-400/45">нет данных</p>
+      <p className="max-w-md text-sm leading-relaxed text-lab-text-muted">{message}</p>
+      <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.16em] text-lab-violet/70">нет данных</p>
     </div>
   );
 }

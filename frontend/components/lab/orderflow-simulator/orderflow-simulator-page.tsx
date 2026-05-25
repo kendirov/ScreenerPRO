@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { LabPageShell } from "@/components/lab/lab-page-shell";
 import { MultiWindowWorkspace } from "@/components/lab/orderflow-simulator/multi-window-workspace";
 import { AnnotationsPanel } from "@/components/lab/orderflow-simulator/annotations-panel";
@@ -36,6 +37,7 @@ import {
 import {
   UI_MODE_LABELS,
   VIEW_MODE_LABELS,
+  VIEW_MODE_ORDER,
   type SimulatorUiMode,
   type SimulatorViewMode,
   type TeachingAnnotation,
@@ -51,6 +53,14 @@ export function OrderflowSimulatorPage() {
     createInitialMultiMarket,
   );
   const [viewMode, setViewMode] = React.useState<SimulatorViewMode>("domfocus");
+  const searchParams = useSearchParams();
+
+  React.useEffect(() => {
+    const raw = searchParams.get("view");
+    if (raw && (VIEW_MODE_ORDER as string[]).includes(raw)) {
+      setViewMode(raw as SimulatorViewMode);
+    }
+  }, [searchParams]);
   const [multiSelectedSymbol, setMultiSelectedSymbol] = React.useState<string | null>(null);
   const [uiMode, setUiMode] = React.useState<SimulatorUiMode>("workspace");
   const [manualAnnotations, setManualAnnotations] = React.useState<TeachingAnnotation[]>([]);

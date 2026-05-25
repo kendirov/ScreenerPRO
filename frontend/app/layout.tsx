@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Super Screener",
-  description: "Premium MOEX screener and analytics platform foundation.",
+  title: "Лаборатория рынка — ScreenerPRO",
+  description: "Интерактивная лаборатория рынка MOEX: скринер, материалы и эксперименты ScreenerPRO.",
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
       lang="ru"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-slate-950 text-slate-200">
+      <body className="lab-shell min-h-full bg-lab-bg text-lab-text-main antialiased">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

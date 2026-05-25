@@ -6,21 +6,21 @@ import { cn } from "@/lib/utils/cn";
 export type SparklineTone = "positive" | "negative" | "neutral";
 
 const TONE_STROKE: Record<SparklineTone, string> = {
-  positive: "stroke-emerald-400/90",
-  negative: "stroke-rose-400/90",
-  neutral: "stroke-slate-400/80",
+  positive: "stroke-lab-green",
+  negative: "stroke-lab-red",
+  neutral: "stroke-lab-blue/65",
 };
 
 const TONE_STROKE_BACKDROP: Record<SparklineTone, string> = {
-  positive: "stroke-emerald-400/70",
-  negative: "stroke-rose-400/70",
-  neutral: "stroke-slate-400/50",
+  positive: "stroke-lab-green/75",
+  negative: "stroke-lab-red/75",
+  neutral: "stroke-lab-blue/45",
 };
 
 const TONE_STROKE_AURA: Record<SparklineTone, string> = {
-  positive: "stroke-emerald-400/35",
-  negative: "stroke-rose-400/35",
-  neutral: "stroke-slate-400/28",
+  positive: "stroke-lab-green/35",
+  negative: "stroke-lab-red/35",
+  neutral: "stroke-lab-blue/28",
 };
 
 export function inferTone(values: number[]): SparklineTone {
@@ -150,7 +150,7 @@ function SparkSvg({ path, tone, variant, width, height, className, decorative }:
         preserveAspectRatio="none"
         className={cn(
           "pointer-events-none absolute inset-0 -z-10 h-full w-full",
-          decorative ? "opacity-[0.14]" : "opacity-20",
+          decorative ? "opacity-[0.12]" : "opacity-[0.28]",
           className,
         )}
         aria-hidden
@@ -159,7 +159,7 @@ function SparkSvg({ path, tone, variant, width, height, className, decorative }:
           d={path}
           fill="none"
           className={strokeClass}
-          strokeWidth="1.5"
+          strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
           vectorEffect="non-scaling-stroke"
@@ -271,10 +271,23 @@ export function hasRealSparklineHistory(values: number[] | null | undefined): bo
   return values.filter((v) => Number.isFinite(v)).length >= 2;
 }
 
-export function HistoryCaption({ hasHistory, className }: { hasHistory: boolean; className?: string }) {
+export function HistoryCaption({
+  hasHistory,
+  className,
+  debug = false,
+}: {
+  hasHistory: boolean;
+  className?: string;
+  /** Показывать «история недоступна» только в debug/tooltip-режиме */
+  debug?: boolean;
+}) {
+  if (!hasHistory && !debug) return null;
   return (
-    <span className={cn("font-mono text-[9px] uppercase tracking-[0.12em] text-white/35", className)}>
-      {hasHistory ? "5д" : "история: нет"}
+    <span
+      className={cn("font-mono text-[9px] uppercase tracking-[0.12em] text-lab-text-dim", className)}
+      title={!hasHistory ? "История недоступна" : "5 дней"}
+    >
+      {hasHistory ? "5д" : "история недоступна"}
     </span>
   );
 }
@@ -306,17 +319,5 @@ export function MiniSparkline({
       <RealSparkline values={values} tone={tone} width={width} height={height} className={className} variant={variant} />
     );
   }
-  return (
-    <SignalAura
-      metrics={{
-        changePct: referenceChange,
-        seed: placeholderSeed,
-      }}
-      tone={tone ?? inferToneFromChange(referenceChange)}
-      width={width}
-      height={height}
-      className={className}
-      variant={variant}
-    />
-  );
+  return null;
 }

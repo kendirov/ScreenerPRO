@@ -20,10 +20,10 @@ export type LabPageShellProps = {
 };
 
 const pillToneClass: Record<NonNullable<LabStatusPill["tone"]>, string> = {
-  source: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  time: "border-slate-700/80 bg-slate-900/70 text-slate-400",
-  meta: "border-slate-800/80 text-slate-500",
-  accent: "border-violet-500/25 bg-violet-950/35 text-violet-200/90",
+  source: "lab-status-chip lab-chip-live",
+  time: "lab-status-chip text-lab-muted",
+  meta: "lab-status-chip lab-chip-dev",
+  accent: "lab-status-chip lab-chip-lab",
 };
 
 export function LabPageShell({
@@ -40,27 +40,26 @@ export function LabPageShell({
       <header
         className={cn(
           compact
-            ? "border-b border-white/[0.05] bg-[#020308] px-2 py-1"
-            : "rounded-xl border border-white/[0.06] bg-slate-900/45 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_40px_rgba(2,6,23,0.35)] backdrop-blur-xl",
+            ? "border-b border-lab-border bg-lab-bg-deep px-2 py-1"
+            : "lab-glass-panel relative overflow-hidden px-4 py-3",
         )}
       >
-        <div className={cn("flex flex-wrap items-center", compact ? "gap-x-2 gap-y-1" : "items-start gap-x-4 gap-y-3")}>
+        {!compact ? <div className="lab-accent-line absolute inset-x-0 top-0 opacity-45" aria-hidden /> : null}
+        <div className={cn("relative flex flex-wrap items-center", compact ? "gap-x-2 gap-y-1" : "items-start gap-x-4 gap-y-3")}>
           <div className={cn(compact ? "flex min-w-0 flex-1 items-center gap-2" : "min-w-[240px] flex-1")}>
             <div className="flex flex-wrap items-center gap-2">
               <h1
                 className={cn(
-                  "font-semibold tracking-tight text-slate-100",
+                  "font-semibold tracking-tight text-lab-text",
                   compact ? "text-sm" : "text-xl",
                 )}
               >
                 {title}
               </h1>
-              <span className="rounded border border-violet-500/20 bg-violet-950/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-violet-300/80">
-                LAB
-              </span>
+              <span className="lab-status-chip lab-chip-lab px-1.5 py-0.5 text-[9px]">Лаб</span>
             </div>
             {!compact && description ? (
-              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">{description}</p>
+              <p className="lab-type-caption mt-1 max-w-2xl text-sm leading-relaxed">{description}</p>
             ) : null}
           </div>
 
@@ -70,8 +69,8 @@ export function LabPageShell({
                 <span
                   key={pill.label}
                   className={cn(
-                    "rounded border",
-                    compact ? "px-1.5 py-0.5" : "rounded-md px-2 py-1",
+                    "lab-chip",
+                    compact ? "px-1.5 py-0.5" : "px-2 py-1",
                     pillToneClass[pill.tone ?? "meta"],
                   )}
                 >
@@ -83,7 +82,7 @@ export function LabPageShell({
         </div>
 
         {modeControl ? (
-          <div className={cn(compact ? "mt-1 border-t border-white/[0.04] pt-1" : "mt-3 border-t border-white/[0.04] pt-3")}>
+          <div className={cn(compact ? "mt-1 border-t border-lab-border pt-1" : "mt-3 border-t border-lab-border pt-3")}>
             {modeControl}
           </div>
         ) : null}
@@ -106,13 +105,13 @@ export function LabModePlaceholder({
   return (
     <div
       className={cn(
-        "flex min-h-[min(52vh,420px)] flex-col items-center justify-center rounded-xl border border-dashed border-violet-500/15 bg-slate-950/40 px-6 py-12 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] backdrop-blur-sm",
+        "lab-glass-panel flex min-h-[min(52vh,420px)] flex-col items-center justify-center border-dashed px-6 py-12 text-center",
         className,
       )}
     >
-      <p className="text-sm font-medium text-slate-300">{title}</p>
-      {description ? <p className="mt-2 max-w-md text-sm text-slate-500">{description}</p> : null}
-      <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.2em] text-violet-400/50">черновик · LAB</p>
+      <p className="text-sm font-medium text-lab-text-main">{title}</p>
+      {description ? <p className="lab-type-caption mt-2 max-w-md text-sm">{description}</p> : null}
+      <p className="mt-4 text-[10px] uppercase tracking-[0.16em] text-lab-violet/70">лаборатория · черновик</p>
     </div>
   );
 }
