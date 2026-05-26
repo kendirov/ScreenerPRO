@@ -92,9 +92,18 @@ pnpm -C frontend dev
 
 ## Работа на двух машинах (Win + Mac)
 
-| Машина | Начало сессии | Конец сессии |
-|--------|---------------|--------------|
-| **Windows** | `sync.cmd pull` | `sync.cmd save` |
-| **macOS** | `./sync.sh pull` | `./sync.sh save` |
+| Машина | Начало сессии | Конец сессии | Аварийная остановка |
+|--------|---------------|--------------|---------------------|
+| **Windows** | `sync.cmd pull` | `sync.cmd save` | `stop.cmd` |
+| **macOS** | `./sync.sh pull` | `./sync.sh save` | `./stop.sh` |
 
-Полный гайд: `docs/CROSS_PLATFORM_SYNC.md`.
+Точки отката (любая машина):
+
+```
+./checkpoint.sh "label"   # запомнить
+./restore.sh              # показать список
+./restore.sh <tag|hash>   # откатить
+```
+
+- **Для не-программиста, как организовать день:** `docs/WORKFLOW.md` ← начинай отсюда.
+- **Глубокий разбор git-синхронизации:** `docs/CROSS_PLATFORM_SYNC.md`.
