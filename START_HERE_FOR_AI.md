@@ -85,4 +85,16 @@ pnpm -C frontend dev
 
 → http://localhost:3000/screener  
 
-Полная настройка: `run-dev-full.cmd` / `PROJECT_CONTEXT.md` §11.
+Полная настройка:
+- **Windows:** `run-dev-full.cmd`
+- **macOS / Linux:** `./run-dev-full.sh`
+- Подробности — `PROJECT_CONTEXT.md` §11.
+
+## Работа на двух машинах (Win + Mac)
+
+| Машина | Начало сессии | Конец сессии |
+|--------|---------------|--------------|
+| **Windows** | `sync.cmd pull` | `sync.cmd save` |
+| **macOS** | `./sync.sh pull` | `./sync.sh save` |
+
+Полный гайд: `docs/CROSS_PLATFORM_SYNC.md`.
