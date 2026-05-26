@@ -11,5 +11,13 @@ if ! command -v pnpm >/dev/null 2>&1; then
   exit 1
 fi
 
+# Always clean up any previous dev server before starting a new one.
+# Without this, killing pnpm leaves orphan next-server workers alive
+# and starting another dev stacks them — fastest way to swap-thrash a 16 GB Mac.
+"$SCRIPT_DIR/stop.sh" >/dev/null 2>&1 || true
+
+# Cap Node heap so a single dev process cannot grow past 4 GB.
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096"
+
 echo "[INFO] Open http://localhost:3000/screener"
 exec pnpm -C frontend dev

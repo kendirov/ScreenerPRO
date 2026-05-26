@@ -29,16 +29,9 @@ else
   ok "frontend/.env already exists"
 fi
 
-step "Stopping stale processes on port 3000"
-if command -v lsof >/dev/null 2>&1; then
-  PIDS="$(lsof -ti tcp:3000 || true)"
-  if [[ -n "${PIDS}" ]]; then
-    echo "  > kill -9 ${PIDS}"
-    # shellcheck disable=SC2086
-    kill -9 ${PIDS} || true
-  fi
-fi
-ok "Port 3000 cleanup completed"
+step "Stopping any previous dev server (workers + port 3000)"
+"$SCRIPT_DIR/stop.sh" >/dev/null 2>&1 || true
+ok "Previous dev server stopped"
 
 step "Installing dependencies"
 echo "  > pnpm install"
@@ -65,4 +58,6 @@ fi
 
 step "Starting frontend dev server"
 echo "[INFO] Open http://localhost:3000/screener"
+# Cap Node heap so a single dev process cannot grow past 4 GB.
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096"
 exec pnpm -C frontend dev

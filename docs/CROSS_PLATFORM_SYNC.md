@@ -8,10 +8,12 @@
 
 ## 1. Что уже настроено
 
-| Платформа | Запуск dev-сервера | Helper-скрипт sync |
-|-----------|--------------------|--------------------|
-| **Windows** | `run-dev.cmd` (быстрый) / `run-dev-full.cmd` (полный, с Prisma + MOEX ingest) | `sync.cmd` или `sync.ps1` |
-| **macOS / Linux** | `./run-dev.sh` (быстрый) / `./run-dev-full.sh` (полный) | `./sync.sh` |
+| Платформа | Запуск dev-сервера | Остановка | Helper-скрипт sync |
+|-----------|--------------------|-----------|--------------------|
+| **Windows** | `run-dev.cmd` (быстрый) / `run-dev-full.cmd` (полный, с Prisma + MOEX ingest) | `stop.cmd` | `sync.cmd` или `sync.ps1` |
+| **macOS / Linux** | `./run-dev.sh` (быстрый) / `./run-dev-full.sh` (полный) | `./stop.sh` | `./sync.sh` |
+
+`run-dev*` сами вызывают `stop.*` перед стартом — это защищает от ситуации, когда `Ctrl+C` или закрытие терминала оставили `next-server` workers сиротами, и следующий запуск стартует второй комплект workers поверх старого. На 16 GB Mac такая двойная загрузка быстро забивает swap и приводит к freeze.
 
 Команды зеркальны: всё, что есть на Windows, есть и на Mac.
 
@@ -136,6 +138,7 @@ git stash pop           # если stash не применился чисто
 | `pnpm install` после `pull` ругается | Удалить `node_modules` и `pnpm-lock.yaml` НЕ нужно. Просто `pnpm install` ещё раз. |
 | Prisma жалуется на отсутствие `dev.db` | `pnpm -C frontend prisma:push` (создаёт пустую базу), затем `pnpm -C frontend ingest:moex` |
 | Сборка падает на Vercel | Локально проверить `pnpm -C frontend build` — он же запускается на Vercel |
+| macOS уведомил «недостаточно памяти», Mac подвис | Запустить `./stop.sh` — он прибьёт всех осиротевших `next-server`. Это происходит, если запустили `run-dev.sh` два раза подряд (или `Ctrl+C` оставил workers живыми). После `stop.sh` swap освобождается автоматически. |
 
 ---
 
