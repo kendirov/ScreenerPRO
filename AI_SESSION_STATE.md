@@ -4,57 +4,61 @@
 
 ## Текущая задача
 
-**Vercel screener: live MOEX вместо demo-заглушек** (2026-05-29).
+**Vercel production deploy** — доставить фикс заглушек (`d6bf5da+`) на https://screenerpro.vercel.app (2026-05-29).
 
 ---
 
-## Что сделано
+## Статус deploy pipeline
 
-### Корневая причина
-
-На Vercel `DATABASE_URL=file:./prisma/dev.db` → Prisma пытался открыть SQLite в serverless → ошибка пробивала весь `/api/screener` → silent fallback на 3 demo-акции (SBER, GAZP, LKOH). Локально SQLite доступен — MOEX работал.
-
-Дополнительно: auto-deploy Vercel с GitHub не обновлял production с ~14 апреля (последний deploy от `vercel[bot]`).
-
-### Исправление API
-
-- `screener-env.ts` — флаги runtime: Vercel, demo allowed, Prisma baselines
-- `moex-screener.ts` — Prisma только optional local baseline; lazy import `db`; demo fallback **только** при `ALLOW_DEMO_MARKET_DATA=true`; в production при сбое MOEX → HTTP 503 без fake stocks
-- Новые поля status: `isDemo`, `degraded`, `baselineStatus`, `generatedAt`
-- `GET /api/screener/health` — диагностика без секретов
-- `force-dynamic` + `revalidate=0` + `Cache-Control: no-store` на market API
-
-### Файлы
-
-- `shared/src/contracts/market.ts`
-- `frontend/lib/server/screener-env.ts` (new)
-- `frontend/lib/server/services/moex-screener.ts`
-- `frontend/app/api/screener/route.ts`
-- `frontend/app/api/screener/health/route.ts` (new)
-- `frontend/app/api/dev/diagnostics/route.ts`
-- `frontend/components/ui/metrics-minimalism.tsx`
-- `frontend/components/screener/stocks-screener-page.tsx`
-- `frontend/.env.example`
-- `frontend/vercel.json`
-
-### Проверка
-
-- `pnpm -C frontend build` — **OK**
-- Local simulate Vercel: `source=moex`, `isDemo=false`, `262 stocks`, `baselineStatus=skipped`
-- Local dev: `/api/screener`, `/api/screener/health` — OK
+| Проверка | Результат |
+|----------|-----------|
+| Git `main` | чисто, HEAD `d6bf5da`, origin `kendirov/ScreenerPRO` |
+| Локальный build | OK |
+| Локальный `/api/screener` | `moex`, `isDemo=false`, ~262 stocks |
+| **Production `/api/screener`** | **старое:** `demo`, 3 акции, Prisma error |
+| **Production `/api/screener/health`** | **404** (новый код не задеплоен) |
+| Локальный `.vercel/project.json` | **нет** (проект не привязан локально) |
+| Vercel CLI auth | **нет** (`auth.json` пустой) — нужен `vercel login` |
+| GitHub deployments (vercel[bot]) | последний **2026-04-14** (Preview); **auto-deploy не работает** |
+| Production на Vercel | застрял на старой сборке (~март 2026, commit `c1c89e5f` era) |
 
 ---
 
-## Что проверить после Vercel redeploy
+## Что добавлено для deploy
 
-1. https://screenerpro.vercel.app/api/screener?assetClass=stock → `isDemo: false`, `source: "moex"`, ~262 rows
-2. https://screenerpro.vercel.app/api/screener/health → `moexFetchStatus: "ok"`, `prismaStatus: "skipped"`, `demoFallbackAllowed: false`
-3. https://screenerpro.vercel.app/screener/stocks → реальные тикеры, badge «MOEX ISS»
+- `.github/workflows/vercel-production.yml` — deploy на push в `main` (нужны secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`)
+- `scripts/vercel-deploy-prod.sh` — ручной deploy + verify
+- `docs/DEPLOY_VERCEL.md` — инструкция Dashboard + CLI
 
-Если production всё ещё demo — **Redeploy** в Vercel Dashboard (Git integration мог не обновлять deploy).
+---
+
+## Что сделать вручную (блокер)
+
+**Вариант A — CLI (быстрее):**
+
+```bash
+cd frontend
+vercel login
+vercel link    # screenerpro, root=frontend
+vercel --prod
+```
+
+**Вариант B — Dashboard:** Vercel → screenerpro → Deployments → **Redeploy** latest `main`
+
+**Вариант C — GitHub Actions:** добавить 3 secrets → push в `main`
+
+**Dashboard Git settings:** repo `kendirov/ScreenerPRO`, branch `main`, root `frontend`, integration не paused.
+
+---
+
+## После успешного deploy проверить
+
+1. https://screenerpro.vercel.app/api/screener/health → `moexFetchStatus: ok`
+2. https://screenerpro.vercel.app/api/screener?assetClass=stock → `isDemo: false`, ~262 rows
+3. https://screenerpro.vercel.app/screener/stocks → реальные тикеры
 
 ---
 
 ## Последний промпт
 
-Fix Vercel /screener/stocks demo fallback: MOEX live path без Prisma, health endpoint, no silent demo in production.
+Закрыть Vercel production deploy после фикса заглушек: проверить pipeline, manual deploy, verify API/UI.
