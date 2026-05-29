@@ -99,8 +99,15 @@ export type ScreenerDataSource = z.infer<typeof screenerDataSourceSchema>;
 export const screenerFallbackReasonSchema = z.enum(["moex-unavailable", "validation-failed", "no-usable-rows"]);
 export type ScreenerFallbackReason = z.infer<typeof screenerFallbackReasonSchema>;
 
+export const baselineStatusSchema = z.enum(["ok", "skipped", "error"]);
+export type BaselineStatus = z.infer<typeof baselineStatusSchema>;
+
 export const screenerDataStatusSchema = z.object({
   source: screenerDataSourceSchema,
+  isDemo: z.boolean(),
+  degraded: z.boolean(),
+  baselineStatus: baselineStatusSchema,
+  generatedAt: z.string(),
   fetchTimestamp: z.string(),
   sourceTimestamp: z.string().nullable(),
   stockRows: z.number().int().nonnegative(),
@@ -141,3 +148,14 @@ export const screenerDiagnosticsResponseSchema = z.object({
   }),
 });
 export type ScreenerDiagnosticsResponse = z.infer<typeof screenerDiagnosticsResponseSchema>;
+
+export const screenerHealthResponseSchema = z.object({
+  environment: z.enum(["development", "production"]),
+  vercel: z.boolean(),
+  moexFetchStatus: z.enum(["ok", "error"]),
+  prismaStatus: baselineStatusSchema,
+  demoFallbackAllowed: z.boolean(),
+  buildCommit: z.string().nullable(),
+  timestamp: z.string(),
+});
+export type ScreenerHealthResponse = z.infer<typeof screenerHealthResponseSchema>;

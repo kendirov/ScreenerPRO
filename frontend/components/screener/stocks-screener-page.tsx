@@ -52,6 +52,8 @@ export function StocksScreenerPage() {
   const dataBadge = screenerSourceToDataStatus(status?.source, {
     isLoading: stocksQuery.isLoading,
     fallbackReason: status?.fallbackReason,
+    degraded: status?.degraded,
+    isDemo: status?.isDemo,
   });
 
   const maxTurnover = React.useMemo(

@@ -1,9 +1,11 @@
 import type {
   AssetClass,
+  BaselineStatus,
   ScreenerApiResponse,
   ScreenerBenchmark,
   ScreenerDataStatus,
   ScreenerDiagnosticsResponse,
+  ScreenerHealthResponse,
   ScreenerRow,
   TradingStatus,
 } from "@screenerpro/shared";
@@ -13,6 +15,13 @@ import { enrichMoexStocksWithInPlayMetrics } from "@/lib/server/domain/screener-
 import { classifyStockActivity, deriveStockActivityMetrics } from "@/lib/server/domain/stock-activity";
 import { fetchIssJson } from "@/lib/server/moex-iss/http";
 import { moexIssPayloadSchema } from "@/lib/server/moex-iss/schemas";
+import {
+  canUsePrismaHistoricalBaselines,
+  getBuildCommit,
+  getScreenerEnvironment,
+  isDemoFallbackAllowed,
+  isVercelRuntime,
+} from "@/lib/server/screener-env";
 
 type TableRow = Record<string, unknown>;
 
@@ -84,22 +93,65 @@ type StockHistoricalBaseline = {
   tradesAverage: number | null;
 };
 
-/** Local SQLite ingest improves in-play baselines; never on Vercel/serverless/production. */
-function canUsePrismaHistoricalBaselines(): boolean {
-  const url = process.env.DATABASE_URL?.trim() ?? "";
-  if (!url.startsWith("file:")) return false;
-  if (process.env.NODE_ENV === "production") return false;
-  if (process.env.VERCEL === "1" || process.env.VERCEL === "true") return false;
-  if (process.env.VERCEL_ENV) return false;
-  return true;
+type BaselineLoadResult = {
+  baselines: Map<string, StockHistoricalBaseline>;
+  status: BaselineStatus;
+};
+
+export class ScreenerUnavailableError extends Error {
+  readonly reason: NonNullable<ScreenerDataStatus["fallbackReason"]>;
+
+  constructor(message: string, reason: NonNullable<ScreenerDataStatus["fallbackReason"]>) {
+    super(message);
+    this.name = "ScreenerUnavailableError";
+    this.reason = reason;
+  }
 }
 
-async function fetchStockHistoricalBaselines(tickers: string[]): Promise<Map<string, StockHistoricalBaseline>> {
-  const baselineByTicker = new Map<string, StockHistoricalBaseline>();
-  if (tickers.length === 0 || !canUsePrismaHistoricalBaselines()) return baselineByTicker;
+function classifyMoexError(error: unknown): { message: string; reason: NonNullable<ScreenerDataStatus["fallbackReason"]> } {
+  const message = error instanceof Error ? error.message : "Не удалось получить данные MOEX";
+  const lower = message.toLowerCase();
+  const reason = lower.includes("parse") || lower.includes("validation")
+    ? "validation-failed"
+    : message.includes("no usable rows")
+      ? "no-usable-rows"
+      : "moex-unavailable";
+  return { message, reason };
+}
+
+function buildMoexStatus(
+  nowIso: string,
+  stocks: ScreenerRow[],
+  futures: ScreenerRow[],
+  baselineStatus: BaselineStatus,
+): ScreenerDataStatus {
+  const degraded = baselineStatus !== "ok";
+  return {
+    source: "moex",
+    isDemo: false,
+    degraded,
+    baselineStatus,
+    generatedAt: nowIso,
+    fetchTimestamp: nowIso,
+    sourceTimestamp: nowIso,
+    stockRows: stocks.length,
+    futuresRows: futures.length,
+    fallbackReason: null,
+    message: degraded
+      ? "Реальные данные MOEX активны (без локальных baseline)"
+      : "Реальные данные MOEX активны",
+  };
+}
+
+async function fetchStockHistoricalBaselines(tickers: string[]): Promise<BaselineLoadResult> {
+  const empty = new Map<string, StockHistoricalBaseline>();
+  if (tickers.length === 0 || !canUsePrismaHistoricalBaselines()) {
+    return { baselines: empty, status: "skipped" };
+  }
 
   try {
     const { db } = await import("@/lib/server/db");
+    const baselineByTicker = new Map<string, StockHistoricalBaseline>();
     const instruments = await db.instrument.findMany({
       where: {
         ticker: { in: tickers },
@@ -131,14 +183,14 @@ async function fetchStockHistoricalBaselines(tickers: string[]): Promise<Map<str
         tradesAverage: null,
       });
     }
-  } catch {
-    // Unavailable DB (e.g. missing dev.db on serverless) — MOEX live rows still work without baselines.
-  }
 
-  return baselineByTicker;
+    return { baselines: baselineByTicker, status: "ok" };
+  } catch {
+    return { baselines: empty, status: "error" };
+  }
 }
 
-async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
+async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]; baselineStatus: BaselineStatus }> {
   const payload = moexIssPayloadSchema.parse(
     await fetchIssJson(
       "/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,BOARDID&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVPRICE,VOLTODAY,VALTODAY,NUMTRADES,HIGH,LOW,OPEN,TRADINGSTATUS",
@@ -204,14 +256,17 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
     });
   }
 
+  let baselineStatus: BaselineStatus = "skipped";
   let baselines = new Map<string, StockHistoricalBaseline>();
   try {
-    baselines = await fetchStockHistoricalBaselines(draftRows.map((row) => row.ticker));
+    const baselineResult = await fetchStockHistoricalBaselines(draftRows.map((row) => row.ticker));
+    baselines = baselineResult.baselines;
+    baselineStatus = baselineResult.status;
   } catch {
-    // Optional local baselines — MOEX live rows must still load.
+    baselineStatus = "error";
   }
   const enrichedRows = enrichMoexStocksWithInPlayMetrics(draftRows);
-  return enrichedRows.map((row) => {
+  const rows = enrichedRows.map((row) => {
     const baseline = baselines.get(row.ticker) ?? { turnoverAverage: null, previousDayTurnover: null, rangeAveragePct: null, tradesAverage: null };
     const signal = computeInPlaySignals({
       turnover: row.turnover,
@@ -275,6 +330,8 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
       },
     } satisfies ScreenerRow;
   });
+
+  return { rows, baselineStatus };
 }
 
 async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
@@ -444,22 +501,15 @@ async function getMoexSnapshot() {
   }
 
   const nowIso = new Date().toISOString();
-  const [stocks, futures] = await Promise.all([fetchStocksFromIss(nowIso), fetchFuturesFromIss(nowIso)]);
+  const [stockResult, futures] = await Promise.all([fetchStocksFromIss(nowIso), fetchFuturesFromIss(nowIso)]);
+  const stocks = stockResult.rows;
   const benchmarks = await fetchStockBenchmarksFromIss(nowIso, stocks);
 
   if (stocks.length + futures.length === 0) {
     throw new Error("MOEX returned no usable rows");
   }
 
-  const status: ScreenerDataStatus = {
-    source: "moex",
-    fetchTimestamp: nowIso,
-    sourceTimestamp: nowIso,
-    stockRows: stocks.length,
-    futuresRows: futures.length,
-    fallbackReason: null,
-    message: "Реальные данные MOEX активны",
-  };
+  const status = buildMoexStatus(nowIso, stocks, futures, stockResult.baselineStatus);
 
   lastSnapshot = {
     expiresAt: now + CACHE_TTL_MS,
@@ -482,6 +532,10 @@ function getDemoSnapshot(reason: ScreenerDataStatus["fallbackReason"], message: 
     benchmarks: [],
     status: {
       source: "demo",
+      isDemo: true,
+      degraded: true,
+      baselineStatus: "skipped",
+      generatedAt: nowIso,
       fetchTimestamp: nowIso,
       sourceTimestamp: null,
       stockRows: stocks.length,
@@ -489,6 +543,32 @@ function getDemoSnapshot(reason: ScreenerDataStatus["fallbackReason"], message: 
       fallbackReason: reason,
       message,
     } satisfies ScreenerDataStatus,
+  };
+}
+
+export function buildUnavailableScreenerResponse(
+  assetClass: "all" | AssetClass,
+  reason: NonNullable<ScreenerDataStatus["fallbackReason"]>,
+  message: string,
+): ScreenerApiResponse {
+  const nowIso = new Date().toISOString();
+  return {
+    assetClass,
+    rows: [],
+    benchmarks: [],
+    status: {
+      source: "moex",
+      isDemo: false,
+      degraded: true,
+      baselineStatus: "skipped",
+      generatedAt: nowIso,
+      fetchTimestamp: nowIso,
+      sourceTimestamp: null,
+      stockRows: 0,
+      futuresRows: 0,
+      fallbackReason: reason,
+      message,
+    },
   };
 }
 
@@ -513,16 +593,52 @@ export async function getScreenerResponse(assetClass: "all" | AssetClass): Promi
       status: snapshot.status,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Не удалось получить данные MOEX";
-    const reason = message.toLowerCase().includes("parse") ? "validation-failed" : message.includes("no usable rows") ? "no-usable-rows" : "moex-unavailable";
-    const fallback = getDemoSnapshot(reason, `Fallback активирован: ${message}`);
-    return {
-      assetClass,
-      rows: pickRows(assetClass, fallback.stocks, fallback.futures),
-      benchmarks: pickBenchmarks(assetClass, fallback.benchmarks),
-      status: fallback.status,
-    };
+    const { message, reason } = classifyMoexError(error);
+    if (isDemoFallbackAllowed()) {
+      const fallback = getDemoSnapshot(reason, `Fallback активирован: ${message}`);
+      return {
+        assetClass,
+        rows: pickRows(assetClass, fallback.stocks, fallback.futures),
+        benchmarks: pickBenchmarks(assetClass, fallback.benchmarks),
+        status: fallback.status,
+      };
+    }
+    throw new ScreenerUnavailableError(message, reason);
   }
+}
+
+export async function getScreenerHealth(): Promise<ScreenerHealthResponse> {
+  const timestamp = new Date().toISOString();
+  let moexFetchStatus: ScreenerHealthResponse["moexFetchStatus"] = "error";
+  try {
+    await fetchIssJson(
+      "/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities&securities.columns=SECID&securities.limit=1",
+    );
+    moexFetchStatus = "ok";
+  } catch {
+    moexFetchStatus = "error";
+  }
+
+  let prismaStatus: BaselineStatus = "skipped";
+  if (canUsePrismaHistoricalBaselines()) {
+    try {
+      const { db } = await import("@/lib/server/db");
+      await db.instrument.count();
+      prismaStatus = "ok";
+    } catch {
+      prismaStatus = "error";
+    }
+  }
+
+  return {
+    environment: getScreenerEnvironment(),
+    vercel: isVercelRuntime(),
+    moexFetchStatus,
+    prismaStatus,
+    demoFallbackAllowed: isDemoFallbackAllowed(),
+    buildCommit: getBuildCommit(),
+    timestamp,
+  };
 }
 
 export async function getScreenerDiagnostics(): Promise<ScreenerDiagnosticsResponse> {

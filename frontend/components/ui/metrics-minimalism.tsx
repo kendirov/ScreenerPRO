@@ -78,11 +78,14 @@ export function DataStatusBadge({
 /** Маппинг source из `/api/screener` → badge. */
 export function screenerSourceToDataStatus(
   source: string | undefined,
-  options?: { isLoading?: boolean; fallbackReason?: string | null },
+  options?: { isLoading?: boolean; fallbackReason?: string | null; degraded?: boolean; isDemo?: boolean },
 ): { kind: DataStatusKind; label: string } {
   if (options?.isLoading) return { kind: "loading", label: "загрузка…" };
-  if (source === "moex") return { kind: "live", label: formatDataSourceLabel("moex") };
-  if (source === "demo") {
+  if (source === "moex") {
+    if (options?.degraded) return { kind: "partial", label: "MOEX ISS · без baseline" };
+    return { kind: "live", label: formatDataSourceLabel("moex") };
+  }
+  if (source === "demo" || options?.isDemo) {
     return { kind: "fallback", label: options?.fallbackReason ? "резерв · MOEX" : "резервные данные" };
   }
   return { kind: "no-data", label: "нет данных" };
