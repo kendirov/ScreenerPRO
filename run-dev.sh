@@ -16,8 +16,10 @@ fi
 # and starting another dev stacks them — fastest way to swap-thrash a 16 GB Mac.
 "$SCRIPT_DIR/stop.sh" >/dev/null 2>&1 || true
 
-# Cap Node heap so a single dev process cannot grow past 4 GB.
-export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096"
+# Cap Node heap (16 GB Mac: leave room for Cursor + macOS).
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=3072"
 
-echo "[INFO] Open http://localhost:3000/screener"
-exec pnpm -C frontend dev
+# dev:stable = webpack instead of Turbopack — slower first compile, much less RAM.
+# On M4 16 GB this avoids swap thrashing and kernel watchdog panics.
+echo "[INFO] dev:stable (webpack, low RAM) — http://localhost:3000/screener"
+exec pnpm -C frontend dev:stable

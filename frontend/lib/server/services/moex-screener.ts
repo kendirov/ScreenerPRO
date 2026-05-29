@@ -85,40 +85,51 @@ type StockHistoricalBaseline = {
   tradesAverage: number | null;
 };
 
+/** Local SQLite ingest improves in-play baselines; Vercel has no persistent dev.db. */
+function canUsePrismaHistoricalBaselines(): boolean {
+  if (!process.env.DATABASE_URL) return false;
+  if (process.env.VERCEL) return false;
+  return true;
+}
+
 async function fetchStockHistoricalBaselines(tickers: string[]): Promise<Map<string, StockHistoricalBaseline>> {
   const baselineByTicker = new Map<string, StockHistoricalBaseline>();
-  if (!process.env.DATABASE_URL || tickers.length === 0) return baselineByTicker;
+  if (tickers.length === 0 || !canUsePrismaHistoricalBaselines()) return baselineByTicker;
 
-  const instruments = await db.instrument.findMany({
-    where: {
-      ticker: { in: tickers },
-      assetClass: "stock",
-      isActive: true,
-    },
-    select: {
-      ticker: true,
-      dailyBars: { orderBy: { barDate: "desc" }, take: 25 },
-    },
-  });
-
-  for (const instrument of instruments) {
-    const bars = instrument.dailyBars;
-    const turnoverBaseline = average(bars.map((bar) => bar.turnover).filter((value): value is number => value !== null));
-    const rangeBaseline = average(
-      bars
-        .map((bar) => {
-          if (bar.high === null || bar.low === null || bar.close === null || bar.close <= 0) return null;
-          return ((bar.high - bar.low) / bar.close) * 100;
-        })
-        .filter((value): value is number => value !== null),
-    );
-
-    baselineByTicker.set(instrument.ticker, {
-      turnoverAverage: turnoverBaseline,
-      previousDayTurnover: bars[0]?.turnover ?? null,
-      rangeAveragePct: rangeBaseline,
-      tradesAverage: null,
+  try {
+    const instruments = await db.instrument.findMany({
+      where: {
+        ticker: { in: tickers },
+        assetClass: "stock",
+        isActive: true,
+      },
+      select: {
+        ticker: true,
+        dailyBars: { orderBy: { barDate: "desc" }, take: 25 },
+      },
     });
+
+    for (const instrument of instruments) {
+      const bars = instrument.dailyBars;
+      const turnoverBaseline = average(bars.map((bar) => bar.turnover).filter((value): value is number => value !== null));
+      const rangeBaseline = average(
+        bars
+          .map((bar) => {
+            if (bar.high === null || bar.low === null || bar.close === null || bar.close <= 0) return null;
+            return ((bar.high - bar.low) / bar.close) * 100;
+          })
+          .filter((value): value is number => value !== null),
+      );
+
+      baselineByTicker.set(instrument.ticker, {
+        turnoverAverage: turnoverBaseline,
+        previousDayTurnover: bars[0]?.turnover ?? null,
+        rangeAveragePct: rangeBaseline,
+        tradesAverage: null,
+      });
+    }
+  } catch {
+    // Unavailable DB (e.g. missing dev.db on serverless) — MOEX live rows still work without baselines.
   }
 
   return baselineByTicker;

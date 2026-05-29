@@ -58,6 +58,5 @@ fi
 
 step "Starting frontend dev server"
 echo "[INFO] Open http://localhost:3000/screener"
-# Cap Node heap so a single dev process cannot grow past 4 GB.
-export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=4096"
-exec pnpm -C frontend dev
+export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=3072"
+exec pnpm -C frontend dev:stable
