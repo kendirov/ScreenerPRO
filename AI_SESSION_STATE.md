@@ -4,61 +4,75 @@
 
 ## Текущая задача
 
-**Vercel production deploy** — доставить фикс заглушек (`d6bf5da+`) на https://screenerpro.vercel.app (2026-05-29).
+**Deploy guardrails** — runbook, health endpoint, UI data-source strip, post-deploy checklist (2026-05-29).
 
 ---
 
-## Статус deploy pipeline
+## DEPLOYMENT STATUS / VERCEL
 
-| Проверка | Результат |
-|----------|-----------|
-| Git `main` | чисто, HEAD `d6bf5da`, origin `kendirov/ScreenerPRO` |
-| Локальный build | OK |
-| Локальный `/api/screener` | `moex`, `isDemo=false`, ~262 stocks |
-| **Production `/api/screener`** | **старое:** `demo`, 3 акции, Prisma error |
-| **Production `/api/screener/health`** | **404** (новый код не задеплоен) |
-| Локальный `.vercel/project.json` | **нет** (проект не привязан локально) |
-| Vercel CLI auth | **нет** (`auth.json` пустой) — нужен `vercel login` |
-| GitHub deployments (vercel[bot]) | последний **2026-04-14** (Preview); **auto-deploy не работает** |
-| Production на Vercel | застрял на старой сборке (~март 2026, commit `c1c89e5f` era) |
+| Параметр | Значение |
+|----------|----------|
+| GitHub repo connected | `kendirov/ScreenerPRO` |
+| Production branch | `main` |
+| Root directory | `frontend` |
+| Vercel project | `screenerpro` |
+| Production URL | https://screenerpro.vercel.app |
+| Latest production commit (target) | `2d3b0e0` (+ deploy guardrails после push) |
+| Health route | `/api/screener/health` |
+| Market route | `/api/screener?assetClass=stock` |
+
+### Причина прошлой проблемы
+
+- Vercel **не был связан** с GitHub → новые push не собирались.
+- **Redeploy** старого artifact (`9qHhs8opV`) **не подтягивал** новый `main` — тот же старый build (~`16db98f`).
+- Итог: health **404**, screener **3 demo-акции**.
+
+### Правильный deploy
+
+- **push в `main`** (Git integration) или **Create Deployment** из `main`.
+- **Не** Redeploy старого deployment, если нужен новый код.
+
+### Git integration (восстановлено)
+
+- Deploy из GitHub `main`, commit `2d3b0e0` — build с `/api/screener/health` в output.
+
+### После каждого deploy
+
+- [docs/POST_DEPLOY_CHECKLIST.md](./docs/POST_DEPLOY_CHECKLIST.md)
+- [docs/DEPLOYMENT_RUNBOOK.md](./docs/DEPLOYMENT_RUNBOOK.md)
+
+### Production check (2026-05-29, commit `2d3b0e0`)
+
+| URL | Факт |
+|-----|------|
+| `/api/screener/health` | **200**, `moexFetchStatus=ok`, `prismaStatus=skipped`, `demoFallbackAllowed=false`, `buildCommit=2d3b0e0` |
+| `/api/screener?assetClass=stock` | `source=moex`, `isDemo=false`, **262** rows, `baselineStatus=skipped` |
+| `/screener/stocks` | live MOEX (проверить UI badge после push guardrails) |
+
+Следующий deploy добавит в health: `commitSha`, `branch`, `deploymentUrl` и UI strip DEMO/MOEX.
 
 ---
 
-## Что добавлено для deploy
+## Что сделано (deploy guardrails)
 
-- `.github/workflows/vercel-production.yml` — deploy на push в `main` (нужны secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`)
-- `scripts/vercel-deploy-prod.sh` — ручной deploy + verify
-- `docs/DEPLOY_VERCEL.md` — инструкция Dashboard + CLI
-
----
-
-## Что сделать вручную (блокер)
-
-**Вариант A — CLI (быстрее):**
-
-```bash
-cd frontend
-vercel login
-vercel link    # screenerpro, root=frontend
-vercel --prod
-```
-
-**Вариант B — Dashboard:** Vercel → screenerpro → Deployments → **Redeploy** latest `main`
-
-**Вариант C — GitHub Actions:** добавить 3 secrets → push в `main`
-
-**Dashboard Git settings:** repo `kendirov/ScreenerPRO`, branch `main`, root `frontend`, integration не paused.
+- `docs/DEPLOYMENT_RUNBOOK.md` — полный runbook
+- `docs/POST_DEPLOY_CHECKLIST.md` — чеклист после deploy
+- `/api/screener/health` — `commitSha`, `commitMessage`, `branch`, `deploymentUrl`, `generatedAt`
+- `ScreenerDataSourceStrip` на `/screener/stocks` — MOEX ISS / DEMO DATA / degraded / baseline
 
 ---
 
-## После успешного deploy проверить
+## Файлы
 
-1. https://screenerpro.vercel.app/api/screener/health → `moexFetchStatus: ok`
-2. https://screenerpro.vercel.app/api/screener?assetClass=stock → `isDemo: false`, ~262 rows
-3. https://screenerpro.vercel.app/screener/stocks → реальные тикеры
+- `docs/DEPLOYMENT_RUNBOOK.md`, `docs/POST_DEPLOY_CHECKLIST.md`
+- `frontend/lib/server/screener-env.ts`
+- `frontend/lib/server/services/moex-screener.ts`
+- `shared/src/contracts/market.ts`
+- `frontend/components/screener/screener-data-source-strip.tsx`
+- `frontend/components/screener/stocks-screener-page.tsx`
 
 ---
 
 ## Последний промпт
 
-Закрыть Vercel production deploy после фикса заглушек: проверить pipeline, manual deploy, verify API/UI.
+Закрепить deploy-процесс: runbook, health, UI guard, checklist после восстановления Vercel↔GitHub.

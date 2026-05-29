@@ -19,6 +19,7 @@ import {
   canUsePrismaHistoricalBaselines,
   getBuildCommit,
   getScreenerEnvironment,
+  getVercelGitMetadata,
   isDemoFallbackAllowed,
   isVercelRuntime,
 } from "@/lib/server/screener-env";
@@ -630,13 +631,21 @@ export async function getScreenerHealth(): Promise<ScreenerHealthResponse> {
     }
   }
 
+  const git = getVercelGitMetadata();
+  const buildCommit = getBuildCommit();
+
   return {
     environment: getScreenerEnvironment(),
     vercel: isVercelRuntime(),
     moexFetchStatus,
     prismaStatus,
     demoFallbackAllowed: isDemoFallbackAllowed(),
-    buildCommit: getBuildCommit(),
+    commitSha: git.commitSha,
+    commitMessage: git.commitMessage,
+    branch: git.branch,
+    deploymentUrl: git.deploymentUrl,
+    generatedAt: timestamp,
+    buildCommit,
     timestamp,
   };
 }

@@ -27,3 +27,23 @@ export function getBuildCommit(): string | null {
   if (!sha) return null;
   return sha.length > 7 ? sha.slice(0, 7) : sha;
 }
+
+/** Vercel injects git metadata at build time — safe to expose in /api/screener/health. */
+export function getVercelGitMetadata(): {
+  commitSha: string | null;
+  commitMessage: string | null;
+  branch: string | null;
+  deploymentUrl: string | null;
+} {
+  const rawSha = process.env.VERCEL_GIT_COMMIT_SHA?.trim() ?? null;
+  const rawMessage = process.env.VERCEL_GIT_COMMIT_MESSAGE?.trim() ?? null;
+  const branch = process.env.VERCEL_GIT_COMMIT_REF?.trim() ?? null;
+  const vercelUrl = process.env.VERCEL_URL?.trim() ?? null;
+
+  return {
+    commitSha: rawSha && rawSha.length > 0 ? rawSha : null,
+    commitMessage: rawMessage ? rawMessage.slice(0, 240) : null,
+    branch: branch && branch.length > 0 ? branch : null,
+    deploymentUrl: vercelUrl ? (vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`) : null,
+  };
+}

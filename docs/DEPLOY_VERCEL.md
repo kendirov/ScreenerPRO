@@ -6,7 +6,22 @@
 - **Production URL:** https://screenerpro.vercel.app
 - **Проблема:** GitHub → Vercel auto-deploy **не срабатывает** с ~апреля 2026. Production крутит старую сборку (demo-заглушки, нет `/api/screener/health`).
 
-## Быстрый ручной deploy (рекомендуется сейчас)
+## ⚠️ Redeploy ≠ новый код
+
+В **Deployments** кнопка **Redeploy** у старой строки (например `9qHhs8opV`) **пересобирает тот же artifact** — commit остаётся старым (`16db98f` и т.д.).  
+Фикс `d6bf5da` / health endpoint **не попадёт** на production таким способом.
+
+Нужно одно из:
+
+### A. Dashboard — Create Deployment (без CLI)
+
+1. Vercel → **screenerpro** → **Deployments**
+2. Справа вверху **Create Deployment** (не Redeploy у старой строки)
+3. Branch: **`main`**, commit: **`2d3b0e0`** (или HEAD)
+4. Environment: **Production** → Deploy
+5. Дождаться **Ready**, проверить `/api/screener/health` (не 404)
+
+### B. CLI
 
 ```bash
 cd frontend

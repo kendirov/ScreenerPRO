@@ -155,7 +155,14 @@ export const screenerHealthResponseSchema = z.object({
   moexFetchStatus: z.enum(["ok", "error"]),
   prismaStatus: baselineStatusSchema,
   demoFallbackAllowed: z.boolean(),
+  commitSha: z.string().nullable(),
+  commitMessage: z.string().nullable(),
+  branch: z.string().nullable(),
+  deploymentUrl: z.string().nullable(),
+  generatedAt: z.string(),
+  /** Short SHA for quick glance; same commit as commitSha when on Vercel. */
   buildCommit: z.string().nullable(),
+  /** @deprecated use generatedAt */
   timestamp: z.string(),
 });
 export type ScreenerHealthResponse = z.infer<typeof screenerHealthResponseSchema>;

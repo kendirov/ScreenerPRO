@@ -5,6 +5,7 @@ import { MarketRadar } from "@/components/screener/market-radar";
 import { ScreenerPageHeader, ScreenerPanel } from "@/components/screener/screener-page-chrome";
 import { StocksScreenerTable } from "@/components/screener/stocks/stocks-screener-table";
 import { createStockColumns } from "@/components/screener/columns";
+import { ScreenerDataSourceStrip } from "@/components/screener/screener-data-source-strip";
 import { DataStatusBadge, screenerSourceToDataStatus } from "@/components/ui/metrics-minimalism";
 import { selectInPlayForRadar } from "@/lib/domain/stocks-screener-signals";
 import { useInPlayStockCandles } from "@/lib/hooks/use-in-play-stock-candles";
@@ -97,13 +98,9 @@ export function StocksScreenerPage() {
         title="Рынок · Акции"
         right={
           <>
+            <ScreenerDataSourceStrip status={status} isLoading={stocksQuery.isLoading} visibleCount={stocks.length} />
             <DataStatusBadge kind={dataBadge.kind} label={dataBadge.label} />
             <span className="lab-chip font-mono text-[11px] tabular-nums">{stocks.length} бумаг</span>
-            {status ? (
-              <span className="lab-chip font-mono text-[11px] tabular-nums text-lab-text-dim">
-                {new Date(status.fetchTimestamp).toLocaleTimeString("ru-RU")}
-              </span>
-            ) : null}
           </>
         }
       />
