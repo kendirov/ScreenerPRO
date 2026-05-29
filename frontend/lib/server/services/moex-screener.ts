@@ -8,7 +8,6 @@ import type {
   TradingStatus,
 } from "@screenerpro/shared";
 import { screenerRows as demoRows } from "@/lib/mock/screener";
-import { db } from "@/lib/server/db";
 import { computeInPlaySignals } from "@/lib/server/domain/in-play-signals";
 import { enrichMoexStocksWithInPlayMetrics } from "@/lib/server/domain/screener-math";
 import { classifyStockActivity, deriveStockActivityMetrics } from "@/lib/server/domain/stock-activity";
@@ -85,15 +84,13 @@ type StockHistoricalBaseline = {
   tradesAverage: number | null;
 };
 
-/** Local SQLite ingest improves in-play baselines; Vercel has no persistent dev.db. */
+/** Local SQLite ingest improves in-play baselines; never on Vercel/serverless/production. */
 function canUsePrismaHistoricalBaselines(): boolean {
   const url = process.env.DATABASE_URL?.trim() ?? "";
-  if (!url) return false;
-  // Vercel sets these at runtime; skip even if DATABASE_URL points at file:./prisma/dev.db.
+  if (!url.startsWith("file:")) return false;
+  if (process.env.NODE_ENV === "production") return false;
   if (process.env.VERCEL === "1" || process.env.VERCEL === "true") return false;
   if (process.env.VERCEL_ENV) return false;
-  // Production deploys must not open SQLite (no writable dev.db on serverless).
-  if (url.startsWith("file:") && process.env.NODE_ENV === "production") return false;
   return true;
 }
 
@@ -102,6 +99,7 @@ async function fetchStockHistoricalBaselines(tickers: string[]): Promise<Map<str
   if (tickers.length === 0 || !canUsePrismaHistoricalBaselines()) return baselineByTicker;
 
   try {
+    const { db } = await import("@/lib/server/db");
     const instruments = await db.instrument.findMany({
       where: {
         ticker: { in: tickers },
@@ -206,7 +204,12 @@ async function fetchStocksFromIss(nowIso: string): Promise<ScreenerRow[]> {
     });
   }
 
-  const baselines = await fetchStockHistoricalBaselines(draftRows.map((row) => row.ticker));
+  let baselines = new Map<string, StockHistoricalBaseline>();
+  try {
+    baselines = await fetchStockHistoricalBaselines(draftRows.map((row) => row.ticker));
+  } catch {
+    // Optional local baselines — MOEX live rows must still load.
+  }
   const enrichedRows = enrichMoexStocksWithInPlayMetrics(draftRows);
   return enrichedRows.map((row) => {
     const baseline = baselines.get(row.ticker) ?? { turnoverAverage: null, previousDayTurnover: null, rangeAveragePct: null, tradesAverage: null };
