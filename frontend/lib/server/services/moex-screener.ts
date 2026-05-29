@@ -87,8 +87,13 @@ type StockHistoricalBaseline = {
 
 /** Local SQLite ingest improves in-play baselines; Vercel has no persistent dev.db. */
 function canUsePrismaHistoricalBaselines(): boolean {
-  if (!process.env.DATABASE_URL) return false;
-  if (process.env.VERCEL) return false;
+  const url = process.env.DATABASE_URL?.trim() ?? "";
+  if (!url) return false;
+  // Vercel sets these at runtime; skip even if DATABASE_URL points at file:./prisma/dev.db.
+  if (process.env.VERCEL === "1" || process.env.VERCEL === "true") return false;
+  if (process.env.VERCEL_ENV) return false;
+  // Production deploys must not open SQLite (no writable dev.db on serverless).
+  if (url.startsWith("file:") && process.env.NODE_ENV === "production") return false;
   return true;
 }
 
