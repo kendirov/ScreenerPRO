@@ -113,6 +113,8 @@ function addSymmetricZoneBands(
   if (!times.length || !bands.length) return;
 
   const transparent = "rgba(0,0,0,0)";
+  /** Декоративные полосы не должны расширять price scale. */
+  const noAutoscale = { autoscaleInfoProvider: () => null };
 
   for (const band of bands) {
     const fill = band.fillColor;
@@ -123,6 +125,7 @@ function addSymmetricZoneBands(
       [-band.upper, -band.lower] as const,
     ]) {
       const zoneSeries = chart.addSeries(BaselineSeries, {
+        ...noAutoscale,
         baseValue: { type: "price", price: baseline },
         topFillColor1: fill,
         topFillColor2: fillSoft,
@@ -228,12 +231,25 @@ export function SpreadLabChart({
     const stackEl = stackRef.current;
     if (!spreadEl || !stackEl || !model?.canRender) return;
 
-    const totalHeight = stackEl.clientHeight || 460;
+    const legsEl = legsRef.current;
     const showLegs = showLegsMovement && model.legsMovement != null;
-    const legsHeight = showLegs ? Math.round(totalHeight * LEGS_HEIGHT_RATIO) : 0;
-    const spreadHeight = showLegs
-      ? Math.round(totalHeight * SPREAD_HEIGHT_RATIO)
-      : totalHeight;
+
+    const measureHeights = () => {
+      const stackH = stackEl.clientHeight || 460;
+      const legsRowH = legsEl?.parentElement?.clientHeight ?? 0;
+      const spreadRowH = spreadEl.parentElement?.clientHeight ?? 0;
+      const showLegsNow = showLegs && model.legsMovement != null && legsEl;
+      const legsH = showLegsNow
+        ? legsRowH > 0
+          ? legsRowH
+          : Math.round(stackH * LEGS_HEIGHT_RATIO)
+        : 0;
+      const spreadH =
+        spreadRowH > 0 ? spreadRowH : showLegsNow ? Math.round(stackH * SPREAD_HEIGHT_RATIO) : stackH;
+      return { legsH, spreadH };
+    };
+
+    const { legsH: legsHeight, spreadH: spreadHeight } = measureHeights();
 
     const lastVal = model.spreadLine[model.spreadLine.length - 1]?.value ?? 0;
 
@@ -308,7 +324,6 @@ export function SpreadLabChart({
     let legsChart: IChartApi | null = null;
     let legASeries: ISeriesApi<"Line"> | null = null;
 
-    const legsEl = legsRef.current;
     if (showLegs && model.legsMovement && legsEl) {
       legsChart = createChart(legsEl, {
         ...baseChartOptions(fmtPoints),
@@ -363,9 +378,7 @@ export function SpreadLabChart({
     spreadChart.timeScale().fitContent();
 
     const resize = () => {
-      const h = stackEl.clientHeight || 460;
-      const legsH = showLegs && model.legsMovement ? Math.round(h * LEGS_HEIGHT_RATIO) : 0;
-      const spreadH = showLegs && model.legsMovement ? Math.round(h * SPREAD_HEIGHT_RATIO) : h;
+      const { legsH, spreadH } = measureHeights();
       spreadChart.applyOptions({ width: spreadEl.clientWidth, height: spreadH });
       if (legsChart && legsEl) {
         legsChart.applyOptions({ width: legsEl.clientWidth, height: legsH });
@@ -463,8 +476,8 @@ export function SpreadLabChart({
                 </span>
               </div>
             </div>
-            <div className="flex min-h-[130px] flex-1 gap-2">
-              <div ref={legsRef} className="min-w-0 flex-1" />
+            <div className="flex min-h-[130px] flex-1 gap-2 overflow-hidden">
+              <div ref={legsRef} className="min-h-0 min-w-0 flex-1 overflow-hidden" />
               <LegsNowPanel legs={model.legsMovement} />
             </div>
           </div>
@@ -474,8 +487,8 @@ export function SpreadLabChart({
           <p className="px-0.5 text-[9px] text-slate-500">
             Расхождение {model.pairLabel} в пунктах
           </p>
-          <div className="flex min-h-[280px] flex-1 gap-2">
-            <div ref={spreadRef} className="min-w-0 flex-1" />
+          <div className="flex min-h-[280px] flex-1 gap-2 overflow-hidden">
+            <div ref={spreadRef} className="min-h-0 min-w-0 flex-1 overflow-hidden" />
             <SidePanel panel={model.sidePanel} />
           </div>
         </div>

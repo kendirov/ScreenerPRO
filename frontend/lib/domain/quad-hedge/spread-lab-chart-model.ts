@@ -229,7 +229,8 @@ export function buildSpreadLabChartModel(
         strong: th.divergencePoints,
       };
 
-  const bandTop = Math.max(Math.abs(maxVal), Math.abs(minVal), bounds.strong) * 1.05;
+  const dataAbsMax = Math.max(Math.abs(maxVal), Math.abs(minVal), 1);
+  const bandTop = dataAbsMax * 1.08;
 
   const zoneBands: SpreadLabZoneBand[] = [
     { lower: bounds.watch, upper: bounds.extreme, fillColor: "rgba(251,191,36,0.07)" },
