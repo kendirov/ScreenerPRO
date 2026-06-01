@@ -16,6 +16,11 @@ import { tradingFormat } from "@/lib/formatters/trading";
 import { cn } from "@/lib/utils/cn";
 import { CardSparklineBackdrop } from "@/components/screener/instrument-card-visual";
 import { ReasonTagRow } from "@/components/screener/reason-tag-chip";
+import {
+  SIGNAL_MODE_LABEL,
+  SIGNAL_MODE_SURFACE,
+  type SignalMode,
+} from "@/lib/design/design-tokens";
 
 export type MarketFocusCardProps = {
   size: MarketCardSize;
@@ -34,6 +39,8 @@ export type MarketFocusCardProps = {
   sparklineValues?: number[] | null;
   metrics?: MarketFocusCardMetric[];
   eyebrow?: string;
+  activityScore?: number;
+  signalMode?: SignalMode;
   empty?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -113,6 +120,8 @@ export function MarketFocusCard({
   sparklineValues,
   metrics = [],
   eyebrow,
+  activityScore,
+  signalMode,
   empty = false,
   emptyTitle = "Нет данных",
   emptyDescription,
@@ -151,6 +160,7 @@ export function MarketFocusCard({
   const variant = type === "future" ? "hot" : state === "warning" ? "amber" : "default";
   const statusChipClass =
     type === "future" && segmentTheme ? segmentTheme.chip : TYPE_STATUS[type] ?? "lab-status-chip";
+  const modeSurface = signalMode ? SIGNAL_MODE_SURFACE[signalMode] : null;
 
   const panelClass = cn(
     "group relative overflow-hidden transition-all duration-200",
@@ -179,10 +189,28 @@ export function MarketFocusCard({
             ) : rank != null ? (
               <span className="lab-number text-[10px] text-lab-dim">#{rank}</span>
             ) : null}
+            {signalMode && size !== "compact" ? (
+              <span
+                className={cn(
+                  "mt-1 inline-flex rounded-md border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide",
+                  modeSurface?.badge,
+                )}
+              >
+                {SIGNAL_MODE_LABEL[signalMode]}
+              </span>
+            ) : null}
           </div>
-          {status ? (
-            <span className={cn("shrink-0 text-[8px]", statusChipClass)}>{status}</span>
-          ) : null}
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {activityScore != null && size !== "compact" ? (
+              <div className="text-right">
+                <p className="text-[8px] uppercase tracking-wider text-lab-dim">score</p>
+                <p className="lab-number text-lg font-semibold leading-none text-lab-text">{activityScore}</p>
+              </div>
+            ) : null}
+            {status ? (
+              <span className={cn("text-[8px]", statusChipClass)}>{status}</span>
+            ) : null}
+          </div>
         </div>
 
         <div

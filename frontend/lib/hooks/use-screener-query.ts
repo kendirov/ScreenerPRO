@@ -13,12 +13,19 @@ async function fetchJson<T>(url: string, parser: { parse: (payload: unknown) => 
   return parser.parse(payload);
 }
 
-export function useScreenerQuery(assetClass: "all" | AssetClass) {
+export function useScreenerQuery(assetClass: "all" | AssetClass, dateKey?: string | null) {
+  const isHistorical = Boolean(dateKey);
+  const queryKey = ["screener", assetClass, dateKey ?? "live"] as const;
+
   return useQuery<ScreenerApiResponse>({
-    queryKey: ["screener", assetClass],
-    queryFn: () => fetchJson(`/api/screener?assetClass=${assetClass}`, screenerApiResponseSchema),
-    refetchInterval: 20_000,
-    staleTime: 15_000,
+    queryKey,
+    queryFn: () => {
+      const params = new URLSearchParams({ assetClass });
+      if (dateKey) params.set("date", dateKey);
+      return fetchJson(`/api/screener?${params.toString()}`, screenerApiResponseSchema);
+    },
+    refetchInterval: isHistorical ? false : 20_000,
+    staleTime: isHistorical ? 120_000 : 15_000,
   });
 }
 

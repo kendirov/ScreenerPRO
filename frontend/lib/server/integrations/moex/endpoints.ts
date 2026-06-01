@@ -46,13 +46,20 @@ export function indexHistoryUrl(secid: string, from?: string, till?: string, sta
   });
 }
 
-/** Свечи FORTS — дневные и интрадей (OHLC/close). */
-export function futuresCandlesUrl(secid: string, from: string, till: string, interval = 24) {
+/** Свечи FORTS — дневные и интрадей (OHLC/close). `start` — пагинация ISS (500 строк/страница). */
+export function futuresCandlesUrl(
+  secid: string,
+  from: string,
+  till: string,
+  interval = 24,
+  start = 0,
+) {
   return withQuery(`/engines/futures/markets/forts/securities/${secid}/candles.json`, {
     "iss.meta": "off",
     from,
     till,
     interval,
+    start,
   });
 }
 
@@ -60,6 +67,17 @@ export function futuresCandlesUrl(secid: string, from: string, till: string, int
 export function futuresCandleBordersUrl(secid: string) {
   return withQuery(`/engines/futures/markets/forts/securities/${secid}/candleborders.json`, {
     "iss.meta": "off",
+  });
+}
+
+/** История всех бумаг TQBR за торговый день (MOEX ISS bulk). */
+export function stockBoardHistoryByDateUrl(board: string, date: string, start = 0, limit = 100) {
+  return withQuery(`/history/engines/stock/markets/shares/boards/${board}/securities.json`, {
+    "iss.meta": "off",
+    "iss.only": "history",
+    date,
+    "history.start": start,
+    "history.limit": limit,
   });
 }
 

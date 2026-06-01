@@ -23,6 +23,9 @@ import {
   isDemoFallbackAllowed,
   isVercelRuntime,
 } from "@/lib/server/screener-env";
+import { moscowTodayKey, normalizeRequestedDateKey } from "@/lib/domain/trading-calendar";
+import { getHistoricalStockSnapshot, isHistoricalDateRequest } from "@/lib/server/services/moex-screener-history";
+import { fetchLiveMoexIndexBenchmark } from "@/lib/server/services/moex-index-benchmark";
 
 type TableRow = Record<string, unknown>;
 
@@ -141,6 +144,10 @@ function buildMoexStatus(
     message: degraded
       ? "Реальные данные MOEX активны (без локальных baseline)"
       : "Реальные данные MOEX активны",
+    tradingDateKey: moscowTodayKey(),
+    resolvedTradingDateKey: moscowTodayKey(),
+    dataMode: "live",
+    historicalEmpty: false,
   };
 }
 
@@ -451,48 +458,9 @@ function normalizeScreenerMetrics(row: ScreenerRow): ScreenerRow {
 }
 
 async function fetchStockBenchmarksFromIss(nowIso: string, stocks: ScreenerRow[]): Promise<ScreenerBenchmark[]> {
-  try {
-    const aggregates = computeStockMarketAggregates(stocks);
-    const payload = moexIssPayloadSchema.parse(
-      await fetchIssJson(
-        "/engines/stock/markets/index/securities/IMOEX2.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME&marketdata.columns=SECID,CURRENTVALUE,LASTVALUE,LASTTOPREVPRICE,PREVPRICE,HIGH,LOW",
-      ),
-    );
-
-    if (payload.securities.data.length === 0 || payload.marketdata.data.length === 0) {
-      return [];
-    }
-
-    const sec = rowToObject(payload.securities.columns, payload.securities.data[0] ?? []);
-    const md = rowToObject(payload.marketdata.columns, payload.marketdata.data[0] ?? []);
-
-    const code = asString(sec.SECID) ?? "IMOEX2";
-    const lastValue = asNumber(md.CURRENTVALUE) ?? asNumber(md.LASTVALUE);
-    const previousClose = asNumber(md.PREVPRICE);
-    const high = asNumber(md.HIGH);
-    const low = asNumber(md.LOW);
-
-    if (lastValue === null && high === null && low === null) {
-      return [];
-    }
-
-    return [
-      {
-        code,
-        name: asString(sec.SHORTNAME) ?? "Индекс МосБиржи 2",
-        market: "stock",
-        lastValue,
-        percentChange: computePercentChange(lastValue, previousClose, asNumber(md.LASTTOPREVPRICE)),
-        dayRangePct: computeDayRangePct(high, low, previousClose),
-        aggregateTurnover: aggregates.aggregateTurnover,
-        aggregateTrades: aggregates.aggregateTrades,
-        updatedAt: nowIso,
-        sourceUpdatedAt: null,
-      },
-    ];
-  } catch {
-    return [];
-  }
+  const aggregates = computeStockMarketAggregates(stocks);
+  const benchmark = await fetchLiveMoexIndexBenchmark(nowIso, aggregates);
+  return benchmark ? [benchmark] : [];
 }
 
 async function getMoexSnapshot() {
@@ -584,7 +552,37 @@ function pickBenchmarks(assetClass: "all" | AssetClass, benchmarks: ScreenerBenc
   return benchmarks;
 }
 
-export async function getScreenerResponse(assetClass: "all" | AssetClass): Promise<ScreenerApiResponse> {
+export async function getScreenerResponse(
+  assetClass: "all" | AssetClass,
+  options?: { date?: string | null },
+): Promise<ScreenerApiResponse> {
+  const requestedDate = normalizeRequestedDateKey(options?.date ?? null);
+
+  if (requestedDate && isHistoricalDateRequest(requestedDate)) {
+    const historical = await getHistoricalStockSnapshot(requestedDate);
+
+    if (assetClass === "future") {
+      return {
+        assetClass,
+        rows: [],
+        benchmarks: [],
+        status: {
+          ...historical.status,
+          futuresRows: 0,
+          message: "Фьючерсы доступны только в режиме LIVE",
+        },
+      };
+    }
+
+    const rows = assetClass === "all" ? historical.stocks : historical.stocks;
+    return {
+      assetClass,
+      rows,
+      benchmarks: pickBenchmarks(assetClass, historical.benchmarks),
+      status: historical.status,
+    };
+  }
+
   try {
     const snapshot = await getMoexSnapshot();
     return {

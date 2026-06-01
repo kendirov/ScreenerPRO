@@ -14,7 +14,9 @@ export async function GET(request: Request) {
   const normalized = assetClass === "stock" || assetClass === "future" || assetClass === "all" ? assetClass : "all";
 
   try {
-    const payload = await getScreenerResponse(normalized);
+    const payload = await getScreenerResponse(normalized, {
+      date: searchParams.get("date"),
+    });
     return NextResponse.json(payload, {
       headers: {
         "Cache-Control": "no-store",

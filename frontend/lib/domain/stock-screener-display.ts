@@ -128,8 +128,34 @@ export const STOCK_DAY_RANGE_HEADER_TOOLTIP =
 
 export const STOCK_DAY_RANGE_DETAIL_HINT = "Ход дня = диапазон high–low";
 
+/** Краткая причина для колонки таблицы. */
+export function getStockReasonSummary(row: ScreenerRow, maxTurnover: number): string {
+  if (row.metrics.reasonLabel) {
+    return row.metrics.reasonLabel.replace(/\+/g, " · ");
+  }
+
+  const tags = parseInPlayReasonTags(row);
+  if (tags.length) {
+    const labels: Record<string, string> = {
+      оборот: "высокий оборот",
+      сделки: "активная лента",
+      диапазон: "широкий ход",
+      импульс: "импульс",
+    };
+    return tags.map((tag) => labels[tag] ?? tag).join(" · ");
+  }
+
+  const status = getStockTableStatus(row, maxTurnover);
+  if (status === "В игре") return "в игре";
+  if (status === "Импульс") return "импульс дня";
+  if (status === "Давление") return "давление";
+  if (status === "Тонкий разгон") return "тонкий разгон";
+  if (status === "Ликвид") return "лидер ликвидности";
+  return "—";
+}
+
 /**
- * TODO (отдельная метрика «Волатильность», не смешивать с dayRangePct):
+ * TODO (отдельная метрика "Волатильность", не смешивать с dayRangePct):
  * - ATR intraday;
  * - диапазон относительно среднего за 20 сессий;
  * - volatility ratio;

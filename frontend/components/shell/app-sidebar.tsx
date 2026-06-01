@@ -281,7 +281,7 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      <div className="mt-1.5 shrink-0 border-t border-lab-border-violet/20 pt-1.5">
+      <div className="ui-mode-hide-focus mt-1.5 shrink-0 border-t border-lab-border-violet/20 pt-1.5">
         <SidebarNavGroup
           title={sidebarDraftsNav.title}
           items={sidebarDraftsNav.items}

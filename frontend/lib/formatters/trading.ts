@@ -49,9 +49,16 @@ export function formatOrderBookVolume(lots: number): string {
   return `${k.toFixed(1)}K`;
 }
 
+function formatSignedPoints(value: number | null): string {
+  if (value === null) return "—";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatDynamicPrice(value)}`;
+}
+
 export const tradingFormat = {
   formatDynamicPrice,
   formatSignedPercent,
+  formatSignedPoints,
   formatDayRangeMagnitude,
   formatDeltaPercent,
   formatInteger,

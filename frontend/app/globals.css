@@ -2,10 +2,26 @@
 
 /* ── Лаборатория рынка — Expensive Minimalism tokens ── */
 :root {
+  /* ScreenerPRO — semantic palette */
+  --sc-bg: #020617;
+  --sc-bg-zinc: #09090b;
+  --sc-text-primary: #f4f7fb;
+  --sc-text-secondary: #b8c4dc;
+  --sc-text-muted: #6b7a96;
+  --sc-emerald: #34d399;
+  --sc-rose: #fb7185;
+  --sc-cyan: #22d3ee;
+  --sc-violet: #a78bfa;
+  --sc-amber: #fbbf24;
+  --sc-glass-bg: rgba(15, 23, 42, 0.55);
+  --sc-glass-border: rgba(255, 255, 255, 0.1);
+  --sc-transition-fast: 180ms;
+  --sc-transition-ui: 220ms;
+
   /* Фоны */
-  --lab-bg: #020617;
+  --lab-bg: var(--sc-bg);
   --lab-bg-deep: #00030a;
-  --lab-surface: rgba(15, 23, 42, 0.58);
+  --lab-surface: var(--sc-glass-bg);
   --lab-surface-soft: rgba(255, 255, 255, 0.025);
   --lab-surface-strong: rgba(255, 255, 255, 0.055);
   --lab-surface-glass: var(--lab-surface);
@@ -19,16 +35,16 @@
   --lab-border-amber: rgba(245, 158, 11, 0.42);
 
   /* Текст */
-  --lab-text: #f8fbff;
-  --lab-muted: #9aa7c3;
-  --lab-dim: #5f6b86;
+  --lab-text: var(--sc-text-primary);
+  --lab-muted: var(--sc-text-secondary);
+  --lab-dim: var(--sc-text-muted);
 
   /* Акценты */
-  --lab-cyan: #22d3ee;
+  --lab-cyan: var(--sc-cyan);
   --lab-blue: #3b82f6;
   --lab-violet: #8b5cf6;
-  --lab-green: #22c55e;
-  --lab-red: #fb7185;
+  --lab-green: #34d399;
+  --lab-red: var(--sc-rose);
   --lab-amber: #f59e0b;
   --lab-lime: #a3e635;
 
@@ -85,6 +101,14 @@
   --color-lab-border-amber: var(--lab-border-amber);
   --color-lab-border-soft: var(--lab-border);
   --color-lab-border-strong: var(--lab-border-hot);
+  --color-sc-text-primary: var(--sc-text-primary);
+  --color-sc-text-secondary: var(--sc-text-secondary);
+  --color-sc-text-muted: var(--sc-text-muted);
+  --color-sc-emerald: var(--sc-emerald);
+  --color-sc-rose: var(--sc-rose);
+  --color-sc-cyan: var(--sc-cyan);
+  --color-sc-violet: var(--sc-violet);
+  --color-sc-amber: var(--sc-amber);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -202,13 +226,79 @@ body {
 .lab-glass-panel {
   background: var(--lab-surface);
   border: 1px solid var(--lab-border);
-  border-radius: 0.75rem;
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-radius: 1rem;
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
   transition:
-    box-shadow 0.22s ease,
-    border-color 0.22s ease,
-    background-color 0.22s ease;
+    box-shadow var(--sc-transition-ui) ease,
+    border-color var(--sc-transition-ui) ease,
+    background-color var(--sc-transition-ui) ease;
+}
+
+/* Premium instrument / radar cards */
+.sc-premium-card {
+  background: var(--sc-glass-bg);
+  border: 1px solid var(--sc-glass-border);
+  backdrop-filter: blur(24px) saturate(145%);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 32px rgba(2, 6, 23, 0.42);
+  transition:
+    box-shadow var(--sc-transition-ui) ease,
+    border-color var(--sc-transition-ui) ease,
+    transform var(--sc-transition-ui) ease;
+}
+
+.sc-premium-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 36px rgba(2, 6, 23, 0.48);
+}
+
+.sc-premium-card--signal:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.sc-table-row-glow {
+  transition:
+    background-color var(--sc-transition-fast) ease,
+    box-shadow var(--sc-transition-fast) ease;
+}
+
+.sc-table-row-glow:hover {
+  background-color: rgba(255, 255, 255, 0.028);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+/* UI view modes */
+html[data-ui-mode="focus"] .ui-mode-hide-focus {
+  display: none !important;
+}
+
+html[data-ui-mode="focus"] .lab-page {
+  max-width: min(1680px, 100%);
+  margin-inline: auto;
+}
+
+html[data-ui-mode="focus"] .sc-premium-card,
+html[data-ui-mode="focus"] .lab-glass-panel {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-ui-mode="presentation"] .ui-mode-hide-presentation {
+  display: none !important;
+}
+
+html[data-ui-mode="presentation"] .lab-page {
+  max-width: min(1920px, 100%);
+  margin-inline: auto;
+}
+
+html[data-ui-mode="presentation"] .lab-glass-panel,
+html[data-ui-mode="presentation"] .sc-premium-card {
+  border-radius: 1.25rem;
 }
 
 .lab-glass-panel:not(.lab-depth-10):not(.lab-depth-20):not(.lab-depth-30) {
@@ -263,11 +353,11 @@ body {
 }
 
 .lab-glass-panel--interactive:hover {
-  border-color: rgba(34, 211, 238, 0.24);
+  border-color: rgba(255, 255, 255, 0.14);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     0 16px 44px rgba(0, 3, 10, 0.58),
-    0 0 20px rgba(34, 211, 238, 0.06);
+    0 0 18px rgba(34, 211, 238, 0.04);
 }
 
 /* ── Depth layers ── */
@@ -335,11 +425,11 @@ body {
 }
 
 .lab-glass-card:hover {
-  border-color: rgba(34, 211, 238, 0.22);
+  border-color: rgba(255, 255, 255, 0.14);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 12px 36px rgba(0, 3, 10, 0.48),
-    0 0 16px rgba(34, 211, 238, 0.05);
+    0 0 14px rgba(34, 211, 238, 0.04);
 }
 
 .lab-neon-border {
@@ -1126,6 +1216,83 @@ body {
 .dom-ladder-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
+}
+
+/* Market Radar — плоский cockpit, без «витрины» premium-card */
+.market-radar {
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+}
+
+.market-radar-column {
+  background: rgba(2, 6, 23, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: none;
+}
+
+.market-radar-column--liquidity {
+  border-top: 1px solid rgba(34, 211, 238, 0.22);
+}
+
+.market-radar-column--inplay {
+  border-top: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.market-radar-column--volatility {
+  border-top: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+/* Market Radar — тонкий scroll в колонках «в игре» / волатильность */
+.market-radar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+}
+
+.market-radar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.market-radar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.market-radar-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.market-radar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.38);
+}
+
+/* Market Radar — плоский cockpit без «витрины» premium-card */
+.market-radar-cockpit {
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.market-radar-column {
+  background: rgba(2, 6, 23, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.375rem;
+}
+
+.market-radar-column--liquidity {
+  border-left: 2px solid rgba(34, 211, 238, 0.38);
+}
+
+.market-radar-column--inplay {
+  border-left: 2px solid rgba(52, 211, 153, 0.36);
+}
+
+.market-radar-column--volatility {
+  border-left: 2px solid rgba(251, 191, 36, 0.34);
 }
 
 .orderflow-presentation-hint {

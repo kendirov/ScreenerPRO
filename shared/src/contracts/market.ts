@@ -102,6 +102,9 @@ export type ScreenerFallbackReason = z.infer<typeof screenerFallbackReasonSchema
 export const baselineStatusSchema = z.enum(["ok", "skipped", "error"]);
 export type BaselineStatus = z.infer<typeof baselineStatusSchema>;
 
+export const screenerDataModeSchema = z.enum(["live", "historical"]);
+export type ScreenerDataMode = z.infer<typeof screenerDataModeSchema>;
+
 export const screenerDataStatusSchema = z.object({
   source: screenerDataSourceSchema,
   isDemo: z.boolean(),
@@ -114,6 +117,12 @@ export const screenerDataStatusSchema = z.object({
   futuresRows: z.number().int().nonnegative(),
   fallbackReason: screenerFallbackReasonSchema.nullable(),
   message: z.string().nullable(),
+  /** Запрошенная торговая дата (YYYY-MM-DD). */
+  tradingDateKey: z.string().nullable().optional(),
+  /** Фактическая дата данных (если найден ближайший торговый день). */
+  resolvedTradingDateKey: z.string().nullable().optional(),
+  dataMode: screenerDataModeSchema.optional(),
+  historicalEmpty: z.boolean().optional(),
 });
 export type ScreenerDataStatus = z.infer<typeof screenerDataStatusSchema>;
 
@@ -128,6 +137,11 @@ export const screenerBenchmarkSchema = z.object({
   aggregateTrades: z.number().nullable(),
   updatedAt: z.string(),
   sourceUpdatedAt: z.string().nullable(),
+  open: z.number().nullable().optional(),
+  high: z.number().nullable().optional(),
+  low: z.number().nullable().optional(),
+  previousClose: z.number().nullable().optional(),
+  absoluteChange: z.number().nullable().optional(),
 });
 export type ScreenerBenchmark = z.infer<typeof screenerBenchmarkSchema>;
 

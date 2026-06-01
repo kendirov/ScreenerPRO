@@ -60,6 +60,8 @@ export function StocksScreenerTable({
   showTooltips = true,
   emptyTitle = "Нет данных",
   emptyText = "Источник данных временно недоступен.",
+  highlightedTicker: highlightedTickerProp,
+  onHighlightedTickerChange,
 }: {
   rows: ScreenerRow[];
   columns: ColumnDef<ScreenerRow>[];
@@ -70,10 +72,26 @@ export function StocksScreenerTable({
   showTooltips?: boolean;
   emptyTitle?: string;
   emptyText?: string;
+  highlightedTicker?: string | null;
+  onHighlightedTickerChange?: (ticker: string | null) => void;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "turnover", desc: true }]);
   const [expandedTicker, setExpandedTicker] = React.useState<string | null>(null);
-  const [highlightedTicker, setHighlightedTicker] = React.useState<string | null>(null);
+  const [internalHighlightedTicker, setInternalHighlightedTicker] = React.useState<string | null>(null);
+  const isHighlightControlled = onHighlightedTickerChange != null;
+  const highlightedTicker = isHighlightControlled ? (highlightedTickerProp ?? null) : internalHighlightedTicker;
+  const setHighlightedTicker = React.useCallback(
+    (value: React.SetStateAction<string | null>) => {
+      const resolve = (prev: string | null) =>
+        typeof value === "function" ? (value as (p: string | null) => string | null)(prev) : value;
+      if (isHighlightControlled) {
+        onHighlightedTickerChange?.(resolve(highlightedTicker));
+      } else {
+        setInternalHighlightedTicker(resolve);
+      }
+    },
+    [isHighlightControlled, highlightedTicker, onHighlightedTickerChange],
+  );
   const [hoverAnchor, setHoverAnchor] = React.useState<StockRowHoverAnchor | null>(null);
   const showTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -323,9 +341,9 @@ export function StocksScreenerTable({
                   <React.Fragment key={row.id}>
                     <tr
                       className={cn(
-                        "border-b border-lab-border-soft/20 transition duration-150",
+                        "sc-table-row-glow border-b border-lab-border-soft/20",
                         rowIndex % 2 === 1 ? "bg-white/[0.012]" : "bg-transparent",
-                        isHighlighted ? "bg-lab-cyan/[0.05]" : "hover:bg-white/[0.025]",
+                        isHighlighted ? "bg-lab-cyan/[0.05] shadow-[inset_0_0_0_1px_rgba(34,211,238,0.08)]" : "",
                         inPlay ? "bg-cyan-950/8" : "",
                       )}
                       onMouseEnter={(event) => {

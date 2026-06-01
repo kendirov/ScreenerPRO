@@ -8,6 +8,7 @@ import {
   screenerRowToStockCard,
   stockReasonTags,
 } from "@/lib/domain/market-card-visual";
+import { resolveActivityScore, resolveSignalMode } from "@/lib/design/design-tokens";
 import { tradingFormat } from "@/lib/formatters/trading";
 import { cn } from "@/lib/utils/cn";
 
@@ -18,6 +19,7 @@ interface SparklineLookup {
 interface StockRadarMosaicProps {
   rows: ScreenerRow[];
   seriesByTicker: SparklineLookup;
+  maxTurnover?: number;
 }
 
 const STOCK_GRID: Record<"hero" | "medium" | "compact", string> = {
@@ -26,7 +28,7 @@ const STOCK_GRID: Record<"hero" | "medium" | "compact", string> = {
   compact: "min-w-[9.5rem]",
 };
 
-export function StockRadarMosaic({ rows, seriesByTicker }: StockRadarMosaicProps) {
+export function StockRadarMosaic({ rows, seriesByTicker, maxTurnover = 0 }: StockRadarMosaicProps) {
   if (!rows.length) {
     return (
       <MarketFocusCard
@@ -36,7 +38,7 @@ export function StockRadarMosaic({ rows, seriesByTicker }: StockRadarMosaicProps
         changePct={null}
         empty
         emptyTitle="Явных лидеров нет"
-        emptyDescription="Радар обновится, когда появятся акции «в игре»"
+        emptyDescription="Радар обновится, когда появятся акции в игре"
         className="border-dashed"
       />
     );
@@ -49,15 +51,29 @@ export function StockRadarMosaic({ rows, seriesByTicker }: StockRadarMosaicProps
   return (
     <div className="space-y-2.5">
       <div className="grid grid-cols-12 gap-2.5">
-        <StockTile row={hero} rank={1} size="hero" seriesByTicker={seriesByTicker} />
+        <StockTile row={hero} rank={1} size="hero" seriesByTicker={seriesByTicker} maxTurnover={maxTurnover} />
         {medium.map((row, i) => (
-          <StockTile key={row.ticker} row={row} rank={i + 2} size="medium" seriesByTicker={seriesByTicker} />
+          <StockTile
+            key={row.ticker}
+            row={row}
+            rank={i + 2}
+            size="medium"
+            seriesByTicker={seriesByTicker}
+            maxTurnover={maxTurnover}
+          />
         ))}
       </div>
       {compact.length > 0 ? (
         <div className="-mx-0.5 flex gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
           {compact.map((row, i) => (
-            <StockTile key={row.ticker} row={row} rank={i + 4} size="compact" seriesByTicker={seriesByTicker} />
+            <StockTile
+              key={row.ticker}
+              row={row}
+              rank={i + 4}
+              size="compact"
+              seriesByTicker={seriesByTicker}
+              maxTurnover={maxTurnover}
+            />
           ))}
         </div>
       ) : null}
@@ -70,17 +86,21 @@ function StockTile({
   rank,
   size,
   seriesByTicker,
+  maxTurnover,
 }: {
   row: ScreenerRow;
   rank: number;
   size: "hero" | "medium" | "compact";
   seriesByTicker: SparklineLookup;
+  maxTurnover: number;
 }) {
   const base = screenerRowToStockCard(row, size);
   return (
     <MarketFocusCard
       {...base}
       rank={rank}
+      activityScore={resolveActivityScore(row)}
+      signalMode={resolveSignalMode(row, maxTurnover)}
       sparklineValues={seriesByTicker.get(row.ticker) ?? null}
       turnover={formatTurnoverCompact(row.turnover)}
       trades={tradingFormat.formatInteger(row.tradesCount ?? null)}

@@ -6,8 +6,6 @@ import { FuturesFamilyTable } from "@/components/screener/futures-family-table";
 import { MarketRadar } from "@/components/screener/market-radar";
 import { createStockColumns } from "@/components/screener/columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { selectInPlayForRadar } from "@/lib/domain/stocks-screener-signals";
-import { useInPlayStockCandles } from "@/lib/hooks/use-in-play-stock-candles";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 
 const ILLIQUID_RATIO = 0.02;
@@ -65,18 +63,6 @@ export function HomePageScreener() {
   );
   const stockTableColumns = React.useMemo(() => createStockColumns(maxTurnover), [maxTurnover]);
 
-  const inPlayTickers = React.useMemo(
-    () => selectInPlayForRadar(stocks).slice(0, 8).map((row) => row.ticker),
-    [stocks],
-  );
-  const { seriesByTicker } = useInPlayStockCandles(inPlayTickers);
-  const candleLookup = React.useMemo(
-    () => ({
-      get: (ticker: string) => seriesByTicker.get(ticker.toUpperCase()) ?? null,
-    }),
-    [seriesByTicker],
-  );
-
   return (
     <div className="space-y-2">
       <Tabs value={instrumentTab} onValueChange={(value) => setInstrumentTab(value as "stocks" | "futures")} className="space-y-2">
@@ -112,8 +98,8 @@ export function HomePageScreener() {
           </div>
         </div>
         <TabsContent value="stocks">
-          <div className="sticky top-[4.05rem] z-30 mb-2 space-y-2 border-b border-white/5 bg-slate-950/80 pb-1.5 backdrop-blur-md">
-            <MarketRadar rows={stocks} allRows={stockUniverse} candlesByTicker={candleLookup} />
+          <div className="sticky top-[4.05rem] z-30 mb-1 border-b border-white/5 bg-slate-950/88 pb-0.5 backdrop-blur-md">
+            <MarketRadar rows={stocks} allRows={stockUniverse} dataStatus={status} />
           </div>
           <div className="mb-2.5 rounded-xl border border-white/5 bg-slate-950/45 p-2 shadow-[0_8px_18px_rgba(2,6,23,0.18)] backdrop-blur-md">
             <div className="flex items-center justify-between gap-2">

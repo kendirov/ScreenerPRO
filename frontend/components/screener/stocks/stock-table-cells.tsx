@@ -101,7 +101,7 @@ export function StockTradesCell({ row }: { row: ScreenerRow }) {
         className={cn(
           "mx-auto h-1.5 w-1.5 shrink-0 rounded-full",
           hot && hasTrades
-            ? "animate-pulse bg-cyan-400/75 shadow-[0_0_6px_rgba(34,211,238,0.45)]"
+            ? "bg-cyan-400/65 shadow-[0_0_5px_rgba(34,211,238,0.28)]"
             : "bg-transparent",
         )}
         aria-hidden

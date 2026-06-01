@@ -15,6 +15,7 @@ import {
   STOCK_DAY_RANGE_COLUMN_LABEL,
   STOCK_DAY_RANGE_HEADER_TOOLTIP,
   STOCK_ILLIQUID_TURNOVER_FLOOR,
+  getStockReasonSummary,
 } from "@/lib/domain/stock-screener-display";
 import { tradingFormat } from "@/lib/formatters/trading";
 
@@ -26,8 +27,18 @@ declare module "@tanstack/react-table" {
   }
 }
 
-/** Фиксированные доли ширины для table-fixed — 6 колонок данных + «Детали». */
-export const STOCK_TABLE_COLUMN_WIDTHS = ["20%", "12%", "9%", "20%", "15%", "13%", "11%"] as const;
+/** Фиксированные доли ширины для table-fixed — данные + Причина + Детали. */
+export const STOCK_TABLE_COLUMN_WIDTHS = [
+  "14%",
+  "9%",
+  "7%",
+  "13%",
+  "11%",
+  "9%",
+  "16%",
+  "12%",
+  "9%",
+] as const;
 
 const futuresNumberClass = "text-right font-mono tabular-nums text-[13px] text-slate-200";
 
@@ -80,6 +91,26 @@ export function createStockColumns(maxTurnover: number): ColumnDef<ScreenerRow>[
         headerTooltip: STOCK_DAY_RANGE_HEADER_TOOLTIP,
       },
       cell: ({ row }) => <StockRangeCell row={row.original} />,
+    },
+    {
+      id: "reason",
+      header: "Причина",
+      enableSorting: false,
+      meta: { align: "left" },
+      cell: ({ row }) => {
+        const summary = getStockReasonSummary(row.original, maxTurnover);
+        if (summary === "—") {
+          return <span className="text-[11px] text-lab-text-dim">—</span>;
+        }
+        return (
+          <span
+            className="line-clamp-2 text-[11px] leading-snug text-lab-text-muted"
+            title={summary}
+          >
+            {summary}
+          </span>
+        );
+      },
     },
   ];
 }

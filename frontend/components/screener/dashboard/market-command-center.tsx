@@ -12,13 +12,17 @@ import {
   selectTopFutures,
 } from "@/lib/domain/screener-overview";
 import { useSparklineHistories } from "@/lib/hooks/use-sparkline-histories";
+import { useSelectedTradingDate } from "@/lib/hooks/use-selected-trading-date";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
+import { TradingDateControl } from "@/components/screener/trading-date-control";
+import { MarketIndexStatusBlock } from "@/components/screener/market-index-status-block";
 import { AnomalyRail } from "./anomaly-rail";
 import { FutureFocusHeroCard } from "./future-focus-hero-card";
 import { LabsLaunchGrid } from "./labs-launch-grid";
 import { SessionPulseCard } from "./session-pulse-card";
 import { FuturesRadarMosaic, StockRadarMosaic } from "./signal-mosaic";
+import { UiViewModeToggle } from "@/components/screener/ui-view-mode-toggle";
 import { SignalHeroCard } from "./signal-hero-card";
 
 function SectionHead({ title, href, hrefLabel }: { title: string; href?: string; hrefLabel?: string }) {
@@ -60,7 +64,8 @@ function collectSparklineTickers(input: {
 }
 
 export function MarketCommandCenter() {
-  const stocksQuery = useScreenerQuery("stock");
+  const tradingDate = useSelectedTradingDate();
+  const stocksQuery = useScreenerQuery("stock", tradingDate.apiDateParam);
   const futuresQuery = useScreenerQuery("future");
   const stocks = React.useMemo(() => stocksQuery.data?.rows ?? [], [stocksQuery.data?.rows]);
   const futures = React.useMemo(() => futuresQuery.data?.rows ?? [], [futuresQuery.data?.rows]);
@@ -106,6 +111,17 @@ export function MarketCommandCenter() {
   const sourceLabel = formatDataSourceLabel(status?.source);
 
   const isLoading = stocksQuery.isLoading || futuresQuery.isLoading;
+  const stocksHistoricalEmpty = stocksQuery.data?.status?.historicalEmpty === true;
+
+  const resolvedHintDate =
+    stocksQuery.data?.status?.resolvedTradingDateKey &&
+    stocksQuery.data?.status?.tradingDateKey &&
+    stocksQuery.data.status.resolvedTradingDateKey !== stocksQuery.data.status.tradingDateKey
+      ? stocksQuery.data.status.resolvedTradingDateKey
+      : null;
+
+  const stocksUpdatedAt =
+    stocksQuery.data?.status?.fetchTimestamp ?? stocksQuery.data?.status?.generatedAt ?? null;
 
   return (
     <div className="space-y-3">
@@ -127,15 +143,43 @@ export function MarketCommandCenter() {
             <HeaderPill label="Акции" value={String(stocks.length)} />
             <HeaderPill label="Фьючерсы" value={String(futures.length)} />
             <HeaderPill label="В игре" value={String(inPlayStocks.length)} />
+            <UiViewModeToggle className="ui-mode-hide-presentation" />
           </div>
         </div>
+        <div className="relative mt-2.5 space-y-2 border-t border-white/[0.05] pt-2.5">
+          <TradingDateControl
+            selectedDateKey={tradingDate.selectedDateKey}
+            isLive={tradingDate.isLive}
+            mode={tradingDate.mode}
+            onToday={tradingDate.setToday}
+            onYesterday={tradingDate.setYesterday}
+            onPickDate={tradingDate.setPickedDate}
+            resolvedDateKey={resolvedHintDate}
+            updatedAtLabel={stocksUpdatedAt}
+            isLoading={stocksQuery.isLoading}
+            dataEmpty={stocksHistoricalEmpty}
+          />
+          <MarketIndexStatusBlock
+            benchmarks={stocksQuery.data?.benchmarks}
+            status={stocksQuery.data?.status}
+            isLive={tradingDate.isLive}
+            isLoading={stocksQuery.isLoading}
+          />
+        </div>
       </LabGlassPanel>
+
+      {stocksHistoricalEmpty ? (
+        <LabGlassPanel depth={10} className="border-dashed px-4 py-6 text-center">
+          <p className="text-sm text-lab-muted">Нет данных за выбранную дату</p>
+          <p className="mt-1 text-xs text-lab-dim">{stocksQuery.data?.status?.message}</p>
+        </LabGlassPanel>
+      ) : null}
 
       {isLoading ? (
         <LabGlassPanel depth={10} className="border-dashed px-4 py-10 text-center">
           <p className="text-sm text-lab-muted">Загрузка данных MOEX…</p>
         </LabGlassPanel>
-      ) : (
+      ) : stocksHistoricalEmpty ? null : (
         <>
           <section className="grid gap-2 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(188px,0.42fr)]">
             <SignalHeroCard
@@ -154,7 +198,11 @@ export function MarketCommandCenter() {
 
           <section>
             <SectionHead title="Радар акций" href="/screener/stocks" hrefLabel="Скринер акций →" />
-            <StockRadarMosaic rows={inPlayStocks} seriesByTicker={lookup} />
+            <StockRadarMosaic
+              rows={inPlayStocks}
+              seriesByTicker={lookup}
+              maxTurnover={stocks.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0)}
+            />
           </section>
 
           <section>
