@@ -3,15 +3,22 @@ import type { ScreenerRow } from "@screenerpro/shared";
 export type StockSparklineCandle = {
   time: string;
   close: number;
+  turnover?: number | null;
+  volume?: number | null;
+  /** YYYY-MM-DD MSK — для разделения сессий в 2С sparkline */
+  sessionKey?: string;
 };
 
 export type StockSparklineSource = "intraday" | "daily";
+export type StockSparklineScope = "today" | "twoSessions";
 
 export type StockSparklineSeries = {
   secid: string;
   status: "ok" | "no-data" | "error";
   source: StockSparklineSource;
   interval: 10 | 60 | 24;
+  scope?: StockSparklineScope;
+  sessionKeys?: string[];
   candles: StockSparklineCandle[];
   candleCount: number;
   error?: string;
@@ -86,4 +93,39 @@ export function extractSparklineCloses(series: StockSparklineSeries | null | und
 
 export function hasEnoughSparklinePoints(series: StockSparklineSeries | null | undefined): boolean {
   return extractSparklineCloses(series).length >= 3;
+}
+
+export function hasTwoSessionSparkline(series: StockSparklineSeries | null | undefined): boolean {
+  if (!series || series.status !== "ok") return false;
+  if ((series.sessionKeys?.length ?? 0) < 2) return false;
+  return extractSparklineCloses(series).length >= 3;
+}
+
+export type MicroBarRangeScope = "twoSessions" | "session";
+
+/** Диапазон для micro-position bar: 2С по свечам или high/low текущей сессии. */
+export function resolveMicroBarRange(
+  row: ScreenerRow,
+  series: StockSparklineSeries | null | undefined,
+): { low: number; high: number; scope: MicroBarRangeScope } | null {
+  const closes = extractSparklineCloses(series);
+  if (hasTwoSessionSparkline(series) && closes.length >= 2) {
+    const low = Math.min(...closes, row.low ?? Number.POSITIVE_INFINITY);
+    const high = Math.max(...closes, row.high ?? Number.NEGATIVE_INFINITY);
+    if (Number.isFinite(low) && Number.isFinite(high) && high > low) {
+      return { low, high, scope: "twoSessions" };
+    }
+  }
+  if (row.low != null && row.high != null && row.high > row.low) {
+    return { low: row.low, high: row.high, scope: "session" };
+  }
+  return null;
+}
+
+export function formatSparklineScopeLabel(series: StockSparklineSeries | null | undefined): string | null {
+  if (!series || series.status !== "ok") return null;
+  if (series.scope === "twoSessions" && (series.sessionKeys?.length ?? 0) >= 2) {
+    return `2С · ${series.interval}м · ${series.candleCount} св.`;
+  }
+  return formatSparklineSourceLabel(series);
 }

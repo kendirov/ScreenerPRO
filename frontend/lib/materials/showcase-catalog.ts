@@ -121,6 +121,18 @@ export const MATERIALS_SHOWCASE_ITEMS: MaterialsShowcaseItem[] = [
     draftNotice: true,
   },
   {
+    slug: "perpetual-leverage",
+    section: "inDevelopment",
+    title: "Leverage Liquidation Map",
+    description:
+      "Интерактивная карта: чем выше плечо, тем ближе ликвидация в perpetual-фьючерсах.",
+    href: "/lab/perpetual-leverage",
+    type: "тренажёр",
+    motif: "curve",
+    status: "draft",
+    draftNotice: true,
+  },
+  {
     slug: "orderflow-simulator",
     section: "inDevelopment",
     title: "Привод-симулятор",

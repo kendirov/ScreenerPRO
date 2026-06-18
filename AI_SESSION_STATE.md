@@ -4,61 +4,104 @@
 
 ## Текущая задача
 
-**Spread Lab — percentile zones на spread-графике (7С)** — завершён (2026-05-31).
+**Market Radar dev debug** — завершён (2026-06-06).
 
 ---
 
-## Что сделано
+## sessionContext
 
-### Percentile analytics (`spread-percentile-analytics.ts`)
+Файл: `frontend/lib/domain/market-radar-session.ts`
 
-Метрики по `spreadPoints` за выбранную глубину истории:
+- `turnoverRef` = median(top-3 оборот)
+- `tradesRef` = median(top-5 сделок)
+- `sessionIntensity` = 0.6×turnoverIntensity + 0.4×tradesIntensity (same-time baseline по рынку)
+- Режимы: **quiet** / **soft** / **normal** / **hot** → `minTurnover` / `minTrades`
+- На строку: `leaderPresenceScore`, `relativeTurnover`, `relativeTrades`
 
-- currentSpread, maxSpread, minSpread, maxAbsSpread
-- percentileCurrent, percentileAbs, p70, p90, p97
-- currentZone: `noise | watch | extreme | strong`
-- lastExtremeAt, collapseFromExtreme, retestCount
-
-**Зоны** (по |spread|):
-
-| Зона | Перцентиль (≥40 точек) | Fixed fallback |
-|------|------------------------|----------------|
-| noise | < p70 | < 100 п. |
-| watch | p70–p90 | 100–300 п. |
-| extreme | p90–p97 | 300–700 п. |
-| strong | ≥ p97 | ≥ 700 п. |
-
-Минимум для надёжных перцентилей: **40 точек** (`SPREAD_PERCENTILE_MIN_POINTS`).
-
-### UI
-
-- **График**: мягкие горизонтальные полосы зон (BaselineSeries, ±симметрично)
-- **Side panel**: NOW, MAX 7С, MIN 7С, P90, P97, зона, percentile abs
-- **Метки**: MAX/MIN/NOW + локальные экстремумы (▲/▼)
-- **Signal strip**: spread, перцентиль, зона, схлопывание, последний экстремум, retest
-
-### Интерпретация
-
-- «Spread в зоне p90 — рабочее расхождение»
-- «Spread выше p97 — экстремальная зона»
-- «После экстремума идёт схлопывание на X п.»
-- «Повторный тест экстремума»
-- При <40 точек: честный fallback на fixed 100/300/700/900
+Snapshot: `buildRadarBoard(universe, candidates)` — один `rankCtx` на все колонки.
 
 ---
 
-## Файлы
+## Правила отбора (v4)
 
-`spread-percentile-analytics.ts`, `spread-points.ts`, `spread-lab-chart-model.ts`, `spread-lab-chart.tsx`, `quad-hedge-spread-strip.tsx`, `point-thresholds.ts`, `types.ts`, `index.ts`, `docs/QUADROHEDGE_LAB.md`
+### В игре (`isInGame`)
+
+- `inGameScore ≥ 0.75` (45% leader + 35% movement + 20% baseline)
+- `leaderPresenceScore ≥ 0.60`
+- `movementScore ≥ 0.55`
+- `turnover ≥ session.minTurnover`, `trades ≥ session.minTrades`
+- **0 строк — норма**, не добиваем
+
+### Актив (`isActive`)
+
+- не in-game, не тонкая (< 10M ₽ или < 300 сделок)
+- `activityScore ≥ 0.58`
+- `movementScore ≥ 0.30`, `leaderPresence ≥ 0.25`
+- `turnover ≥ minTurnover×0.5`, `trades ≥ minTrades×0.5`
+- Список: in-game → active, max **8**
+
+### Волатильность (`isVolatile`)
+
+- gate: range ≥ 1.5% / |Δ| ≥ 1.2% / near high-low / пробой
+- top **6** по `volatilityScore`
+- тонкие: тег **тонко**, не в активность только из-за диапазона
+
+### Ликвидность
+
+- top **5** по rank-based `liquidityScore`
 
 ---
 
-## Build
+## UI радара (компактно, ~260px)
 
-`pnpm -C frontend exec next build` — **OK** (2026-05-31)
+| Блок | Строка |
+|------|--------|
+| **ЛИКВИДНОСТЬ** | тикер · % · оборот · сделки · `деньги` |
+| **АКТИВНОСТЬ** | тикер · [бейдж `в игре`] · % · оборот x/оборот · сделки x/сделки · reason |
+| **ВОЛАТИЛЬНОСТЬ** | тикер · % · оборот · диапазон · reason |
+
+**Reason активность:** `лидер + диапазон` · `объём + сделки` · `сделки + ход` · `актив` · `нет базы`
+
+**Reason волатильность:** `диапазон` · `у high` · `у low` · `пробой high/low` · `тонко`
+
+Без ratio → обычные числа, без фейкового x. Пустой блок → `—`.
+
+Запрещено в UI: VOL, TRD, LIQ, GAME, ОБ·X, ДИАП.
+
+Файлы: `radar-ui-labels.ts`, `market-radar-selectors.ts` (`resolveRadarActivityTag`, `resolveRadarVolatilityTag`), `radar-mini-row.tsx`, `market-radar.tsx`.
 
 ---
 
-## Следующий шаг
+## Dev-диагностика Market Radar
 
-Hover event tape → маркеры; local collector для глубокой истории.
+**Только development** — не видна обычному пользователю, production API → 404.
+
+| Способ | Как |
+|--------|-----|
+| console.table | `/screener/stocks?debugRadar=1` — DevTools, группа `[Market Radar] debug` |
+| JSON | `/sandbox` — блок «Market Radar debug» |
+| API | `GET /api/dev/market-radar-debug` (dev only) |
+
+Файл: `frontend/lib/domain/market-radar-debug.ts` — top-30 по обороту, все scores + `isInGame` / `isActive` / `isVolatile` + `listed*` (фактически в списках UI) + `radarTag` / `radarReason`.
+
+Сравнение SMLT vs SBER: смотреть `leaderPresenceScore`, `movementScore`, `inGameScore`, gates `session.minTurnover/minTrades`.
+
+---
+
+## Build / verify
+
+```bash
+pnpm -C frontend exec next build
+pnpm -C frontend verify:market-radar
+pnpm -C frontend verify:market-radar-session
+```
+
+---
+
+## Browser checklist (`/screener/stocks`)
+
+1. **ЛИКВИДНОСТЬ** — Сбер с тегом `деньги`; flat день не обязан быть в активности.
+2. **АКТИВНОСТЬ** — in-game: бейдж + reason; SMLT/ASTR при лидерстве: `лидер + диапазон` или x-слоты; без базы: `—` + `нет базы`.
+3. **ВОЛАТИЛЬНОСТЬ** — тонкие с большим %: `тонко`, не в активности.
+4. In-game **0** — без текста «в игре» в пустой колонке.
+5. Радар ~260px sticky, таблица сразу под ним.

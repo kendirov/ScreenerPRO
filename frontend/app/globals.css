@@ -1218,81 +1218,27 @@ html[data-ui-mode="presentation"] .sc-premium-card {
   scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
 }
 
-/* Market Radar — плоский cockpit, без «витрины» premium-card */
-.market-radar {
-  background: rgba(15, 23, 42, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px) saturate(120%);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-}
-
-.market-radar-column {
-  background: rgba(2, 6, 23, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: none;
+/* Market Radar — compact intraday cockpit */
+.market-radar-grid {
+  grid-template-columns: minmax(160px, 0.24fr) minmax(280px, 0.5fr) minmax(140px, 0.26fr);
 }
 
 .market-radar-column--liquidity {
-  border-top: 1px solid rgba(34, 211, 238, 0.22);
+  box-shadow: inset 2px 0 0 rgba(100, 116, 139, 0.35);
 }
 
-.market-radar-column--inplay {
-  border-top: 1px solid rgba(52, 211, 153, 0.2);
-}
-
-.market-radar-column--volatility {
-  border-top: 1px solid rgba(251, 191, 36, 0.2);
-}
-
-/* Market Radar — тонкий scroll в колонках «в игре» / волатильность */
-.market-radar-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
-}
-
-.market-radar-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.market-radar-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.market-radar-scroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.22);
-}
-
-.market-radar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.38);
-}
-
-/* Market Radar — плоский cockpit без «витрины» premium-card */
-.market-radar-cockpit {
-  background: rgba(15, 23, 42, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(14px) saturate(120%);
-  -webkit-backdrop-filter: blur(14px) saturate(120%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.market-radar-column {
-  background: rgba(2, 6, 23, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 0.375rem;
-}
-
-.market-radar-column--liquidity {
-  border-left: 2px solid rgba(34, 211, 238, 0.38);
-}
-
-.market-radar-column--inplay {
-  border-left: 2px solid rgba(52, 211, 153, 0.36);
+.market-radar-column--worklist {
+  box-shadow: inset 2px 0 0 rgba(148, 163, 184, 0.45);
 }
 
 .market-radar-column--volatility {
-  border-left: 2px solid rgba(251, 191, 36, 0.34);
+  box-shadow: inset 2px 0 0 rgba(100, 116, 139, 0.3);
+}
+
+@media (max-width: 1024px) {
+  .market-radar-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .orderflow-presentation-hint {
@@ -1495,4 +1441,900 @@ html[data-ui-mode="presentation"] .sc-premium-card {
   100% {
     filter: brightness(1);
   }
+}
+
+/* ── Perpetual Leverage Lab ── */
+.perp-lab {
+  --perp-bg: #000308;
+  --perp-track: rgba(30, 41, 59, 0.9);
+  --perp-fill: rgba(148, 163, 184, 0.55);
+  --perp-thumb: rgba(226, 232, 240, 0.95);
+}
+
+.perp-lab .perp-lab-panel,
+.perp-lab .perp-lab-card {
+  background: linear-gradient(160deg, rgba(10, 14, 22, 0.96), rgba(4, 6, 10, 0.94));
+}
+
+.perp-lab-panel--leverage-live {
+  border-color: rgba(148, 163, 184, 0.12);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.06);
+}
+
+.liquidation-map--live {
+  border-color: rgba(148, 163, 184, 0.14);
+  box-shadow: 0 0 32px rgba(15, 23, 42, 0.8);
+}
+
+.liquidation-map-liq-pulse {
+  animation: price-risk-liq-pulse 3.5s ease-in-out infinite;
+}
+
+@keyframes price-risk-liq-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    box-shadow: 0 0 8px rgba(190, 50, 70, 0.15);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 14px rgba(190, 50, 70, 0.28);
+  }
+}
+
+/* Leverage slider */
+.perp-lab .perp-lab-range--leverage {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  height: 0.5rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    var(--perp-fill) 0%,
+    var(--perp-fill) var(--leverage-pct),
+    var(--perp-track) var(--leverage-pct),
+    var(--perp-track) 100%
+  );
+}
+
+.perp-lab .perp-lab-range--leverage::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.perp-lab .perp-lab-range--leverage::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 1.375rem;
+  width: 1.375rem;
+  margin-top: -0.4375rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(148, 163, 184, 0.45);
+  background: var(--perp-thumb);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  cursor: grab;
+}
+
+.perp-lab .perp-lab-range--dragging::-webkit-slider-thumb {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.12), 0 2px 12px rgba(0, 0, 0, 0.5);
+  cursor: grabbing;
+}
+
+.perp-lab .perp-lab-range--leverage::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--perp-track);
+}
+
+.perp-lab .perp-lab-range--leverage::-moz-range-progress {
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--perp-fill);
+}
+
+.perp-lab .perp-lab-range--leverage::-moz-range-thumb {
+  height: 1.375rem;
+  width: 1.375rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(148, 163, 184, 0.45);
+  background: var(--perp-thumb);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+}
+
+.perp-lab .perp-lab-range--dragging::-moz-range-thumb {
+  transform: scale(1.12);
+}
+
+/* Glass stage — главный интерактив */
+.perp-lab-glass-stage {
+  background: linear-gradient(155deg, rgba(12, 18, 28, 0.72), rgba(2, 4, 8, 0.88));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.875rem;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 12px 48px rgba(0, 0, 0, 0.55),
+    0 0 80px rgba(8, 20, 40, 0.25);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+
+@media (min-width: 1280px) {
+  .perp-lab-slide {
+    max-height: calc(100dvh - 1.25rem);
+  }
+
+  .perp-lab-slide .perp-lab-glass-stage {
+    min-height: 0;
+  }
+
+  .vertical-risk-ladder__canvas {
+    max-height: min(34vh, 300px);
+  }
+}
+
+/* Vertical Risk Ladder */
+.vertical-risk-ladder {
+  background: #000205;
+}
+
+/* Honest coordinate price ladder */
+.price-ladder-coord-chart {
+  background: #000205;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.price-ladder-coord-chart--long {
+  border-color: rgba(34, 211, 238, 0.1);
+  box-shadow: inset 0 1px 0 rgba(34, 211, 238, 0.04);
+}
+
+.price-ladder-coord-chart--short {
+  border-color: rgba(167, 139, 250, 0.1);
+  box-shadow: inset 0 1px 0 rgba(139, 92, 246, 0.04);
+}
+
+.price-ladder-coord-chart__minor-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 14px 14px;
+  opacity: 0.65;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black var(--plot-top, 8%),
+    black var(--plot-bottom, 92%),
+    transparent 100%
+  );
+}
+
+.price-ladder-plot-area {
+  top: var(--plot-top, 8%);
+  bottom: calc(100% - var(--plot-bottom, 92%));
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.price-ladder-grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+}
+
+.price-ladder-grid-line--minor {
+  background: rgba(255, 255, 255, 0.065);
+}
+
+.price-ladder-grid-line--major {
+  background: rgba(255, 255, 255, 0.155);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.04);
+}
+
+.price-ladder-grid-vert {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 24%,
+    rgba(255, 255, 255, 0.04) 25%,
+    transparent 26%,
+    transparent 49%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 51%,
+    transparent 74%,
+    rgba(255, 255, 255, 0.04) 75%,
+    transparent 76%
+  );
+  opacity: 0.55;
+}
+
+.price-ladder-axis-y {
+  position: relative;
+}
+
+.price-ladder-axis-tick {
+  position: absolute;
+  right: 0.15rem;
+  transform: translateY(-50%);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: rgba(148, 163, 184, 0.72);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.price-ladder-axis-y--percent .price-ladder-axis-tick {
+  left: 0.1rem;
+  right: auto;
+}
+
+.price-ladder-axis-tick--entry {
+  color: rgba(103, 232, 249, 0.95);
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.35);
+}
+
+.price-ladder-axis-tick--take {
+  color: rgba(110, 231, 183, 0.9);
+}
+
+.price-ladder-axis-tick--stop {
+  color: rgba(252, 211, 77, 0.9);
+}
+
+.price-ladder-axis-tick--liquidation {
+  color: rgba(251, 113, 133, 0.92);
+  text-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+}
+
+.price-ladder-crosshair {
+  left: 0;
+  right: 0;
+  height: 0;
+}
+
+.price-ladder-crosshair__h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 8%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.08) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
+}
+
+.price-ladder-crosshair__v {
+  position: absolute;
+  left: 50%;
+  top: -120%;
+  bottom: -120%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 20%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.06) 80%,
+    transparent 100%
+  );
+  opacity: 0.7;
+}
+
+.price-ladder-crosshair__pct {
+  position: absolute;
+  left: 0.35rem;
+  top: 50%;
+  transform: translateY(calc(-50% - 0.65rem));
+  font-size: 8px;
+  font-weight: 600;
+  color: rgba(226, 232, 240, 0.55);
+  letter-spacing: 0.02em;
+}
+
+.price-ladder-line-hit {
+  opacity: 0;
+}
+
+.price-ladder-line-hit:hover,
+.price-ladder-line-hit:focus-visible {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.price-ladder-zone-honest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  border-left: 2px solid transparent;
+}
+
+.price-ladder-zone-honest__label {
+  position: absolute;
+  left: 0.35rem;
+  top: 0.25rem;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (min-width: 1536px) {
+  .price-ladder-zone-honest__label {
+    opacity: 0.45;
+  }
+}
+
+.price-ladder-zone-honest--profit {
+  background: rgba(16, 185, 129, 0.06);
+  border-left-color: rgba(16, 185, 129, 0.2);
+  color: rgba(52, 211, 153, 0.7);
+}
+
+.price-ladder-zone-honest--controlled {
+  background: rgba(34, 211, 238, 0.04);
+  border-left-color: rgba(34, 211, 238, 0.15);
+  color: rgba(34, 211, 238, 0.55);
+}
+
+.price-ladder-zone-honest--danger {
+  background: rgba(244, 63, 94, 0.08);
+  border-left-color: rgba(244, 63, 94, 0.25);
+  color: rgba(244, 63, 94, 0.65);
+}
+
+.price-ladder-zone-honest--liquidation {
+  background: rgba(127, 29, 29, 0.12);
+  border-left-color: rgba(244, 63, 94, 0.35);
+  color: rgba(244, 63, 94, 0.75);
+}
+
+.price-ladder-line--entry-base {
+  height: 2px;
+  background: rgba(34, 211, 238, 0.95);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.55);
+}
+
+.price-ladder-entry-anchor {
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.35) 12%,
+    rgba(34, 211, 238, 0.65) 50%,
+    rgba(34, 211, 238, 0.35) 88%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.25);
+}
+
+.price-ladder-clip-badge {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(254, 205, 211, 0.95);
+  background: rgba(127, 29, 29, 0.45);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.15);
+}
+
+@media (min-width: 640px) {
+  .price-ladder-clip-badge {
+    font-size: 10px;
+  }
+}
+
+.price-ladder-liq-inline {
+  text-shadow: 0 0 8px rgba(244, 63, 94, 0.35);
+}
+
+.vertical-risk-ladder__grid {
+  display: none;
+}
+
+.vrl-spine {
+  box-shadow: 0 0 12px rgba(148, 163, 184, 0.12);
+}
+
+.vrl-zone--profit {
+  background: radial-gradient(
+    ellipse 90% 85% at 50% 40%,
+    rgba(16, 185, 129, 0.12) 0%,
+    rgba(16, 185, 129, 0.04) 50%,
+    transparent 100%
+  );
+  filter: blur(10px);
+}
+
+.vrl-zone--danger {
+  background: radial-gradient(
+    ellipse 90% 90% at 50% 60%,
+    rgba(244, 63, 94, 0.2) 0%,
+    rgba(244, 63, 94, 0.08) 45%,
+    transparent 100%
+  );
+  filter: blur(12px);
+  transition: opacity 0.45s ease;
+}
+
+.vrl-air-segment {
+  flex-shrink: 0;
+}
+
+.vrl-edu-track {
+  flex: 1 1 78%;
+  min-height: 0;
+}
+
+/* Price ladder chart */
+.price-ladder-chart__plot {
+  isolation: isolate;
+}
+
+.price-ladder-axis {
+  background: linear-gradient(
+    to bottom,
+    rgba(16, 185, 129, 0.35) 0%,
+    rgba(34, 211, 238, 0.5) 35%,
+    rgba(245, 158, 11, 0.4) 65%,
+    rgba(244, 63, 94, 0.45) 100%
+  );
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.15);
+}
+
+.price-ladder-line {
+  height: 2px;
+  width: 100%;
+  border-radius: 1px;
+}
+
+.price-ladder-level-notch {
+  display: block;
+  width: 3px;
+  height: 7px;
+  margin-right: 2px;
+  border-radius: 0 2px 2px 0;
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.price-ladder-level-notch--take {
+  background: rgba(52, 211, 153, 0.85);
+}
+
+.price-ladder-level-notch--entry {
+  background: rgba(34, 211, 238, 0.95);
+  height: 9px;
+}
+
+.price-ladder-level-notch--stop {
+  background: rgba(251, 191, 36, 0.9);
+}
+
+.price-ladder-level-notch--liquidation {
+  background: rgba(244, 63, 94, 0.95);
+}
+
+.price-ladder-line--take {
+  background: rgba(52, 211, 153, 0.85);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
+}
+
+.price-ladder-line--entry {
+  height: 2px;
+  background: rgba(34, 211, 238, 0.9);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.5);
+}
+
+.price-ladder-line--stop {
+  background: rgba(251, 191, 36, 0.85);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+}
+
+.price-ladder-liq-ghost-line {
+  height: 0;
+  border-top: 1px dashed rgba(244, 63, 94, 0.38);
+  opacity: 0.2;
+  transition:
+    opacity 0.35s ease,
+    border-color 0.35s ease;
+}
+
+.price-ladder-liq-ghost-line--active {
+  opacity: 0.32;
+  border-top-width: 1.5px;
+  border-color: rgba(244, 63, 94, 0.55);
+}
+
+.price-ladder-liq-ghost-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(244, 63, 94, 0.45);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+}
+
+.price-ladder-liq-ghost-label--active {
+  color: rgba(254, 205, 211, 0.75);
+}
+
+@media (min-width: 640px) {
+  .price-ladder-liq-ghost-label {
+    font-size: 10px;
+  }
+}
+
+.price-ladder-line--liquidation {
+  background: rgba(244, 63, 94, 0.9);
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.42);
+  transition: box-shadow 0.35s ease, opacity 0.35s ease;
+}
+
+.price-ladder-line--liquidation-glow {
+  box-shadow:
+    0 0 14px rgba(244, 63, 94, 0.52),
+    0 0 26px rgba(244, 63, 94, 0.2);
+}
+
+.price-ladder-line--liquidation-pulse {
+  animation: price-ladder-liq-subtle-pulse 3.4s ease-in-out infinite;
+}
+
+@keyframes price-ladder-liq-subtle-pulse {
+  0%,
+  100% {
+    opacity: 0.9;
+    box-shadow:
+      0 0 12px rgba(244, 63, 94, 0.48),
+      0 0 22px rgba(244, 63, 94, 0.16);
+  }
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 16px rgba(244, 63, 94, 0.58),
+      0 0 28px rgba(244, 63, 94, 0.22);
+  }
+}
+
+.price-ladder-coord-chart--leverage-live {
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.06);
+}
+
+.perp-lab-glass-stage--leverage-live {
+  transition: box-shadow 0.35s ease;
+  box-shadow:
+    0 0 0 1px rgba(148, 163, 184, 0.08),
+    0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.perp-lab-risk-metrics--live {
+  transition: border-color 0.32s ease, box-shadow 0.32s ease;
+  box-shadow: 0 0 20px rgba(15, 23, 42, 0.35);
+}
+
+/* Leverage space compression mini-scale */
+.leverage-space-compression__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+}
+
+.leverage-space-compression__dot--entry {
+  background: rgba(34, 211, 238, 0.75);
+  box-shadow: 0 0 6px rgba(34, 211, 238, 0.25);
+}
+
+.leverage-space-compression__dot--liq {
+  background: rgba(244, 63, 94, 0.8);
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.2);
+}
+
+.leverage-space-compression__dot--active {
+  transform: scale(1.15);
+}
+
+.leverage-space-compression__gap {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.35), rgba(244, 63, 94, 0.55));
+  max-width: 100%;
+}
+
+.leverage-space-compression__gap--inactive {
+  width: 88% !important;
+  opacity: 0.35;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.25), rgba(148, 163, 184, 0.15));
+}
+
+.leverage-space-compression__gap--active {
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.15);
+}
+
+.leverage-space-compression__card--active .leverage-space-compression__gap--active {
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.22);
+}
+
+.leverage-space-compression__card--tier-calm {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.leverage-space-compression__card--tier-neutral {
+  border-color: rgba(245, 158, 11, 0.1);
+  background: rgba(15, 12, 5, 0.35);
+}
+
+.leverage-space-compression__card--tier-danger {
+  border-color: rgba(244, 63, 94, 0.14);
+  background: rgba(20, 5, 10, 0.38);
+}
+
+.leverage-space-compression__card--tier-extreme {
+  border-color: rgba(244, 63, 94, 0.2);
+  background: rgba(24, 6, 12, 0.45);
+}
+
+.leverage-space-compression__card--active-calm {
+  border-color: rgba(34, 211, 238, 0.28);
+  box-shadow: inset 0 1px 0 rgba(34, 211, 238, 0.08);
+}
+
+.leverage-space-compression__card--active-neutral {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: inset 0 1px 0 rgba(245, 158, 11, 0.1);
+}
+
+.leverage-space-compression__card--active-danger {
+  border-color: rgba(244, 63, 94, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(244, 63, 94, 0.12),
+    0 0 16px rgba(244, 63, 94, 0.08);
+}
+
+.leverage-space-compression__card--active-extreme {
+  border-color: rgba(244, 63, 94, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(244, 63, 94, 0.14),
+    0 0 18px rgba(127, 29, 29, 0.2);
+}
+
+.leverage-space-compression__card--live.leverage-space-compression__card--active-extreme {
+  box-shadow:
+    inset 0 1px 0 rgba(244, 63, 94, 0.16),
+    0 0 20px rgba(127, 29, 29, 0.28);
+}
+
+.leverage-space-compression__gap--tier-danger.leverage-space-compression__gap--active,
+.leverage-space-compression__gap--tier-extreme.leverage-space-compression__gap--active {
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.25);
+}
+
+.leverage-space-compression--live {
+  border-color: rgba(148, 163, 184, 0.1);
+  transition: border-color 0.3s ease;
+}
+
+.leverage-space-compression__card {
+  cursor: default;
+  text-align: left;
+}
+
+button.leverage-space-compression__card {
+  cursor: pointer;
+}
+
+button.leverage-space-compression__card:hover:not(.leverage-space-compression__card--active) {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.price-ladder-zone--profit {
+  background: radial-gradient(
+    ellipse 100% 80% at 50% 30%,
+    rgba(16, 185, 129, 0.1) 0%,
+    transparent 70%
+  );
+}
+
+.price-ladder-current-line {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(248, 250, 252, 0.55), rgba(248, 250, 252, 0.85));
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.price-ladder-current-badge {
+  margin-left: 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(8, 12, 20, 0.92);
+  padding: 0.25rem 0.5rem;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+  animation: price-ladder-marker-glow 3s ease-in-out infinite;
+}
+
+@keyframes price-ladder-marker-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .price-ladder-current-badge {
+    animation: none;
+  }
+}
+
+.price-ladder-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: rgba(30, 41, 59, 0.9);
+  cursor: pointer;
+}
+
+.price-ladder-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 1.125rem;
+  width: 1.125rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(34, 211, 238, 0.5);
+  background: rgba(248, 250, 252, 0.95);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.35);
+}
+
+.price-ladder-slider::-moz-range-thumb {
+  height: 1.125rem;
+  width: 1.125rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(34, 211, 238, 0.5);
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.vrl-danger-aura {
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    180deg,
+    rgba(244, 63, 94, 0.02) 0%,
+    rgba(244, 63, 94, 0.16) 35%,
+    rgba(220, 38, 38, 0.22) 65%,
+    rgba(244, 63, 94, 0.08) 100%
+  );
+  box-shadow:
+    0 0 40px rgba(244, 63, 94, 0.18),
+    inset 0 0 24px rgba(244, 63, 94, 0.12);
+  filter: blur(2px);
+  animation: vrl-aura-breathe 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vrl-danger-aura {
+    animation: none;
+  }
+
+  .vrl-marker--pulse {
+    animation: none;
+  }
+}
+
+@keyframes vrl-aura-breathe {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.vrl-marker {
+  position: relative;
+  z-index: 10;
+  height: 0.875rem;
+  width: 0.875rem;
+  border-radius: 9999px;
+  border-width: 2px;
+}
+
+@media (min-width: 640px) {
+  .vrl-marker {
+    height: 1rem;
+    width: 1rem;
+  }
+}
+
+.vrl-marker--entry {
+  border-color: rgba(34, 211, 238, 0.7);
+  background: rgba(34, 211, 238, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(34, 211, 238, 0.12),
+    0 0 18px rgba(34, 211, 238, 0.55),
+    0 0 36px rgba(34, 211, 238, 0.2);
+}
+
+.vrl-marker--take {
+  border-color: rgba(52, 211, 153, 0.65);
+  background: rgba(52, 211, 153, 0.92);
+  box-shadow:
+    0 0 0 3px rgba(52, 211, 153, 0.1),
+    0 0 16px rgba(52, 211, 153, 0.5),
+    0 0 32px rgba(52, 211, 153, 0.18);
+}
+
+.vrl-marker--stop {
+  border-color: rgba(251, 191, 36, 0.65);
+  background: rgba(251, 191, 36, 0.9);
+  box-shadow:
+    0 0 0 3px rgba(251, 191, 36, 0.1),
+    0 0 14px rgba(251, 191, 36, 0.45),
+    0 0 28px rgba(251, 191, 36, 0.16);
+}
+
+.vrl-marker--liquidation {
+  border-color: rgba(244, 63, 94, 0.75);
+  background: rgba(244, 63, 94, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(244, 63, 94, 0.12),
+    0 0 20px rgba(244, 63, 94, 0.58),
+    0 0 40px rgba(244, 63, 94, 0.22);
+}
+
+.vrl-marker--pulse {
+  animation: vrl-liq-marker-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes vrl-liq-marker-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 3px rgba(244, 63, 94, 0.1),
+      0 0 14px rgba(244, 63, 94, 0.4),
+      0 0 28px rgba(244, 63, 94, 0.15);
+  }
+  50% {
+    transform: scale(1.14);
+    box-shadow:
+      0 0 0 5px rgba(244, 63, 94, 0.18),
+      0 0 22px rgba(244, 63, 94, 0.65),
+      0 0 44px rgba(244, 63, 94, 0.28);
+  }
+}
+
+.perp-lab-risk-metrics--invalid {
+  border-color: rgba(244, 63, 94, 0.55) !important;
+  box-shadow:
+    0 0 0 1px rgba(244, 63, 94, 0.2),
+    0 0 28px rgba(244, 63, 94, 0.12);
+  background: linear-gradient(160deg, rgba(40, 8, 14, 0.35), rgba(8, 4, 6, 0.5));
 }

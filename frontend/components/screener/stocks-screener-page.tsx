@@ -68,8 +68,8 @@ export function StocksScreenerPage() {
 
   const inPlayTickers = React.useMemo(() => {
     if (!tradingDate.isLive) return [];
-    return selectInPlayInstruments(stocks).slice(0, 8).map((row) => row.ticker);
-  }, [stocks, tradingDate.isLive]);
+    return selectInPlayInstruments(stocks, stockUniverse).slice(0, 8).map((row) => row.ticker);
+  }, [stocks, stockUniverse, tradingDate.isLive]);
 
   const { seriesByTicker } = useInPlayStockCandles(inPlayTickers);
 
@@ -110,7 +110,7 @@ export function StocksScreenerPage() {
   const updatedAtLabel = status?.fetchTimestamp ?? status?.generatedAt ?? null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <ScreenerPageHeader
         title="Рынок · Акции"
         right={
@@ -122,7 +122,7 @@ export function StocksScreenerPage() {
         }
       />
 
-      <LabGlassPanel depth={20} className="space-y-1.5 px-2 py-1">
+      <LabGlassPanel depth={20} className="space-y-1 px-2 py-1">
         <TradingDateControl
           selectedDateKey={tradingDate.selectedDateKey}
           isLive={tradingDate.isLive}
@@ -144,11 +144,13 @@ export function StocksScreenerPage() {
       </LabGlassPanel>
 
       {!historicalEmpty ? (
-        <div className="sticky top-[4.05rem] z-30 mb-1 border-b border-lab-border/30 bg-lab-bg-deep/90 pb-0.5 backdrop-blur-md">
+        <div className="sticky top-[4.05rem] z-30 border-b border-lab-border/25 bg-lab-bg-deep/92 backdrop-blur-md">
           <MarketRadar
             rows={stocks}
             allRows={stockUniverse}
             dataStatus={status}
+            benchmarks={stocksQuery.data?.benchmarks}
+            isLive={tradingDate.isLive}
             selectedTicker={focusedTicker}
             onTickerSelect={setFocusedTicker}
           />
@@ -156,10 +158,10 @@ export function StocksScreenerPage() {
       ) : null}
 
       {!tradingDate.isLive && !historicalEmpty ? (
-        <p className="px-1 text-[10px] text-violet-300/65">{ScreenerDateModeMessages.historicalSparklinesLiveOnly}</p>
+        <p className="px-1 text-[9px] text-violet-300/60">{ScreenerDateModeMessages.historicalSparklinesLiveOnly}</p>
       ) : null}
 
-      <ScreenerPanel className="mb-2.5 flex flex-wrap items-center gap-2">
+      <ScreenerPanel className="mb-1 flex flex-wrap items-center gap-1.5 py-1">
         <label
           className="lab-chip inline-flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs text-lab-text-main"
           title={`Порог: оборот &lt; 2% от лидера и сделки &lt; ${ILLIQUID_MIN_TRADES.toLocaleString("ru-RU")} (${illiquidHint})`}

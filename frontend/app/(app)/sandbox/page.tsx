@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { MarketRadarDebugPanel } from "@/components/screener/market-radar-debug-panel";
 import { ScreenerTable } from "@/components/screener/screener-table";
 import { sandboxFuturesColumns, sandboxStockColumns } from "@/components/screener/sandbox-columns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -77,6 +78,8 @@ export default function SandboxPage() {
           />
         </TabsContent>
       </Tabs>
+
+      <MarketRadarDebugPanel />
 
       <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
         <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap text-xs text-slate-300">

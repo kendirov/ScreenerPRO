@@ -197,7 +197,7 @@
 | `FuturesScreenerPage` | `components/screener/futures-screener-page.tsx` | Таблица фьючерсов |
 | `ScreenerTable` | `components/screener/screener-table.tsx` | Virtualized TanStack Table |
 | `stockColumns` / futures columns | `components/screener/columns.tsx`, `futures-*-table.tsx` | Колонки |
-| `MarketRadar` | `components/screener/market-radar.tsx` | Визуализация рынка |
+| `MarketRadar` | `components/screener/market-radar.tsx` | Витрина рынка: ликвидность top-5, **«В игре»** + **«Активные»**, **«Прострелы / Импульсы»** (range≥2.5%, \|change\|≥2%, пробой, у high/low, импульс; неликвид: rank≤50 или min оборот). Логика — `market-radar-selectors.ts`, пороги — `market-radar-config.ts`. |
 
 ### Материалы
 
@@ -231,6 +231,7 @@
 - HTTP: `lib/server/moex-iss/http.ts` — `fetchIssJson(path)` → `https://iss.moex.com/iss` + retry (жёстко в коде; **не** читает `MOEX_BASE_URL` из `.env`).
 - Парсинг: `lib/server/moex-iss/schemas.ts` (`moexIssPayloadSchema`).
 - Скринер: `lib/server/services/moex-screener.ts` — `getMoexSnapshot()`, in-memory cache **20 с**, enrich через `enrichMoexStocksWithInPlayMetrics` (`screener-math.ts`), historical baselines из Prisma если есть `DATABASE_URL`.
+- **Intraday baseline (Vol x / Trades x):** `lib/domain/intraday-baseline.ts` + `intraday-baseline-loader.ts`. Top-35 — MOEX 10м свечи, накопленный оборот к MSK-времени (`intraday-ok` при ≥10 сессий). Остальные — `rough-day-avg` или `previous-day`. **Важно:** naive MOEX `begin` парсится как MSK (`+03:00`). UI: `intradayBaselineKind` + честные подписи (`rough x`, `vs yday x`). Dev: `/api/dev/diagnostics` → `baselineAudit`.
 - Тех. характеристики: `lib/server/services/materials-technical-characteristics.ts` — отдельные ISS-запросы TQBR + FORTS, cache **20 с**.
 
 **Fallback скринера:** при ошибке MOEX → `getDemoSnapshot()` из `lib/mock/screener.ts` (`screenerRows`), `status.source = "demo"`, `fallbackReason` ∈ `moex-unavailable` | `no-usable-rows` | `validation-failed`.
@@ -354,7 +355,8 @@ app/(app)/materials/technical-characteristics/page.tsx
 
 ### Скринер — ключевые метрики
 
-- `ScreenerMetricSet` в `@screenerpro/shared` — inPlayScore, isInPlay, inPlayTags, turnoverVsAverage, percentiles, activityRatio, …
+- `ScreenerMetricSet` в `@screenerpro/shared` — inPlayScore, isInPlay, inPlayTags, turnoverVsAverage, **volumeRatioNow**, **tradesRatioNow**, **intradayBaselineStatus**, percentiles, activityRatio, …
+- **volumeRatioNow** = текущий оборот ÷ накопленный к времени (intraday-ok). Market Radar: **«В игре»** — HARD (`computeRadarHardScore`, range≥3%, \|Δ\|≥3%, пробой+rank, vol×3 при ok baseline; inPlayScore≥92 только с признаками хода); **«Активные»** — умеренная активность (rank≤30, score≥65, …), без дубля HARD. Пустой HARD — норма.
 - Обогащение: `lib/server/domain/screener-math.ts`, `computeInPlaySignals`, `classifyStockActivity` (`stock-activity.ts`).
 - Ликвидность акций в UI: `classifyStockLiquidity` — пороги `minTurnoverRub: 500M`, `minTradesCount: 10_000`, allowlist тикеров.
 

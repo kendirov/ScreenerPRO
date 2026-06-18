@@ -8,15 +8,19 @@ import {
   StockRangeCell,
   StockTickerCell,
   StockTradesCell,
+  StockTradesRatioCell,
   StockTurnoverCell,
+  StockVolumeRatioCell,
   formatTurnoverCompact,
 } from "@/components/screener/stocks/stock-table-cells";
 import {
   STOCK_DAY_RANGE_COLUMN_LABEL,
   STOCK_DAY_RANGE_HEADER_TOOLTIP,
   STOCK_ILLIQUID_TURNOVER_FLOOR,
+  getStockReasonDetail,
   getStockReasonSummary,
 } from "@/lib/domain/stock-screener-display";
+import { resolveStockTradesRatio, resolveStockVolumeRatio } from "@/lib/domain/stock-volume-ratio";
 import { tradingFormat } from "@/lib/formatters/trading";
 
 declare module "@tanstack/react-table" {
@@ -24,20 +28,23 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     align?: "left" | "right";
     headerTooltip?: string;
+    /** Скрыть колонку ниже breakpoint (Vol x дублируется в «Оборот» на узких экранах). */
+    hideBelow?: "md";
   }
 }
 
 /** Фиксированные доли ширины для table-fixed — данные + Причина + Детали. */
 export const STOCK_TABLE_COLUMN_WIDTHS = [
-  "14%",
-  "9%",
-  "7%",
-  "13%",
   "11%",
-  "9%",
-  "16%",
+  "7%",
+  "6%",
   "12%",
-  "9%",
+  "8%",
+  "5%",
+  "7%",
+  "7%",
+  "12%",
+  "25%",
 ] as const;
 
 const futuresNumberClass = "text-right font-mono tabular-nums text-[13px] text-slate-200";
@@ -69,9 +76,16 @@ export function createStockColumns(maxTurnover: number): ColumnDef<ScreenerRow>[
       accessorKey: "turnover",
       header: "Оборот",
       size: 96,
-      meta: { align: "right" },
-      cell: ({ getValue }) => (
-        <StockTurnoverCell value={getValue<number | null>()} maxTurnover={maxTurnover} />
+      meta: {
+        align: "right",
+        headerTooltip: "Оборот за сессию; на md+ рядом Оборот x (к норме на это время)",
+      },
+      cell: ({ row, getValue }) => (
+        <StockTurnoverCell
+          row={row.original}
+          value={getValue<number | null>()}
+          maxTurnover={maxTurnover}
+        />
       ),
     },
     {
@@ -80,6 +94,31 @@ export function createStockColumns(maxTurnover: number): ColumnDef<ScreenerRow>[
       size: 80,
       meta: { align: "right" },
       cell: ({ row }) => <StockTradesCell row={row.original} />,
+    },
+    {
+      id: "volumeRatioNow",
+      accessorFn: (row) => resolveStockVolumeRatio(row) ?? 0,
+      header: "Оборот x",
+      size: 52,
+      meta: {
+        align: "right",
+        hideBelow: "md",
+        headerTooltip:
+          "Оборот x = оборот сейчас против обычного оборота к этому же времени сессии. Без надёжной базы — «—».",
+      },
+      cell: ({ row }) => <StockVolumeRatioCell row={row.original} />,
+    },
+    {
+      id: "tradesRatioNow",
+      accessorFn: (row) => resolveStockTradesRatio(row) ?? 0,
+      header: "Сделки x",
+      size: 64,
+      meta: {
+        align: "right",
+        headerTooltip:
+          "Сделки x = сделки сейчас против обычного количества сделок к этому же времени сессии. Без базы — «—».",
+      },
+      cell: ({ row }) => <StockTradesRatioCell row={row.original} />,
     },
     {
       id: "dayRange",
@@ -99,13 +138,14 @@ export function createStockColumns(maxTurnover: number): ColumnDef<ScreenerRow>[
       meta: { align: "left" },
       cell: ({ row }) => {
         const summary = getStockReasonSummary(row.original, maxTurnover);
+        const detail = getStockReasonDetail(row.original, maxTurnover);
         if (summary === "—") {
           return <span className="text-[11px] text-lab-text-dim">—</span>;
         }
         return (
           <span
             className="line-clamp-2 text-[11px] leading-snug text-lab-text-muted"
-            title={summary}
+            title={detail ?? summary}
           >
             {summary}
           </span>

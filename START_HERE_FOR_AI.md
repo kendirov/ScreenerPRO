@@ -11,6 +11,7 @@
 3. **`AI_SESSION_STATE.md`** — текущее состояние последней итерации.
 4. **`docs/CURSOR_WORKFLOW.md`** — правила работы Cursor.
 5. **`docs/UI_NUMBERS_MINIMALISM.md`** — стандарт «минимализм цифр» в UI (новые экраны и правки таблиц/карточек).
+6. **`docs/MARKET_RADAR_FORMULAS.md`** — **источник истины** по формулам Market Radar (Vol x, In Play, Active, Shots, baseline); читать перед правкой порогов и объяснением «В игре» ученикам.
 
 ---
 

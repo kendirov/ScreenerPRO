@@ -1,34 +1,129 @@
 import type { ScreenerRow } from "@screenerpro/shared";
+import { MARKET_RADAR_CONFIG, getMarketRadarReasonLabel, type MarketRadarReasonKey } from "@/lib/domain/market-radar-config";
+import { TRADER_SIGNAL_SHORT } from "@/lib/domain/trader-signal-labels";
+import type { IntradayBaselineKind, IntradayBaselineStatus } from "@/lib/domain/intraday-baseline";
 import {
-  MARKET_RADAR_CONFIG,
-  getMarketRadarReasonLabel,
-  type MarketRadarReasonKey,
-} from "@/lib/domain/market-radar-config";
-import { computePositionInRange } from "@/lib/domain/stock-sparkline";
-import { isStockIlliquid } from "@/lib/domain/stock-screener-display";
+  buildBaselineInfoFromRow,
+  buildTradesRatioTooltip,
+  buildVolumeRatioTooltip,
+  resolveHonestTradesRatio,
+  resolveHonestVolumeRatio,
+} from "@/lib/domain/baseline-info";
+import { hasHonestIntradayTradesBaseline, isHonestIntradayVolumeBaseline } from "@/lib/domain/intraday-baseline";
+import {
+  buildRadarRankContext,
+  absChangePct,
+  absDayRangePct,
+  computeInPlaySortScore,
+  computeLayerScores,
+  computeShotScore,
+  evaluatePriceStructure,
+  getRadarRowAnalysis as getRadarRowAnalysisFromLayers,
+  isActiveCandidate,
+  passesInPlayLayer,
+  resolveActiveLayerReasonKey,
+  resolveInPlayLayerReasonKey,
+  resolveShotsLayerReasonKey,
+  safeTradesRatioNow,
+  safeVolumeRatioNow,
+  selectActiveCandidates,
+  selectActivityVisibleRows,
+  selectActiveVisibleRows,
+  selectInPlayVisibleRows,
+  selectLiquidityVisibleRows,
+  selectShotsVisibleRows,
+  type RadarRankContext,
+  type RadarRowAnalysis,
+} from "@/lib/domain/market-radar-layers";
+import {
+  RADAR_ACTIVITY_REASON,
+  RADAR_VOLATILITY_REASON,
+  radarLiquidityTag,
+} from "@/lib/domain/radar-ui-labels";
 import { formatTradesCompact } from "@/lib/domain/stocks-screener-signals";
+import {
+  buildRadarRowSessionMetricsMap,
+  buildRadarSessionContext,
+  clampRelativeRatio,
+  computeMarketSessionIntensities,
+  computeRadarRowSessionMetrics,
+  computeSessionIntensity,
+  medianOfTopDesc,
+  medianPositive,
+  resolveSessionGateThresholds,
+  resolveSessionModeFromIntensity,
+  resolveTurnoverRef,
+  resolveTradesRef,
+  type RadarRowSessionMetrics,
+  type RadarSessionContext,
+  type RadarSessionMode,
+} from "@/lib/domain/market-radar-session";
 
-const { liquidity: liquidityCfg, inPlay: inPlayCfg, volatility: volatilityCfg } = MARKET_RADAR_CONFIG;
+const { activity: activityCfg } = MARKET_RADAR_CONFIG;
+const scoreCfg = MARKET_RADAR_CONFIG.scoring;
+
+export type { RadarRankContext, RadarRowAnalysis, RadarSessionContext, RadarSessionMode, RadarRowSessionMetrics };
+
+export type RadarRatioSource = "intraday-ok" | "intraday-partial" | "rough" | "legacy" | "none";
+
+export type RadarVolumeRatio = {
+  value: number | null;
+  source: RadarRatioSource;
+  status: IntradayBaselineStatus | null;
+};
+
+export type RadarTradesRatio = {
+  value: number | null;
+  source: RadarRatioSource;
+  status: IntradayBaselineStatus | null;
+};
+
+export type ActiveSelectionResult = {
+  visible: ScreenerRow[];
+  candidateCount: number;
+};
+
+function mapBaselineStatus(status: IntradayBaselineStatus | null | undefined): RadarRatioSource {
+  if (status === "ok") return "intraday-ok";
+  if (status === "partial") return "intraday-partial";
+  if (status === "rough") return "rough";
+  return "none";
+}
+
+function resolveBaselineKind(row: ScreenerRow): IntradayBaselineKind | null {
+  return (row.metrics.intradayBaselineKind ?? null) as IntradayBaselineKind | null;
+}
+
+export function resolveVolumeRatioNow(row: ScreenerRow): RadarVolumeRatio {
+  const status = (row.metrics.intradayBaselineStatus ?? null) as IntradayBaselineStatus | null;
+  const info = buildBaselineInfoFromRow(row);
+  const value = resolveHonestVolumeRatio(row);
+  if (value != null && info.isReliable) {
+    return { value, source: mapBaselineStatus(status), status };
+  }
+  return { value: null, source: "none", status };
+}
+
+export function resolveTradesRatioNow(row: ScreenerRow): RadarTradesRatio {
+  const kind = resolveBaselineKind(row);
+  const status = (row.metrics.intradayBaselineStatus ?? null) as IntradayBaselineStatus | null;
+  const value = resolveHonestTradesRatio(row);
+  if (value != null && hasHonestIntradayTradesBaseline(kind)) {
+    return { value, source: mapBaselineStatus(status), status };
+  }
+  return { value: null, source: "none", status: null };
+}
+
+export { buildVolumeRatioTooltip, buildTradesRatioTooltip, buildBaselineInfoFromRow };
+
+export function rowHasVolumeBaseline(row: ScreenerRow): boolean {
+  return isHonestIntradayVolumeBaseline(resolveBaselineKind(row));
+}
 
 function stockRowsOnly(rows: ScreenerRow[]): ScreenerRow[] {
   return rows.filter((row) => row.assetClass === "stock");
 }
 
-function compareLiquidityRows(a: ScreenerRow, b: ScreenerRow): number {
-  for (const field of liquidityCfg.sortBy) {
-    if (field === "turnover") {
-      const diff = (b.turnover ?? 0) - (a.turnover ?? 0);
-      if (diff !== 0) return diff;
-    }
-    if (field === "trades") {
-      const diff = (b.tradesCount ?? 0) - (a.tradesCount ?? 0);
-      if (diff !== 0) return diff;
-    }
-  }
-  return 0;
-}
-
-/** Есть ли у строки historical baseline (вчера / средние). */
 export function rowHasHistoricalBaseline(row: ScreenerRow): boolean {
   return (
     row.metrics.previousDayTurnoverRub != null ||
@@ -38,152 +133,263 @@ export function rowHasHistoricalBaseline(row: ScreenerRow): boolean {
   );
 }
 
-/** Топ ликвидности по конфигу sortBy. */
-export function selectLiquidityLeaders(
+export { getRadarRowAnalysisFromLayers as getRadarRowAnalysis };
+
+function activityBaselineMissing(row: ScreenerRow, analysis: RadarRowAnalysis): boolean {
+  const vol = safeVolumeRatioNow(row);
+  const trd = safeTradesRatioNow(row);
+  return vol == null || trd == null || analysis.baselineScore === scoreCfg.baseline.missingScore;
+}
+
+/** Тег/reason для колонки активности (бейдж «в игре» — отдельно). */
+export function resolveRadarActivityTag(row: ScreenerRow, ctx: RadarRankContext): string {
+  const analysis = getRadarRowAnalysisFromLayers(row, ctx);
+  if (activityBaselineMissing(row, analysis)) {
+    return RADAR_ACTIVITY_REASON.noBaseline;
+  }
+
+  const leader = analysis.leaderPresenceScore;
+  const vol = safeVolumeRatioNow(row);
+  const trd = safeTradesRatioNow(row);
+  const range = absDayRangePct(row);
+  const absCh = absChangePct(row);
+
+  if (leader >= 0.5 && range >= 1.5) return RADAR_ACTIVITY_REASON.leaderRange;
+  if (vol != null && vol >= 1.5 && trd != null && trd >= 1.5) return RADAR_ACTIVITY_REASON.volumeTrades;
+  if (trd != null && trd >= 1.5 && absCh >= 0.5) return RADAR_ACTIVITY_REASON.tradesMove;
+
+  if (analysis.isActive) return RADAR_ACTIVITY_REASON.active;
+  return RADAR_ACTIVITY_REASON.active;
+}
+
+/** Тег/reason для колонки волатильности. */
+export function resolveRadarVolatilityTag(row: ScreenerRow, ctx: RadarRankContext): string {
+  const analysis = getRadarRowAnalysisFromLayers(row, ctx);
+  if (analysis.volatilityTier === "thin") return RADAR_VOLATILITY_REASON.thin;
+
+  const price = evaluatePriceStructure(row);
+  if (price.breakoutHigh) return RADAR_VOLATILITY_REASON.breakoutHigh;
+  if (price.breakoutLow) return RADAR_VOLATILITY_REASON.breakoutLow;
+  if (price.nearHigh) return RADAR_VOLATILITY_REASON.nearHigh;
+  if (price.nearLow) return RADAR_VOLATILITY_REASON.nearLow;
+
+  if (activityBaselineMissing(row, analysis) && !safeVolumeRatioNow(row) && !safeTradesRatioNow(row)) {
+    return RADAR_VOLATILITY_REASON.noBaseline;
+  }
+
+  return RADAR_VOLATILITY_REASON.range;
+}
+
+export function resolveRadarLiquidityTag(): string {
+  return radarLiquidityTag();
+}
+
+/** @deprecated используйте resolveRadarActivityTag / resolveRadarVolatilityTag */
+export function resolveRadarDisplayTag(
+  row: ScreenerRow,
+  _reasonKey: MarketRadarReasonKey,
+  variant: "liquidity" | "activity" | "volatility",
+  ctx: RadarRankContext,
+): string {
+  if (variant === "liquidity") return resolveRadarLiquidityTag();
+  if (variant === "activity") return resolveRadarActivityTag(row, ctx);
+  return resolveRadarVolatilityTag(row, ctx);
+}
+
+export function formatRadarRatioMultiplier(value: number | null): string | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return `x${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(value)}`;
+}
+
+export { buildRadarRankContext };
+
+export {
+  buildRadarSessionContext,
+  buildRadarRowSessionMetricsMap,
+  computeRadarRowSessionMetrics,
+  computeMarketSessionIntensities,
+  computeSessionIntensity,
+  clampRelativeRatio,
+  medianOfTopDesc,
+  medianPositive,
+  resolveSessionGateThresholds,
+  resolveSessionModeFromIntensity,
+  resolveTurnoverRef,
+  resolveTradesRef,
+};
+
+export function buildMarketRadarSession(universe: ScreenerRow[]): {
+  session: RadarSessionContext;
+  rowMetrics: Map<string, RadarRowSessionMetrics>;
+} {
+  const session = buildRadarSessionContext(universe);
+  return {
+    session,
+    rowMetrics: buildRadarRowSessionMetricsMap(universe, session),
+  };
+}
+
+export type RadarBoard = {
+  rankCtx: RadarRankContext;
+  liquidity: ScreenerRow[];
+  inPlay: ScreenerRow[];
+  active: ScreenerRow[];
+  activity: ScreenerRow[];
+  volatility: ScreenerRow[];
+};
+
+/** Единый snapshot радара — один rankCtx / sessionContext на все колонки. */
+export function buildRadarBoard(universe: ScreenerRow[], candidates: ScreenerRow[] = universe): RadarBoard {
+  const rankCtx = buildRadarRankContext(universe);
+  return {
+    rankCtx,
+    liquidity: selectLiquidityVisibleRows(universe, rankCtx),
+    inPlay: selectInPlayVisibleRows(candidates, rankCtx),
+    active: selectActiveCandidates(candidates, rankCtx),
+    activity: selectActivityVisibleRows(candidates, rankCtx),
+    volatility: selectShotsVisibleRows(candidates, rankCtx),
+  };
+}
+
+export function hasBaselineOk(row: ScreenerRow): boolean {
+  return rowHasVolumeBaseline(row);
+}
+
+export function computeRadarHardScore(row: ScreenerRow, ctx: RadarRankContext): number {
+  return computeInPlaySortScore(row, ctx);
+}
+
+export function passesHardInPlayRadarFilter(
+  row: ScreenerRow,
+  ctx: RadarRankContext,
+  maxTurnover?: number,
+): boolean {
+  return passesInPlayLayer(row, ctx, maxTurnover);
+}
+
+export function passesActiveRadarFilter(row: ScreenerRow, ctx: RadarRankContext, _maxTurnover: number): boolean {
+  return isActiveCandidate(row, ctx);
+}
+
+/** Финальный список In Play (0–2, макс. 3). */
+export function selectHardInPlayInstruments(
   rows: ScreenerRow[],
-  limit = liquidityCfg.topN,
+  universe: ScreenerRow[] = rows,
 ): ScreenerRow[] {
-  return [...stockRowsOnly(rows)].sort(compareLiquidityRows).slice(0, limit);
+  const ctx = buildRadarRankContext(universe);
+  return selectInPlayVisibleRows(rows, ctx);
 }
 
-function countInPlayFallbackSignals(row: ScreenerRow, position: number | null): number {
-  let count = 0;
-  const turnoverPct = row.metrics.turnoverPercentile ?? 0;
-  const tradesPct = row.metrics.tradesPercentile ?? 0;
-  const rangePct = row.metrics.rangePercentile ?? 0;
-  const dayRange = Math.abs(row.metrics.dayRangePct ?? 0);
-  const change = row.percentChange ?? 0;
-  const near = inPlayCfg.nearExtremePosition;
-
-  if (turnoverPct >= inPlayCfg.fallbackMinTurnoverPercentile) count += 1;
-  if (tradesPct >= inPlayCfg.fallbackMinTradesPercentile) count += 1;
-  if (rangePct >= inPlayCfg.fallbackMinRangePercentile || dayRange >= inPlayCfg.fallbackMinDayRangePct) {
-    count += 1;
-  }
-
-  if (inPlayCfg.includeHighLowProximity && position != null) {
-    if (position >= near && change > 0) count += 1;
-    else if (position <= 1 - near && change < 0) count += 1;
-
-    if (position >= near && change >= inPlayCfg.breakoutMinChangePct) count += 1;
-    else if (position <= 1 - near && change <= -inPlayCfg.breakoutMinChangePct) count += 1;
-  }
-
-  return count;
+/** @deprecated Алиас финального In Play. */
+export function selectAllHardInPlayInstruments(
+  rows: ScreenerRow[],
+  universe: ScreenerRow[] = rows,
+): ScreenerRow[] {
+  return selectHardInPlayInstruments(rows, universe);
 }
 
-export function passesInPlayRadarFilter(row: ScreenerRow): boolean {
-  const score = row.metrics.inPlayScore;
-  if (score != null && Number.isFinite(score)) {
-    return score >= inPlayCfg.minInPlayScore;
-  }
-
-  const position = computePositionInRange(row.lastPrice, row.low, row.high);
-  return countInPlayFallbackSignals(row, position) >= inPlayCfg.fallbackMinSignals;
+export function selectActiveInstruments(rows: ScreenerRow[], universe: ScreenerRow[] = rows): ScreenerRow[] {
+  const ctx = buildRadarRankContext(universe);
+  return selectActiveVisibleRows(rows, ctx);
 }
 
-/** Все инструменты «в игре» для радара (без лимита). */
-export function selectInPlayInstruments(rows: ScreenerRow[]): ScreenerRow[] {
-  return [...stockRowsOnly(rows)]
-    .filter(passesInPlayRadarFilter)
-    .sort((a, b) => (b.metrics.inPlayScore ?? 0) - (a.metrics.inPlayScore ?? 0));
+export function selectActiveSelection(
+  rows: ScreenerRow[],
+  universe: ScreenerRow[] = rows,
+): ActiveSelectionResult {
+  const ctx = buildRadarRankContext(universe);
+  const candidates = selectActiveCandidates(rows, ctx);
+  return {
+    visible: candidates.slice(0, activityCfg.maxVisible),
+    candidateCount: candidates.length,
+  };
 }
 
-/** Ключ причины для строки «Кто в игре». */
-export function resolveInPlayRadarReasonKey(row: ScreenerRow): MarketRadarReasonKey {
-  const position = computePositionInRange(row.lastPrice, row.low, row.high);
-  const change = row.percentChange ?? 0;
-  const near = inPlayCfg.nearExtremePosition;
-
-  if (inPlayCfg.includeHighLowProximity && position != null) {
-    if (position >= near && change >= inPlayCfg.breakoutMinChangePct) return "breakoutHigh";
-    if (position <= 1 - near && change <= -inPlayCfg.breakoutMinChangePct) return "breakoutLow";
-    if (position >= near) return "nearHigh";
-    if (position <= 1 - near) return "nearLow";
-  }
-
-  const turnoverPct = row.metrics.turnoverPercentile ?? 0;
-  const tradesPct = row.metrics.tradesPercentile ?? 0;
-  const rangePct = row.metrics.rangePercentile ?? 0;
-  const dayRange = Math.abs(row.metrics.dayRangePct ?? 0);
-
-  if (rangePct >= inPlayCfg.fallbackMinRangePercentile || dayRange >= inPlayCfg.fallbackMinDayRangePct) {
-    return "wideRange";
-  }
-  if (tradesPct >= inPlayCfg.fallbackMinTradesPercentile && tradesPct > turnoverPct) {
-    return "manyTrades";
-  }
-  return "highTurnover";
+export function selectInPlayInstruments(rows: ScreenerRow[], universe?: ScreenerRow[]): ScreenerRow[] {
+  return selectHardInPlayInstruments(rows, universe ?? rows);
 }
 
-/** Человекочитаемая причина для UI. */
-export function resolveInPlayRadarReason(row: ScreenerRow): string {
-  return getMarketRadarReasonLabel(resolveInPlayRadarReasonKey(row));
+export function selectLiquidityLeaders(rows: ScreenerRow[], universe: ScreenerRow[] = rows): ScreenerRow[] {
+  const ctx = buildRadarRankContext(universe);
+  return selectLiquidityVisibleRows(rows, ctx);
 }
 
-export function passesVolatilityRadarFilter(row: ScreenerRow, maxTurnover: number): boolean {
-  if (volatilityCfg.useIlliquidFilter && isStockIlliquid(row, maxTurnover)) return false;
-
-  const dayRange = Math.abs(row.metrics.dayRangePct ?? 0);
-  if (dayRange < volatilityCfg.minRangePct) return false;
-
-  const minChange = volatilityCfg.minAbsChangePct;
-  if (minChange != null) {
-    return Math.abs(row.percentChange ?? 0) >= minChange;
-  }
-
-  return true;
+export function resolveInPlayRadarReasonKey(row: ScreenerRow, ctx: RadarRankContext): MarketRadarReasonKey {
+  return resolveInPlayLayerReasonKey(row, ctx);
 }
 
-/** Ключ бейджа волатильности. */
-export function resolveVolatilityRadarReasonKey(row: ScreenerRow): MarketRadarReasonKey {
-  const dayRange = Math.abs(row.metrics.dayRangePct ?? 0);
-  const change = Math.abs(row.percentChange ?? 0);
-  const turnoverPct = row.metrics.turnoverPercentile ?? 0;
-  const tradesPct = row.metrics.tradesPercentile ?? 0;
-  const rangePct = row.metrics.rangePercentile ?? 0;
-  const highlightChange = volatilityCfg.minAbsChangePct ?? volatilityCfg.highlightMinAbsChangePct;
-
-  if (
-    dayRange >= volatilityCfg.riskMinDayRangePct &&
-    turnoverPct <= volatilityCfg.riskMaxTurnoverPercentile &&
-    tradesPct <= volatilityCfg.riskMaxTradesPercentile
-  ) {
-    return "illiquidRisk";
-  }
-
-  if (change >= highlightChange) {
-    return "strongMove";
-  }
-
-  if (dayRange >= volatilityCfg.wideDayRangePct || rangePct >= volatilityCfg.wideDayRangePercentile) {
-    return "wideRange";
-  }
-
-  return "wideRange";
+export function showHardInPlayBadge(row: ScreenerRow, ctx: RadarRankContext): boolean {
+  return ctx.inPlayTickerSet.has(row.ticker.toUpperCase());
 }
 
-/** Человекочитаемый бейдж волатильности. */
-export function resolveVolatilityRadarBadge(row: ScreenerRow): string {
-  return getMarketRadarReasonLabel(resolveVolatilityRadarReasonKey(row));
+export function resolveActiveRadarReasonKey(row: ScreenerRow, ctx: RadarRankContext): MarketRadarReasonKey {
+  return resolveActiveLayerReasonKey(row, ctx);
 }
 
-/** Все инструменты с повышенной волатильностью (без лимита). */
-export function selectVolatileInstruments(rows: ScreenerRow[], maxTurnover: number): ScreenerRow[] {
-  return [...stockRowsOnly(rows)]
-    .filter((row) => passesVolatilityRadarFilter(row, maxTurnover))
-    .sort((a, b) => {
-      const rangeDiff = Math.abs(b.metrics.dayRangePct ?? 0) - Math.abs(a.metrics.dayRangePct ?? 0);
-      if (rangeDiff !== 0) return rangeDiff;
-      return Math.abs(b.percentChange ?? 0) - Math.abs(a.percentChange ?? 0);
-    });
+export function resolveActiveRadarReason(row: ScreenerRow, ctx: RadarRankContext): string {
+  return getMarketRadarReasonLabel(resolveActiveRadarReasonKey(row, ctx));
+}
+
+export type RadarRowFlag = { label: string; muted?: boolean; title?: string };
+
+export function resolveInPlayRowFlags(row: ScreenerRow): RadarRowFlag[] {
+  const flags: RadarRowFlag[] = [];
+  const kind = resolveBaselineKind(row);
+  const baselineOk = hasBaselineOk(row);
+
+  if (baselineOk) {
+    const vol = resolveVolumeRatioNow(row).value;
+    const volLabel = formatRadarRatioMultiplier(vol);
+    if (volLabel) flags.push({ label: volLabel, title: "объём к норме (20d ok)" });
+
+    const trades = resolveTradesRatioNow(row).value;
+    const tradesLabel = formatRadarRatioMultiplier(trades);
+    if (tradesLabel) flags.push({ label: tradesLabel, title: "сделки к норме (20d ok)" });
+  } else if (kind === "intraday-partial") {
+    flags.push({ label: TRADER_SIGNAL_SHORT.partial, muted: true, title: "частичный intraday baseline" });
+  } else if (kind === "rough-day-avg" || kind === "previous-day") {
+    flags.push({ label: TRADER_SIGNAL_SHORT.rough, muted: true, title: "rough baseline · не 20d intraday" });
+  } else {
+    flags.push({ label: TRADER_SIGNAL_SHORT.noBaseline, muted: true });
+  }
+
+  return flags;
+}
+
+export function resolveInPlayRadarReason(row: ScreenerRow, ctx: RadarRankContext): string {
+  return getMarketRadarReasonLabel(resolveInPlayRadarReasonKey(row, ctx));
+}
+
+export function passesShotsRadarFilter(row: ScreenerRow, ctx: RadarRankContext, maxTurnover?: number): boolean {
+  return selectShotsVisibleRows([row], ctx).length > 0;
+}
+
+export function computeShotsImpulseScore(row: ScreenerRow, ctx: RadarRankContext): number {
+  return computeShotScore(row, ctx);
+}
+
+export function resolveShotsRadarReasonKey(row: ScreenerRow, ctx: RadarRankContext): MarketRadarReasonKey {
+  return resolveShotsLayerReasonKey(row, ctx);
+}
+
+export function resolveShotsRadarBadge(row: ScreenerRow, ctx: RadarRankContext): string {
+  return getMarketRadarReasonLabel(resolveShotsRadarReasonKey(row, ctx));
+}
+
+export function selectShotsInstruments(rows: ScreenerRow[], universe: ScreenerRow[]): ScreenerRow[] {
+  const ctx = buildRadarRankContext(universe);
+  return selectShotsVisibleRows(rows, ctx);
 }
 
 export function formatRadarTrades(row: ScreenerRow): string {
   return formatTradesCompact(row.tradesCount) ?? "—";
 }
 
-/** Бейдж ликвидности для топ-N. */
 export function liquidityRadarBadgeLabel(): string {
   return getMarketRadarReasonLabel("liquidity");
+}
+
+/** In Play score для UI. */
+export function getRadarInPlayScore(row: ScreenerRow, ctx: RadarRankContext): number {
+  return Math.round(computeLayerScores(row, ctx).inPlayScore);
 }

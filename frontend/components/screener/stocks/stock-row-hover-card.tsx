@@ -14,6 +14,7 @@ import {
   stockTableStatusBadgeClass,
   type StockTableStatus,
 } from "@/lib/domain/stock-screener-display";
+import { formatTraderTagShort } from "@/lib/domain/trader-signal-labels";
 import { formatSparklineSourceLabel, type StockSparklineSeries } from "@/lib/domain/stock-sparkline";
 import { tradingFormat } from "@/lib/formatters/trading";
 import { cn } from "@/lib/utils/cn";
@@ -115,6 +116,7 @@ function formatCandlesLabel(series: StockSparklineSeries | null | undefined): st
 function buildReasonTags(row: ScreenerRow, status: StockTableStatus): string[] {
   const statusNorm = HOVER_STATUS_LABEL[status].toLowerCase();
   return parseInPlayReasonTags(row)
+    .map((tag) => formatTraderTagShort(tag))
     .filter((tag) => !statusNorm.includes(tag) && tag !== statusNorm)
     .slice(0, 3);
 }

@@ -46,6 +46,11 @@ function headerAlignClass(align: "left" | "right" | undefined): string {
   return align === "right" ? "text-right" : "text-left";
 }
 
+function columnResponsiveClass(hideBelow: "md" | undefined): string {
+  if (hideBelow === "md") return "hidden md:table-cell";
+  return "";
+}
+
 function isDetailsColumn(column: ColumnDef<ScreenerRow>): boolean {
   return column.id === "details";
 }
@@ -290,6 +295,7 @@ export function StocksScreenerTable({
                     const sorted = header.column.getIsSorted();
                     const sortMark = sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : "";
                     const isDetails = header.column.id === "details";
+                    const responsiveClass = columnResponsiveClass(header.column.columnDef.meta?.hideBelow);
 
                     const headerLabel = header.isPlaceholder ? null : isDetails ? (
                       <span className="inline-flex w-full items-center justify-end text-[10px] uppercase tracking-[0.1em] text-lab-text-dim">
@@ -313,7 +319,11 @@ export function StocksScreenerTable({
                     return (
                       <th
                         key={header.id}
-                        className={cn("px-2.5 py-1.5 font-medium sm:px-3", headerAlignClass(align))}
+                        className={cn(
+                          "px-2.5 py-1.5 font-medium sm:px-3",
+                          headerAlignClass(align),
+                          responsiveClass,
+                        )}
                       >
                         {header.isPlaceholder ? null : headerTooltip && !isDetails ? (
                           <Tooltip>
@@ -359,6 +369,7 @@ export function StocksScreenerTable({
                       {row.getVisibleCells().map((cell, cellIndex) => {
                         const align = cell.column.columnDef.meta?.align;
                         const isDetails = isDetailsColumn(cell.column.columnDef);
+                        const responsiveClass = columnResponsiveClass(cell.column.columnDef.meta?.hideBelow);
 
                         return (
                           <td
@@ -366,6 +377,7 @@ export function StocksScreenerTable({
                             className={cn(
                               "px-2.5 py-1.5 align-middle sm:px-3",
                               headerAlignClass(align),
+                              responsiveClass,
                               inPlay && cellIndex === 0 ? "border-l border-lab-cyan/35 pl-2 sm:pl-2.5" : "",
                             )}
                             {...(isDetails ? { "data-no-stock-tooltip": "true" } : {})}

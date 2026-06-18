@@ -15,7 +15,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "ingest:moex": "tsx scripts/ingest-moex.ts",
-    "verify:pair-divergence": "tsx scripts/verify-currency-pair-divergence.ts"
+    "verify:pair-divergence": "tsx scripts/verify-currency-pair-divergence.ts",
+    "verify:market-radar": "tsx scripts/verify-market-radar-layers.ts",
+    "verify:market-radar-session": "tsx scripts/verify-market-radar-session.ts",
+    "verify:perpetual-calculator": "tsx scripts/verify-perpetual-calculator.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",

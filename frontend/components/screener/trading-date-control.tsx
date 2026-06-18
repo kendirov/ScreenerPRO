@@ -29,19 +29,45 @@ type TradingDateControlProps = {
 };
 
 const SEGMENTS: { id: TradingDateMode; label: string }[] = [
-  { id: "today", label: "Сегодня" },
-  { id: "yesterday", label: "Вчера" },
   { id: "pick", label: "Дата" },
+  { id: "yesterday", label: "Вчера" },
+  { id: "today", label: "Сегодня" },
 ];
+
+function segmentActiveClass(segmentId: TradingDateMode, active: boolean, isLive: boolean): string {
+  if (!active) {
+    if (segmentId === "today" && isLive) {
+      return "text-emerald-400/75 hover:bg-emerald-500/[0.06] hover:text-emerald-300 ring-1 ring-inset ring-emerald-500/15";
+    }
+    return "text-slate-500 hover:bg-white/[0.04] hover:text-slate-300";
+  }
+
+  if (segmentId === "today" && isLive) {
+    return "bg-emerald-500/[0.14] text-emerald-100 shadow-[inset_0_1px_0_rgba(167,243,208,0.12),0_0_12px_rgba(16,185,129,0.12)] ring-1 ring-emerald-400/30";
+  }
+  if (segmentId === "pick") {
+    return "bg-violet-500/[0.12] text-violet-100 shadow-[inset_0_1px_0_rgba(196,181,253,0.1),0_1px_8px_rgba(0,0,0,0.2)] ring-1 ring-violet-400/25";
+  }
+  return "bg-white/[0.09] text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1px_8px_rgba(0,0,0,0.25)] ring-1 ring-white/[0.1]";
+}
+
+function segmentAccentClass(segmentId: TradingDateMode, active: boolean, isLive: boolean): string {
+  if (!active) return "from-transparent via-transparent to-transparent";
+  if (segmentId === "today" && isLive) return "from-transparent via-emerald-400/45 to-transparent";
+  if (segmentId === "pick") return "from-transparent via-violet-400/35 to-transparent";
+  return "from-transparent via-cyan-400/35 to-transparent";
+}
 
 function SegmentedControl({
   mode,
+  isLive,
   onToday,
   onYesterday,
   onPickDate,
   dateInputRef,
 }: {
   mode: TradingDateMode;
+  isLive: boolean;
   onToday: () => void;
   onYesterday: () => void;
   onPickDate: () => void;
@@ -70,14 +96,15 @@ function SegmentedControl({
             onClick={handlers[segment.id]}
             className={cn(
               "relative min-w-[4.25rem] rounded-[8px] px-2.5 py-1 text-[11px] font-medium transition-all duration-150",
-              active
-                ? "bg-white/[0.09] text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1px_8px_rgba(0,0,0,0.25)] ring-1 ring-white/[0.1]"
-                : "text-slate-500 hover:bg-white/[0.04] hover:text-slate-300",
+              segmentActiveClass(segment.id, active, isLive),
             )}
           >
             {active ? (
               <span
-                className="pointer-events-none absolute inset-x-2 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/35 to-transparent"
+                className={cn(
+                  "pointer-events-none absolute inset-x-2 top-0 h-px bg-gradient-to-r",
+                  segmentAccentClass(segment.id, active, isLive),
+                )}
                 aria-hidden
               />
             ) : null}
@@ -149,6 +176,7 @@ export function TradingDateControl({
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
         <SegmentedControl
           mode={mode}
+          isLive={isLive}
           onToday={onToday}
           onYesterday={onYesterday}
           onPickDate={() => dateInputRef.current?.showPicker?.()}

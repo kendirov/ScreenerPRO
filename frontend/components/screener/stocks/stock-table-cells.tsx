@@ -2,6 +2,8 @@
 
 import type { ScreenerRow } from "@screenerpro/shared";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { CopyTickerBadge } from "@/components/screener/copy-ticker-badge";
 import {
   CompactMetric,
   StatusChip,
@@ -13,6 +15,18 @@ import {
   STOCK_DAY_RANGE_DETAIL_HINT,
   type StockTableStatus,
 } from "@/lib/domain/stock-screener-display";
+import {
+  buildTradesRatioTooltip,
+  buildVolumeRatioTooltip,
+  formatTradesRatioDisplayParts,
+  formatVolumeRatioDisplayParts,
+} from "@/lib/domain/baseline-info";
+import {
+  buildVolXTableTitle,
+  formatVolXCompact,
+  resolveStockVolumeRatio,
+  volXTableHighlightClass,
+} from "@/lib/domain/stock-volume-ratio";
 import { tradingFormat } from "@/lib/formatters/trading";
 import { cn } from "@/lib/utils/cn";
 
@@ -40,13 +54,16 @@ export function StockTickerCell({ row, maxTurnover }: { row: ScreenerRow; maxTur
   const inPlay = isStockInPlay(row);
 
   return (
-    <div className="flex min-w-0 items-center gap-1.5" data-stock-tooltip-anchor="true">
+    <div className="group/ticker flex min-w-0 items-center gap-1" data-stock-tooltip-anchor="true">
+      <CopyTickerBadge ticker={row.ticker} />
       <Link
         href={`/stocks/${encodeURIComponent(row.ticker)}`}
         onClick={(event) => event.stopPropagation()}
-        className="truncate font-semibold tracking-[0.04em] text-lab-text-main transition hover:text-lab-cyan"
+        className="shrink-0 rounded p-0.5 text-lab-text-dim opacity-0 transition hover:text-lab-cyan focus-visible:opacity-100 group-hover/ticker:opacity-60"
+        title={`Карточка ${row.ticker}`}
+        aria-label={`Открыть карточку ${row.ticker}`}
       >
-        {row.ticker}
+        <ArrowUpRight className="h-3 w-3" aria-hidden />
       </Link>
       {chip ? (
         <StatusChip label={chip.label} tone={chip.tone} className="hidden shrink-0 text-[7px] uppercase sm:inline-flex" />
@@ -57,14 +74,34 @@ export function StockTickerCell({ row, maxTurnover }: { row: ScreenerRow; maxTur
   );
 }
 
+function VolXInline({ row }: { row: ScreenerRow }) {
+  const volRatio = resolveStockVolumeRatio(row);
+  const label = formatVolXCompact(volRatio);
+  const empty = volRatio == null;
+
+  return (
+    <span
+      className={cn(
+        "font-mono text-[10px] tabular-nums leading-none",
+        empty ? "text-lab-text-dim/80" : volXTableHighlightClass(volRatio),
+      )}
+      title={buildVolXTableTitle(row)}
+    >
+      {label}
+    </span>
+  );
+}
+
 export function StockTurnoverCell({
+  row,
   value,
   maxTurnover,
 }: {
+  row: ScreenerRow;
   value: number | null;
   maxTurnover: number;
 }) {
-  const ratio = maxTurnover > 0 && hasMetricValue(value) ? Math.min(1, value! / maxTurnover) : 0;
+  const barRatio = maxTurnover > 0 && hasMetricValue(value) ? Math.min(1, value! / maxTurnover) : 0;
   const compact = formatTurnoverCompact(value);
 
   return (
@@ -75,11 +112,14 @@ export function StockTurnoverCell({
         valueClassName={cn(numberCellClass, "text-lab-text-main")}
         className="block text-right"
       />
+      <div className="mt-0.5 flex justify-end md:hidden">
+        <VolXInline row={row} />
+      </div>
       {hasMetricValue(value) ? (
         <div className="ml-auto mt-0.5 h-0.5 w-full overflow-hidden rounded-full bg-white/[0.05]">
           <div
             className="h-full rounded-full bg-emerald-400/28 transition-all"
-            style={{ width: `${Math.max(ratio * 100, 2)}%` }}
+            style={{ width: `${Math.max(barRatio * 100, 2)}%` }}
           />
         </div>
       ) : (
@@ -167,6 +207,54 @@ export function StockPriceCell({ value }: { value: number | null }) {
         valueClassName={cn(numberCellClass, "text-lab-text-main")}
         className="block text-right"
       />
+    </NumericCell>
+  );
+}
+
+export function StockVolumeRatioCell({ row }: { row: ScreenerRow }) {
+  const parts = formatVolumeRatioDisplayParts(row);
+  const volRatio = resolveStockVolumeRatio(row);
+  const label = parts.showAsVolX ? formatVolXCompact(volRatio) : "—";
+  const tooltip = buildVolumeRatioTooltip(row);
+
+  return (
+    <NumericCell>
+      <span
+        className={cn(
+          numberCellClass,
+          "whitespace-nowrap",
+          !parts.showAsVolX ? "text-lab-text-dim/80" : volXTableHighlightClass(volRatio),
+        )}
+        title={[tooltip.title, ...tooltip.lines].join("\n")}
+      >
+        {label}
+      </span>
+      <p className="mt-0.5 truncate text-right font-mono text-[9px] leading-none text-lab-text-dim/75">
+        {parts.baselineLabel}
+      </p>
+    </NumericCell>
+  );
+}
+
+export function StockTradesRatioCell({ row }: { row: ScreenerRow }) {
+  const parts = formatTradesRatioDisplayParts(row);
+  const tooltip = buildTradesRatioTooltip(row);
+
+  return (
+    <NumericCell>
+      <span
+        className={cn(
+          numberCellClass,
+          "whitespace-nowrap",
+          !parts.showAsVolX ? "text-lab-text-dim/80" : "text-lab-text-main",
+        )}
+        title={[tooltip.title, ...tooltip.lines].join("\n")}
+      >
+        {parts.showAsVolX ? parts.primary : "—"}
+      </span>
+      <p className="mt-0.5 truncate text-right font-mono text-[9px] leading-none text-lab-text-dim/75">
+        {parts.baselineLabel}
+      </p>
     </NumericCell>
   );
 }

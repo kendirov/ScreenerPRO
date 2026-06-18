@@ -135,6 +135,16 @@ export interface NormalizedIntradayBar extends NormalizedHistoryBar {
 
 function parseCandleBeginTimestamp(begin: string): { date: Date; timestamp: string } | null {
   const trimmed = begin.trim();
+  // MOEX ISS отдаёт naive datetime в Europe/Moscow (без суффикса TZ).
+  const mskMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/);
+  if (mskMatch) {
+    const [, day, hh, mm] = mskMatch;
+    const iso = `${day}T${hh}:${mm}:00+03:00`;
+    const parsed = new Date(iso);
+    if (!Number.isFinite(parsed.getTime())) return null;
+    return { date: parsed, timestamp: iso };
+  }
+
   const isoLike = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
   const parsed = new Date(isoLike);
   if (!Number.isFinite(parsed.getTime())) return null;

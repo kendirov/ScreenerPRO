@@ -138,6 +138,16 @@ type ImpulseCandidate = {
   reason: string;
 };
 
+/** Детектор импульса дня (ускорение, пробой, расширение) — для таблицы импульсов и Market Radar shots. */
+export function detectStockImpulseEvent(
+  row: ScreenerRow,
+  position?: number | null,
+): ImpulseCandidate | null {
+  const pos =
+    position ?? computePositionInRange(row.lastPrice, row.low, row.high);
+  return detectImpulseEvent(row, pos);
+}
+
 function detectImpulseEvent(row: ScreenerRow, position: number | null): ImpulseCandidate | null {
   const change = row.percentChange ?? 0;
   const range = Math.abs(row.metrics.dayRangePct ?? 0);

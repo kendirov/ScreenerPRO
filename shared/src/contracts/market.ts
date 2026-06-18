@@ -29,6 +29,24 @@ export const screenerMetricSetSchema = z.object({
   activityRatio: z.number().nullable(),
   requiredActivityRatio: z.number().nullable(),
   sessionProgress: z.number().nullable(),
+  /** Оборот vs норма на текущий момент сессии (intraday baseline). */
+  volumeRatioNow: z.number().nullable().optional(),
+  /** Сделки vs норма на текущий момент сессии. */
+  tradesRatioNow: z.number().nullable().optional(),
+  intradayBaselineStatus: z.enum(["ok", "no-history", "partial", "rough"]).nullable().optional(),
+  intradayBaselineKind: z
+    .enum(["intraday-ok", "intraday-partial", "rough-day-avg", "previous-day", "none"])
+    .nullable()
+    .optional(),
+  /** same-time = intraday к времени; full-day = rough/вчера × progress. */
+  baselineMode: z.enum(["same-time", "full-day", "missing"]).nullable().optional(),
+  baselineSource: z.enum(["yesterday", "5d-average", "20d-average", "unknown"]).nullable().optional(),
+  baselineTimeMsk: z.string().nullable().optional(),
+  baselineIsReliable: z.boolean().optional(),
+  avgTurnoverAtTimeRub: z.number().nullable().optional(),
+  avgTradesAtTimeRub: z.number().nullable().optional(),
+  baselineSessionsCount: z.number().nullable().optional(),
+  baselineWarning: z.string().nullable().optional(),
 });
 export type ScreenerMetricSet = z.infer<typeof screenerMetricSetSchema>;
 

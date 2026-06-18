@@ -1,3 +1,4 @@
+import type { IntradaySparkline2sResponse } from "@/lib/domain/intraday-sparkline-2s";
 import type {
   StockSparklineBatchResponse,
   StockSparklineCandle,
@@ -10,6 +11,8 @@ import { moexPayloadSchema } from "@/lib/server/integrations/moex/validators";
 import { getSessionProgress } from "@/lib/server/domain/stock-activity";
 
 const MAX_SECIDS = 8;
+/** Совпадает с `useRadarSparklineCandles` (до 24 тикеров радара). */
+const RADAR_SPARKLINE_MAX_SECIDS = 24;
 const BATCH_CACHE_TTL_MS = 20_000;
 const batchCache = new Map<string, { expiresAt: number; payload: StockSparklineBatchResponse }>();
 
@@ -54,6 +57,80 @@ function emptySeries(
     candleCount: 0,
     error,
   };
+}
+
+function candleSessionKey(timestamp: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(timestamp));
+}
+
+function previousTradingDateKey(from = new Date()): string {
+  const cursor = new Date(from);
+  for (let i = 0; i < 8; i++) {
+    cursor.setDate(cursor.getDate() - 1);
+    const weekday = moscowWeekday(cursor);
+    if (weekday >= 1 && weekday <= 5) {
+      return moscowDateKey(cursor);
+    }
+  }
+  return moscowDateKey(cursor);
+}
+
+async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): Promise<StockSparklineSeries> {
+  const till = moscowDateKey();
+  const from = previousTradingDateKey();
+
+  try {
+    const payload = moexPayloadSchema.parse(
+      await moexGetJson(stockCandlesUrl(secid, from, till, interval), 90),
+    );
+    const table = payload.candles;
+    if (!table?.data?.length) {
+      return { ...emptySeries(secid, "intraday", interval), scope: "twoSessions", sessionKeys: [] };
+    }
+
+    const candles: StockSparklineCandle[] = mapIntradayCandlesBars(table.columns, table.data)
+      .filter((bar) => bar.close != null && Number.isFinite(bar.close))
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+      .map((bar) => ({
+        time: bar.timestamp,
+        close: bar.close!,
+        turnover: bar.turnover,
+        volume: bar.volume,
+        sessionKey: candleSessionKey(bar.timestamp),
+      }));
+
+    const sessionKeys = [...new Set(candles.map((c) => c.sessionKey).filter(Boolean))] as string[];
+
+    if (candles.length < 3 || sessionKeys.length < 2) {
+      return {
+        ...emptySeries(secid, "intraday", interval),
+        scope: "twoSessions",
+        sessionKeys,
+        candles,
+        candleCount: candles.length,
+        status: "no-data",
+      };
+    }
+
+    return {
+      secid,
+      status: "ok",
+      source: "intraday",
+      interval,
+      scope: "twoSessions",
+      sessionKeys,
+      candles,
+      candleCount: candles.length,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ...emptySeries(secid, "intraday", interval, message), scope: "twoSessions", sessionKeys: [] };
+  }
 }
 
 async function fetchIntradaySeries(secid: string, interval: 10 | 60): Promise<StockSparklineSeries> {
@@ -151,13 +228,15 @@ async function fetchSeriesForTicker(
 
 export async function buildStockSparklineBatch(
   secids: string[],
-  options?: { interval?: 10 | 60; days?: number },
+  options?: { interval?: 10 | 60; days?: number; sessions?: 1 | 2 },
 ): Promise<StockSparklineBatchResponse> {
   const interval = options?.interval === 60 ? 60 : 10;
   const days = Math.min(10, Math.max(3, options?.days ?? 5));
+  const twoSessions = options?.sessions === 2;
+  const maxSecids = twoSessions ? RADAR_SPARKLINE_MAX_SECIDS : MAX_SECIDS;
 
-  const unique = [...new Set(secids.map((s) => s.trim().toUpperCase()).filter(Boolean))].slice(0, MAX_SECIDS);
-  const cacheKey = `${unique.join(",")}|${interval}|${days}|${moscowDateKey()}|${isMoexStockSessionOpen() ? "open" : "closed"}`;
+  const unique = [...new Set(secids.map((s) => s.trim().toUpperCase()).filter(Boolean))].slice(0, maxSecids);
+  const cacheKey = `${unique.join(",")}|${interval}|${days}|${twoSessions ? "2s" : "1s"}|${moscowDateKey()}|${isMoexStockSessionOpen() ? "open" : "closed"}`;
   const cached = batchCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.payload;
@@ -165,7 +244,11 @@ export async function buildStockSparklineBatch(
 
   const preferIntraday = isMoexStockSessionOpen();
   const series = await Promise.all(
-    unique.map((secid) => fetchSeriesForTicker(secid, { interval, days, preferIntraday })),
+    unique.map((secid) =>
+      twoSessions
+        ? fetchTwoSessionIntradaySeries(secid, interval)
+        : fetchSeriesForTicker(secid, { interval, days, preferIntraday }),
+    ),
   );
 
   const payload: StockSparklineBatchResponse = {
@@ -177,4 +260,58 @@ export async function buildStockSparklineBatch(
   return payload;
 }
 
-export { MAX_SECIDS as STOCK_SPARKLINE_MAX_SECIDS };
+const HOVER_SPARKLINE_CACHE_TTL_MS = 25_000;
+const hoverSparklineCache = new Map<string, { expiresAt: number; payload: IntradaySparkline2sResponse }>();
+
+function downsampleSparklinePoints(candles: StockSparklineCandle[], target = 64): { t: number; p: number }[] {
+  if (candles.length === 0) return [];
+  if (candles.length <= target) {
+    return candles.map((c) => ({ t: new Date(c.time).getTime(), p: c.close }));
+  }
+  const out: { t: number; p: number }[] = [];
+  const step = candles.length / target;
+  for (let i = 0; i < target; i++) {
+    const idx = Math.min(candles.length - 1, Math.floor(i * step));
+    const candle = candles[idx]!;
+    out.push({ t: new Date(candle.time).getTime(), p: candle.close });
+  }
+  return out;
+}
+
+/** Компактный 2С sparkline для hover-card (40–80 точек). */
+export async function buildIntradaySparklineHover(ticker: string): Promise<IntradaySparkline2sResponse> {
+  const secid = ticker.trim().toUpperCase();
+  const cacheKey = `${secid}|${moscowDateKey()}|hover-2s`;
+  const cached = hoverSparklineCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.payload;
+  }
+
+  const series = await fetchTwoSessionIntradaySeries(secid, 10);
+  const closes = series.candles.map((c) => c.close).filter((v) => Number.isFinite(v));
+  const points = downsampleSparklinePoints(series.candles, 64);
+  const high = closes.length ? Math.max(...closes) : 0;
+  const low = closes.length ? Math.min(...closes) : 0;
+
+  const sessionKeys = series.sessionKeys ?? [];
+  let prevClose: number | null = null;
+  if (sessionKeys.length >= 2) {
+    const prevKey = sessionKeys[sessionKeys.length - 2];
+    const prevSession = series.candles.filter((c) => c.sessionKey === prevKey);
+    if (prevSession.length) prevClose = prevSession[prevSession.length - 1]?.close ?? null;
+  }
+
+  const payload: IntradaySparkline2sResponse = {
+    ticker: secid,
+    points,
+    prevClose,
+    high,
+    low,
+    cachedAt: new Date().toISOString(),
+  };
+
+  hoverSparklineCache.set(cacheKey, { expiresAt: Date.now() + HOVER_SPARKLINE_CACHE_TTL_MS, payload });
+  return payload;
+}
+
+export { MAX_SECIDS as STOCK_SPARKLINE_MAX_SECIDS, RADAR_SPARKLINE_MAX_SECIDS };

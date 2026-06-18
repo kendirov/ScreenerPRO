@@ -13,6 +13,9 @@ import { screenerRows as demoRows } from "@/lib/mock/screener";
 import { computeInPlaySignals } from "@/lib/server/domain/in-play-signals";
 import { enrichMoexStocksWithInPlayMetrics } from "@/lib/server/domain/screener-math";
 import { classifyStockActivity, deriveStockActivityMetrics } from "@/lib/server/domain/stock-activity";
+import { metricsFieldsFromIntraday } from "@/lib/domain/baseline-info";
+import { loadIntradayBaselinesForStocks } from "@/lib/server/services/intraday-baseline-loader";
+import { buildBaselineAuditRow, type BaselineAuditRow } from "@/lib/domain/baseline-audit";
 import { fetchIssJson } from "@/lib/server/moex-iss/http";
 import { moexIssPayloadSchema } from "@/lib/server/moex-iss/schemas";
 import {
@@ -274,6 +277,15 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
     baselineStatus = "error";
   }
   const enrichedRows = enrichMoexStocksWithInPlayMetrics(draftRows);
+  const nowDate = new Date(nowIso);
+  const intradayBaselines = await loadIntradayBaselinesForStocks(
+    draftRows.map((row) => ({
+      ticker: row.ticker,
+      turnover: row.turnover,
+      tradesCount: row.tradesCount,
+    })),
+    nowDate,
+  );
   const rows = enrichedRows.map((row) => {
     const baseline = baselines.get(row.ticker) ?? { turnoverAverage: null, previousDayTurnover: null, rangeAveragePct: null, tradesAverage: null };
     const signal = computeInPlaySignals({
@@ -289,7 +301,8 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
       currentTurnoverRub: row.turnover,
       previousDayTurnoverRub: baseline.previousDayTurnover,
       tradesCount: row.tradesCount,
-    }, new Date(nowIso));
+    }, nowDate);
+    const intraday = intradayBaselines.get(row.ticker);
 
     return {
       ticker: row.ticker,
@@ -316,9 +329,9 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
       sourceUpdatedAt: null,
       metrics: {
         turnoverRatio: signal.turnoverVsAverage,
-        volumeRatio: null,
-        turnoverVsAverage: signal.turnoverVsAverage,
+        volumeRatio: metricsFieldsFromIntraday(intraday).volumeRatioNow ?? null,
         rangeVsAverage: signal.rangeVsAverage,
+        /** tradesVsAverage = full-day из Prisma; Trades x только из intraday same-time. */
         tradesVsAverage: signal.tradesVsAverage,
         turnoverPercentile: row.turnoverPercentile,
         tradesPercentile: row.tradesPercentile,
@@ -335,6 +348,9 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
         activityRatio: activityMetrics.activityRatio,
         requiredActivityRatio: activityMetrics.requiredActivityRatio,
         sessionProgress: activityMetrics.sessionProgress,
+        ...metricsFieldsFromIntraday(intraday),
+        /** Полный день / avg 20d — НЕ Vol x (отдельная метрика для legacy in-play). */
+        turnoverVsAverage: signal.turnoverVsAverage,
       },
     } satisfies ScreenerRow;
   });
@@ -658,4 +674,29 @@ export async function getScreenerDiagnostics(): Promise<ScreenerDiagnosticsRespo
       future: response.status.futuresRows,
     },
   };
+}
+
+/** Dev-only: акции из live snapshot для radar debug. */
+export async function getMoexStockRowsForDebug(): Promise<ScreenerRow[]> {
+  const snapshot = await getMoexSnapshot();
+  return snapshot.stocks.filter((row) => row.assetClass === "stock");
+}
+
+/** Dev-only: топ-N по обороту — полная диагностика Vol x / Trades x baseline. */
+export async function getBaselineAuditTop(n = 20): Promise<BaselineAuditRow[]> {
+  const snapshot = await getMoexSnapshot();
+  const stocks = [...snapshot.stocks]
+    .filter((row) => row.assetClass === "stock")
+    .sort((a, b) => (b.turnover ?? 0) - (a.turnover ?? 0))
+    .slice(0, Math.max(1, Math.min(n, 25)));
+
+  const intradayMap = await loadIntradayBaselinesForStocks(
+    stocks.map((row) => ({
+      ticker: row.ticker,
+      turnover: row.turnover,
+      tradesCount: row.tradesCount ?? null,
+    })),
+  );
+
+  return stocks.map((row) => buildBaselineAuditRow(row, intradayMap.get(row.ticker)));
 }

@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import type { StockExpandedChartInterval } from "@/lib/domain/stock-expanded-chart";
 import { buildStockExpandedChartSeries } from "@/lib/server/services/stock-expanded-candles";
-import { buildStockSparklineBatch, STOCK_SPARKLINE_MAX_SECIDS } from "@/lib/server/services/stock-screener-candles";
+import { buildStockSparklineBatch, RADAR_SPARKLINE_MAX_SECIDS, STOCK_SPARKLINE_MAX_SECIDS } from "@/lib/server/services/stock-screener-candles";
 
-function parseSecids(raw: string | null): string[] {
+function parseSecids(raw: string | null, max: number): string[] {
   if (!raw?.trim()) return [];
-  return [...new Set(raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))].slice(
-    0,
-    STOCK_SPARKLINE_MAX_SECIDS,
-  );
+  return [...new Set(raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))].slice(0, max);
 }
 
 function parseInterval(raw: string | null): 10 | 60 {
@@ -30,10 +27,16 @@ function parseDays(raw: string | null): number {
   return Math.min(10, Math.max(1, Math.trunc(n)));
 }
 
+function parseSessions(raw: string | null): 1 | 2 {
+  return raw === "2" ? 2 : 1;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view");
-  const secids = parseSecids(searchParams.get("secids"));
+  const sessions = parseSessions(searchParams.get("sessions"));
+  const maxSecids = sessions === 2 ? RADAR_SPARKLINE_MAX_SECIDS : STOCK_SPARKLINE_MAX_SECIDS;
+  const secids = parseSecids(searchParams.get("secids"), maxSecids);
   const secid = (searchParams.get("secid") ?? secids[0] ?? "").trim().toUpperCase();
 
   if (view === "chart") {
@@ -60,7 +63,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const body = await buildStockSparklineBatch(secids, { interval, days });
+    const body = await buildStockSparklineBatch(secids, { interval, days, sessions });
     return NextResponse.json(body);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

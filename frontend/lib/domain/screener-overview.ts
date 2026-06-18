@@ -1,29 +1,16 @@
 import type { ScreenerDataSource, ScreenerRow } from "@screenerpro/shared";
 import { buildFuturesFamilies } from "@/lib/domain/futures-family";
 import { isStockInPlay, parseInPlayReasonTags } from "@/lib/domain/stock-screener-display";
+import { TRADER_SIGNAL_SHORT, formatTraderTagShort } from "@/lib/domain/trader-signal-labels";
 import { tradingFormat } from "@/lib/formatters/trading";
 
-const REASON_TAG_LABEL: Record<string, string> = {
-  оборот: "объём",
-  сделки: "сделки",
-  диапазон: "диапазон",
-  импульс: "импульс",
-};
-
 export function formatReasonTagsForCard(row: ScreenerRow): string[] {
-  return parseInPlayReasonTags(row).map((tag) => REASON_TAG_LABEL[tag] ?? tag);
+  return parseInPlayReasonTags(row).map((tag) => formatTraderTagShort(tag));
 }
-
-const FOCUS_REASON_LABEL: Record<string, string> = {
-  оборот: "оборот",
-  сделки: "сделки",
-  диапазон: "диапазон",
-  импульс: "движение",
-};
 
 /** Теги для блока «Почему в фокусе» — только из существующих полей. */
 export function formatFocusReasonTags(row: ScreenerRow): string[] {
-  return parseInPlayReasonTags(row).map((tag) => FOCUS_REASON_LABEL[tag] ?? tag).slice(0, 4);
+  return formatReasonTagsForCard(row).slice(0, 4);
 }
 
 export function selectInPlayStocks(rows: ScreenerRow[], limit = 4): ScreenerRow[] {
@@ -81,21 +68,14 @@ export function selectAnomalyRail(
     .slice(0, limit);
 }
 
-const ANOMALY_REASON_LABEL: Record<string, string> = {
-  оборот: "оборот",
-  сделки: "сделки",
-  диапазон: "движение",
-  импульс: "движение",
-};
-
 /** Причина для ленты аномалий. */
 export function formatAnomalyReason(row: ScreenerRow): string {
   if (Math.abs(row.percentChange ?? 0) >= 2.5 || Math.abs(row.metrics.dayRangePct ?? 0) >= 4) {
-    return "аномалия";
+    return TRADER_SIGNAL_SHORT.activity;
   }
   const tags = parseInPlayReasonTags(row);
-  if (tags.length) return ANOMALY_REASON_LABEL[tags[0]!] ?? tags[0]!;
-  return row.metrics.reasonLabel?.split("+")[0]?.trim().toLowerCase() ?? "активность";
+  if (tags.length) return formatTraderTagShort(tags[0]!);
+  return TRADER_SIGNAL_SHORT.activity;
 }
 
 export function isRowAnomaly(row: ScreenerRow): boolean {

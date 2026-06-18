@@ -1,4 +1,10 @@
 import type { ScreenerRow } from "@screenerpro/shared";
+import {
+  normalizeReasonLabelShort,
+  TABLE_STATUS_REASON_SHORT,
+  TRADER_SIGNAL_SHORT,
+  TRADER_TAG_SHORT,
+} from "@/lib/domain/trader-signal-labels";
 
 export const STOCK_ILLIQUID_RATIO = 0.02;
 export const STOCK_ILLIQUID_TURNOVER_FLOOR = 35_000_000;
@@ -10,8 +16,12 @@ export type StockTableStatus = "Ликвид" | "В игре" | "Импульс"
 
 const REASON_PART_TO_TAG: Record<string, string> = {
   Объем: "оборот",
+  Объём: "оборот",
+  объём: "оборот",
   Сделки: "сделки",
+  сделки: "сделки",
   Диапазон: "диапазон",
+  "широкий день": "диапазон",
 };
 
 export function isStockIlliquid(row: ScreenerRow, maxTurnover: number): boolean {
@@ -115,7 +125,7 @@ export function buildStockRowFilterHints(
   if (isStockInPlay(row)) hints.push("в игре");
   if ((row.metrics.turnoverPercentile ?? 0) >= 70) hints.push("топ оборот");
   if ((row.metrics.tradesPercentile ?? 0) >= 70) hints.push("топ сделки");
-  if ((row.metrics.rangePercentile ?? 0) >= 70) hints.push("широкий диапазон");
+  if ((row.metrics.rangePercentile ?? 0) >= 70) hints.push(TRADER_SIGNAL_SHORT.wideDay);
   if (isStockIlliquid(row, maxTurnover) && !options?.hideIlliquid) hints.push("неликвид");
   return hints.slice(0, 4);
 }
@@ -128,30 +138,29 @@ export const STOCK_DAY_RANGE_HEADER_TOOLTIP =
 
 export const STOCK_DAY_RANGE_DETAIL_HINT = "Ход дня = диапазон high–low";
 
-/** Краткая причина для колонки таблицы. */
+/** Краткая причина для колонки таблицы (единый короткий словарь). */
 export function getStockReasonSummary(row: ScreenerRow, maxTurnover: number): string {
   if (row.metrics.reasonLabel) {
-    return row.metrics.reasonLabel.replace(/\+/g, " · ");
+    return normalizeReasonLabelShort(row.metrics.reasonLabel);
   }
 
   const tags = parseInPlayReasonTags(row);
   if (tags.length) {
-    const labels: Record<string, string> = {
-      оборот: "высокий оборот",
-      сделки: "активная лента",
-      диапазон: "широкий ход",
-      импульс: "импульс",
-    };
-    return tags.map((tag) => labels[tag] ?? tag).join(" · ");
+    return tags.map((tag) => TRADER_TAG_SHORT[tag] ?? tag).join(" · ");
   }
 
   const status = getStockTableStatus(row, maxTurnover);
-  if (status === "В игре") return "в игре";
-  if (status === "Импульс") return "импульс дня";
-  if (status === "Давление") return "давление";
-  if (status === "Тонкий разгон") return "тонкий разгон";
-  if (status === "Ликвид") return "лидер ликвидности";
-  return "—";
+  return TABLE_STATUS_REASON_SHORT[status] ?? "—";
+}
+
+/** Развёрнутая причина для title/tooltip колонки «Причина». */
+export function getStockReasonDetail(row: ScreenerRow, maxTurnover: number): string | null {
+  const short = getStockReasonSummary(row, maxTurnover);
+  if (short === "—") return null;
+  if (row.metrics.reasonLabel) {
+    return `In-play score: ${row.metrics.reasonLabel.replace(/\+/g, " · ")}`;
+  }
+  return short;
 }
 
 /**

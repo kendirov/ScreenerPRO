@@ -1,3 +1,5 @@
+import { formatServerInPlayReason } from "@/lib/domain/trader-signal-labels";
+
 export type InPlayTag = "MONEY" | "IN_PLAY" | "NOISE";
 
 export interface MoexRawStockRow {
@@ -34,12 +36,6 @@ const IN_PLAY_MAX_COUNT = 5;
 const NOISE_RANGE_PERCENTILE = 90;
 const NOISE_LIQUIDITY_PERCENTILE_FLOOR = 60;
 
-const REASON_RU_LABELS: Record<ScoreComponent, string> = {
-  turnover: "Объем",
-  trades: "Сделки",
-  range: "Диапазон",
-};
-
 function toFiniteOrZero(value: number | null): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
@@ -75,9 +71,9 @@ function reasonLabelForInPlay(item: Pick<MoexInPlayDerived, "turnoverPercentile"
   ];
   contributions.sort((a, b) => b.value - a.value);
 
-  const first = REASON_RU_LABELS[contributions[0]?.key ?? "turnover"];
-  const second = REASON_RU_LABELS[contributions[1]?.key ?? "range"];
-  return `${first} + ${second}`;
+  const first = contributions[0]?.key ?? "turnover";
+  const second = contributions[1]?.key ?? "range";
+  return formatServerInPlayReason(first, second);
 }
 
 export function enrichMoexStocksWithInPlayMetrics<T extends MoexRawStockRow>(rows: readonly T[]): Array<T & MoexInPlayDerived> {

@@ -17,6 +17,7 @@ import {
   Newspaper,
   NotebookPen,
   Percent,
+  TrendingUp,
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -134,6 +135,14 @@ export const sidebarDraftsNav: SidebarNavGroup = {
       promotionTarget: "materials",
     },
     {
+      href: "/lab/perpetual-leverage",
+      label: "Liquidation Map",
+      icon: TrendingUp,
+      visibility: "visible",
+      draftBadge: "draft",
+      promotionTarget: "materials",
+    },
+    {
       href: "/lab/orderflow-simulator",
       label: "Привод-симулятор",
       icon: Layers,
@@ -225,6 +234,13 @@ export const labCatalogItems: LabCatalogItem[] = [
     description: "Si / CNY / ED: расхождения, z-score, недельный контекст и режимы валютных пар.",
     href: "/lab/currency-correlation",
     status: "live",
+  },
+  {
+    slug: "perpetual-leverage",
+    title: "Perpetual Leverage Lab",
+    description: "Плечо, маржа, funding и ликвидация в perpetual — учебный терминал для перехода с MOEX.",
+    href: "/lab/perpetual-leverage",
+    status: "soon",
   },
   {
     slug: "orderflow-simulator",
