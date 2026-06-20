@@ -166,6 +166,17 @@ export const MATERIALS_SHOWCASE_ITEMS: MaterialsShowcaseItem[] = [
     draftNotice: true,
   },
   {
+    slug: "cbr-rate-reaction",
+    section: "inDevelopment",
+    title: "Ставка ЦБ",
+    description: "Реакция валюты, индекса и акций на решение Банка России.",
+    href: "/lab/cbr-rate-reaction",
+    type: "лаборатория",
+    motif: "timeline",
+    status: "draft",
+    draftNotice: true,
+  },
+  {
     slug: "session-liquidity-map",
     section: "inDevelopment",
     title: "Пульс сессии",

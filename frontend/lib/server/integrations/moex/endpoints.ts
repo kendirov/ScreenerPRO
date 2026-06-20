@@ -90,3 +90,36 @@ export function stockCandlesUrl(secid: string, from: string, till: string, inter
     interval,
   });
 }
+
+/** Интрадей-свечи индексов MOEX (IMOEX, RTSI, …). */
+export function indexCandlesUrl(secid: string, from: string, till: string, interval = 10) {
+  return withQuery(`/engines/stock/markets/index/securities/${secid}/candles.json`, {
+    "iss.meta": "off",
+    from,
+    till,
+    interval,
+  });
+}
+
+/** Универсальный candles endpoint (engine / market / optional board). */
+export function moexCandlesUrl(params: {
+  engine: string;
+  market: string;
+  secid: string;
+  board?: string;
+  from: string;
+  till: string;
+  interval: number;
+  start?: number;
+}) {
+  const path = params.board
+    ? `/engines/${params.engine}/markets/${params.market}/boards/${params.board}/securities/${params.secid}/candles.json`
+    : `/engines/${params.engine}/markets/${params.market}/securities/${params.secid}/candles.json`;
+  return withQuery(path, {
+    "iss.meta": "off",
+    from: params.from,
+    till: params.till,
+    interval: params.interval,
+    start: params.start,
+  });
+}

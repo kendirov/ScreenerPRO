@@ -4,104 +4,120 @@
 
 ## Текущая задача
 
-**Market Radar dev debug** — завершён (2026-06-06).
+**Ставка ЦБ / event replay** — lab-страница отполирована под терминал трейдера (2026-06-18).
 
 ---
 
-## sessionContext
+## CBR Rate Reaction Lab
 
-Файл: `frontend/lib/domain/market-radar-session.ts`
+**Маршрут:** `/lab/cbr-rate-reaction`  
+**API:** `GET /api/cbr-rate-reaction/candles` (MOEX ISS + fallback mock)
 
-- `turnoverRef` = median(top-3 оборот)
-- `tradesRef` = median(top-5 сделок)
-- `sessionIntensity` = 0.6×turnoverIntensity + 0.4×tradesIntensity (same-time baseline по рынку)
-- Режимы: **quiet** / **soft** / **normal** / **hot** → `minTurnover` / `minTrades`
-- На строку: `leaderPresenceScore`, `relativeTurnover`, `relativeTrades`
+### Что видит пользователь (15-секундное чтение)
 
-Snapshot: `buildRadarBoard(universe, candidates)` — один `rankCtx` на все колонки.
+| Зона | Содержание |
+|------|------------|
+| **Селектор заседаний** | вкладки 2026–2023, карточки с датой / ставкой / бейдж «нужно проверить» |
+| **Sticky replay header** | `REPLAY · дата` · до / ожид. / факт · surprise · маркеры 13:30 (+15:00) · provenance |
+| **Графики** (выше матрицы) | 6 слотов, синхронный crosshair, маркеры 13:30 всегда, 15:00 только при `pressConferenceTime` |
+| **4 строки summary** | Факт · Реакция · Подтверждение · Следующий раз |
+| **Матрица реакции** | Si / CNY / MX / SBER / active — 5м / 30м / 15:00+ / день / объём / паттерн |
+| **Accordion (свернуто)** | Текст ЦБ → перевод · Инструменты в игре · Методика и источники |
 
----
+**Upcoming (2026-06-19):** placeholder вместо графиков, summary с текстом «заседание не состоялось».  
+**History:** графики + матрица; demo-режим явно помечен (`demo · не торговые данные`, бейдж DEMO на каждом чарте).
 
-## Правила отбора (v4)
+### Что упростили (финальная полировка)
 
-### В игре (`isInGame`)
+- Убраны дубли: факт/ожидание не повторяются в accordion «Официальный релиз»
+- Убран `CbrExpectationVsFactPanel` с главного экрана — ожидание в header + строка «Следующий раз»
+- Селектор перенесён наверх — дата управляет всей страницей (`key={event.id}` на графиках)
+- Header: терминальный `REPLAY · дата` вместо новостного заголовка
+- Demo: штриховка панели графиков + баннер + бейдж DEMO на каждом слоте
+- Матрица под графиками с подписью «матрица реакции»
 
-- `inGameScore ≥ 0.75` (45% leader + 35% movement + 20% baseline)
-- `leaderPresenceScore ≥ 0.60`
-- `movementScore ≥ 0.55`
-- `turnover ≥ session.minTurnover`, `trades ≥ session.minTrades`
-- **0 строк — норма**, не добиваем
+### Источник дат и ставок ЦБ
 
-### Актив (`isActive`)
+**Канонический каталог:** `frontend/data/cbr-rate-events.json` (по годам 2026–2023)  
+**Загрузчик:** `frontend/lib/cbr/cbr-rate-events-db.ts` → `CbrRateEvent`  
+**Legacy-адаптер UI:** `frontend/lib/cbr/cbr-domain-adapter.ts` → domain `CbrRateEvent`
 
-- не in-game, не тонкая (< 10M ₽ или < 300 сделок)
-- `activityScore ≥ 0.58`
-- `movementScore ≥ 0.30`, `leaderPresence ≥ 0.25`
-- `turnover ≥ minTurnover×0.5`, `trades ≥ minTrades×0.5`
-- Список: in-game → active, max **8**
+`sourceStatus` в JSON:
+- `verified` — 2026 факты (апр–фев)
+- `needs_verification` — 2025/2024/2023 (ручной перенос)
+- `upcoming` — 2026-06-19
 
-### Волатильность (`isVolatile`)
+`_meta.todos` в JSON:
+1. импорт официальной истории ставок ЦБ
+2. ручная верификация дат заседаний
+3. ожидания рынка из брокерских обзоров
+4. автоподбор ближайших фьючерсов по дате заседания
 
-- gate: range ≥ 1.5% / |Δ| ≥ 1.2% / near high-low / пробой
-- top **6** по `volatilityScore`
-- тонкие: тег **тонко**, не в активность только из-за диапазона
+### Данные mock / manual (честно)
 
-### Ликвидность
-
-- top **5** по rank-based `liquidityScore`
-
----
-
-## UI радара (компактно, ~260px)
-
-| Блок | Строка |
+| Слой | Статус |
 |------|--------|
-| **ЛИКВИДНОСТЬ** | тикер · % · оборот · сделки · `деньги` |
-| **АКТИВНОСТЬ** | тикер · [бейдж `в игре`] · % · оборот x/оборот · сделки x/сделки · reason |
-| **ВОЛАТИЛЬНОСТЬ** | тикер · % · оборот · диапазон · reason |
+| Ставки 2025/2024/2023 | `needs_verification` — сверить с cbr.ru |
+| `expectedRate` | всегда `null` без источника |
+| Инструменты replay | `dataStatus: demo` в `cbr-instruments.ts` |
+| Свечи | MOEX ISS если есть, иначе `cbr-rate-mock-candles.ts` |
+| Игроки «в игре» | mock snapshot в `cbr-rate-event-players.ts` |
+| Statement / tone | manual в domain, не парсер ЦБ |
 
-**Reason активность:** `лидер + диапазон` · `объём + сделки` · `сделки + ход` · `актив` · `нет базы`
+### Компоненты (актуальные)
 
-**Reason волатильность:** `диапазон` · `у high` · `у low` · `пробой high/low` · `тонко`
+`frontend/components/lab/cbr-rate-reaction/`:
+- `cbr-rate-reaction-page.tsx` — shell
+- `cbr-rate-event-selector.tsx` — выбор заседания
+- `cbr-rate-replay-header.tsx` — sticky replay bar
+- `cbr-synchronized-chart-grid.tsx` + `cbr-reaction-intraday-chart.tsx`
+- `cbr-rate-reaction-summary.tsx` — 4 строки трейдерского чтения
+- `cbr-compact-reaction-matrix.tsx`
+- `cbr-replay-accordion.tsx`, `cbr-statement-translation-panel.tsx`
+- `cbr-rate-event-players-compact.tsx`, `cbr-data-integrity-strip.tsx`
+- `cbr-rate-upcoming-placeholder.tsx`
 
-Без ratio → обычные числа, без фейкового x. Пустой блок → `—`.
+`frontend/lib/cbr/`:
+- `cbr-rate-events.ts`, `cbr-rate-events-db.ts`, `cbr-data-integrity.ts`
+- `cbr-rate-event-selector.ts`, `cbr-instruments.ts`, `index.ts`
 
-Запрещено в UI: VOL, TRD, LIQ, GAME, ОБ·X, ДИАП.
+### Что проверить вручную
 
-Файлы: `radar-ui-labels.ts`, `market-radar-selectors.ts` (`resolveRadarActivityTag`, `resolveRadarVolatilityTag`), `radar-mini-row.tsx`, `market-radar.tsx`.
+1. `/lab/cbr-rate-reaction` — выбор 24 апр 2026: дата в header, графики выше матрицы, 4 строки summary
+2. Маркер 13:30 на всех графиках; 15:00 — только на заседаниях с `pressConferenceTime`
+3. Demo-режим: баннер + DEMO на чартах, не выглядит как live MOEX
+4. 2025/2024 карточки — бейдж «нужно проверить»
+5. 2026-06-19 upcoming — без графиков, summary «не состоялось»
+6. Переключение года/даты — вся страница (header, графики, матрица) синхронна
+7. Accordion — только детали, не дублирует главный экран
+
+### Следующий этап подключения
+
+1. **Импорт cbr.ru** → заполнить JSON, снять `needs_verification`
+2. **MOEX candles** — стабильный live на исторических датах
+3. **Rolling futures resolver** — Si/CNY/MX по дате заседания
+4. **Broker consensus** → `expectedRate` + surprise
+5. **Парсер пресс-релиза** → statement / tone автоматически
+
+### Навигация
+
+- Sidebar **«Черновики»** → **«Ставка ЦБ»**
+- `/materials` → карточка «Ставка ЦБ»
 
 ---
 
-## Dev-диагностика Market Radar
+## Market Radar
 
-**Только development** — не видна обычному пользователю, production API → 404.
-
-| Способ | Как |
-|--------|-----|
-| console.table | `/screener/stocks?debugRadar=1` — DevTools, группа `[Market Radar] debug` |
-| JSON | `/sandbox` — блок «Market Radar debug» |
-| API | `GET /api/dev/market-radar-debug` (dev only) |
-
-Файл: `frontend/lib/domain/market-radar-debug.ts` — top-30 по обороту, все scores + `isInGame` / `isActive` / `isVolatile` + `listed*` (фактически в списках UI) + `radarTag` / `radarReason`.
-
-Сравнение SMLT vs SBER: смотреть `leaderPresenceScore`, `movementScore`, `inGameScore`, gates `session.minTurnover/minTrades`.
+См. `docs/MARKET_RADAR_FORMULAS.md`, `market-radar-session.ts`, dev debug: `/screener/stocks?debugRadar=1`, `/sandbox`.
 
 ---
 
-## Build / verify
+## Build / verify (2026-06-18)
 
 ```bash
-pnpm -C frontend exec next build
-pnpm -C frontend verify:market-radar
-pnpm -C frontend verify:market-radar-session
+pnpm -C frontend build                    # ✓ exit 0
+pnpm -C frontend eslint "components/lab/cbr-rate-reaction/**" "lib/cbr/**" "lib/domain/cbr-rate*.ts"
+# 2 react-hooks/set-state-in-effect warnings в chart-grid — build не блокирует
 ```
 
----
-
-## Browser checklist (`/screener/stocks`)
-
-1. **ЛИКВИДНОСТЬ** — Сбер с тегом `деньги`; flat день не обязан быть в активности.
-2. **АКТИВНОСТЬ** — in-game: бейдж + reason; SMLT/ASTR при лидерстве: `лидер + диапазон` или x-слоты; без базы: `—` + `нет базы`.
-3. **ВОЛАТИЛЬНОСТЬ** — тонкие с большим %: `тонко`, не в активности.
-4. In-game **0** — без текста «в игре» в пустой колонке.
-5. Радар ~260px sticky, таблица сразу под ним.
+**Browser:** `/lab/cbr-rate-reaction`

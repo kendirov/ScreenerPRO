@@ -1,0 +1,237 @@
+{
+  "_meta": {
+    "version": 2,
+    "deprecated": "Используйте frontend/data/cbr-rate-events.ts",
+    "description": "Устаревший JSON-каталог. Источник правды — cbr-rate-events.ts"
+  },
+  "2026": [
+    {
+      "date": "2026-06-19",
+      "previousRate": 14.5,
+      "actualRate": null,
+      "expectedRate": null,
+      "decisionType": "upcoming",
+      "sourceStatus": "upcoming",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Предстоящее опорное заседание. Ставка 14,5% с апреля 2026.",
+      "pressConferenceTime": "15:00"
+    },
+    {
+      "date": "2026-04-24",
+      "previousRate": 15.0,
+      "actualRate": 14.5,
+      "expectedRate": null,
+      "decisionType": "cut",
+      "changeBps": -50,
+      "sourceStatus": "verified",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "statementUrl": "https://www.cbr.ru/press/pr/",
+      "summary": "Снижение ключевой ставки на 50 б.п., до 14,5% годовых.",
+      "pressConferenceTime": "15:00"
+    },
+    {
+      "date": "2026-03-20",
+      "previousRate": 15.5,
+      "actualRate": 15.0,
+      "expectedRate": null,
+      "decisionType": "cut",
+      "changeBps": -50,
+      "sourceStatus": "verified",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Снижение ключевой ставки на 50 б.п., до 15,0% годовых."
+    },
+    {
+      "date": "2026-02-13",
+      "previousRate": 16.0,
+      "actualRate": 15.5,
+      "expectedRate": null,
+      "decisionType": "cut",
+      "changeBps": -50,
+      "sourceStatus": "verified",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Снижение ключевой ставки на 50 б.п., до 15,5% годовых.",
+      "pressConferenceTime": "15:00"
+    }
+  ],
+  "2025": [
+    {
+      "date": "2025-12-19",
+      "previousRate": 16.5,
+      "actualRate": 16.0,
+      "decisionType": "cut",
+      "changeBps": -50,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "statementUrl": "https://cbr.ru/rbr/dir_decisions/rsd_2025-12-19_20_01/",
+      "summary": "Снижение ключевой ставки на 50 б.п., до 16,0% годовых."
+    },
+    {
+      "date": "2025-10-24",
+      "previousRate": 17.0,
+      "actualRate": 16.5,
+      "decisionType": "cut",
+      "changeBps": -50,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Снижение ключевой ставки на 50 б.п., до 16,5% годовых.",
+      "pressConferenceTime": "15:00"
+    },
+    {
+      "date": "2025-09-12",
+      "previousRate": 18.0,
+      "actualRate": 17.0,
+      "decisionType": "cut",
+      "changeBps": -100,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Снижение ключевой ставки на 100 б.п., до 17,0% годовых."
+    },
+    {
+      "date": "2025-07-25",
+      "previousRate": 20.0,
+      "actualRate": 18.0,
+      "decisionType": "cut",
+      "changeBps": -200,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Снижение ключевой ставки на 200 б.п., до 18,0% годовых.",
+      "pressConferenceTime": "15:00"
+    },
+    {
+      "date": "2025-06-06",
+      "previousRate": 21.0,
+      "actualRate": 20.0,
+      "decisionType": "cut",
+      "changeBps": -100,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Снижение ключевой ставки на 100 б.п., до 20,0% годовых."
+    },
+    {
+      "date": "2025-04-25",
+      "previousRate": 21.0,
+      "actualRate": 21.0,
+      "decisionType": "hold",
+      "changeBps": 0,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Ключевая ставка сохранена на уровне 21,0% годовых.",
+      "pressConferenceTime": "15:00"
+    },
+    {
+      "date": "2025-03-21",
+      "previousRate": 21.0,
+      "actualRate": 21.0,
+      "decisionType": "hold",
+      "changeBps": 0,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Ключевая ставка сохранена на уровне 21,0% годовых (промежуточное)."
+    },
+    {
+      "date": "2025-02-14",
+      "previousRate": 21.0,
+      "actualRate": 21.0,
+      "decisionType": "hold",
+      "changeBps": 0,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Ключевая ставка сохранена на уровне 21,0% годовых.",
+      "pressConferenceTime": "15:00"
+    }
+  ],
+  "2024": [
+    {
+      "date": "2024-12-20",
+      "previousRate": 21.0,
+      "actualRate": 21.0,
+      "decisionType": "hold",
+      "changeBps": 0,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Ключевая ставка сохранена на уровне 21,0% годовых."
+    },
+    {
+      "date": "2024-10-25",
+      "previousRate": 19.0,
+      "actualRate": 21.0,
+      "decisionType": "hike",
+      "changeBps": 200,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Повышение ключевой ставки на 200 б.п., до 21,0% годовых.",
+      "pressConferenceTime": "15:00"
+    },
+    {
+      "date": "2024-09-13",
+      "previousRate": 18.0,
+      "actualRate": 19.0,
+      "decisionType": "hike",
+      "changeBps": 100,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Повышение ключевой ставки на 100 б.п., до 19,0% годовых."
+    },
+    {
+      "date": "2024-07-26",
+      "previousRate": 16.0,
+      "actualRate": 18.0,
+      "decisionType": "hike",
+      "changeBps": 200,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Повышение ключевой ставки на 200 б.п., до 18,0% годовых.",
+      "pressConferenceTime": "15:00"
+    },
+    {
+      "date": "2024-06-07",
+      "previousRate": 16.0,
+      "actualRate": 16.0,
+      "decisionType": "hold",
+      "changeBps": 0,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Ключевая ставка сохранена на уровне 16,0% годовых."
+    },
+    {
+      "date": "2024-03-22",
+      "previousRate": 16.0,
+      "actualRate": 16.0,
+      "decisionType": "hold",
+      "changeBps": 0,
+      "sourceStatus": "needs_verification",
+      "officialUrl": "https://www.cbr.ru/hd_base/KeyRate/",
+      "summary": "Ключевая ставка сохранена на уровне 16,0% годовых."
+    }
+  ],
+  "2023": [
+    {
+      "date": "2023-12-15",
+      "previousRate": null,
+      "actualRate": null,
+      "sourceStatus": "needs_verification",
+      "summary": "Заседание ЦБ — дата и ставка требуют верификации по cbr.ru."
+    },
+    {
+      "date": "2023-10-27",
+      "previousRate": null,
+      "actualRate": null,
+      "sourceStatus": "needs_verification",
+      "summary": "Заседание ЦБ — дата и ставка требуют верификации по cbr.ru."
+    },
+    {
+      "date": "2023-07-21",
+      "previousRate": null,
+      "actualRate": null,
+      "sourceStatus": "needs_verification",
+      "summary": "Заседание ЦБ — дата и ставка требуют верификации по cbr.ru."
+    },
+    {
+      "date": "2023-02-10",
+      "previousRate": null,
+      "actualRate": null,
+      "sourceStatus": "needs_verification",
+      "summary": "Заседание ЦБ — дата и ставка требуют верификации по cbr.ru."
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import {
   Cog,
   Gem,
   Grid3x3,
+  Landmark,
   Layers,
   Library,
   ListChecks,
@@ -175,6 +176,14 @@ export const sidebarDraftsNav: SidebarNavGroup = {
       promotionTarget: "materials",
     },
     {
+      href: "/lab/cbr-rate-reaction",
+      label: "Ставка ЦБ",
+      icon: Landmark,
+      visibility: "visible",
+      draftBadge: "lab",
+      promotionTarget: "materials",
+    },
+    {
       href: "/lab/event-reactions",
       label: "Реакция на новости",
       icon: Zap,
@@ -283,6 +292,13 @@ export const labCatalogItems: LabCatalogItem[] = [
     description: "Корреляции акций MOEX с индексом, рублём, нефтью, золотом и секторами — по доходностям.",
     href: "/lab/correlation-lab",
     status: "soon",
+  },
+  {
+    slug: "cbr-rate-reaction",
+    title: "Ставка ЦБ",
+    description: "Реакция валюты, индекса и акций на решение Банка России.",
+    href: "/lab/cbr-rate-reaction",
+    status: "live",
   },
   {
     slug: "event-reactions",

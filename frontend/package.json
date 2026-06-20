@@ -18,7 +18,13 @@
     "verify:pair-divergence": "tsx scripts/verify-currency-pair-divergence.ts",
     "verify:market-radar": "tsx scripts/verify-market-radar-layers.ts",
     "verify:market-radar-session": "tsx scripts/verify-market-radar-session.ts",
-    "verify:perpetual-calculator": "tsx scripts/verify-perpetual-calculator.ts"
+    "verify:perpetual-calculator": "tsx scripts/verify-perpetual-calculator.ts",
+    "verify:cbr-replay-consistency": "tsx scripts/verify-cbr-replay-consistency.ts",
+    "verify:cbr-replay-data-quality": "tsx scripts/verify-cbr-replay-data-quality.ts",
+    "verify:cbr-market-output": "tsx scripts/verify-cbr-market-output.ts",
+    "verify:moex-instrument-resolver": "tsx scripts/verify-moex-instrument-resolver.ts",
+    "verify:fetch-moex-candles": "tsx scripts/verify-fetch-moex-candles.ts",
+    "verify:calculate-cbr-reaction": "tsx scripts/verify-calculate-cbr-reaction.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
