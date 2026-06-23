@@ -1,5 +1,5 @@
 const baseUrl = process.env.MOEX_BASE_URL ?? "https://iss.moex.com/iss";
-const timeoutMs = Number(process.env.MOEX_HTTP_TIMEOUT_MS ?? 10000);
+const timeoutMs = Number(process.env.MOEX_HTTP_TIMEOUT_MS ?? 25000);
 
 const shortCache = new Map<string, { expiresAt: number; payload: unknown }>();
 

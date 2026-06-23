@@ -56,7 +56,7 @@ export type CbrRateCandlesResponse = {
 };
 
 function toFetcherInterval(interval: CbrCandleInterval): MoexCandleInterval | null {
-  if (interval === 1 || interval === 5 || interval === 15) return interval;
+  if (interval === 1 || interval === 5 || interval === 15 || interval === 60) return interval;
   return null;
 }
 
@@ -94,7 +94,7 @@ export async function fetchMoexCandlesForEvent(
 
   const fetchInterval = toFetcherInterval(request.interval);
   if (!fetchInterval) {
-    diagnostics.push(`Interval ${request.interval} не поддерживается fetchMoexCandles (1/5/15)`);
+    diagnostics.push(`Interval ${request.interval} не поддерживается fetchMoexCandles (1/5/15/60)`);
     return buildErrorResponse(request, date, diagnostics.join("; "));
   }
 
@@ -187,6 +187,12 @@ async function tryFetchCandles(
 
   if (fetched.sourceUrl) {
     diagnostics.push(`ISS: ${fetched.sourceUrl}`);
+  }
+  if (fetched.issIntervalMinutes != null) {
+    diagnostics.push(
+      `ISS interval=${fetched.issIntervalMinutes}м` +
+        (fetched.resampledToMinutes ? ` → resample ${fetched.resampledToMinutes}м` : ""),
+    );
   }
   if (fetched.errorMessage) {
     diagnostics.push(fetched.errorMessage);

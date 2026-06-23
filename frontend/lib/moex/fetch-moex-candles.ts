@@ -4,6 +4,14 @@
  */
 
 import {
+  aggregateMoexCandles,
+  isMoexUiCandleInterval,
+  resolveMoexIssFallbackPlan,
+  resolveMoexIssFetchPlan,
+  resolveMoexCandlesBoard,
+  type MoexUiCandleInterval,
+} from "@/lib/moex/moex-iss-interval";
+import {
   CBR_SESSION_END_MSK,
   CBR_SESSION_START_MSK,
   getEventWindow,
@@ -15,12 +23,10 @@ import { moexPayloadSchema } from "@/lib/server/integrations/moex/validators";
 
 const MOEX_ISS_BASE = process.env.MOEX_BASE_URL ?? "https://iss.moex.com/iss";
 const MOEX_CACHE_SEC = 120;
-const MAX_PAGES = 8;
+const MAX_PAGES = 12;
 const PAGE_SIZE = 500;
 
-export type MoexCandleInterval = 1 | 5 | 15;
-
-const ALLOWED_INTERVALS = new Set<MoexCandleInterval>([1, 5, 15]);
+export type MoexCandleInterval = MoexUiCandleInterval;
 
 export type MoexNormalizedCandle = {
   time: number;
@@ -47,6 +53,8 @@ export type FetchMoexCandlesResult = {
   candles: MoexNormalizedCandle[];
   sourceUrl: string;
   errorMessage?: string;
+  issIntervalMinutes?: number;
+  resampledToMinutes?: number | null;
 };
 
 function logMoexCandles(
@@ -109,6 +117,82 @@ function normalizeBarsToCandles(
   return out.sort((a, b) => a.time - b.time);
 }
 
+async function fetchIssBars(
+  params: FetchMoexCandlesParams & { board?: string; issIntervalMinutes: number },
+): Promise<{ bars: ReturnType<typeof mapIntradayCandlesBars>; sourceUrl: string }> {
+  const security = params.security.trim().toUpperCase();
+  const day = params.date.slice(0, 10);
+  const merged: ReturnType<typeof mapIntradayCandlesBars> = [];
+
+  const firstPath = buildIssPath({
+    engine: params.engine,
+    market: params.market,
+    board: params.board,
+    security,
+    from: day,
+    till: day,
+    interval: params.issIntervalMinutes,
+    start: 0,
+  });
+  const sourceUrl = `${MOEX_ISS_BASE}${firstPath}`;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const path = buildIssPath({
+      engine: params.engine,
+      market: params.market,
+      board: params.board,
+      security,
+      from: day,
+      till: day,
+      interval: params.issIntervalMinutes,
+      start: page * PAGE_SIZE,
+    });
+
+    const payload = moexPayloadSchema.parse(await moexGetJson(path, MOEX_CACHE_SEC));
+    const table = payload.candles;
+    if (!table?.data?.length) break;
+
+    merged.push(...mapIntradayCandlesBars(table.columns, table.data));
+    if (table.data.length < PAGE_SIZE) break;
+  }
+
+  return { bars: merged, sourceUrl };
+}
+
+async function fetchWithPlan(
+  params: FetchMoexCandlesParams,
+  plan: ReturnType<typeof resolveMoexIssFetchPlan>,
+  board: string | undefined,
+): Promise<FetchMoexCandlesResult> {
+  const security = params.security.trim().toUpperCase();
+  const day = params.date.slice(0, 10);
+  const window = getEventWindow(day);
+
+  const { bars, sourceUrl } = await fetchIssBars({
+    ...params,
+    board,
+    issIntervalMinutes: plan.issIntervalMinutes,
+  });
+
+  let candles = normalizeBarsToCandles(bars, window);
+  if (plan.resampleToMinutes && candles.length) {
+    candles = aggregateMoexCandles(candles, plan.resampleToMinutes);
+  }
+
+  return {
+    status: candles.length ? "moex" : bars.length ? "no_data" : "no_data",
+    candles,
+    sourceUrl,
+    issIntervalMinutes: plan.issIntervalMinutes,
+    resampledToMinutes: plan.resampleToMinutes,
+    errorMessage: candles.length
+      ? undefined
+      : bars.length
+        ? `MOEX ISS: ${bars.length} строк (${plan.issIntervalMinutes}м), но 0 свечей в окне ${CBR_SESSION_START_MSK}–${CBR_SESSION_END_MSK} MSK`
+        : `MOEX ISS вернул 0 строк candles за ${day} (${security}, ISS interval=${plan.issIntervalMinutes})`,
+  };
+}
+
 /**
  * Загрузка свечей MOEX ISS на торговый день заседания ЦБ.
  * Окно: 10:00–19:00 MSK. ISS from/till — календарная дата; фильтр по времени после загрузки.
@@ -118,15 +202,15 @@ export async function fetchMoexCandles(
 ): Promise<FetchMoexCandlesResult> {
   const security = params.security.trim().toUpperCase();
   const day = params.date.slice(0, 10);
-  const window = getEventWindow(day);
+  const board = resolveMoexCandlesBoard(params.engine, params.market, params.board);
 
-  if (!ALLOWED_INTERVALS.has(params.interval)) {
-    const errorMessage = `Недопустимый interval: ${params.interval} (допустимо: 1, 5, 15)`;
+  if (!isMoexUiCandleInterval(params.interval)) {
+    const errorMessage = `Недопустимый interval: ${params.interval} (допустимо: 1, 5, 15, 60)`;
     logMoexCandles("error", errorMessage, {
       security,
       engine: params.engine,
       market: params.market,
-      board: params.board,
+      board,
       date: day,
     });
     return {
@@ -137,82 +221,56 @@ export async function fetchMoexCandles(
     };
   }
 
-  const issFrom = day;
-  const issTill = day;
-  const firstPath = buildIssPath({
-    engine: params.engine,
-    market: params.market,
-    board: params.board,
-    security,
-    from: issFrom,
-    till: issTill,
-    interval: params.interval,
-    start: 0,
-  });
-  const sourceUrl = `${MOEX_ISS_BASE}${firstPath}`;
+  const primaryPlan = resolveMoexIssFetchPlan(params.interval);
 
   try {
-    const merged: ReturnType<typeof mapIntradayCandlesBars> = [];
+    let result = await fetchWithPlan(params, primaryPlan, board);
 
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const path = buildIssPath({
-        engine: params.engine,
-        market: params.market,
-        board: params.board,
-        security,
-        from: issFrom,
-        till: issTill,
-        interval: params.interval,
-        start: page * PAGE_SIZE,
-      });
-
-      const payload = moexPayloadSchema.parse(await moexGetJson(path, MOEX_CACHE_SEC));
-      const table = payload.candles;
-      if (!table?.data?.length) break;
-
-      merged.push(...mapIntradayCandlesBars(table.columns, table.data));
-      if (table.data.length < PAGE_SIZE) break;
+    if (!result.candles.length) {
+      const fallbackPlan = resolveMoexIssFallbackPlan(params.interval);
+      if (fallbackPlan) {
+        const fallback = await fetchWithPlan(params, fallbackPlan, board);
+        if (fallback.candles.length) {
+          result = {
+            ...fallback,
+            errorMessage: `ISS ${primaryPlan.issIntervalMinutes}м пусто — использован fallback ${fallbackPlan.issIntervalMinutes}м (целевой ТФ ${params.interval}м)`,
+          };
+        }
+      }
     }
 
-    const candles = normalizeBarsToCandles(merged, window);
-
-    if (!merged.length) {
-      const errorMessage = `MOEX ISS вернул 0 строк candles за ${day} (${security})`;
-      logMoexCandles("warn", errorMessage, {
+    if (!result.candles.length) {
+      logMoexCandles("warn", result.errorMessage ?? "no_data", {
         security,
         engine: params.engine,
         market: params.market,
-        board: params.board,
-        interval: params.interval,
-        windowFrom: `${day} ${CBR_SESSION_START_MSK} MSK`,
-        windowTill: `${day} ${CBR_SESSION_END_MSK} MSK`,
-        sourceUrl,
+        board,
+        targetInterval: params.interval,
+        issInterval: result.issIntervalMinutes,
+        sourceUrl: result.sourceUrl,
       });
-      return { status: "no_data", candles: [], sourceUrl, errorMessage };
+      return { ...result, status: "no_data" };
     }
 
-    if (!candles.length) {
-      const errorMessage = `MOEX ISS: ${merged.length} строк за день, но 0 свечей в окне ${CBR_SESSION_START_MSK}–${CBR_SESSION_END_MSK} MSK`;
-      logMoexCandles("warn", errorMessage, {
-        security,
-        engine: params.engine,
-        market: params.market,
-        board: params.board,
-        interval: params.interval,
-        rawBars: merged.length,
-        sourceUrl,
-      });
-      return { status: "no_data", candles: [], sourceUrl, errorMessage };
-    }
-
-    return { status: "moex", candles, sourceUrl };
+    return { ...result, status: "moex" };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const firstPath = buildIssPath({
+      engine: params.engine,
+      market: params.market,
+      board,
+      security,
+      from: day,
+      till: day,
+      interval: primaryPlan.issIntervalMinutes,
+      start: 0,
+    });
+    const sourceUrl = `${MOEX_ISS_BASE}${firstPath}`;
     logMoexCandles("error", errorMessage, {
       security,
       engine: params.engine,
       market: params.market,
-      board: params.board,
+      board,
       date: day,
       sourceUrl,
     });
