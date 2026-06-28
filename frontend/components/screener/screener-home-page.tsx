@@ -1,7 +1,7 @@
 "use client";
 
-import { MarketCommandCenter } from "@/components/screener/dashboard/market-command-center";
+import { MarketNowPage } from "@/components/screener/market-now/market-now-page";
 
 export function ScreenerHomePage() {
-  return <MarketCommandCenter />;
+  return <MarketNowPage />;
 }

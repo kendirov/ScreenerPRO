@@ -52,7 +52,11 @@ export function RadarWorklistColumn({
       {historicalUnavailable ? (
         <p className="px-1.5 py-1 text-[10px] text-slate-600">{ScreenerDateModeMessages.historicalBlockNotConnected}</p>
       ) : merged.length === 0 ? (
-        <p className="px-1.5 py-1 text-[10px] text-slate-600">—</p>
+        <p className="px-1.5 py-1 text-[10px] leading-snug text-slate-500">
+          {inPlayRows.length === 0
+            ? "Жёстких in-play сейчас нет — это нормальное состояние рынка"
+            : "Активных кандидатов нет — смотрите ликвидность и импульсы"}
+        </p>
       ) : (
         <ul className="min-h-0 flex-1 divide-y divide-slate-800/40 overflow-hidden">
           {merged.map((row) => {

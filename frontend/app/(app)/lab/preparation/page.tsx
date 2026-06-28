@@ -1,5 +1,5 @@
-import { PreparationPage } from "@/components/lab/preparation/preparation-page";
+import { PreparationCockpitPage } from "@/components/preparation/preparation-cockpit-page";
 
 export default function LabPreparationRoutePage() {
-  return <PreparationPage />;
+  return <PreparationCockpitPage />;
 }

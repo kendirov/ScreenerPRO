@@ -2,6 +2,22 @@
 
 Production-oriented foundation for a MOEX stocks/futures platform built with Next.js App Router, strict TypeScript, and typed mock data.
 
+## Local MOEX data modes
+
+Default: **`MOEX_DATA_MODE=live`** (see `frontend/.env.example`).
+
+```bash
+pnpm dev:live       # live MOEX (recommended)
+pnpm dev:fallback   # dev dataset when iss.moex.com unreachable
+pnpm dev:off        # empty pipeline (source=off)
+```
+
+If UI shows **OFF · data-disabled** but `.env` says `live` — restart dev server (old process may have been started with `MOEX_DATA_MODE=off` in shell).
+
+Check active mode: `curl -s localhost:3000/api/screener/health | jq .moexDataMode`
+
+Details: `docs/MOEX_DATA_PIPELINE.md`
+
 ## Stack
 
 - Next.js 16 + React 19 + TypeScript (strict)

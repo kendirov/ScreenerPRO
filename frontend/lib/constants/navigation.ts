@@ -19,6 +19,7 @@ import {
   NotebookPen,
   Percent,
   TrendingUp,
+  UserCircle2,
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -62,31 +63,17 @@ export type SidebarNavGroup = {
 };
 
 /**
- * Основное меню sidebar — стабильные разделы продукта.
- * Экспериментальные /lab/* страницы здесь не размещаем.
+ * Публичное ядро — «Лаборатория рынка»: Рынок / Акции / Фьючерсы.
+ * Материалы, академия и lab-черновики — в hiddenDevNavConfig (прямые URL работают).
  */
 export const sidebarMainNavGroups: SidebarNavGroup[] = [
-  {
-    id: "pult",
-    title: "Пульт",
-    items: [
-      { href: "/screener", label: "Пульт рынка", icon: ChartColumn, visibility: "visible" },
-    ],
-  },
   {
     id: "market",
     title: "Рынок",
     items: [
+      { href: "/screener", label: "Рынок", icon: ChartColumn, visibility: "visible" },
       { href: "/screener/stocks", label: "Акции", icon: CandlestickChart, visibility: "visible" },
       { href: "/screener/futures", label: "Фьючерсы", icon: ChartCandlestick, visibility: "visible" },
-    ],
-  },
-  {
-    id: "learning",
-    title: "Обучение",
-    items: [
-      { href: "/materials", label: "Материалы", icon: Library, visibility: "visible" },
-      { href: "/academy", label: "Академия", icon: BookOpen, visibility: "visible" },
     ],
   },
 ];
@@ -107,6 +94,14 @@ export const sidebarDraftsNav: SidebarNavGroup = {
       href: "/lab/market-map",
       label: "Карта рынка",
       icon: Map,
+      visibility: "visible",
+      draftBadge: "lab",
+      promotionTarget: "materials",
+    },
+    {
+      href: "/materials/technical-characteristics",
+      label: "Тех. характеристики",
+      icon: ListChecks,
       visibility: "visible",
       draftBadge: "lab",
       promotionTarget: "materials",
@@ -156,7 +151,6 @@ export const sidebarDraftsNav: SidebarNavGroup = {
       label: "Подготовка",
       icon: NotebookPen,
       visibility: "visible",
-      draftBadge: "draft",
       promotionTarget: "materials",
     },
     {
@@ -197,8 +191,18 @@ export const sidebarDraftsNav: SidebarNavGroup = {
 /** @deprecated — используйте sidebarMainNavGroups */
 export const sidebarNavGroups = sidebarMainNavGroups;
 
-/** Скрытые маршруты — не в sidebar, но href сохранены */
+/** Скрытые маршруты — не в публичном sidebar, прямые URL сохранены */
+export const hiddenDevNavConfig: SidebarNavItem[] = [
+  { href: "/materials", label: "Материалы", icon: Library, visibility: "hidden" },
+  { href: "/academy", label: "Академия", icon: BookOpen, visibility: "hidden" },
+  { href: "/sandbox", label: "Песочница", icon: Activity, visibility: "hidden" },
+  { href: "/login", label: "Вход", icon: UserCircle2, visibility: "hidden" },
+  { href: "/pricing", label: "Тарифы", icon: CircleDollarSign, visibility: "hidden" },
+];
+
+/** @deprecated alias */
 export const hiddenNavConfig: SidebarNavItem[] = [
+  ...hiddenDevNavConfig,
   { href: "/pro", label: "Скринер PRO", icon: Gem, visibility: "hidden" },
   { href: "/news", label: "Новости", icon: Newspaper, visibility: "hidden" },
   { href: "/events", label: "События", icon: CalendarDays, visibility: "hidden" },
@@ -235,6 +239,13 @@ export const labCatalogItems: LabCatalogItem[] = [
     title: "Карта рынка",
     description: "Интерактивная карта акций MOEX: пузырьки, координаты и сигналы по живым данным.",
     href: "/lab/market-map",
+    status: "live",
+  },
+  {
+    slug: "technical-characteristics",
+    title: "Технические характеристики",
+    description: "Лот, шаг, спред, оборот, комиссии и скоринги по акциям и фьючерсам MOEX.",
+    href: "/materials/technical-characteristics",
     status: "live",
   },
   {

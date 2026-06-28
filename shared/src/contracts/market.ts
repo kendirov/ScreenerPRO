@@ -111,10 +111,16 @@ export const screenerFilterStateSchema = z.object({
 });
 export type ScreenerFilterState = z.infer<typeof screenerFilterStateSchema>;
 
-export const screenerDataSourceSchema = z.enum(["moex", "demo"]);
+export const screenerDataSourceSchema = z.enum(["moex", "demo", "fallback", "off"]);
 export type ScreenerDataSource = z.infer<typeof screenerDataSourceSchema>;
 
-export const screenerFallbackReasonSchema = z.enum(["moex-unavailable", "validation-failed", "no-usable-rows"]);
+export const screenerFallbackReasonSchema = z.enum([
+  "moex-unavailable",
+  "validation-failed",
+  "no-usable-rows",
+  "explicit-dev-fallback",
+  "data-disabled",
+]);
 export type ScreenerFallbackReason = z.infer<typeof screenerFallbackReasonSchema>;
 
 export const baselineStatusSchema = z.enum(["ok", "skipped", "error"]);
@@ -141,8 +147,35 @@ export const screenerDataStatusSchema = z.object({
   resolvedTradingDateKey: z.string().nullable().optional(),
   dataMode: screenerDataModeSchema.optional(),
   historicalEmpty: z.boolean().optional(),
+  /** Агрегированный статус торгов по выборке (live snapshot). */
+  marketStatus: tradingStatusSchema.nullable().optional(),
+  /** Причина пустого ответа / degraded режима для UI. */
+  emptyReason: z.string().nullable().optional(),
+  /** Использован кэш предыдущего успешного MOEX-ответа. */
+  staleCache: z.boolean().optional(),
 });
 export type ScreenerDataStatus = z.infer<typeof screenerDataStatusSchema>;
+
+export const screenerDiagnosticsSchema = z.object({
+  source: screenerDataSourceSchema,
+  assetClass: z.enum(["stock", "future", "all"]),
+  rowsBeforeFilter: z.number().int().nonnegative(),
+  rowsAfterFilter: z.number().int().nonnegative(),
+  fallbackReason: screenerFallbackReasonSchema.nullable(),
+  fetchTime: z.string(),
+  marketStatus: tradingStatusSchema.nullable(),
+  lastUpdated: z.string(),
+  /** Расширенная диагностика пайплайна (не показывать сырой JSON в UI). */
+  requestedAt: z.string().optional(),
+  fetchMs: z.number().nonnegative().optional(),
+  moexOk: z.boolean().optional(),
+  fallbackUsed: z.boolean().optional(),
+  rowsRaw: z.number().int().nonnegative().optional(),
+  rowsNormalized: z.number().int().nonnegative().optional(),
+  endpointUsed: z.array(z.string()).optional(),
+  errors: z.array(z.string()).optional(),
+});
+export type ScreenerDiagnostics = z.infer<typeof screenerDiagnosticsSchema>;
 
 export const screenerBenchmarkSchema = z.object({
   code: z.string(),
@@ -168,6 +201,7 @@ export const screenerApiResponseSchema = z.object({
   rows: z.array(screenerRowSchema),
   benchmarks: z.array(screenerBenchmarkSchema),
   status: screenerDataStatusSchema,
+  diagnostics: screenerDiagnosticsSchema.optional(),
 });
 export type ScreenerApiResponse = z.infer<typeof screenerApiResponseSchema>;
 
@@ -187,6 +221,7 @@ export const screenerHealthResponseSchema = z.object({
   moexFetchStatus: z.enum(["ok", "error"]),
   prismaStatus: baselineStatusSchema,
   demoFallbackAllowed: z.boolean(),
+  moexDataMode: z.enum(["live", "fallback", "off", "demo"]).optional(),
   commitSha: z.string().nullable(),
   commitMessage: z.string().nullable(),
   branch: z.string().nullable(),

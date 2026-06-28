@@ -55,7 +55,7 @@ const PAGE_PILLS = [
 const PAGE_DESCRIPTION =
   "Премаркет-пульт: фокус, события, инструменты и порядок эфира — на одном экране.";
 
-export function PreparationPage() {
+export function PreparationLegacyPage() {
   const [mode, setMode] = React.useState<BriefingMode>("day");
   const [eventSourceFilter, setEventSourceFilter] = React.useState<PreparationEventSourceFilter>("smartlab");
   const [selectedEventIds, setSelectedEventIds] = React.useState<Set<string>>(() => new Set());

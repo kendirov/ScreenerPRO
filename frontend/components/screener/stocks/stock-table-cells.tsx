@@ -27,6 +27,7 @@ import {
   resolveStockVolumeRatio,
   volXTableHighlightClass,
 } from "@/lib/domain/stock-volume-ratio";
+import { mergeTradingTags } from "@/lib/domain/trading-tags";
 import { tradingFormat } from "@/lib/formatters/trading";
 import { cn } from "@/lib/utils/cn";
 
@@ -256,5 +257,35 @@ export function StockTradesRatioCell({ row }: { row: ScreenerRow }) {
         {parts.baselineLabel}
       </p>
     </NumericCell>
+  );
+}
+
+const TAG_TONE_CLASS = {
+  risk: "border-rose-500/30 bg-rose-950/30 text-rose-200/90",
+  in_play: "border-cyan-500/35 bg-cyan-950/25 text-cyan-200/90",
+  liquidity: "border-slate-600/40 bg-slate-900/40 text-slate-300",
+  movement: "border-amber-500/30 bg-amber-950/25 text-amber-100/90",
+  neutral: "border-slate-600/35 bg-slate-900/35 text-slate-400",
+  dead: "border-slate-700/40 bg-slate-950/50 text-slate-500",
+} as const;
+
+export function StockTradingTagsCell({ row, maxTurnover }: { row: ScreenerRow; maxTurnover: number }) {
+  const tags = mergeTradingTags(row, maxTurnover, 4);
+  if (!tags.length) return <span className="text-[10px] text-lab-dim">—</span>;
+
+  return (
+    <div className="flex max-w-[9rem] flex-wrap gap-0.5" title={tags.map((t) => `${t.label}: ${t.explanation}`).join("\n")}>
+      {tags.map((tag) => (
+        <span
+          key={tag.key}
+          className={cn(
+            "inline-flex max-w-full truncate rounded border px-1 py-px font-mono text-[8px] uppercase tracking-wide",
+            TAG_TONE_CLASS[tag.tone],
+          )}
+        >
+          {tag.label}
+        </span>
+      ))}
+    </div>
   );
 }

@@ -1,207 +1,209 @@
 "use client";
 
 import * as React from "react";
-import { MarketRadar } from "@/components/screener/market-radar";
-import { ScreenerPageHeader, ScreenerPanel } from "@/components/screener/screener-page-chrome";
-import { StocksScreenerTable } from "@/components/screener/stocks/stocks-screener-table";
-import { createStockColumns } from "@/components/screener/columns";
-import { ScreenerDataSourceStrip } from "@/components/screener/screener-data-source-strip";
-import { TradingDateControl } from "@/components/screener/trading-date-control";
-import { MarketIndexStatusBlock } from "@/components/screener/market-index-status-block";
-import { UiViewModeToggle } from "@/components/screener/ui-view-mode-toggle";
-import { TRADING_DATE_MESSAGES } from "@/lib/domain/trading-calendar";
-import { ScreenerDateModeMessages } from "@/lib/domain/screener-date-mode";
-import { selectInPlayInstruments } from "@/lib/domain/market-radar-selectors";
-import { useInPlayStockCandles } from "@/lib/hooks/use-in-play-stock-candles";
-import { useSelectedTradingDate } from "@/lib/hooks/use-selected-trading-date";
-import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
-import { useScreenerStocksShowTooltips } from "@/lib/hooks/use-screener-stocks-show-tooltips";
+import { DataQualityCompact } from "@/components/screener/stocks/data-quality-compact";
+import { MetricHelp } from "@/components/screener/stocks/metric-help";
+import { StocksIndexStrip } from "@/components/screener/stocks/stocks-market-snapshot";
+import { StocksLeaderStrip } from "@/components/screener/stocks/stocks-leader-strip";
+import { StocksRadarTable } from "@/components/screener/stocks/stocks-radar-table";
+import { ScreenerDevDebugPanel } from "@/components/screener/screener-dev-debug-panel";
 import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
+import { resolveScreenerEmptyState } from "@/lib/domain/screener-empty-state";
+import {
+  applyIlliquidFilter,
+  buildStocksRadarModel,
+  searchRadarRows,
+  sortRadarRows,
+  type TableSortDir,
+  type TableSortKey,
+} from "@/lib/screener/stocks-radar";
+import { useSelectedTradingDate } from "@/lib/hooks/use-selected-trading-date";
+import { useScreenerQuery, isScreenerInitialLoading } from "@/lib/hooks/use-screener-query";
 
-const ILLIQUID_RATIO = 0.02;
-const ILLIQUID_TURNOVER_FLOOR = 35_000_000;
-const ILLIQUID_MIN_TRADES = 1_200;
-
-function tradingThresholdText(value: number): string {
-  return `${new Intl.NumberFormat("ru-RU", { notation: "compact", maximumFractionDigits: 1 }).format(value)} ₽`;
+function StocksEmptyPanel({
+  title,
+  text,
+  status,
+}: {
+  title: string;
+  text: string;
+  status?: { source?: string; fallbackReason?: string | null; message?: string | null };
+}) {
+  return (
+    <LabGlassPanel depth={20} className="px-4 py-8 text-center">
+      <p className="text-base font-medium text-lab-text-main">{title}</p>
+      <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-lab-text-dim">{text}</p>
+      {status?.source === "off" ? (
+        <div className="mx-auto mt-4 max-w-md space-y-1.5 rounded-md border border-white/10 bg-slate-950/50 px-3 py-2 text-left font-mono text-[10px] text-lab-text-dim">
+          <p className="text-amber-200/90">Сейчас включён MOEX_DATA_MODE=off</p>
+          <p>Для live: pnpm -C frontend dev:live</p>
+          <p>Для dev: pnpm -C frontend dev:fallback</p>
+        </div>
+      ) : null}
+      {status?.source === "fallback" || status?.source === "demo" ? (
+        <p className="mt-3 text-xs text-amber-200/85">DEV fallback · это не рынок</p>
+      ) : null}
+    </LabGlassPanel>
+  );
 }
 
 export function StocksScreenerPage() {
   const [hideIlliquid, setHideIlliquid] = React.useState(true);
+  const [search, setSearch] = React.useState("");
   const [focusedTicker, setFocusedTicker] = React.useState<string | null>(null);
-  const { showTooltips, setShowTooltips } = useScreenerStocksShowTooltips();
+  const [sort, setSort] = React.useState<{ key: TableSortKey; dir: TableSortDir }>({
+    key: "trades",
+    dir: "desc",
+  });
   const tradingDate = useSelectedTradingDate();
   const stocksQuery = useScreenerQuery("stock", tradingDate.apiDateParam);
-
-  const stocks = React.useMemo(() => {
-    const rows = stocksQuery.data?.rows ?? [];
-    const maxTurnoverNow = rows.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0);
-    const illiquidThresholdTurnover = Math.max(maxTurnoverNow * ILLIQUID_RATIO, ILLIQUID_TURNOVER_FLOOR);
-
-    if (!hideIlliquid) return rows;
-
-    return rows.filter((row) => {
-      const turnover = row.turnover ?? 0;
-      const tradesCount = row.tradesCount ?? 0;
-      const isIlliquid = turnover < illiquidThresholdTurnover && tradesCount < ILLIQUID_MIN_TRADES;
-      return !isIlliquid;
-    });
-  }, [stocksQuery.data?.rows, hideIlliquid]);
-
-  const illiquidHint = React.useMemo(() => {
-    const rows = stocksQuery.data?.rows ?? [];
-    const maxTurnoverNow = rows.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0);
-    const threshold = Math.max(maxTurnoverNow * ILLIQUID_RATIO, ILLIQUID_TURNOVER_FLOOR);
-    return tradingThresholdText(threshold);
-  }, [stocksQuery.data?.rows]);
+  const isInitialLoading = isScreenerInitialLoading(stocksQuery);
 
   const stockUniverse = stocksQuery.data?.rows ?? [];
   const status = stocksQuery.data?.status;
-  const historicalEmpty = status?.historicalEmpty === true;
+  const diagnostics = stocksQuery.data?.diagnostics;
+  const benchmarks = stocksQuery.data?.benchmarks ?? [];
+  const primaryBenchmark =
+    benchmarks.find((b) => b.code === "IMOEX2") ?? benchmarks.find((b) => b.code === "IMOEX") ?? benchmarks[0] ?? null;
 
-  const maxTurnover = React.useMemo(
-    () => stockUniverse.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0),
-    [stockUniverse],
+  const radarModel = React.useMemo(
+    () => buildStocksRadarModel(stockUniverse, primaryBenchmark),
+    [stockUniverse, primaryBenchmark],
   );
 
-  const columns = React.useMemo(() => createStockColumns(maxTurnover), [maxTurnover]);
+  const universeCount = radarModel.diagnostics.universeCount;
 
-  const inPlayTickers = React.useMemo(() => {
-    if (!tradingDate.isLive) return [];
-    return selectInPlayInstruments(stocks, stockUniverse).slice(0, 8).map((row) => row.ticker);
-  }, [stocks, stockUniverse, tradingDate.isLive]);
+  const filteredRows = React.useMemo(() => {
+    let rows = applyIlliquidFilter(radarModel.normalizedRows, hideIlliquid);
+    rows = searchRadarRows(rows, search);
+    return rows;
+  }, [radarModel.normalizedRows, hideIlliquid, search]);
 
-  const { seriesByTicker } = useInPlayStockCandles(inPlayTickers);
-
-  const candleLookup = React.useMemo(
-    () => ({
-      get: (ticker: string) => seriesByTicker.get(ticker.toUpperCase()) ?? null,
-    }),
-    [seriesByTicker],
+  const visibleRows = React.useMemo(
+    () => sortRadarRows(filteredRows, sort.key, sort.dir),
+    [filteredRows, sort],
   );
 
-  const emptyTitle = stocksQuery.isLoading
-    ? "Загрузка акций…"
-    : historicalEmpty
-      ? TRADING_DATE_MESSAGES.noData
-      : stocksQuery.error
-        ? "Данные временно недоступны"
-        : "По фильтру ничего нет";
+  const emptyState = resolveScreenerEmptyState({
+    isLoading: isInitialLoading,
+    error: Boolean(stocksQuery.error),
+    status,
+    diagnostics,
+    visibleCount: visibleRows.length,
+    apiRowCount: stockUniverse.length,
+    hideIlliquid,
+    historicalEmpty: status?.historicalEmpty === true,
+  });
 
-  const emptyText = stocksQuery.isLoading
-    ? tradingDate.isLive
-      ? "Подключаемся к MOEX ISS"
-      : "Загружаем историю MOEX ISS"
-    : historicalEmpty
-      ? status?.message ?? TRADING_DATE_MESSAGES.noData
-      : stocksQuery.error
-        ? "Используется резервный набор — проверьте соединение"
-        : hideIlliquid
-          ? "Ослабьте фильтр «Скрыть неликвиды» или дождитесь активности"
-          : "В ленте пока нет торгуемых бумаг";
+  const hasLiveRadar =
+    !isInitialLoading && stockUniverse.length > 0 && status?.source === "moex" && !status.isDemo;
 
-  const resolvedHintDate =
-    status?.resolvedTradingDateKey &&
-    status.tradingDateKey &&
-    status.resolvedTradingDateKey !== status.tradingDateKey
-      ? status.resolvedTradingDateKey
-      : null;
+  const hasFallbackRadar =
+    !isInitialLoading &&
+    stockUniverse.length > 0 &&
+    (status?.isDemo === true || status?.source === "fallback" || status?.source === "demo");
 
-  const updatedAtLabel = status?.fetchTimestamp ?? status?.generatedAt ?? null;
+  const showRadar = hasLiveRadar || hasFallbackRadar;
+
+  function handleRowClick(ticker: string) {
+    setFocusedTicker((prev) => (prev === ticker ? null : ticker));
+  }
 
   return (
-    <div className="space-y-1">
-      <ScreenerPageHeader
-        title="Рынок · Акции"
-        right={
-          <>
-            <UiViewModeToggle className="ui-mode-hide-presentation" />
-            <ScreenerDataSourceStrip status={status} isLoading={stocksQuery.isLoading} visibleCount={stocks.length} />
-            <span className="lab-chip font-mono text-[11px] tabular-nums">{stocks.length} бумаг</span>
-          </>
-        }
-      />
-
-      <LabGlassPanel depth={20} className="space-y-1 px-2 py-1">
-        <TradingDateControl
-          selectedDateKey={tradingDate.selectedDateKey}
-          isLive={tradingDate.isLive}
-          mode={tradingDate.mode}
-          onToday={tradingDate.setToday}
-          onYesterday={tradingDate.setYesterday}
-          onPickDate={tradingDate.setPickedDate}
-          resolvedDateKey={resolvedHintDate}
-          updatedAtLabel={updatedAtLabel}
-          isLoading={stocksQuery.isLoading}
-          dataEmpty={historicalEmpty}
-        />
-        <MarketIndexStatusBlock
-          benchmarks={stocksQuery.data?.benchmarks}
-          status={status}
-          isLive={tradingDate.isLive}
-          isLoading={stocksQuery.isLoading}
-        />
-      </LabGlassPanel>
-
-      {!historicalEmpty ? (
-        <div className="sticky top-[4.05rem] z-30 border-b border-lab-border/25 bg-lab-bg-deep/92 backdrop-blur-md">
-          <MarketRadar
-            rows={stocks}
-            allRows={stockUniverse}
-            dataStatus={status}
-            benchmarks={stocksQuery.data?.benchmarks}
-            isLive={tradingDate.isLive}
-            selectedTicker={focusedTicker}
-            onTickerSelect={setFocusedTicker}
-          />
+    <div className="space-y-0.5 pb-4">
+      <div className="flex h-12 items-center justify-between gap-2 border-b border-white/[0.05] pb-1">
+        <div className="min-w-0">
+          <h1 className="text-[13px] font-semibold leading-none text-lab-text-main">Рынок · Акции</h1>
+          <p className="mt-0.5 text-[9px] text-lab-text-dim">Акции МосБиржи · интрадей</p>
         </div>
-      ) : null}
+        <DataQualityCompact
+          status={status}
+          isLoading={isInitialLoading}
+          visibleCount={visibleRows.length}
+          universeCount={universeCount}
+        />
+      </div>
 
-      {!tradingDate.isLive && !historicalEmpty ? (
-        <p className="px-1 text-[9px] text-violet-300/60">{ScreenerDateModeMessages.historicalSparklinesLiveOnly}</p>
-      ) : null}
-
-      <ScreenerPanel className="mb-1 flex flex-wrap items-center gap-1.5 py-1">
-        <label
-          className="lab-chip inline-flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs text-lab-text-main"
-          title={`Порог: оборот &lt; 2% от лидера и сделки &lt; ${ILLIQUID_MIN_TRADES.toLocaleString("ru-RU")} (${illiquidHint})`}
-        >
-          <input
-            type="checkbox"
-            checked={hideIlliquid}
-            onChange={(event) => setHideIlliquid(event.target.checked)}
-            className="h-3.5 w-3.5 rounded border-lab-border-soft bg-lab-surface-1 accent-lab-green"
+      {!showRadar && !isInitialLoading ? (
+        <StocksEmptyPanel
+          title={emptyState?.title ?? "Данных нет"}
+          text={emptyState?.text ?? status?.message ?? "Нет строк от API"}
+          status={status}
+        />
+      ) : (
+        <>
+          <StocksIndexStrip
+            benchmarks={benchmarks}
+            summary={radarModel.marketSummary}
+            universeCount={universeCount}
+            visibleCount={visibleRows.length}
+            isLoading={isInitialLoading}
           />
-          <span className="font-medium">Скрыть неликвиды</span>
-        </label>
 
-        <label
-          className="lab-chip inline-flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs text-lab-text-main"
-          title="Показывать карточку инструмента при наведении."
-        >
-          <input
-            type="checkbox"
-            checked={showTooltips}
-            onChange={(event) => setShowTooltips(event.target.checked)}
-            className="h-3.5 w-3.5 rounded border-lab-border-soft bg-lab-surface-1 accent-lab-cyan"
+          <StocksLeaderStrip
+            liquidity={radarModel.liquidityLeaders}
+            inPlay={radarModel.inPlayLeaders}
+            inGameUniverseCount={radarModel.inGameUniverseCount}
+            volatility={radarModel.volatilityLeaders}
+            activeTicker={focusedTicker}
+            onClick={handleRowClick}
           />
-          <span className="font-medium">Подсказки</span>
-        </label>
-      </ScreenerPanel>
 
-      <StocksScreenerTable
-        rows={stocks}
-        columns={columns}
-        maxTurnover={maxTurnover}
-        dataStatus={status}
-        hideIlliquid={hideIlliquid}
-        candlesByTicker={candleLookup}
-        showTooltips={showTooltips}
-        highlightedTicker={focusedTicker}
-        onHighlightedTickerChange={setFocusedTicker}
-        emptyTitle={emptyTitle}
-        emptyText={emptyText}
-      />
+          <div className="space-y-1 border-t border-white/[0.05] pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-white/10 px-1.5 py-0.5 text-[9px] text-lab-text-main">
+                <input
+                  type="checkbox"
+                  checked={hideIlliquid}
+                  onChange={(e) => setHideIlliquid(e.target.checked)}
+                  className="h-2.5 w-2.5 rounded border-white/20"
+                />
+                <span>Скрыть неликвиды</span>
+                <MetricHelp text="Скрывает бумаги с низким оборотом и малым количеством сделок относительно текущего рынка. Летающие неликвиды могут оставаться в блоке Волатильность с пометкой «тонко»." />
+              </label>
+
+              <span className="font-mono text-[9px] tabular-nums text-lab-text-dim">
+                Показано {visibleRows.length} из {universeCount}
+              </span>
+
+              {radarModel.inGameUniverseCount > 0 ? (
+                <span className="font-mono text-[9px] tabular-nums text-lab-text-dim/80">
+                  В игре: {radarModel.inGameUniverseCount}
+                </span>
+              ) : null}
+
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Тикер"
+                className="ml-auto w-[5.5rem] rounded border border-white/10 bg-slate-950/60 px-1.5 py-0.5 font-mono text-[9px] text-lab-text-main placeholder:text-lab-text-dim"
+              />
+            </div>
+
+            <StocksRadarTable
+              rows={visibleRows}
+              highlightedTicker={focusedTicker}
+              onClick={handleRowClick}
+              emptyTitle={emptyState?.title ?? "Фильтр пуст"}
+              emptyText={emptyState?.text}
+              sort={sort}
+              onSortChange={setSort}
+            />
+          </div>
+        </>
+      )}
+
+      {process.env.NODE_ENV === "development" ? (
+        <ScreenerDevDebugPanel
+          endpoint={`/api/screener?assetClass=stock${tradingDate.apiDateParam ? `&date=${tradingDate.apiDateParam}` : ""}`}
+          response={stocksQuery.data}
+          rowsBeforeFilter={stockUniverse.length}
+          rowsAfterFilter={visibleRows.length}
+          breadthAudit={radarModel.diagnostics}
+          errorMessage={stocksQuery.error instanceof Error ? stocksQuery.error.message : null}
+        />
+      ) : null}
     </div>
   );
 }

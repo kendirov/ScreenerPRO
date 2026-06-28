@@ -11,6 +11,7 @@ import {
   type DraftNavBadge,
   type SidebarNavItem,
 } from "@/lib/constants/navigation";
+import { isDraftNavVisible, isDevLabLinkVisible } from "@/lib/constants/nav-visibility";
 import { cn } from "@/lib/utils/cn";
 
 const SIDEBAR_PINNED_KEY = "screenerpro.sidebar.pinned";
@@ -244,11 +245,8 @@ export function AppSidebar() {
           )}
         >
           {isExpanded ? (
-            <span className="flex flex-col gap-0.5">
-              <span className="text-[10px] font-bold uppercase leading-tight tracking-[0.12em] text-lab-text">
-                Лаборатория рынка
-              </span>
-              <span className="font-mono text-[7px] uppercase tracking-[0.2em] text-lab-dim">ScreenerPRO</span>
+            <span className="text-[10px] font-bold uppercase leading-tight tracking-[0.12em] text-lab-text">
+              Лаборатория рынка
             </span>
           ) : (
             <span className="text-[11px] font-bold tracking-wider text-lab-cyan">ЛР</span>
@@ -282,14 +280,28 @@ export function AppSidebar() {
       </nav>
 
       <div className="ui-mode-hide-focus mt-1.5 shrink-0 border-t border-lab-border-violet/20 pt-1.5">
-        <SidebarNavGroup
-          title={sidebarDraftsNav.title}
-          items={sidebarDraftsNav.items}
-          pathname={pathname}
-          isExpanded={isExpanded}
-          showDivider={false}
-          variant="draft"
-        />
+        {isDevLabLinkVisible() ? (
+          <Link
+            href="/lab"
+            className={cn(
+              "mb-1 flex w-full items-center rounded-md border border-dashed border-lab-border-violet/30 px-2 py-1.5 text-[10px] text-lab-dim transition hover:border-lab-violet/40 hover:text-lab-violet",
+              isExpanded ? "justify-start gap-1.5" : "justify-center",
+            )}
+            title="Каталог экспериментальных lab-страниц (только dev)"
+          >
+            <span className="font-mono uppercase tracking-wide">{isExpanded ? "Черновики /lab" : "LAB"}</span>
+          </Link>
+        ) : null}
+        {isDraftNavVisible() ? (
+          <SidebarNavGroup
+            title={sidebarDraftsNav.title}
+            items={sidebarDraftsNav.items}
+            pathname={pathname}
+            isExpanded={isExpanded}
+            showDivider={false}
+            variant="draft"
+          />
+        ) : null}
       </div>
 
       {isExpanded ? (

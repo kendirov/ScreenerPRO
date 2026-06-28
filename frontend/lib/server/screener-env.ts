@@ -1,12 +1,46 @@
 /** Runtime flags for screener data sources (MOEX vs local SQLite vs demo). */
 
+export type MoexDataMode = "live" | "fallback" | "off";
+
 export function isVercelRuntime(): boolean {
   return process.env.VERCEL === "1" || process.env.VERCEL === "true" || Boolean(process.env.VERCEL_ENV);
+}
+
+/** Явный режим источника данных. По умолчанию — live-first (dev и prod). */
+export function getMoexDataMode(): MoexDataMode {
+  const mode = process.env.MOEX_DATA_MODE?.trim().toLowerCase();
+  if (mode === "live" || mode === "fallback" || mode === "off") return mode;
+  // legacy alias: demo → fallback (явный dev-набор после провала live)
+  if (mode === "demo") return "fallback";
+  return "live";
+}
+
+/** Не ходить в MOEX ISS — только пустой ответ с source=off. */
+export function isMoexDataDisabled(): boolean {
+  return getMoexDataMode() === "off";
 }
 
 export function isDemoFallbackAllowed(): boolean {
   const flag = process.env.ALLOW_DEMO_MARKET_DATA?.trim().toLowerCase();
   return flag === "true" || flag === "1";
+}
+
+/** Production/Vercel: demo только при явном ALLOW_DEMO (аварийный override). */
+export function isProductionRuntime(): boolean {
+  return isVercelRuntime() || getScreenerEnvironment() === "production";
+}
+
+/**
+ * После провала live MOEX: можно ли подставить demo rows.
+ * Live-first: demo только при MOEX_DATA_MODE=fallback или ALLOW_DEMO_MARKET_DATA.
+ * На production demo запрещён (503 или stale cache).
+ */
+export function shouldUseDemoFallbackAfterLiveFailure(): boolean {
+  if (isProductionRuntime()) {
+    return isDemoFallbackAllowed();
+  }
+  if (getMoexDataMode() === "fallback") return true;
+  return isDemoFallbackAllowed();
 }
 
 /** SQLite baselines are local-dev only; never block live MOEX on serverless/production. */

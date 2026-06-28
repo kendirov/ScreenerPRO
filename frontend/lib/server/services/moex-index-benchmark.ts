@@ -96,7 +96,7 @@ export async function fetchLiveMoexIndexBenchmark(
     try {
       const payload = moexIssPayloadSchema.parse(
         await fetchIssJson(
-          `/engines/stock/markets/index/securities/${secid}.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME&marketdata.columns=SECID,CURRENTVALUE,LASTVALUE,LASTTOPREVPRICE,PREVPRICE,OPEN,HIGH,LOW`,
+          `/engines/stock/markets/index/securities/${secid}.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME&marketdata.columns=SECID,CURRENTVALUE,LASTVALUE,OPENVALUE,LASTCHANGE,LASTCHANGEPRC,LASTCHANGEBP,PREVPRICE,OPEN,HIGH,LOW`,
         ),
       );
 
@@ -106,14 +106,18 @@ export async function fetchLiveMoexIndexBenchmark(
       const md = rowToObject(payload.marketdata.columns, payload.marketdata.data[0] ?? []);
 
       const lastValue = asNumber(md.CURRENTVALUE) ?? asNumber(md.LASTVALUE);
-      const previousClose = asNumber(md.PREVPRICE);
-      const open = asNumber(md.OPEN);
+      const lastChange = asNumber(md.LASTCHANGE);
+      const previousClose =
+        asNumber(md.PREVPRICE) ??
+        (lastValue !== null && lastChange !== null ? lastValue - lastChange : null);
+      const open = asNumber(md.OPEN) ?? asNumber(md.OPENVALUE);
       const high = asNumber(md.HIGH);
       const low = asNumber(md.LOW);
+      const moexChangePct = asNumber(md.LASTCHANGEPRC);
 
       if (lastValue === null && high === null && low === null) continue;
 
-      const denominator = pickRangeDenominator(previousClose, high, low);
+      const denominator = pickRangeDenominator(previousClose ?? open, high, low);
       return buildBenchmark({
         code: asString(sec.SECID) ?? secid,
         lastValue,
@@ -121,7 +125,7 @@ export async function fetchLiveMoexIndexBenchmark(
         high,
         low,
         previousClose,
-        percentChange: computePercentChange(lastValue, previousClose, asNumber(md.LASTTOPREVPRICE)),
+        percentChange: computePercentChange(lastValue, previousClose, moexChangePct),
         dayRangePct: computeDayRangePct(high, low, denominator),
         updatedAt: nowIso,
         sourceUpdatedAt: null,

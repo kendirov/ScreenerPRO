@@ -4,6 +4,7 @@ import type {
   ScreenerApiResponse,
   ScreenerBenchmark,
   ScreenerDataStatus,
+  ScreenerDiagnostics,
   ScreenerDiagnosticsResponse,
   ScreenerHealthResponse,
   ScreenerRow,
@@ -17,32 +18,47 @@ import { metricsFieldsFromIntraday } from "@/lib/domain/baseline-info";
 import { loadIntradayBaselinesForStocks } from "@/lib/server/services/intraday-baseline-loader";
 import { buildBaselineAuditRow, type BaselineAuditRow } from "@/lib/domain/baseline-audit";
 import { fetchIssJson } from "@/lib/server/moex-iss/http";
+import { getMoexHttpTimeoutMs } from "@/lib/server/moex-timeout";
 import { moexIssPayloadSchema } from "@/lib/server/moex-iss/schemas";
 import {
   canUsePrismaHistoricalBaselines,
   getBuildCommit,
+  getMoexDataMode,
   getScreenerEnvironment,
   getVercelGitMetadata,
   isDemoFallbackAllowed,
+  isMoexDataDisabled,
   isVercelRuntime,
+  shouldUseDemoFallbackAfterLiveFailure,
 } from "@/lib/server/screener-env";
 import { moscowTodayKey, normalizeRequestedDateKey } from "@/lib/domain/trading-calendar";
 import { getHistoricalStockSnapshot, isHistoricalDateRequest } from "@/lib/server/services/moex-screener-history";
 import { fetchLiveMoexIndexBenchmark } from "@/lib/server/services/moex-index-benchmark";
 
+const MOEX_STOCKS_ENDPOINT =
+  "/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,BOARDID&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVPRICE,VOLTODAY,VALTODAY,NUMTRADES,HIGH,LOW,OPEN,TRADINGSTATUS";
+const MOEX_FUTURES_ENDPOINT =
+  "/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,LASTDELDATE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVWAPRICE,VOLTODAY,VALTODAY,NUMTRADES,OPENPOSITION,HIGH,LOW,OPEN,TRADINGSTATUS";
+
 type TableRow = Record<string, unknown>;
 
 const CACHE_TTL_MS = 20_000;
 
-let lastSnapshot:
-  | {
-      expiresAt: number;
-      stocks: ScreenerRow[];
-      futures: ScreenerRow[];
-      benchmarks: ScreenerBenchmark[];
-      status: ScreenerDataStatus;
-    }
-  | null = null;
+type MoexSnapshotCache = {
+  expiresAt: number;
+  stocks: ScreenerRow[];
+  futures: ScreenerRow[];
+  benchmarks: ScreenerBenchmark[];
+  status: ScreenerDataStatus;
+};
+
+let lastSnapshot: MoexSnapshotCache | null = null;
+let inflightSnapshot: Promise<MoexSnapshotCache> | null = null;
+
+/** Последний успешный MOEX-снимок — для stale fallback на production. */
+let lastGoodSnapshot: MoexSnapshotCache | null = null;
+
+const STALE_CACHE_MAX_AGE_MS = 30 * 60_000;
 
 function asNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -116,14 +132,92 @@ export class ScreenerUnavailableError extends Error {
 }
 
 function classifyMoexError(error: unknown): { message: string; reason: NonNullable<ScreenerDataStatus["fallbackReason"]> } {
+  const timeoutMs = getMoexHttpTimeoutMs();
+  if (error instanceof Error && error.name === "AbortError") {
+    return {
+      message: `MOEX ISS timeout after ${timeoutMs}ms — проверьте VPN/сеть к iss.moex.com`,
+      reason: "moex-unavailable",
+    };
+  }
   const message = error instanceof Error ? error.message : "Не удалось получить данные MOEX";
   const lower = message.toLowerCase();
+  if (lower.includes("fetch failed") || lower.includes("econnrefused") || lower.includes("enotfound") || lower.includes("network")) {
+    return {
+      message: `MOEX ISS недоступен из этой сети (${message}) — проверьте VPN или MOEX_BASE_URL`,
+      reason: "moex-unavailable",
+    };
+  }
   const reason = lower.includes("parse") || lower.includes("validation")
     ? "validation-failed"
     : message.includes("no usable rows")
       ? "no-usable-rows"
       : "moex-unavailable";
   return { message, reason };
+}
+
+function aggregateMarketStatus(rows: ScreenerRow[]): TradingStatus {
+  if (rows.length === 0) return "unknown";
+  const openCount = rows.filter((r) => r.tradingStatus === "open").length;
+  if (openCount >= rows.length * 0.15) return "open";
+  const closedCount = rows.filter((r) => r.tradingStatus === "closed").length;
+  if (closedCount >= rows.length * 0.7) return "closed";
+  return "unknown";
+}
+
+function buildDiagnostics(
+  assetClass: "all" | AssetClass,
+  rows: ScreenerRow[],
+  status: ScreenerDataStatus,
+  extra?: {
+    requestedAt?: string;
+    fetchMs?: number;
+    moexOk?: boolean;
+    fallbackUsed?: boolean;
+    rowsRaw?: number;
+    rowsNormalized?: number;
+    endpointUsed?: string[];
+    errors?: string[];
+  },
+): ScreenerDiagnostics {
+  const stockCount = status.stockRows;
+  const futureCount = status.futuresRows;
+  const rowsBeforeFilter =
+    assetClass === "stock" ? stockCount : assetClass === "future" ? futureCount : stockCount + futureCount;
+
+  return {
+    source: status.source,
+    assetClass,
+    rowsBeforeFilter,
+    rowsAfterFilter: rows.length,
+    fallbackReason: status.fallbackReason,
+    fetchTime: status.fetchTimestamp,
+    marketStatus: status.marketStatus ?? aggregateMarketStatus(rows),
+    lastUpdated: status.generatedAt,
+    requestedAt: extra?.requestedAt,
+    fetchMs: extra?.fetchMs,
+    moexOk: extra?.moexOk,
+    fallbackUsed: extra?.fallbackUsed,
+    rowsRaw: extra?.rowsRaw ?? rowsBeforeFilter,
+    rowsNormalized: extra?.rowsNormalized ?? rowsBeforeFilter,
+    endpointUsed: extra?.endpointUsed,
+    errors: extra?.errors,
+  };
+}
+
+function attachDiagnostics(
+  assetClass: "all" | AssetClass,
+  rows: ScreenerRow[],
+  benchmarks: ScreenerBenchmark[],
+  status: ScreenerDataStatus,
+  extra?: Parameters<typeof buildDiagnostics>[3],
+): ScreenerApiResponse {
+  return {
+    assetClass,
+    rows,
+    benchmarks,
+    status,
+    diagnostics: buildDiagnostics(assetClass, rows, status, extra),
+  };
 }
 
 function buildMoexStatus(
@@ -133,6 +227,7 @@ function buildMoexStatus(
   baselineStatus: BaselineStatus,
 ): ScreenerDataStatus {
   const degraded = baselineStatus !== "ok";
+  const allRows = [...stocks, ...futures];
   return {
     source: "moex",
     isDemo: false,
@@ -151,6 +246,9 @@ function buildMoexStatus(
     resolvedTradingDateKey: moscowTodayKey(),
     dataMode: "live",
     historicalEmpty: false,
+    marketStatus: aggregateMarketStatus(allRows),
+    emptyReason: allRows.length === 0 ? "MOEX не отдал строки" : null,
+    staleCache: false,
   };
 }
 
@@ -202,11 +300,7 @@ async function fetchStockHistoricalBaselines(tickers: string[]): Promise<Baselin
 }
 
 async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]; baselineStatus: BaselineStatus }> {
-  const payload = moexIssPayloadSchema.parse(
-    await fetchIssJson(
-      "/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,BOARDID&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVPRICE,VOLTODAY,VALTODAY,NUMTRADES,HIGH,LOW,OPEN,TRADINGSTATUS",
-    ),
-  );
+  const payload = moexIssPayloadSchema.parse(await fetchIssJson(MOEX_STOCKS_ENDPOINT));
 
   const marketByTicker = new Map<string, TableRow>();
   for (const raw of payload.marketdata.data) {
@@ -278,7 +372,7 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
   }
   const enrichedRows = enrichMoexStocksWithInPlayMetrics(draftRows);
   const nowDate = new Date(nowIso);
-  const intradayBaselines = await loadIntradayBaselinesForStocks(
+  const intradayBaselines = await loadIntradayBaselinesWithBudget(
     draftRows.map((row) => ({
       ticker: row.ticker,
       turnover: row.turnover,
@@ -359,11 +453,7 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
 }
 
 async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
-  const payload = moexIssPayloadSchema.parse(
-    await fetchIssJson(
-      "/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,LASTDELDATE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVWAPRICE,VOLTODAY,VALTODAY,NUMTRADES,OPENPOSITION,HIGH,LOW,OPEN,TRADINGSTATUS",
-    ),
-  );
+  const payload = moexIssPayloadSchema.parse(await fetchIssJson(MOEX_FUTURES_ENDPOINT));
 
   const marketByTicker = new Map<string, TableRow>();
   for (const raw of payload.marketdata.data) {
@@ -479,19 +569,71 @@ async function fetchStockBenchmarksFromIss(nowIso: string, stocks: ScreenerRow[]
   return benchmark ? [benchmark] : [];
 }
 
+async function loadIntradayBaselinesWithBudget(
+  rows: Parameters<typeof loadIntradayBaselinesForStocks>[0],
+  now: Date,
+): Promise<Awaited<ReturnType<typeof loadIntradayBaselinesForStocks>>> {
+  const budgetMs = Math.min(3_000, Math.max(1_500, Math.floor(getMoexHttpTimeoutMs() / 2)));
+  try {
+    return await Promise.race([
+      loadIntradayBaselinesForStocks(rows, now),
+      new Promise<Awaited<ReturnType<typeof loadIntradayBaselinesForStocks>>>((resolve) => {
+        setTimeout(() => resolve(new Map()), budgetMs);
+      }),
+    ]);
+  } catch {
+    return new Map();
+  }
+}
+
 async function getMoexSnapshot() {
   const now = Date.now();
   if (lastSnapshot && lastSnapshot.expiresAt > now) {
     return lastSnapshot;
   }
+  if (inflightSnapshot) {
+    return inflightSnapshot;
+  }
 
+  inflightSnapshot = loadMoexSnapshotUncached();
+  try {
+    return await inflightSnapshot;
+  } finally {
+    inflightSnapshot = null;
+  }
+}
+
+async function loadMoexSnapshotUncached() {
+  const now = Date.now();
   const nowIso = new Date().toISOString();
-  const [stockResult, futures] = await Promise.all([fetchStocksFromIss(nowIso), fetchFuturesFromIss(nowIso)]);
+  const [stockSettled, futuresSettled] = await Promise.allSettled([
+    fetchStocksFromIss(nowIso),
+    fetchFuturesFromIss(nowIso),
+  ]);
+
+  const stockResult =
+    stockSettled.status === "fulfilled"
+      ? stockSettled.value
+      : { rows: [] as ScreenerRow[], baselineStatus: "error" as BaselineStatus };
+  const futures = futuresSettled.status === "fulfilled" ? futuresSettled.value : [];
+
+  const fetchErrors = [
+    stockSettled.status === "rejected" ? String(stockSettled.reason) : null,
+    futuresSettled.status === "rejected" ? String(futuresSettled.reason) : null,
+  ].filter(Boolean) as string[];
+
   const stocks = stockResult.rows;
-  const benchmarks = await fetchStockBenchmarksFromIss(nowIso, stocks);
 
   if (stocks.length + futures.length === 0) {
-    throw new Error("MOEX returned no usable rows");
+    const detail = fetchErrors[0] ?? "MOEX returned no usable rows";
+    throw new Error(detail);
+  }
+
+  let benchmarks: ScreenerBenchmark[] = [];
+  try {
+    benchmarks = await fetchStockBenchmarksFromIss(nowIso, stocks);
+  } catch {
+    benchmarks = [];
   }
 
   const status = buildMoexStatus(nowIso, stocks, futures, stockResult.baselineStatus);
@@ -503,58 +645,120 @@ async function getMoexSnapshot() {
     benchmarks,
     status,
   };
+  lastGoodSnapshot = lastSnapshot;
 
   return lastSnapshot;
 }
 
-function getDemoSnapshot(reason: ScreenerDataStatus["fallbackReason"], message: string) {
+function resolveStaleSnapshot(): MoexSnapshotCache | null {
+  if (!lastGoodSnapshot) return null;
+  const age = Date.now() - new Date(lastGoodSnapshot.status.fetchTimestamp).getTime();
+  if (age > STALE_CACHE_MAX_AGE_MS) return null;
+  return lastGoodSnapshot;
+}
+
+function buildStaleStatus(base: ScreenerDataStatus, reason: string): ScreenerDataStatus {
+  const nowIso = new Date().toISOString();
+  return {
+    ...base,
+    degraded: true,
+    generatedAt: nowIso,
+    fetchTimestamp: nowIso,
+    fallbackReason: "moex-unavailable",
+    message: `Кэш последнего успешного ответа MOEX · ${reason}`,
+    staleCache: true,
+    emptyReason: null,
+  };
+}
+
+function getDemoSnapshot(message: string, explicitDevFallback: boolean) {
   const nowIso = new Date().toISOString();
   const stocks = demoRows.filter((row) => row.assetClass === "stock").map(normalizeScreenerMetrics);
   const futures = demoRows.filter((row) => row.assetClass === "future").map(normalizeScreenerMetrics);
+  const allRows = [...stocks, ...futures];
+  const fallbackReason = explicitDevFallback ? ("explicit-dev-fallback" as const) : ("moex-unavailable" as const);
+  const source = explicitDevFallback ? ("fallback" as const) : ("demo" as const);
   return {
     stocks,
     futures,
     benchmarks: [],
     status: {
-      source: "demo",
+      source,
       isDemo: true,
       degraded: true,
-      baselineStatus: "skipped",
+      baselineStatus: "skipped" as const,
       generatedAt: nowIso,
       fetchTimestamp: nowIso,
       sourceTimestamp: null,
       stockRows: stocks.length,
       futuresRows: futures.length,
-      fallbackReason: reason,
-      message,
+      fallbackReason,
+      message: explicitDevFallback ? `DEV fallback · ${message}` : `DEMO · ${message}`,
+      tradingDateKey: moscowTodayKey(),
+      resolvedTradingDateKey: moscowTodayKey(),
+      dataMode: "live" as const,
+      historicalEmpty: false,
+      marketStatus: aggregateMarketStatus(allRows),
+      emptyReason: null,
+      staleCache: false,
     } satisfies ScreenerDataStatus,
   };
+}
+
+function finalizeResponse(
+  assetClass: "all" | AssetClass,
+  stocks: ScreenerRow[],
+  futures: ScreenerRow[],
+  benchmarks: ScreenerBenchmark[],
+  status: ScreenerDataStatus,
+  extra?: Parameters<typeof buildDiagnostics>[3],
+): ScreenerApiResponse {
+  const rows = pickRows(assetClass, stocks, futures);
+  return attachDiagnostics(assetClass, rows, pickBenchmarks(assetClass, benchmarks), status, extra);
 }
 
 export function buildUnavailableScreenerResponse(
   assetClass: "all" | AssetClass,
   reason: NonNullable<ScreenerDataStatus["fallbackReason"]>,
   message: string,
+  options?: { source?: ScreenerDataStatus["source"] },
 ): ScreenerApiResponse {
   const nowIso = new Date().toISOString();
-  return {
-    assetClass,
-    rows: [],
-    benchmarks: [],
-    status: {
-      source: "moex",
-      isDemo: false,
-      degraded: true,
-      baselineStatus: "skipped",
-      generatedAt: nowIso,
-      fetchTimestamp: nowIso,
-      sourceTimestamp: null,
-      stockRows: 0,
-      futuresRows: 0,
-      fallbackReason: reason,
-      message,
-    },
+  const source = options?.source ?? "moex";
+  const status: ScreenerDataStatus = {
+    source,
+    isDemo: false,
+    degraded: true,
+    baselineStatus: "skipped",
+    generatedAt: nowIso,
+    fetchTimestamp: nowIso,
+    sourceTimestamp: null,
+    stockRows: 0,
+    futuresRows: 0,
+    fallbackReason: reason,
+    message,
+    marketStatus: "unknown",
+    emptyReason: message,
+    staleCache: false,
   };
+  return attachDiagnostics(assetClass, [], [], status, {
+    requestedAt: nowIso,
+    moexOk: false,
+    fallbackUsed: true,
+    rowsRaw: 0,
+    rowsNormalized: 0,
+    errors: [message],
+    endpointUsed: source === "off" ? [] : [MOEX_STOCKS_ENDPOINT, MOEX_FUTURES_ENDPOINT],
+  });
+}
+
+export function buildOffScreenerResponse(assetClass: "all" | AssetClass): ScreenerApiResponse {
+  return buildUnavailableScreenerResponse(
+    assetClass,
+    "data-disabled",
+    "MOEX_DATA_MODE=off — live fetch отключён",
+    { source: "off" },
+  );
 }
 
 function pickRows(assetClass: "all" | AssetClass, stocks: ScreenerRow[], futures: ScreenerRow[]) {
@@ -578,45 +782,99 @@ export async function getScreenerResponse(
     const historical = await getHistoricalStockSnapshot(requestedDate);
 
     if (assetClass === "future") {
-      return {
-        assetClass,
-        rows: [],
-        benchmarks: [],
-        status: {
-          ...historical.status,
-          futuresRows: 0,
-          message: "Фьючерсы доступны только в режиме LIVE",
-        },
-      };
+      return finalizeResponse(assetClass, [], [], [], {
+        ...historical.status,
+        futuresRows: 0,
+        message: "Фьючерсы доступны только в режиме LIVE",
+      });
     }
 
     const rows = assetClass === "all" ? historical.stocks : historical.stocks;
-    return {
+    return finalizeResponse(
       assetClass,
-      rows,
-      benchmarks: pickBenchmarks(assetClass, historical.benchmarks),
-      status: historical.status,
-    };
+      historical.stocks,
+      [],
+      historical.benchmarks,
+      historical.status,
+    );
+  }
+
+  const requestedAt = new Date().toISOString();
+  const fetchStarted = performance.now();
+
+  if (isMoexDataDisabled()) {
+    return buildOffScreenerResponse(assetClass);
   }
 
   try {
     const snapshot = await getMoexSnapshot();
-    return {
+    const fetchMs = Math.round(performance.now() - fetchStarted);
+    return finalizeResponse(
       assetClass,
-      rows: pickRows(assetClass, snapshot.stocks, snapshot.futures),
-      benchmarks: pickBenchmarks(assetClass, snapshot.benchmarks),
-      status: snapshot.status,
-    };
+      snapshot.stocks,
+      snapshot.futures,
+      snapshot.benchmarks,
+      snapshot.status,
+      {
+        requestedAt,
+        fetchMs,
+        moexOk: true,
+        fallbackUsed: false,
+        rowsRaw: snapshot.status.stockRows + snapshot.status.futuresRows,
+        rowsNormalized: snapshot.status.stockRows + snapshot.status.futuresRows,
+        endpointUsed: [MOEX_STOCKS_ENDPOINT, MOEX_FUTURES_ENDPOINT],
+      },
+    );
   } catch (error) {
+    const fetchMs = Math.round(performance.now() - fetchStarted);
     const { message, reason } = classifyMoexError(error);
-    if (isDemoFallbackAllowed()) {
-      const fallback = getDemoSnapshot(reason, `Fallback активирован: ${message}`);
-      return {
+    const stale = resolveStaleSnapshot();
+    if (stale) {
+      return finalizeResponse(
         assetClass,
-        rows: pickRows(assetClass, fallback.stocks, fallback.futures),
-        benchmarks: pickBenchmarks(assetClass, fallback.benchmarks),
+        stale.stocks,
+        stale.futures,
+        stale.benchmarks,
+        buildStaleStatus(stale.status, message),
+        {
+          requestedAt,
+          fetchMs,
+          moexOk: false,
+          fallbackUsed: true,
+          rowsRaw: stale.status.stockRows + stale.status.futuresRows,
+          rowsNormalized: stale.status.stockRows + stale.status.futuresRows,
+          errors: [message],
+          endpointUsed: [MOEX_STOCKS_ENDPOINT, MOEX_FUTURES_ENDPOINT],
+        },
+      );
+    }
+    if (shouldUseDemoFallbackAfterLiveFailure()) {
+      const explicitDevFallback = getMoexDataMode() === "fallback";
+      const fallback = getDemoSnapshot(message, explicitDevFallback);
+      lastSnapshot = {
+        expiresAt: Date.now() + CACHE_TTL_MS,
+        stocks: fallback.stocks,
+        futures: fallback.futures,
+        benchmarks: fallback.benchmarks,
         status: fallback.status,
       };
+      return finalizeResponse(
+        assetClass,
+        fallback.stocks,
+        fallback.futures,
+        fallback.benchmarks,
+        fallback.status,
+        {
+          requestedAt,
+          fetchMs,
+          moexOk: false,
+          fallbackUsed: true,
+          rowsRaw: 0,
+          rowsNormalized: fallback.stocks.length + fallback.futures.length,
+          errors: [message],
+          endpointUsed: [MOEX_STOCKS_ENDPOINT, MOEX_FUTURES_ENDPOINT],
+        },
+      );
     }
     throw new ScreenerUnavailableError(message, reason);
   }
@@ -654,6 +912,7 @@ export async function getScreenerHealth(): Promise<ScreenerHealthResponse> {
     moexFetchStatus,
     prismaStatus,
     demoFallbackAllowed: isDemoFallbackAllowed(),
+    moexDataMode: getMoexDataMode(),
     commitSha: git.commitSha,
     commitMessage: git.commitMessage,
     branch: git.branch,

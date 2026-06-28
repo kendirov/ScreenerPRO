@@ -41,6 +41,7 @@ import {
   radarLiquidityTag,
 } from "@/lib/domain/radar-ui-labels";
 import { formatTradesCompact } from "@/lib/domain/stocks-screener-signals";
+import { classifyStockTradingState } from "@/lib/domain/stock-trading-state";
 import {
   buildRadarRowSessionMetricsMap,
   buildRadarSessionContext,
@@ -303,6 +304,14 @@ export function selectActiveSelection(
     visible: candidates.slice(0, activityCfg.maxVisible),
     candidateCount: candidates.length,
   };
+}
+
+export function selectDangerousInstruments(rows: ScreenerRow[], universe: ScreenerRow[] = rows, limit = 5): ScreenerRow[] {
+  const maxTurnover = universe.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0);
+  return [...rows]
+    .filter((row) => row.assetClass === "stock" && classifyStockTradingState(row, maxTurnover) === "dangerous")
+    .sort((a, b) => Math.abs(b.percentChange ?? 0) - Math.abs(a.percentChange ?? 0))
+    .slice(0, limit);
 }
 
 export function selectInPlayInstruments(rows: ScreenerRow[], universe?: ScreenerRow[]): ScreenerRow[] {

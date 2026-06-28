@@ -14,7 +14,15 @@ function compactRub(value: number | null): string {
   return tradingFormat.formatTurnoverRub(value).replace(/\s?₽/g, "");
 }
 
-export function FuturesAllTable({ rows }: { rows: ScreenerRow[] }) {
+export function FuturesAllTable({
+  rows,
+  highlightedTicker,
+  onRowSelect,
+}: {
+  rows: ScreenerRow[];
+  highlightedTicker?: string | null;
+  onRowSelect?: (ticker: string) => void;
+}) {
   const families = React.useMemo(() => buildFuturesFamilies(rows), [rows]);
   const metaByTicker = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -97,5 +105,14 @@ export function FuturesAllTable({ rows }: { rows: ScreenerRow[] }) {
     [metaByTicker, activityCtx],
   );
 
-  return <ScreenerTable rows={rows} columns={columns} emptyTitle="Нет доступных фьючерсов" emptyText="По текущему фильтру ничего не найдено." />;
+  return (
+    <ScreenerTable
+      rows={rows}
+      columns={columns}
+      emptyTitle="Нет доступных фьючерсов"
+      emptyText="По текущему фильтру ничего не найдено."
+      highlightedTicker={highlightedTicker}
+      onRowSelect={onRowSelect}
+    />
+  );
 }

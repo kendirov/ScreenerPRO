@@ -56,22 +56,22 @@ export function StockMiniSparkline({
   dayHigh: number | null;
   dayLow: number | null;
   changePct: number | null;
-  size?: "large" | "compact";
+  size?: "large" | "compact" | "preview";
   className?: string;
 }) {
   const closes = React.useMemo(() => extractSparklineCloses(series), [series]);
   const ready = hasEnoughSparklinePoints(series);
 
-  const width = size === "large" ? 96 : 72;
-  const height = size === "large" ? 40 : 32;
-  const pad = 3;
+  const width = size === "preview" ? 360 : size === "large" ? 96 : 72;
+  const height = size === "preview" ? 170 : size === "large" ? 40 : 32;
+  const pad = size === "preview" ? 8 : 3;
 
   if (!ready) {
     return (
       <div
         className={cn(
           "flex items-center justify-center rounded-md border border-dashed border-lab-border-soft/60 bg-black/20 text-[9px] leading-tight text-lab-text-dim",
-          size === "large" ? "h-10 min-w-[6rem] px-1" : "h-8 min-w-[4.5rem] px-0.5",
+          size === "preview" ? "h-[170px] min-w-[22rem] px-1" : size === "large" ? "h-10 min-w-[6rem] px-1" : "h-8 min-w-[4.5rem] px-0.5",
           className,
         )}
       >

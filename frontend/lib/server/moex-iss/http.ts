@@ -1,6 +1,8 @@
-const BASE_URL = "https://iss.moex.com/iss";
-const TIMEOUT_MS = 8000;
-const RETRIES = 2;
+import { getMoexHttpRetries, getMoexHttpTimeoutMs } from "@/lib/server/moex-timeout";
+
+const BASE_URL = process.env.MOEX_BASE_URL?.trim() || "https://iss.moex.com/iss";
+const TIMEOUT_MS = getMoexHttpTimeoutMs();
+const RETRIES = getMoexHttpRetries();
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

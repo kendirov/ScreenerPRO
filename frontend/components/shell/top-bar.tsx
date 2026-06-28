@@ -1,7 +1,6 @@
-import { Bell, UserCircle2 } from "lucide-react";
-import { DataBadge, StatusPill } from "@/components/ui/primitives";
 import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 
+/** Минимальная верхняя панель публичного терминала — без auth и уведомлений. */
 export function TopBar() {
   return (
     <LabGlassPanel
@@ -11,19 +10,9 @@ export function TopBar() {
     >
       <div className="lab-accent-line mb-2 opacity-60" aria-hidden />
       <div className="flex items-center gap-2">
-        <div className="lab-glass-card rounded-lg border-lab-border bg-lab-surface-glass/80 px-2 py-1.5 shadow-none hover:translate-y-0">
-          <DataBadge label="MOEX ISS" />
-        </div>
-        <div className="lab-glass-card rounded-lg border-lab-border bg-lab-surface-glass/80 px-2 py-1.5 shadow-none hover:translate-y-0">
-          <StatusPill status="open" />
-        </div>
-        <button className="lab-glass-card rounded-lg p-2 text-lab-muted shadow-none transition-all duration-200 hover:border-lab-border-hot hover:text-lab-text">
-          <Bell className="h-4 w-4" />
-        </button>
-        <button className="lab-glass-card flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-lab-muted shadow-none transition-all duration-200 hover:border-lab-border-hot hover:text-lab-text">
-          <UserCircle2 className="h-4 w-4" />
-          Пользователь
-        </button>
+        <span className="hidden text-[10px] uppercase tracking-[0.14em] text-lab-dim sm:inline">
+          Лаборатория рынка
+        </span>
       </div>
     </LabGlassPanel>
   );

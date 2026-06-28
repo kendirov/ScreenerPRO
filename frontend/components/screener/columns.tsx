@@ -7,6 +7,7 @@ import {
   StockPriceCell,
   StockRangeCell,
   StockTickerCell,
+  StockTradingTagsCell,
   StockTradesCell,
   StockTradesRatioCell,
   StockTurnoverCell,
@@ -130,6 +131,13 @@ export function createStockColumns(maxTurnover: number): ColumnDef<ScreenerRow>[
         headerTooltip: STOCK_DAY_RANGE_HEADER_TOOLTIP,
       },
       cell: ({ row }) => <StockRangeCell row={row.original} />,
+    },
+    {
+      id: "tags",
+      header: "Теги",
+      enableSorting: false,
+      meta: { align: "left" },
+      cell: ({ row }) => <StockTradingTagsCell row={row.original} maxTurnover={maxTurnover} />,
     },
     {
       id: "reason",

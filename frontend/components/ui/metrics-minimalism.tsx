@@ -85,8 +85,12 @@ export function screenerSourceToDataStatus(
     if (options?.degraded) return { kind: "partial", label: "MOEX ISS · без baseline" };
     return { kind: "live", label: formatDataSourceLabel("moex") };
   }
-  if (source === "demo" || options?.isDemo) {
-    return { kind: "fallback", label: options?.fallbackReason ? "резерв · MOEX" : "резервные данные" };
+  if (source === "off") return { kind: "no-data", label: "данные отключены" };
+  if (source === "fallback" || source === "demo" || options?.isDemo) {
+    return {
+      kind: "fallback",
+      label: options?.fallbackReason === "explicit-dev-fallback" ? "DEV · учебный набор" : "резервные данные",
+    };
   }
   return { kind: "no-data", label: "нет данных" };
 }

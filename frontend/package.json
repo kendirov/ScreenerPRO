@@ -5,6 +5,9 @@
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "next dev",
+    "dev:live": "MOEX_DATA_MODE=live next dev",
+    "dev:fallback": "MOEX_DATA_MODE=fallback next dev",
+    "dev:off": "MOEX_DATA_MODE=off next dev",
     "dev:stable": "next dev --webpack",
     "build": "prisma generate && next build",
     "start": "next start",
@@ -24,6 +27,7 @@
     "verify:cbr-market-output": "tsx scripts/verify-cbr-market-output.ts",
     "verify:moex-instrument-resolver": "tsx scripts/verify-moex-instrument-resolver.ts",
     "verify:fetch-moex-candles": "tsx scripts/verify-fetch-moex-candles.ts",
+    "verify:moex-data-mode": "tsx scripts/verify-moex-data-mode.ts",
     "verify:calculate-cbr-reaction": "tsx scripts/verify-calculate-cbr-reaction.ts"
   },
   "dependencies": {

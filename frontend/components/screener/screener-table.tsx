@@ -19,11 +19,15 @@ export function ScreenerTable({
   columns,
   emptyTitle = "Нет данных",
   emptyText = "Источник данных временно недоступен.",
+  highlightedTicker,
+  onRowSelect,
 }: {
   rows: ScreenerRow[];
   columns: ColumnDef<ScreenerRow>[];
   emptyTitle?: string;
   emptyText?: string;
+  highlightedTicker?: string | null;
+  onRowSelect?: (ticker: string) => void;
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "turnover", desc: true }]);
 
@@ -80,6 +84,7 @@ export function ScreenerTable({
             {rowsModel.map((row, rowIndex) => (
               (() => {
                 const inPlayStrong = row.original.assetClass === "stock" && isStockInPlay(row.original);
+                const selected = highlightedTicker === row.original.ticker;
                 return (
                   <tr
                     key={row.id}
@@ -87,7 +92,10 @@ export function ScreenerTable({
                       "border-b border-white/5 transition duration-150 hover:bg-slate-800/40 focus-within:bg-slate-800/40",
                       rowIndex % 2 === 1 ? "bg-white/[0.02]" : "bg-transparent",
                       inPlayStrong ? "bg-emerald-950/18" : "",
+                      selected ? "bg-cyan-950/25" : "",
+                      onRowSelect ? "cursor-pointer" : "",
                     )}
+                    onClick={onRowSelect ? () => onRowSelect(row.original.ticker) : undefined}
                   >
                     {row.getVisibleCells().map((cell, cellIndex) => (
                   <td
