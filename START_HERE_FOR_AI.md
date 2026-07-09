@@ -9,9 +9,11 @@
 1. **`PRODUCT_VISION.md`** — зачем существует продукт и какой UX/вау-эффект нужен.
 2. **`PROJECT_CONTEXT.md`** — техническая архитектура, маршруты, API, источники данных.
 3. **`AI_SESSION_STATE.md`** — текущее состояние последней итерации.
-4. **`docs/CURSOR_WORKFLOW.md`** — правила работы Cursor.
-5. **`docs/UI_NUMBERS_MINIMALISM.md`** — стандарт «минимализм цифр» в UI (новые экраны и правки таблиц/карточек).
-6. **`docs/MARKET_RADAR_FORMULAS.md`** — **источник истины** по формулам Market Radar (Vol x, In Play, Active, Shots, baseline); читать перед правкой порогов и объяснением «В игре» ученикам.
+4. **`docs/CHATGPT_PROMPT_GUIDE.md`** — **для ChatGPT**: как продумывать логику, чек-листы и готовые шаблоны промптов для Cursor (с учётом текущей итерации).
+5. **`docs/CURSOR_WORKFLOW.md`** — правила работы Cursor.
+6. **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** — **продуктовая доктрина** intraday decision terminal: North Star, сценарий трейдера, блоки (Market Pulse, In Play, Situation, Table, Inspector), UI direction, антипаттерны. **Обязательно** для продуктовых и UX-задач по скринеру.
+7. **`docs/UI_NUMBERS_MINIMALISM.md`** — стандарт «минимализм цифр» в UI (новые экраны и правки таблиц/карточек).
+8. **`docs/MARKET_RADAR_FORMULAS.md`** — **источник истины** по формулам Market Radar (Vol x, In Play, Active, Shots, baseline); читать перед правкой порогов и объяснением «В игре» ученикам.
 
 ---
 
@@ -43,7 +45,7 @@ AI должен:
 
 1. Прочитать **`AI_SESSION_STATE.md`**.
 2. При необходимости свериться с **`PROJECT_CONTEXT.md`**.
-3. Если задача продуктовая или UX — свериться с **`PRODUCT_VISION.md`**.
+3. Если задача продуктовая или UX — свериться с **`PRODUCT_VISION.md`** и **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** (для скринера и терминала).
 4. **Не менять код** без понимания, что именно хочет пользователь.
 5. После изменений **обновить `AI_SESSION_STATE.md`** (крупные итерации — по `docs/CURSOR_WORKFLOW.md`).
 

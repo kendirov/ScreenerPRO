@@ -172,6 +172,23 @@ body {
   min-width: 0;
 }
 
+.strategy-lab-page,
+.strategy-lab-workspace,
+.strategy-lab-chart-column {
+  width: 100%;
+  max-width: none;
+}
+
+.strategy-lab-chart-column {
+  min-width: 0;
+}
+
+@media (min-width: 1280px) {
+  .strategy-lab-chart-column {
+    min-width: min(100%, 980px);
+  }
+}
+
 /* ── Shell & backgrounds ── */
 .lab-shell {
   background: var(--lab-bg);

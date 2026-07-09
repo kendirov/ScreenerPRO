@@ -9,6 +9,11 @@ import {
   type InGameRowInput,
 } from "@/lib/screener/in-game-logic";
 import {
+  computeInstrumentSituation,
+  getMoscowSessionMins,
+  type InstrumentSituation,
+} from "@/lib/screener/situation-engine";
+import {
   computeIndexBreadth,
   toIndexBreadthSummary,
   type IndexBreadthDiagnostics,
@@ -40,6 +45,7 @@ export type NormalizedStockRow = {
   tags: RadarTag[];
   reasons: string[];
   tableReason: string;
+  situation: InstrumentSituation;
   raw: ScreenerRow;
 };
 
@@ -165,12 +171,25 @@ function buildDescRankMap(rows: ScreenerRow[], valueFn: (row: ScreenerRow) => nu
   return map;
 }
 
-export function prepareStockUniverse(rows: ScreenerRow[]): {
+export function prepareStockUniverse(
+  rows: ScreenerRow[],
+  options?: {
+    /** Rows already filtered by buildStockScreenerUniverse — skip second pass. */
+    preFiltered?: boolean;
+    filterAudit?: UniverseFilterAudit;
+    sourceRawCount?: number;
+  },
+): {
   universe: ScreenerRow[];
   audit: Omit<BreadthAudit, "filteredIlliquidCount">;
 } {
-  const { universe, audit: filterAudit } = filterValidStockUniverse(rows);
+  const filterResult = options?.preFiltered
+    ? { universe: rows, audit: options.filterAudit ?? emptyFilterAudit(rows.length, options.sourceRawCount) }
+    : filterValidStockUniverse(rows);
+
+  const { universe, audit: filterAudit } = filterResult;
   const { rising, falling, flat } = computeBreadthCounts(universe);
+  const rawTotal = options?.sourceRawCount ?? filterAudit.rawRows;
 
   return {
     universe,
@@ -181,8 +200,24 @@ export function prepareStockUniverse(rows: ScreenerRow[]): {
       fallingCount: falling,
       flatCount: flat,
       sum: rising + falling + flat,
-      nonStockRemoved: rows.filter((r) => r.assetClass !== "stock").length,
+      nonStockRemoved: Math.max(0, rawTotal - universe.length),
     },
+  };
+}
+
+function emptyFilterAudit(rowCount: number, sourceRawCount?: number): UniverseFilterAudit {
+  return {
+    rawRows: sourceRawCount ?? rowCount,
+    afterAssetClass: rowCount,
+    afterTypeFilter: rowCount,
+    afterTickerShapeFilter: rowCount,
+    afterBondFundExclusion: rowCount,
+    duplicatesRemoved: 0,
+    invalidRowsRemoved: 0,
+    excludedBondLike: 0,
+    excludedFunds: 0,
+    excludedEtfs: 0,
+    excludedExamples: [],
   };
 }
 
@@ -284,11 +319,23 @@ function selectLiquidityLeaders(rows: NormalizedStockRow[]): RadarLeader[] {
     .map((row) => ({ row, label: row.ticker, detail: "" }));
 }
 
+export type BuildStocksRadarModelOptions = {
+  /** Universe already filtered — see buildStockScreenerUniverse. */
+  universePreFiltered?: boolean;
+  filterAudit?: UniverseFilterAudit;
+  sourceRawCount?: number;
+};
+
 export function buildStocksRadarModel(
   rows: ScreenerRow[],
   benchmark: ScreenerBenchmark | null,
+  options?: BuildStocksRadarModelOptions,
 ): StocksRadarModel {
-  const { universe: stocks, audit } = prepareStockUniverse(rows);
+  const { universe: stocks, audit } = prepareStockUniverse(rows, {
+    preFiltered: options?.universePreFiltered,
+    filterAudit: options?.filterAudit,
+    sourceRawCount: options?.sourceRawCount,
+  });
   const total = stocks.length;
   const illiquidThresholds = computeIlliquidThresholds(stocks);
   const indexChangePct = benchmark?.percentChange ?? null;
@@ -304,6 +351,8 @@ export function buildStocksRadarModel(
   const indexPos = indexPosition(benchmark);
   const indexBreadthDiag = computeIndexBreadth(stocks);
   const indexBreadthSummary = toIndexBreadthSummary(indexBreadthDiag);
+  const sessionMins = getMoscowSessionMins();
+  const maxTurnover = stocks.reduce((max, row) => Math.max(max, row.turnover ?? 0), 0);
 
   const marketSummary: StocksMarketSummary = {
     totalTurnover,
@@ -373,6 +422,12 @@ export function buildStocksRadarModel(
       tags: [],
       reasons: [],
       tableReason: "—",
+      situation: {
+        tags: ["quiet"],
+        primaryTag: "quiet",
+        score: 0,
+        reasons: [{ code: "quiet", label: "Тихо", severity: "neutral" }],
+      },
       raw: row,
     };
 
@@ -460,6 +515,7 @@ export function buildStocksRadarModel(
 
   for (const row of normalizedRows) {
     if (!row.isInGame) row.tableReason = buildTableReason(row);
+    row.situation = computeInstrumentSituation(row.raw, { maxTurnover, sessionMins });
   }
 
   normalizedRows.sort((a, b) => (b.trades ?? 0) - (a.trades ?? 0));

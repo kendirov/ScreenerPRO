@@ -1,0 +1,295 @@
+{
+  "generatedAt": "2026-07-08T13:35:14.422Z",
+  "strategyId": "round-levels",
+  "assetClass": "stock",
+  "timeframe": "5m",
+  "period": "10d",
+  "universeCount": 10,
+  "successCount": 10,
+  "failedCount": 0,
+  "results": [
+    {
+      "strategyId": "round-levels",
+      "secid": "NVTK",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 79,
+      "badge": "good",
+      "metrics": {
+        "touches": 448,
+        "bounceRate": 0.4129,
+        "breakoutRate": 0.2879,
+        "falseBreakRate": 0.2455,
+        "chopRate": 0.0536,
+        "avgBounce": 6.5799,
+        "avgDive": 4.4297,
+        "levelsScore": 78,
+        "sampleScore": 100,
+        "clarityScore": 50,
+        "lowChopScore": 95,
+        "speedScore": 73
+      },
+      "bestLevels": [
+        865,
+        1000,
+        995
+      ],
+      "updatedAt": "2026-07-08T13:35:14.422Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "SIBN",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 79,
+      "badge": "good",
+      "metrics": {
+        "touches": 203,
+        "bounceRate": 0.4581,
+        "breakoutRate": 0.2906,
+        "falseBreakRate": 0.1921,
+        "chopRate": 0.0591,
+        "avgBounce": 3.0788,
+        "avgDive": 2.286,
+        "levelsScore": 78,
+        "sampleScore": 100,
+        "clarityScore": 52,
+        "lowChopScore": 94,
+        "speedScore": 74
+      },
+      "bestLevels": [
+        425,
+        430,
+        440
+      ],
+      "updatedAt": "2026-07-08T13:35:10.751Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "T",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 79,
+      "badge": "good",
+      "metrics": {
+        "touches": 92,
+        "bounceRate": 0.5109,
+        "breakoutRate": 0.2826,
+        "falseBreakRate": 0.1413,
+        "chopRate": 0.0652,
+        "avgBounce": 1.595,
+        "avgDive": 1.0617,
+        "levelsScore": 78,
+        "sampleScore": 100,
+        "clarityScore": 55,
+        "lowChopScore": 93,
+        "speedScore": 73
+      },
+      "bestLevels": [
+        240,
+        260,
+        250
+      ],
+      "updatedAt": "2026-07-08T13:35:07.244Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "GAZP",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 76,
+      "badge": "good",
+      "metrics": {
+        "touches": 189,
+        "bounceRate": 0.4444,
+        "breakoutRate": 0.2011,
+        "falseBreakRate": 0.2381,
+        "chopRate": 0.1164,
+        "avgBounce": 0.5558,
+        "avgDive": 0.306,
+        "levelsScore": 73,
+        "sampleScore": 100,
+        "clarityScore": 48,
+        "lowChopScore": 88,
+        "speedScore": 75
+      },
+      "bestLevels": [
+        92,
+        93,
+        101
+      ],
+      "updatedAt": "2026-07-08T13:35:04.220Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "SBER",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 75,
+      "badge": "good",
+      "metrics": {
+        "touches": 80,
+        "bounceRate": 0.5125,
+        "breakoutRate": 0.2125,
+        "falseBreakRate": 0.1125,
+        "chopRate": 0.1625,
+        "avgBounce": 1.3273,
+        "avgDive": 0.8129,
+        "levelsScore": 70,
+        "sampleScore": 100,
+        "clarityScore": 52,
+        "lowChopScore": 84,
+        "speedScore": 76
+      },
+      "bestLevels": [
+        305,
+        310,
+        300
+      ],
+      "updatedAt": "2026-07-08T13:35:04.106Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "VTBR",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 75,
+      "badge": "good",
+      "metrics": {
+        "touches": 142,
+        "bounceRate": 0.4014,
+        "breakoutRate": 0.3028,
+        "falseBreakRate": 0.2183,
+        "chopRate": 0.0775,
+        "avgBounce": 0.4973,
+        "avgDive": 0.4274,
+        "levelsScore": 69,
+        "sampleScore": 100,
+        "clarityScore": 49,
+        "lowChopScore": 92,
+        "speedScore": 72
+      },
+      "bestLevels": [
+        76,
+        70,
+        65
+      ],
+      "updatedAt": "2026-07-08T13:35:03.721Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "IRAO",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 56,
+      "badge": "medium",
+      "metrics": {
+        "touches": 36,
+        "bounceRate": 0.3889,
+        "breakoutRate": 0,
+        "falseBreakRate": 0,
+        "chopRate": 0.6111,
+        "avgBounce": 0.0473,
+        "avgDive": 0.003,
+        "levelsScore": 58,
+        "sampleScore": 70,
+        "clarityScore": 35,
+        "lowChopScore": 39,
+        "speedScore": 78
+      },
+      "bestLevels": [
+        2.2,
+        2.3,
+        2.4
+      ],
+      "weakPoint": "пила 61%",
+      "updatedAt": "2026-07-08T13:35:09.721Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "LKOH",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 0,
+      "badge": "noisy",
+      "metrics": {
+        "touches": 0,
+        "bounceRate": 0,
+        "breakoutRate": 0,
+        "falseBreakRate": 0,
+        "chopRate": 0,
+        "avgBounce": 0,
+        "avgDive": 0,
+        "levelsScore": 0,
+        "sampleScore": 0,
+        "clarityScore": 0,
+        "lowChopScore": 0,
+        "speedScore": 0
+      },
+      "bestLevels": [],
+      "weakPoint": "мало касаний для уверенной статистики",
+      "updatedAt": "2026-07-08T13:35:07.026Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "ROSN",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 0,
+      "badge": "noisy",
+      "metrics": {
+        "touches": 0,
+        "bounceRate": 0,
+        "breakoutRate": 0,
+        "falseBreakRate": 0,
+        "chopRate": 0,
+        "avgBounce": 0,
+        "avgDive": 0,
+        "levelsScore": 0,
+        "sampleScore": 0,
+        "clarityScore": 0,
+        "lowChopScore": 0,
+        "speedScore": 0
+      },
+      "bestLevels": [],
+      "weakPoint": "мало касаний для уверенной статистики",
+      "updatedAt": "2026-07-08T13:35:07.514Z"
+    },
+    {
+      "strategyId": "round-levels",
+      "secid": "TRNFP",
+      "board": "TQBR",
+      "timeframe": "5m",
+      "period": "10d",
+      "score": 0,
+      "badge": "noisy",
+      "metrics": {
+        "touches": 0,
+        "bounceRate": 0,
+        "breakoutRate": 0,
+        "falseBreakRate": 0,
+        "chopRate": 0,
+        "avgBounce": 0,
+        "avgDive": 0,
+        "levelsScore": 0,
+        "sampleScore": 0,
+        "clarityScore": 0,
+        "lowChopScore": 0,
+        "speedScore": 0
+      },
+      "bestLevels": [],
+      "weakPoint": "мало касаний для уверенной статистики",
+      "updatedAt": "2026-07-08T13:35:11.836Z"
+    }
+  ],
+  "errors": []
+}

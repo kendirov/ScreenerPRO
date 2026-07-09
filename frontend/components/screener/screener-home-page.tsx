@@ -1,7 +1,7 @@
 "use client";
 
-import { MarketNowPage } from "@/components/screener/market-now/market-now-page";
+import { MarketPriorityPage } from "@/components/screener/market-priority/market-priority-page";
 
 export function ScreenerHomePage() {
-  return <MarketNowPage />;
+  return <MarketPriorityPage />;
 }

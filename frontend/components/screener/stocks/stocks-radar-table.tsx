@@ -4,6 +4,12 @@ import * as React from "react";
 import type { NormalizedStockRow, TableSortDir, TableSortKey } from "@/lib/screener/stocks-radar";
 import { DayRangeBar } from "@/components/screener/stocks/day-range-bar";
 import { MetricHelp } from "@/components/screener/stocks/metric-help";
+import { StockTableSetupCell } from "@/components/screener/stocks/stock-table-setup-cell";
+import {
+  resolveStockTablePriorityRole,
+  type StockTablePriorityRole,
+} from "@/lib/screener/stock-table-priority-badges";
+import type { PriorityFilterSets } from "@/lib/screener/stock-screener-priority-filters";
 import {
   formatPct,
   formatPositionPct,
@@ -47,6 +53,9 @@ export function StocksRadarTable({
   rows,
   onClick,
   highlightedTicker,
+  scrollToTicker,
+  onScrollToTickerDone,
+  priorityFilterSets,
   emptyTitle,
   emptyText,
   sort,
@@ -55,11 +64,25 @@ export function StocksRadarTable({
   rows: NormalizedStockRow[];
   onClick?: (ticker: string) => void;
   highlightedTicker?: string | null;
+  scrollToTicker?: string | null;
+  onScrollToTickerDone?: () => void;
+  priorityFilterSets?: PriorityFilterSets | null;
   emptyTitle?: string;
   emptyText?: string;
   sort: SortState;
   onSortChange: (sort: SortState) => void;
 }) {
+  const rowRefs = React.useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+  React.useEffect(() => {
+    if (!scrollToTicker) return;
+    const el = rowRefs.current.get(scrollToTicker);
+    if (el) {
+      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    onScrollToTickerDone?.();
+  }, [scrollToTicker, rows, onScrollToTickerDone]);
+
   if (!rows.length) {
     return (
       <div className="rounded-lg border border-white/[0.06] bg-slate-950/40 px-4 py-8 text-center">
@@ -71,7 +94,7 @@ export function StocksRadarTable({
 
   return (
     <div className="overflow-x-auto rounded-lg border border-white/[0.06] bg-slate-950/35">
-      <table className="w-full min-w-[880px] border-collapse text-left">
+      <table className="w-full min-w-[920px] border-collapse text-left">
         <thead>
           <tr className="border-b border-white/[0.06] text-[9px] text-lab-text-dim">
             {COLUMNS.map((col) => (
@@ -90,19 +113,26 @@ export function StocksRadarTable({
                 </span>
               </th>
             ))}
-            <th className="px-2 py-1.5 font-medium">Почему</th>
+            <th className="px-2 py-1.5 font-medium">Setup</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
             const change = row.changePct;
             const isActive = highlightedTicker === row.ticker;
+            const priorityRole: StockTablePriorityRole | null = priorityFilterSets
+              ? resolveStockTablePriorityRole(row.ticker, priorityFilterSets)
+              : null;
             return (
               <tr
                 key={row.ticker}
+                ref={(el) => {
+                  if (el) rowRefs.current.set(row.ticker, el);
+                  else rowRefs.current.delete(row.ticker);
+                }}
                 className={cn(
                   "border-b border-white/[0.03] transition hover:bg-white/[0.03]",
-                  isActive && "bg-white/[0.05]",
+                  isActive && "bg-cyan-950/20 ring-1 ring-inset ring-cyan-500/35",
                 )}
                 onClick={() => onClick?.(row.ticker)}
               >
@@ -132,7 +162,9 @@ export function StocksRadarTable({
                     </span>
                   </div>
                 </td>
-                <td className="max-w-[9rem] truncate px-2 py-1 text-[9px] text-lab-text-dim">{row.tableReason}</td>
+                <td className="max-w-[8.5rem] px-2 py-1 align-top">
+                  <StockTableSetupCell situation={row.situation} priorityRole={priorityRole} />
+                </td>
               </tr>
             );
           })}

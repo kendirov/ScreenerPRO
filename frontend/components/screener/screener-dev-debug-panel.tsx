@@ -8,6 +8,7 @@ export function ScreenerDevDebugPanel({
   endpoint,
   response,
   rowsBeforeFilter,
+  stockOnlyCount,
   rowsAfterFilter,
   breadthAudit,
   errorMessage,
@@ -15,6 +16,7 @@ export function ScreenerDevDebugPanel({
   endpoint: string;
   response?: ScreenerApiResponse | null;
   rowsBeforeFilter?: number;
+  stockOnlyCount?: number;
   rowsAfterFilter?: number;
   breadthAudit?: StocksRadarDiagnostics | null;
   errorMessage?: string | null;
@@ -52,6 +54,7 @@ export function ScreenerDevDebugPanel({
         <span>status.source: {status?.source ?? "—"}</span>
         <span>isDemo: {String(status?.isDemo ?? false)}</span>
         <span>api rawRows: {audit?.rawRows ?? rowsBeforeFilter ?? "—"}</span>
+        <span>stockOnlyUniverse: {stockOnlyCount ?? audit?.universeCount ?? "—"}</span>
         <span>afterAssetClass: {audit?.afterAssetClass ?? "—"}</span>
         <span>afterTickerShape: {audit?.afterTickerShapeFilter ?? "—"}</span>
         <span>afterBondFundExcl: {audit?.afterBondFundExclusion ?? "—"}</span>
@@ -59,6 +62,7 @@ export function ScreenerDevDebugPanel({
         <span>visibleRows: {rowsAfterFilter ?? "—"}</span>
         <span>excludedBondLike: {audit?.excludedBondLike ?? "—"}</span>
         <span>excludedFunds: {audit?.excludedFunds ?? "—"}</span>
+        <span>excludedEtfs: {audit?.excludedEtfs ?? "—"}</span>
         <span>rising: {audit?.risingCount ?? "—"}</span>
         <span>falling: {audit?.fallingCount ?? "—"}</span>
         <span>flat: {audit?.flatCount ?? "—"}</span>

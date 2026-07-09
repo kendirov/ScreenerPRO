@@ -36,7 +36,7 @@ import { getHistoricalStockSnapshot, isHistoricalDateRequest } from "@/lib/serve
 import { fetchLiveMoexIndexBenchmark } from "@/lib/server/services/moex-index-benchmark";
 
 const MOEX_STOCKS_ENDPOINT =
-  "/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,BOARDID&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVPRICE,VOLTODAY,VALTODAY,NUMTRADES,HIGH,LOW,OPEN,TRADINGSTATUS";
+  "/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,BOARDID,SECTYPE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVPRICE,VOLTODAY,VALTODAY,NUMTRADES,HIGH,LOW,OPEN,TRADINGSTATUS";
 const MOEX_FUTURES_ENDPOINT =
   "/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,LASTDELDATE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVWAPRICE,VOLTODAY,VALTODAY,NUMTRADES,OPENPOSITION,HIGH,LOW,OPEN,TRADINGSTATUS";
 
@@ -324,6 +324,7 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
     dayRangePct: number | null;
     tradingStatus: TradingStatus;
     lotSize: number | null;
+    moexSecType: string | null;
   }> = [];
   for (const raw of payload.securities.data) {
     const sec = rowToObject(payload.securities.columns, raw);
@@ -358,6 +359,7 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
       dayRangePct,
       tradingStatus: toTradingStatus(md.TRADINGSTATUS ?? sec.STATUS),
       lotSize: asNumber(sec.LOTSIZE),
+      moexSecType: asString(sec.SECTYPE),
     });
   }
 
@@ -419,6 +421,7 @@ async function fetchStocksFromIss(nowIso: string): Promise<{ rows: ScreenerRow[]
       }, new Date(nowIso)),
       tradingStatus: row.tradingStatus,
       lotSize: row.lotSize,
+      moexSecType: row.moexSecType,
       updatedAt: nowIso,
       sourceUpdatedAt: null,
       metrics: {

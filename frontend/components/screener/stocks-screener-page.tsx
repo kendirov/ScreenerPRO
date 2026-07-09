@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import type { ScreenerRow } from "@screenerpro/shared";
 import { DataQualityCompact } from "@/components/screener/stocks/data-quality-compact";
 import { MetricHelp } from "@/components/screener/stocks/metric-help";
 import { StocksIndexStrip } from "@/components/screener/stocks/stocks-market-snapshot";
-import { StocksLeaderStrip } from "@/components/screener/stocks/stocks-leader-strip";
+import { StockScreenerCommandBar } from "@/components/screener/stocks/stock-screener-command-bar";
+import { StockScreenerQuickFilters } from "@/components/screener/stocks/stock-screener-quick-filters";
 import { StocksRadarTable } from "@/components/screener/stocks/stocks-radar-table";
 import { ScreenerDevDebugPanel } from "@/components/screener/screener-dev-debug-panel";
 import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
@@ -17,8 +20,25 @@ import {
   type TableSortDir,
   type TableSortKey,
 } from "@/lib/screener/stocks-radar";
+import { computeMarketPriority } from "@/lib/screener/market-priority-engine";
+import {
+  isMarketPriorityDebugVisible,
+  MARKET_PRIORITY_DEBUG_QUERY_PARAM,
+  formatFocusCandidatesDebugLine,
+} from "@/lib/screener/market-priority-debug";
+import {
+  buildPriorityFilterSets,
+  getQuickFilterSet,
+  STOCK_QUICK_FILTER_EMPTY,
+  type StockQuickFilter,
+} from "@/lib/screener/stock-screener-priority-filters";
+import { useStockScreenerPriorityMode } from "@/lib/hooks/use-stock-screener-priority-mode";
 import { useSelectedTradingDate } from "@/lib/hooks/use-selected-trading-date";
 import { useScreenerQuery, isScreenerInitialLoading } from "@/lib/hooks/use-screener-query";
+import {
+  buildStockScreenerUniverse,
+  formatStockUniverseDebugLine,
+} from "@/lib/screener/stock-universe-filter";
 
 function StocksEmptyPanel({
   title,
@@ -50,7 +70,14 @@ function StocksEmptyPanel({
 export function StocksScreenerPage() {
   const [hideIlliquid, setHideIlliquid] = React.useState(true);
   const [search, setSearch] = React.useState("");
-  const [focusedTicker, setFocusedTicker] = React.useState<string | null>(null);
+  const [selectedTicker, setSelectedTicker] = React.useState<string | null>(null);
+  const [scrollToTicker, setScrollToTicker] = React.useState<string | null>(null);
+  const [quickFilter, setQuickFilter] = React.useState<StockQuickFilter>("all");
+  const [priorityMode, setPriorityMode] = useStockScreenerPriorityMode();
+  const searchParams = useSearchParams();
+  const showGateDebug = isMarketPriorityDebugVisible(
+    searchParams.get(MARKET_PRIORITY_DEBUG_QUERY_PARAM),
+  );
   const [sort, setSort] = React.useState<{ key: TableSortKey; dir: TableSortDir }>({
     key: "trades",
     dir: "desc",
@@ -59,7 +86,12 @@ export function StocksScreenerPage() {
   const stocksQuery = useScreenerQuery("stock", tradingDate.apiDateParam);
   const isInitialLoading = isScreenerInitialLoading(stocksQuery);
 
-  const stockUniverse = stocksQuery.data?.rows ?? [];
+  const apiRows = stocksQuery.data?.rows ?? [];
+
+  /** Single filter pass — all blocks on /screener/stocks read stockRows from here. */
+  const screenerUniverse = React.useMemo(() => buildStockScreenerUniverse(apiRows), [apiRows]);
+  const stockRows = screenerUniverse.stockRows;
+
   const status = stocksQuery.data?.status;
   const diagnostics = stocksQuery.data?.diagnostics;
   const benchmarks = stocksQuery.data?.benchmarks ?? [];
@@ -67,22 +99,88 @@ export function StocksScreenerPage() {
     benchmarks.find((b) => b.code === "IMOEX2") ?? benchmarks.find((b) => b.code === "IMOEX") ?? benchmarks[0] ?? null;
 
   const radarModel = React.useMemo(
-    () => buildStocksRadarModel(stockUniverse, primaryBenchmark),
-    [stockUniverse, primaryBenchmark],
+    () =>
+      buildStocksRadarModel(stockRows, primaryBenchmark, {
+        universePreFiltered: true,
+        filterAudit: screenerUniverse.audit,
+        sourceRawCount: screenerUniverse.rawCount,
+      }),
+    [stockRows, primaryBenchmark, screenerUniverse.audit, screenerUniverse.rawCount],
   );
+
+  const marketPriority = React.useMemo(
+    () =>
+      stockRows.length > 0
+        ? computeMarketPriority<ScreenerRow>(stockRows, {
+            mode: priorityMode,
+            maxLiquidity: 10,
+            maxVolatility: 8,
+            variant: "stock-live-v0",
+          })
+        : null,
+    [stockRows, priorityMode],
+  );
+
+  const priorityFilterSets = React.useMemo(
+    () => buildPriorityFilterSets(marketPriority),
+    [marketPriority],
+  );
+
+  const focusCount = marketPriority?.focusInPlayLeaders.length ?? 0;
+  const candidatesCount = marketPriority?.stats.inPlayCandidates ?? priorityFilterSets.inPlayCandidates.size;
+
+  const gateDebugStats =
+    showGateDebug && marketPriority && !isInitialLoading
+      ? {
+          mode: marketPriority.stats.mode,
+          total: marketPriority.stats.total,
+          eligible: marketPriority.stats.eligible,
+          tradableCount: marketPriority.stats.tradableCount,
+          rangeSignalCount: marketPriority.stats.rangeSignalCount,
+          moveSignalCount: marketPriority.stats.moveSignalCount,
+          participationSignalCount: marketPriority.stats.participationSignalCount,
+          inPlayCandidates: marketPriority.stats.inPlayCandidates,
+          finalInPlayCount: marketPriority.stats.finalInPlayCount,
+          focusFinal: marketPriority.stats.focusFinal,
+          confirmedActivityCount: marketPriority.stats.confirmedActivityCount,
+          confirmedRangeCount: marketPriority.stats.confirmedRangeCount,
+          fallbackOnlyRejected: marketPriority.stats.fallbackOnlyRejected,
+        }
+      : null;
 
   const universeCount = radarModel.diagnostics.universeCount;
 
   const filteredRows = React.useMemo(() => {
     let rows = applyIlliquidFilter(radarModel.normalizedRows, hideIlliquid);
     rows = searchRadarRows(rows, search);
+
+    const bucketSet = getQuickFilterSet(quickFilter, priorityFilterSets);
+    if (bucketSet) {
+      rows = rows.filter((row) => bucketSet.has(row.ticker));
+    }
+
     return rows;
-  }, [radarModel.normalizedRows, hideIlliquid, search]);
+  }, [radarModel.normalizedRows, hideIlliquid, search, quickFilter, priorityFilterSets]);
 
   const visibleRows = React.useMemo(
     () => sortRadarRows(filteredRows, sort.key, sort.dir),
     [filteredRows, sort],
   );
+
+  const quickFilterEmpty =
+    quickFilter !== "all" && filteredRows.length === 0
+      ? STOCK_QUICK_FILTER_EMPTY[quickFilter]
+      : null;
+
+  const focusCandidatesDebugLine =
+    showGateDebug && marketPriority && !isInitialLoading
+      ? formatFocusCandidatesDebugLine(focusCount, candidatesCount)
+      : null;
+
+  const universeDebugLine =
+    showGateDebug && screenerUniverse.rawCount > 0
+      ? formatStockUniverseDebugLine(screenerUniverse)
+      : null;
 
   const emptyState = resolveScreenerEmptyState({
     isLoading: isInitialLoading,
@@ -90,23 +188,54 @@ export function StocksScreenerPage() {
     status,
     diagnostics,
     visibleCount: visibleRows.length,
-    apiRowCount: stockUniverse.length,
+    apiRowCount: stockRows.length,
     hideIlliquid,
     historicalEmpty: status?.historicalEmpty === true,
   });
 
+  const tableEmptyTitle = quickFilterEmpty?.title ?? emptyState?.title ?? "Фильтр пуст";
+  const tableEmptyText = quickFilterEmpty?.text ?? emptyState?.text;
+
   const hasLiveRadar =
-    !isInitialLoading && stockUniverse.length > 0 && status?.source === "moex" && !status.isDemo;
+    !isInitialLoading && stockRows.length > 0 && status?.source === "moex" && !status.isDemo;
 
   const hasFallbackRadar =
     !isInitialLoading &&
-    stockUniverse.length > 0 &&
+    stockRows.length > 0 &&
     (status?.isDemo === true || status?.source === "fallback" || status?.source === "demo");
 
   const showRadar = hasLiveRadar || hasFallbackRadar;
 
-  function handleRowClick(ticker: string) {
-    setFocusedTicker((prev) => (prev === ticker ? null : ticker));
+  const handleScrollToTickerDone = React.useCallback(() => {
+    setScrollToTicker(null);
+  }, []);
+
+  function handleCommandBarTickerClick(ticker: string) {
+    const bucketSet = getQuickFilterSet(quickFilter, priorityFilterSets);
+    if (bucketSet && !bucketSet.has(ticker)) {
+      setQuickFilter("all");
+    }
+    setSelectedTicker(ticker);
+    setScrollToTicker(ticker);
+  }
+
+  function handleTableRowClick(ticker: string) {
+    setSelectedTicker((prev) => (prev === ticker ? null : ticker));
+  }
+
+  function clearSelection() {
+    setSelectedTicker(null);
+    setScrollToTicker(null);
+  }
+
+  function handleQuickFilterChange(next: StockQuickFilter) {
+    setQuickFilter(next);
+    if (selectedTicker) {
+      const bucketSet = getQuickFilterSet(next, priorityFilterSets);
+      if (bucketSet && !bucketSet.has(selectedTicker)) {
+        clearSelection();
+      }
+    }
   }
 
   return (
@@ -140,17 +269,43 @@ export function StocksScreenerPage() {
             isLoading={isInitialLoading}
           />
 
-          <StocksLeaderStrip
-            liquidity={radarModel.liquidityLeaders}
-            inPlay={radarModel.inPlayLeaders}
-            inGameUniverseCount={radarModel.inGameUniverseCount}
-            volatility={radarModel.volatilityLeaders}
-            activeTicker={focusedTicker}
-            onClick={handleRowClick}
+          {universeDebugLine ? (
+            <p
+              className="px-0.5 font-mono text-[9px] tabular-nums text-lab-text-dim"
+              title="Stock-only universe filter (dev or ?debugPriority=1)"
+            >
+              {universeDebugLine}
+            </p>
+          ) : null}
+
+          {focusCandidatesDebugLine ? (
+            <p
+              className="px-0.5 font-mono text-[9px] tabular-nums text-cyan-400/70"
+              title="In Play Focus vs Candidates (dev or ?debugPriority=1)"
+            >
+              {focusCandidatesDebugLine}
+            </p>
+          ) : null}
+
+          <StockScreenerCommandBar
+            priority={marketPriority}
+            mode={priorityMode}
+            onModeChange={setPriorityMode}
+            gateDebugStats={gateDebugStats}
+            selectedTicker={selectedTicker}
+            onTickerClick={handleCommandBarTickerClick}
+            onClearSelection={clearSelection}
+            isLoading={isInitialLoading}
           />
 
           <div className="space-y-1 border-t border-white/[0.05] pt-1">
             <div className="flex flex-wrap items-center gap-2">
+              <StockScreenerQuickFilters
+                value={quickFilter}
+                onChange={handleQuickFilterChange}
+                sets={priorityFilterSets}
+              />
+
               <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-white/10 px-1.5 py-0.5 text-[9px] text-lab-text-main">
                 <input
                   type="checkbox"
@@ -166,12 +321,6 @@ export function StocksScreenerPage() {
                 Показано {visibleRows.length} из {universeCount}
               </span>
 
-              {radarModel.inGameUniverseCount > 0 ? (
-                <span className="font-mono text-[9px] tabular-nums text-lab-text-dim/80">
-                  В игре: {radarModel.inGameUniverseCount}
-                </span>
-              ) : null}
-
               <input
                 type="search"
                 value={search}
@@ -183,10 +332,13 @@ export function StocksScreenerPage() {
 
             <StocksRadarTable
               rows={visibleRows}
-              highlightedTicker={focusedTicker}
-              onClick={handleRowClick}
-              emptyTitle={emptyState?.title ?? "Фильтр пуст"}
-              emptyText={emptyState?.text}
+              highlightedTicker={selectedTicker}
+              scrollToTicker={scrollToTicker}
+              onScrollToTickerDone={handleScrollToTickerDone}
+              priorityFilterSets={priorityFilterSets}
+              onClick={handleTableRowClick}
+              emptyTitle={tableEmptyTitle}
+              emptyText={tableEmptyText}
               sort={sort}
               onSortChange={setSort}
             />
@@ -198,7 +350,8 @@ export function StocksScreenerPage() {
         <ScreenerDevDebugPanel
           endpoint={`/api/screener?assetClass=stock${tradingDate.apiDateParam ? `&date=${tradingDate.apiDateParam}` : ""}`}
           response={stocksQuery.data}
-          rowsBeforeFilter={stockUniverse.length}
+          rowsBeforeFilter={screenerUniverse.rawCount}
+          stockOnlyCount={screenerUniverse.stockCount}
           rowsAfterFilter={visibleRows.length}
           breadthAudit={radarModel.diagnostics}
           errorMessage={stocksQuery.error instanceof Error ? stocksQuery.error.message : null}

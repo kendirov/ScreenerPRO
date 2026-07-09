@@ -69,6 +69,8 @@ export const marketSnapshotSchema = z.object({
   stockActivityClass: stockActivityClassSchema,
   tradingStatus: tradingStatusSchema,
   lotSize: z.number().nullable(),
+  /** MOEX ISS SECTYPE on shares board (1=common, 2=preferred, J=ETF, …). Optional enrich. */
+  moexSecType: z.string().nullable().optional(),
   updatedAt: z.string(),
   sourceUpdatedAt: z.string().nullable(),
 });
