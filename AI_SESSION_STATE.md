@@ -4,6 +4,18 @@
 
 ## Текущая задача
 
+### AI Data Terminal v1 — 2026-07-21
+
+**Сделано:** `/screener/ai-data`, тихая нижняя ссылка `AI Data`, API preview/export, typed adapter, AI Text/JSONL/JSON/CSV, Clipboard fallback, localStorage-настройки и verify script.
+
+**Ограничение:** v1 экспортирует честный live snapshot. Durable 5m history, hourly past sessions и deep candles не реализованы без DB/cron и обозначены как `null`/v2, без фальшивой персистентности.
+
+**Проверки:** `pnpm -C frontend verify:ai-data-export` и production build прошли. Общий lint уже падает на существующих ошибках вне AI Data.
+
+**Следующий шаг:** подключить durable snapshots и staged deep candles после появления production storage/cron.
+
+---
+
 **Strategy Scanner v0 — round-levels small universe** (2026-07-08)
 
 - Цель: первый batch scan `round-levels` по small universe 5–10 тикеров
@@ -42,6 +54,7 @@
 | Маршрут | Роль | Статус |
 |---------|------|--------|
 | `/screener/strategies` | **Strategy Lab** | v0 demo-ready |
+| `/screener/ai-data` | **AI Data Terminal** | v1 live export |
 | `/screener/stocks` | Главный рабочий скринер | стабилен |
 | `/screener/futures` | Фьючерсы | не трогать |
 

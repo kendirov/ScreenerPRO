@@ -302,6 +302,16 @@ export function AppSidebar() {
             variant="draft"
           />
         ) : null}
+        <Link
+          href="/screener/ai-data"
+          className={cn(
+            "mt-1 flex rounded px-2 py-1 font-mono text-[9px] tracking-wide text-zinc-700 transition-colors hover:text-zinc-300",
+            isExpanded ? "justify-start" : "justify-center",
+          )}
+          title="AI Data"
+        >
+          {isExpanded ? "AI Data" : "AI"}
+        </Link>
       </div>
 
       {isExpanded ? (
