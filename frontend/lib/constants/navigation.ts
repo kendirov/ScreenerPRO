@@ -102,6 +102,14 @@ export const sidebarDraftsNav: SidebarNavGroup = {
   title: "Черновики",
   items: [
     {
+      href: "/lab/stocks-command-center",
+      label: "Акции · Command Center",
+      icon: FlaskConical,
+      visibility: "visible",
+      draftBadge: "wip",
+      promotionTarget: "main",
+    },
+    {
       href: "/lab/market-map",
       label: "Карта рынка",
       icon: Map,
