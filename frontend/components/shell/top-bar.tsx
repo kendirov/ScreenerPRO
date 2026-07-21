@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LabGlassPanel } from "@/components/ui/lab-glass-panel";
 
 /** Минимальная верхняя панель публичного терминала — без auth и уведомлений. */
@@ -13,14 +14,11 @@ export function TopBar() {
         <span className="hidden text-[10px] uppercase tracking-[0.14em] text-lab-dim sm:inline">
           Лаборатория рынка
         </span>
-        <Link
-          href="/screener/ai-data"
-          className="font-mono text-[9px] tracking-wide text-zinc-700 transition-colors hover:text-zinc-300 lg:hidden"
-        >
-          AI Data
-        </Link>
+        <div className="flex items-center gap-2 font-mono text-[9px] tracking-wide text-zinc-700 lg:hidden">
+          <Link href="/lab" className="transition-colors hover:text-zinc-300">Черновики</Link>
+          <Link href="/screener/ai-data" className="transition-colors hover:text-zinc-300">AI Data</Link>
+        </div>
       </div>
     </LabGlassPanel>
   );
 }
-import Link from "next/link";

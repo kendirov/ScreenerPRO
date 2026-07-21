@@ -11,7 +11,7 @@ import {
   type DraftNavBadge,
   type SidebarNavItem,
 } from "@/lib/constants/navigation";
-import { isDraftNavVisible, isDevLabLinkVisible } from "@/lib/constants/nav-visibility";
+import { isDraftNavVisible } from "@/lib/constants/nav-visibility";
 import { cn } from "@/lib/utils/cn";
 
 const SIDEBAR_PINNED_KEY = "screenerpro.sidebar.pinned";
@@ -280,18 +280,22 @@ export function AppSidebar() {
       </nav>
 
       <div className="ui-mode-hide-focus mt-1.5 shrink-0 border-t border-lab-border-violet/20 pt-1.5">
-        {isDevLabLinkVisible() ? (
+        <div className={cn("flex", isExpanded ? "items-center gap-2 px-2" : "flex-col items-center gap-1")}>
           <Link
             href="/lab"
-            className={cn(
-              "mb-1 flex w-full items-center rounded-md border border-dashed border-lab-border-violet/30 px-2 py-1.5 text-[10px] text-lab-dim transition hover:border-lab-violet/40 hover:text-lab-violet",
-              isExpanded ? "justify-start gap-1.5" : "justify-center",
-            )}
-            title="Каталог экспериментальных lab-страниц (только dev)"
+            className="font-mono text-[9px] tracking-wide text-zinc-700 transition-colors hover:text-zinc-300"
+            title="Черновики"
           >
-            <span className="font-mono uppercase tracking-wide">{isExpanded ? "Черновики /lab" : "LAB"}</span>
+            {isExpanded ? "Черновики" : "LAB"}
           </Link>
-        ) : null}
+          <Link
+            href="/screener/ai-data"
+            className="font-mono text-[9px] tracking-wide text-zinc-700 transition-colors hover:text-zinc-300"
+            title="AI Data"
+          >
+            {isExpanded ? "AI Data" : "AI"}
+          </Link>
+        </div>
         {isDraftNavVisible() ? (
           <SidebarNavGroup
             title={sidebarDraftsNav.title}
@@ -302,16 +306,6 @@ export function AppSidebar() {
             variant="draft"
           />
         ) : null}
-        <Link
-          href="/screener/ai-data"
-          className={cn(
-            "mt-1 flex rounded px-2 py-1 font-mono text-[9px] tracking-wide text-zinc-700 transition-colors hover:text-zinc-300",
-            isExpanded ? "justify-start" : "justify-center",
-          )}
-          title="AI Data"
-        >
-          {isExpanded ? "AI Data" : "AI"}
-        </Link>
       </div>
 
       {isExpanded ? (
