@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { FuturesScreenerPage } from "@/components/screener/futures-screener-page";
+import { DataState } from "@/components/shell/page-primitives";
 
 export default function ScreenerFuturesPage() {
   return (
-    <Suspense fallback={<div className="rounded-xl border border-white/5 bg-slate-950/45 p-4 text-sm text-slate-400">Загрузка фьючерсов...</div>}>
+    <Suspense fallback={<DataState kind="loading" title="Загрузка скринера фьючерсов…" />}>
       <FuturesScreenerPage />
     </Suspense>
   );

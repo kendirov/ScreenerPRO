@@ -21,6 +21,8 @@ import {
   TrendingUp,
   UserCircle2,
   Zap,
+  Network,
+  FlaskConical,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -36,6 +38,12 @@ export type DraftNavBadge = "lab" | "draft" | "soon" | "wip";
 export type NavPromotionTarget = "materials" | "main";
 
 export type SidebarNavItem = {
+  id?: string;
+  shortLabel?: string;
+  group?: "product" | "validated" | "research" | "service";
+  mobile?: boolean;
+  exact?: boolean;
+  featureFlag?: string;
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
@@ -71,10 +79,12 @@ export const sidebarMainNavGroups: SidebarNavGroup[] = [
     id: "market",
     title: "Рынок",
     items: [
-      { href: "/screener", label: "Рынок", icon: ChartColumn, visibility: "visible" },
-      { href: "/screener/stocks", label: "Акции", icon: CandlestickChart, visibility: "visible" },
-      { href: "/screener/futures", label: "Фьючерсы", icon: ChartCandlestick, visibility: "visible" },
-      { href: "/screener/strategies", label: "Стратегии", icon: Layers, visibility: "visible" },
+      { id: "home", shortLabel: "Главная", href: "/screener", label: "Главная", icon: ChartColumn, visibility: "visible", group: "product", mobile: true, exact: true },
+      { id: "stocks", shortLabel: "Акции", href: "/screener/stocks", label: "Акции", icon: CandlestickChart, visibility: "visible", group: "product", mobile: true },
+      { id: "futures", shortLabel: "Фьючерсы", href: "/screener/futures", label: "Фьючерсы", icon: ChartCandlestick, visibility: "visible", group: "product", mobile: true },
+      { id: "strategies", shortLabel: "Стратегии", href: "/screener/strategies", label: "Стратегии", icon: Layers, visibility: "visible", group: "product", mobile: true },
+      { id: "relationships", shortLabel: "Связи", href: "/relationships", label: "Связи", icon: Network, visibility: "visible", group: "product" },
+      { id: "academy", shortLabel: "Академия", href: "/academy", label: "Академия", icon: BookOpen, visibility: "visible", group: "validated" },
     ],
   },
 ];
@@ -219,6 +229,18 @@ export const sidebarNavConfig: SidebarNavItem[] = [
 ];
 
 export const sidebarNav = sidebarNavConfig.filter((item) => item.visibility === "visible");
+
+export function isNavItemActive(pathname: string, href: string): boolean {
+  return href === "/screener" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Five max mobile destinations; service routes belong in the More sheet. */
+export const mobilePrimaryNav = sidebarMainNavGroups[0].items.filter((item) => item.mobile).map((item) => ({ ...item, id: item.id ?? item.href, shortLabel: item.shortLabel ?? item.label }));
+export const mobileMoreNav = [
+  sidebarMainNavGroups[0].items.find((item) => item.id === "relationships")!,
+  sidebarMainNavGroups[0].items.find((item) => item.id === "academy")!,
+  { id: "drafts", shortLabel: "LAB", href: "/lab", label: "Черновики", icon: FlaskConical, visibility: "visible" as const, group: "service" as const },
+].filter(Boolean);
 
 /** Пункты блока «Черновики» (обратная совместимость с labNavConfig) */
 export const labNavConfig: SidebarNavItem[] = sidebarDraftsNav.items.filter(
