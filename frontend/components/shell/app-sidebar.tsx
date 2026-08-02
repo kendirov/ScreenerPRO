@@ -6,6 +6,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
   DRAFT_BADGE_LABELS,
+  TOP_LEVEL_AVAILABILITY_LABELS,
+  isNavItemActive,
   sidebarDraftsNav,
   sidebarMainNavGroups,
   type DraftNavBadge,
@@ -14,12 +16,7 @@ import {
 import { isAiDataNavVisible, isDraftNavVisible, isDevLabLinkVisible } from "@/lib/constants/nav-visibility";
 import { cn } from "@/lib/utils/cn";
 
-const SIDEBAR_PINNED_KEY = "screenerpro.sidebar.pinned";
-
-function isNavItemActive(pathname: string, href: string): boolean {
-  if (href === "/screener") return pathname === href;
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+const SIDEBAR_PINNED_KEY = "trading-os.sidebar.expanded";
 
 function DraftBadge({
   badge,
@@ -116,6 +113,14 @@ function SidebarNavLink({
         <span className="flex min-w-0 flex-1 items-center gap-1">
           <span className="truncate">{item.label}</span>
           {isDraft && badge ? <DraftBadge badge={badge} /> : null}
+          {!isDraft && item.availability && item.availability !== "ready" ? (
+            <span
+              className="ml-auto shrink-0 rounded border border-lab-border px-1 py-px font-mono text-[6px] uppercase tracking-wide text-lab-dim"
+              title={TOP_LEVEL_AVAILABILITY_LABELS[item.availability]}
+            >
+              {item.availability === "draft" ? "черн." : item.availability === "bridge" ? "мост" : "в раб."}
+            </span>
+          ) : null}
         </span>
       ) : isDraft && badge ? (
         <span className="absolute -right-0.5 -top-0.5">
@@ -214,8 +219,8 @@ export function AppSidebar() {
     () => false,
   );
   const [isExpanded, setIsExpanded] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(SIDEBAR_PINNED_KEY) === "1";
+    if (typeof window === "undefined") return true;
+    return window.localStorage.getItem(SIDEBAR_PINNED_KEY) !== "0";
   });
 
   useEffect(() => {
@@ -225,7 +230,7 @@ export function AppSidebar() {
 
   if (!hydrated) {
     return (
-      <aside className="hidden w-[68px] shrink-0 border-r border-lab-border bg-lab-surface/90 lab-depth-10 backdrop-blur-2xl lg:flex lg:flex-col" />
+      <aside className="hidden w-[220px] shrink-0 border-r border-lab-border bg-lab-surface/90 lab-depth-10 backdrop-blur-2xl lg:flex lg:flex-col" />
     );
   }
 
@@ -246,7 +251,7 @@ export function AppSidebar() {
         >
           {isExpanded ? (
             <span className="text-[10px] font-bold uppercase leading-tight tracking-[0.12em] text-lab-text">
-              ScreenerPRO
+              Trading OS
             </span>
           ) : (
             <span className="text-[11px] font-bold tracking-wider text-lab-cyan">SP</span>
