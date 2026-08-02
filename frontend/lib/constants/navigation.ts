@@ -3,7 +3,6 @@ import {
   BookOpen,
   CalendarDays,
   CandlestickChart,
-  ChartCandlestick,
   ChartColumn,
   CircleDollarSign,
   Cog,
@@ -20,8 +19,6 @@ import {
   Percent,
   TrendingUp,
   UserCircle2,
-  Zap,
-  Network,
   FlaskConical,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -36,6 +33,15 @@ export type DraftNavBadge = "lab" | "draft" | "soon" | "wip";
 
 /** Куда перенести пункт после «выпуска» из черновиков */
 export type NavPromotionTarget = "materials" | "main";
+export type TradingOsSectionId =
+  | "today"
+  | "market"
+  | "laboratory"
+  | "news"
+  | "studio"
+  | "knowledge"
+  | "management";
+export type TopLevelAvailability = "ready" | "draft" | "bridge" | "wip";
 
 export type SidebarNavItem = {
   id?: string;
@@ -43,6 +49,8 @@ export type SidebarNavItem = {
   group?: "product" | "validated" | "research" | "service";
   mobile?: boolean;
   exact?: boolean;
+  section?: TradingOsSectionId;
+  availability?: TopLevelAvailability;
   featureFlag?: string;
   href: string;
   label: string;
@@ -70,24 +78,36 @@ export type SidebarNavGroup = {
   items: SidebarNavItem[];
 };
 
-/**
- * Публичное ядро — «Лаборатория рынка»: Рынок / Акции / Фьючерсы / Стратегии.
- * Материалы, академия и lab-черновики — в hiddenDevNavConfig (прямые URL работают).
- */
+/** Верхний уровень Trading OS. Рабочие экраны рынка остаются на прежних URL. */
 export const sidebarMainNavGroups: SidebarNavGroup[] = [
   {
-    id: "market",
-    title: "Рынок",
+    id: "trading-os",
+    title: "Trading OS",
     items: [
-      { id: "home", shortLabel: "Главная", href: "/screener", label: "Главная", icon: ChartColumn, visibility: "visible", group: "product", mobile: true, exact: true },
-      { id: "stocks", shortLabel: "Акции", href: "/screener/stocks", label: "Акции", icon: CandlestickChart, visibility: "visible", group: "product", mobile: true },
-      { id: "futures", shortLabel: "Фьючерсы", href: "/screener/futures", label: "Фьючерсы", icon: ChartCandlestick, visibility: "visible", group: "product", mobile: true },
-      { id: "strategies", shortLabel: "Стратегии", href: "/screener/strategies", label: "Стратегии", icon: Layers, visibility: "visible", group: "product", mobile: true },
-      { id: "relationships", shortLabel: "Связи", href: "/relationships", label: "Связи", icon: Network, visibility: "visible", group: "product" },
-      { id: "academy", shortLabel: "Академия", href: "/academy", label: "Академия", icon: BookOpen, visibility: "visible", group: "validated" },
+      { id: "today", section: "today", availability: "ready", shortLabel: "Сегодня", href: "/screener", label: "Сегодня", icon: ChartColumn, visibility: "visible", group: "product", mobile: true, exact: true },
+      { id: "market", section: "market", availability: "ready", shortLabel: "Рынок", href: "/screener/stocks", label: "Рынок", icon: CandlestickChart, visibility: "visible", group: "product", mobile: true },
+      { id: "laboratory", section: "laboratory", availability: "ready", shortLabel: "Лаборатория", href: "/relationships", label: "Лаборатория", icon: FlaskConical, visibility: "visible", group: "research", mobile: true },
+      { id: "news", section: "news", availability: "draft", shortLabel: "Новости", href: "/lab/event-reactions", label: "Новости", icon: Newspaper, visibility: "visible", group: "research" },
+      { id: "studio", section: "studio", availability: "bridge", shortLabel: "Студия", href: "/studio", label: "Студия", icon: NotebookPen, visibility: "visible", group: "service" },
+      { id: "knowledge", section: "knowledge", availability: "ready", shortLabel: "Знания", href: "/materials", label: "Знания", icon: Library, visibility: "visible", group: "validated" },
+      { id: "management", section: "management", availability: "wip", shortLabel: "Управление", href: "/app/settings", label: "Управление", icon: Cog, visibility: "visible", group: "service" },
     ],
   },
 ];
+
+export const marketContextNav = [
+  { href: "/screener", label: "Пульт" },
+  { href: "/screener/stocks", label: "Акции" },
+  { href: "/screener/futures", label: "Фьючерсы" },
+  { href: "/screener/strategies", label: "Стратегии" },
+] as const;
+
+export const TOP_LEVEL_AVAILABILITY_LABELS: Record<TopLevelAvailability, string> = {
+  ready: "готово",
+  draft: "черновик",
+  bridge: "мост",
+  wip: "в разработке",
+};
 
 /**
  * Черновики — экспериментальные lab-страницы до «выпуска» в материалы или основное меню.
@@ -196,14 +216,6 @@ export const sidebarDraftsNav: SidebarNavGroup = {
       draftBadge: "lab",
       promotionTarget: "materials",
     },
-    {
-      href: "/lab/event-reactions",
-      label: "Реакция на новости",
-      icon: Zap,
-      visibility: "visible",
-      draftBadge: "draft",
-      promotionTarget: "materials",
-    },
   ],
 };
 
@@ -239,16 +251,35 @@ export const sidebarNavConfig: SidebarNavItem[] = [
 export const sidebarNav = sidebarNavConfig.filter((item) => item.visibility === "visible");
 
 export function isNavItemActive(pathname: string, href: string): boolean {
+  const topLevelItem = sidebarMainNavGroups[0].items.find((item) => item.href === href);
+  if (topLevelItem?.section) {
+    return resolveTradingOsSection(pathname) === topLevelItem.section;
+  }
   return href === "/screener" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Five max mobile destinations; service routes belong in the More sheet. */
+export function resolveTradingOsSection(pathname: string): TradingOsSectionId {
+  if (pathname === "/screener") return "today";
+  if (
+    pathname.startsWith("/screener/stocks") ||
+    pathname.startsWith("/screener/futures") ||
+    pathname.startsWith("/screener/strategies") ||
+    pathname.startsWith("/stocks/") ||
+    pathname.startsWith("/futures/")
+  ) return "market";
+  if (pathname.startsWith("/lab/event-reactions")) return "news";
+  if (pathname.startsWith("/relationships") || pathname.startsWith("/lab")) return "laboratory";
+  if (pathname.startsWith("/studio")) return "studio";
+  if (pathname.startsWith("/materials") || pathname.startsWith("/academy")) return "knowledge";
+  if (pathname.startsWith("/app/") || pathname.startsWith("/login") || pathname.startsWith("/pricing")) return "management";
+  return "today";
+}
+
+/** Три главных мобильных назначения; остальные разделы открываются через «Ещё». */
 export const mobilePrimaryNav = sidebarMainNavGroups[0].items.filter((item) => item.mobile).map((item) => ({ ...item, id: item.id ?? item.href, shortLabel: item.shortLabel ?? item.label }));
-export const mobileMoreNav = [
-  sidebarMainNavGroups[0].items.find((item) => item.id === "relationships")!,
-  sidebarMainNavGroups[0].items.find((item) => item.id === "academy")!,
-  { id: "drafts", shortLabel: "LAB", href: "/lab", label: "Черновики", icon: FlaskConical, visibility: "visible" as const, group: "service" as const },
-].filter(Boolean);
+export const mobileMoreNav = sidebarMainNavGroups[0].items
+  .filter((item) => !item.mobile)
+  .map((item) => ({ ...item, id: item.id ?? item.href, shortLabel: item.shortLabel ?? item.label }));
 
 /** Пункты блока «Черновики» (обратная совместимость с labNavConfig) */
 export const labNavConfig: SidebarNavItem[] = sidebarDraftsNav.items.filter(
