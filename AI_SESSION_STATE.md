@@ -4,48 +4,78 @@
 
 ## Текущая задача
 
-**Strategy Scanner v0 — round-levels small universe** (2026-07-08)
+**Bitget Global Screener + Interactive Market Map** (2026-08-11)
 
-- Цель: первый batch scan `round-levels` по small universe 5–10 тикеров
-- `frontend/lib/strategies/strategy-runner-types.ts` ✅
-- `frontend/lib/strategies/round-levels-strategy-runner.ts` ✅
-- `frontend/scripts/scan-round-levels-strategy.ts` ✅
-- JSON snapshot: `frontend/public/strategy-runs/round-levels-stocks-5m-10d.json` ✅
-- verify script: `frontend/scripts/verify-strategy-scan-result.ts` ✅
-- docs updated: `docs/STRATEGY_SCANNER_ARCHITECTURE.md`, `AI_SESSION_STATE.md` ✅
+Цель: собрать внутри ScreenerPRO единый Bitget Trading OS: карта продукта объясняет механику, скринер сокращает universe до рабочих инструментов, затем подключаются Stock+, options, TradFi и private account analytics.
 
-**Фокус:** `/screener/strategies` only
+Реализовано в ветке `feature/bitget-global-screener-v1`:
 
-**Изменённые файлы:**
-- `frontend/lib/screener/strategies/strategy-candle-range.ts` (new)
-- `frontend/lib/server/services/strategy-candles.ts` (new)
-- `frontend/lib/hooks/use-strategy-candles.ts`
-- `frontend/lib/screener/strategies/strategy-candles.ts`
-- `frontend/app/api/screener/stocks/candles/route.ts`
-- `frontend/components/screener/strategies/strategy-lab-page.tsx`
-- `frontend/components/strategies/strategy-candlestick-chart.tsx`
-- `frontend/scripts/verify-strategy-candle-range.ts` (new)
-- `frontend/package.json`
-- `docs/STRATEGY_LAB_TARGET.md`
-- `docs/ROUND_LEVELS_STRATEGY.md`
-- `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
-- `frontend/lib/strategies/strategy-runner-types.ts`
-- `frontend/lib/strategies/round-levels-strategy-runner.ts`
-- `frontend/scripts/scan-round-levels-strategy.ts`
-- `frontend/scripts/verify-strategy-scan-result.ts`
-- `AI_SESSION_STATE.md`
+- `/screener/bitget` — Terminal v3;
+- `/screener/bitget/map` — интерактивная карта рынков;
+- public UTA v3 adapter;
+- cached 7d enrichment;
+- TradingView inline workspace;
+- docs/BITGET_GLOBAL_SCREENER.md.
+
+### Карта рынков — текущая логика
+
+Presentation Blueprint: **объект → устройство → механика → источник движения → риск → действие**.
+
+Три мира:
+
+1. Крипто: Spot → Margin / Futures.
+2. Акции / ETF: U.S. underlying → Stock+ / rToken / Stock Perp / Options.
+3. Глобальные рынки: external commodity/FX/index market → Commodity Perps / TradFi-CFD.
+
+UX:
+
+- центральный смысл — сначала определить механику сделки;
+- линии всегда заканчиваются в реальном узле;
+- hover подсвечивает маршрут;
+- click фиксирует продукт;
+- понятные русские названия идут раньше API-терминов;
+- зелёный status = данные уже есть в скринере;
+- amber status = продукт есть у Bitget, но наш adapter ещё следующий;
+- у фондовой ветви отдельный rail «один underlying — четыре торговые оболочки»;
+- live-группы показывают count и крупнейших представителей по turnover;
+- отсутствующие adapters не маскируются нулями.
+
+### Terminal v3
+
+- весь подключённый public universe;
+- crypto spot/futures, margin, rToken, stock perps, commodity perps;
+- единый page scroll;
+- briefing strip;
+- 24h + cached 7d;
+- turnover, spread, funding;
+- ticker copy;
+- inline TradingView chart;
+- favorite + notes;
+- local persistence.
+
+### Следующие adapters
+
+1. Stock+ securities/quotes.
+2. U.S. options: underlyings → expiries → option chains.
+3. TradFi / CFD.
+4. Historical feature cache: RSI/ATR/relative volume/momentum.
+5. Private Classic v2 account analytics.
+6. Cloud user workspace.
+
+Секреты Bitget не попадают в браузер или GitHub. Торговых POST-запросов нет.
 
 ---
 
-## Фокус продукта
+## Что нельзя сломать
 
-| Маршрут | Роль | Статус |
-|---------|------|--------|
-| `/screener/strategies` | **Strategy Lab** | v0 demo-ready |
-| `/screener/stocks` | Главный рабочий скринер | стабилен |
-| `/screener/futures` | Фьючерсы | не трогать |
-
-Документация: `docs/STRATEGY_LAB_TARGET.md`, `docs/ROUND_LEVELS_STRATEGY.md`, `docs/ZIGZAG_LITE_STRATEGY_LAYER.md`, `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
+| Маршрут | Статус |
+|---------|--------|
+| `/screener` | стабилен |
+| `/screener/stocks` | стабилен |
+| `/screener/futures` | стабилен |
+| `/screener/strategies` | Strategy Scanner v0 demo-ready |
+| `/screener/bitget` | Bitget Terminal v3 |
+| `/screener/bitget/map` | Interactive Bitget Market Map |
 
 ---
 
@@ -53,12 +83,9 @@
 
 ```bash
 pnpm -C frontend dev:live
-pnpm -C frontend verify:round-levels
-pnpm -C frontend verify:round-buffer-direction
-pnpm -C frontend verify:zigzag-lite
-pnpm -C frontend strategy:scan:round-levels:v0
-pnpm -C frontend verify:strategy-scan-result
 pnpm -C frontend build
 ```
 
-**Debug URL:** `/screener/strategies?screenerChartDebug=1`
+**Bitget terminal:** `/screener/bitget`
+
+**Bitget map:** `/screener/bitget/map`
