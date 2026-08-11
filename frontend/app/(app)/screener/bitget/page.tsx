@@ -1,5 +1,5 @@
-import { BitgetGlobalScreener } from "@/components/bitget/bitget-global-screener";
+import { BitgetTerminalV2 } from "@/components/bitget/bitget-terminal-v2";
 
 export default function BitgetScreenerPage() {
-  return <BitgetGlobalScreener />;
+  return <BitgetTerminalV2 />;
 }
