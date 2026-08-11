@@ -4,9 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeDollarSign,
   Bitcoin,
-  Boxes,
   ChartCandlestick,
   CircleDollarSign,
   Coins,
@@ -34,16 +32,19 @@ type NodeId =
   | "COMMODITY_PERPS"
   | "TRADFI";
 
+type WorldId = "CRYPTO" | "STOCKS" | "GLOBAL";
+
 type Detail = {
   eyebrow: string;
   title: string;
+  plain: string;
   thesis: string;
   ownership: string;
   mechanics: string;
   driver: string;
   risk: string;
   check: string;
-  family: string[];
+  family: string;
   group?: BitgetMarketGroup;
   screenerGroup?: BitgetMarketGroup;
   apiStatus: string;
@@ -51,384 +52,638 @@ type Detail = {
 
 const DETAILS: Record<NodeId, Detail> = {
   CRYPTO_SPOT: {
-    eyebrow: "БАЗОВЫЙ КРИПТО-РЫНОК",
-    title: "Крипто · Спот",
-    thesis: "Торгуется сам токен. Это базовая цена, относительно которой читаются маржинальные позиции и крипто-деривативы.",
+    eyebrow: "КРИПТО · БАЗОВЫЙ РЫНОК",
+    title: "Крипто-спот",
+    plain: "Вы торгуете сам токен.",
+    thesis: "Это базовый крипторынок. Именно с ним логично сравнивать margin и крипто-фьючерсы.",
     ownership: "Сам криптоактив",
-    mechanics: "Покупка / продажа за собственные средства. Нет perpetual funding и нет обязательного займа.",
-    driver: "Спрос и предложение в спотовом рынке, общий крипто-режим, новости и ликвидность конкретного токена.",
-    risk: "Движение цены самого актива и ликвидность пары.",
-    check: "Оборот → спред → локальный ход → связь с BTC/ETH и сектором.",
-    family: ["Спот", "→", "Margin", "→", "Futures"],
+    mechanics: "Покупка и продажа за собственные средства. Обязательного займа и perpetual funding здесь нет.",
+    driver: "Спрос и предложение в токене, общий режим крипторынка, новости, ликвидность и сектор.",
+    risk: "Цена самого актива и ликвидность конкретной пары.",
+    check: "Оборот → спред → локальный ход → BTC/ETH → сектор.",
+    family: "Спот → Margin или Futures",
     group: "CRYPTO_SPOT",
     screenerGroup: "CRYPTO_SPOT",
-    apiStatus: "Живые инструменты доступны в public UTA v3.",
+    apiStatus: "Живые инструменты уже подключены к скринеру через public UTA v3.",
   },
   MARGIN: {
-    eyebrow: "СПОТ + ЗАЁМ",
-    title: "Маржинальный спот",
-    thesis: "Предмет сделки остаётся спотовым активом, но позиция меняется: в ней появляется долг, стоимость займа и риск ликвидации.",
-    ownership: "Спот-позиция с заёмной частью",
-    mechanics: "Собственные средства + займ. Возможны увеличенный long и заёмный short.",
-    driver: "Тот же базовый спотовый рынок, но результат позиции дополнительно зависит от плеча и стоимости займа.",
-    risk: "Ликвидация, процент за займ и рост риска при увеличении позиции.",
-    check: "Сначала спот → затем доступный займ → плечо → цена ликвидации.",
-    family: ["Спот", "+", "Заём", "=", "Margin"],
+    eyebrow: "КРИПТО · СПОТ С ЗАЙМОМ",
+    title: "Маржинальная крипта",
+    plain: "Токен тот же, но в позиции появляется долг.",
+    thesis: "Margin не превращает токен во фьючерс: предмет сделки остаётся спотовым, но меняется риск позиции.",
+    ownership: "Спотовая позиция + заём",
+    mechanics: "Собственные средства и заём. Возможны увеличенный long и заёмный short; начисляется стоимость займа.",
+    driver: "Тот же spot-рынок, но результат позиции дополнительно зависит от плеча и стоимости займа.",
+    risk: "Ликвидация, проценты за заём и ускоренный убыток из-за плеча.",
+    check: "Сначала spot → доступный заём → плечо → цена ликвидации.",
+    family: "Спот + заём = Margin",
     group: "MARGIN",
     screenerGroup: "MARGIN",
-    apiStatus: "Список margin-инструментов доступен в public UTA v3.",
+    apiStatus: "Список margin-инструментов уже подключён к скринеру.",
   },
   CRYPTO_FUTURES: {
-    eyebrow: "КРИПТО-ДЕРИВАТИВ",
-    title: "Крипто · Фьючерсы",
-    thesis: "Торгуется контракт на движение цены, а не сам токен. Здесь появляются long/short, маржа, open interest и funding для perpetual.",
-    ownership: "Производный контракт",
-    mechanics: "Маржа + плечо + long/short. Perpetual не имеет обычной даты экспирации и использует funding-механику.",
-    driver: "Базовый крипто-рынок + позиционирование в деривативах + ликвидации + изменение OI.",
-    risk: "Ликвидация, экстремальный funding и расхождение дериватива с базовым рынком.",
-    check: "Цена → OI → funding → спред → где находится инициатива: spot или futures.",
-    family: ["Токен", "→", "Perpetual", "→", "Funding / OI"],
+    eyebrow: "КРИПТО · ПРОИЗВОДНЫЙ КОНТРАКТ",
+    title: "Крипто-фьючерсы",
+    plain: "Вы торгуете контракт на движение цены, а не сам токен.",
+    thesis: "Здесь появляются long/short, маржа и open interest. Для perpetual добавляется funding; у delivery-контрактов есть дата расчёта.",
+    ownership: "Фьючерсный контракт",
+    mechanics: "Long/short + маржа + плечо. Perpetual без обычной экспирации использует funding; delivery имеет дату расчёта.",
+    driver: "Spot + позиционирование во фьючерсах + OI + ликвидации + basis.",
+    risk: "Ликвидация, funding у perpetual и расхождение контракта с базовым рынком.",
+    check: "Spot → basis → OI → funding → спред → ликвидации.",
+    family: "Токен → Futures → OI / Funding / Expiry",
     group: "CRYPTO_FUTURES",
     screenerGroup: "CRYPTO_FUTURES",
-    apiStatus: "USDT/USDC/COIN futures читаются bulk-запросами public UTA v3.",
+    apiStatus: "USDT/USDC/COIN futures уже входят в рабочий universe скринера.",
   },
   US_STOCK: {
-    eyebrow: "БАЗОВЫЙ ФОНДОВЫЙ UNDERLYING",
-    title: "Акция / ETF США",
-    thesis: "Один и тот же underlying на Bitget может появляться в разных торговых оболочках. Их нельзя считать одним инструментом только потому, что на экране написан тот же тикер.",
+    eyebrow: "АКЦИИ / ETF · БАЗОВЫЙ UNDERLYING",
+    title: "Акция или ETF США",
+    plain: "Один тикер может существовать на Bitget в нескольких совершенно разных формах.",
+    thesis: "SPY, NVDA или AAPL сначала нужно определить как underlying, а уже потом понять: Stock+, rToken, perpetual или option.",
     ownership: "Базовый фондовый актив",
-    mechanics: "Underlying формирует экономический смысл семейства: Stock+, rToken, perpetual и option chain.",
-    driver: "Основная фондовая сессия, корпоративные события, сектор, индекс и поток в базовом активе.",
-    risk: "Перенести механику одной оболочки на другую и потерять различия во времени, ликвидности и риске.",
-    check: "Сначала определить underlying → затем конкретную торговую оболочку → только потом читать её стакан и риск.",
-    family: ["US Stock / ETF", "→", "Stock+ · rToken · Perp · Options"],
-    apiStatus: "Это смысловой центр семейства; отдельные продукты Bitget используют разные API-контуры.",
+    mechanics: "Underlying задаёт экономический смысл, но каждая торговая оболочка имеет свои права, риск и режим торговли.",
+    driver: "Компания/ETF, американская сессия, отчёты, новости, сектор и индекс.",
+    risk: "Перепутать торговые оболочки и применить к ним одинаковую механику.",
+    check: "Underlying → конкретный продукт → торговые часы → ликвидность → риск продукта.",
+    family: "US Stock / ETF → Stock+ · rToken · Perpetual · Options",
+    apiStatus: "Это смысловой центр фондовой ветви. Данные разных оболочек приходят из разных API-контуров.",
   },
   RTOKEN_SPOT: {
-    eyebrow: "ТОКЕНИЗИРОВАННАЯ ФОНДОВАЯ ЭКСПОЗИЦИЯ",
-    title: "Акции · rToken",
-    thesis: "rToken связан с ценой фондового underlying, но живёт внутри крипто-инфраструктуры. В интерфейсе R отделяем от привычного тикера: R · SPY.",
+    eyebrow: "АКЦИИ / ETF · ТОКЕНИЗИРОВАННАЯ ЭКСПОЗИЦИЯ",
+    title: "rToken",
+    plain: "Это токенизированная фондовая экспозиция, а не брокерская акция Stock+.",
+    thesis: "rToken выпускается Reality и связан с американским stock/ETF underlying. В интерфейсе мы показываем R отдельно: R · SPY.",
     ownership: "Токенизированный продукт",
-    mechanics: "Spot-подобная торговля токеном, связанным с фондовым underlying. Это не то же самое, что Stock+ акция.",
-    driver: "Базовая акция/ETF + режим токенизированного рынка + ликвидность конкретного rToken.",
-    risk: "Риск underlying плюс особенности токенизированной оболочки и её торгового времени.",
-    check: "Underlying → время базового рынка → оборот rToken → спред → расхождение с фондовой ценой.",
-    family: ["US Stock / ETF", "→", "R", "·", "rToken"],
+    mechanics: "Торгуется ближе к spot-логике Bitget. Отражает фондовый underlying, но не является тем же продуктом, что Stock+.",
+    driver: "Базовая акция/ETF + состояние rToken-рынка + его собственная ликвидность.",
+    risk: "Underlying + ликвидность токена + особенности режима и прав токенизированного продукта.",
+    check: "Underlying → время рынка США → оборот rToken → спред → отклонение цены.",
+    family: "US Stock / ETF → R · rToken",
     group: "RTOKEN_SPOT",
     screenerGroup: "RTOKEN_SPOT",
-    apiStatus: "Reality/rToken размечаются через public UTA instruments.",
+    apiStatus: "rToken уже распознаются и сканируются в public universe.",
   },
   STOCK_PLUS: {
-    eyebrow: "БРОКЕРСКИЙ КОНТУР",
-    title: "Stock+ · Акции и ETF",
-    thesis: "Это отдельный фондовый продукт Bitget. Его нельзя смешивать в одну таблицу с rToken только из-за одинакового underlying.",
-    ownership: "Фондовая позиция через Stock+ контур",
-    mechanics: "Отдельная инфраструктура securities/Stock+ с собственным market-data и account API.",
-    driver: "Базовый американский рынок и события самого эмитента/ETF.",
-    risk: "Рыночный риск underlying, торговые часы, региональные ограничения и доступ к market data.",
-    check: "Статус сессии → котировка underlying → ликвидность → доступность продукта для аккаунта.",
-    family: ["US Stock / ETF", "→", "Stock+"],
-    apiStatus: "Отдельный signed Stock+ adapter — следующий слой проекта.",
+    eyebrow: "АКЦИИ / ETF · БРОКЕРСКИЙ КОНТУР",
+    title: "Stock+",
+    plain: "Это доступ к реальным акциям и ETF через securities-партнёров Bitget.",
+    thesis: "Stock+ использует обычные фондовые тикеры и предназначен для broker-style владения, а не для токенизированной spot-оболочки.",
+    ownership: "Реальная акция / ETF через Stock+",
+    mechanics: "Отдельный securities-контур Bitget с fractional shares, собственными market-data и account API.",
+    driver: "Основной рынок США, эмитент, отчёты, сектор и индекс.",
+    risk: "Рыночный риск underlying, режим торгов и региональная доступность продукта.",
+    check: "Сессия → котировка → ликвидность → корпоративные события → доступность аккаунту.",
+    family: "US Stock / ETF → Stock+",
+    apiStatus: "Продукт доступен на Bitget; наш Stock+ data-adapter ещё не подключён к скринеру.",
   },
   STOCK_PERPS: {
-    eyebrow: "ФОНДОВЫЙ PERPETUAL",
-    title: "Акции · Перпетуалы",
-    thesis: "Тот же фондовый тикер, но уже производный контракт: акция не принадлежит трейдеру, зато появляются плечо и funding-механика.",
+    eyebrow: "АКЦИИ / ETF · PERPETUAL",
+    title: "Фьючерсы на акции",
+    plain: "Это бессрочный производный контракт: акцией вы не владеете.",
+    thesis: "Stock perpetual позволяет long/short и плечо. Он следует за фондовым underlying, но живёт как дериватив Bitget.",
     ownership: "Бессрочный производный контракт",
-    mechanics: "Long/short + маржа + плечо + funding. Контракт следует за фондовым underlying.",
-    driver: "Underlying + деривативное позиционирование + состояние крипто-площадки вне основной фондовой сессии.",
-    risk: "Ликвидация, funding и отклонение perpetual от базового рынка.",
-    check: "Underlying → режим сессии → basis → funding → OI → локальный спред.",
-    family: ["US Stock / ETF", "→", "Perpetual", "→", "Funding / OI"],
+    mechanics: "Long/short + маржа + плечо + funding. У контракта нет обычной экспирации.",
+    driver: "Underlying + деривативное позиционирование + index/mark price + OI.",
+    risk: "Ликвидация, funding и отклонение perpetual от основного фондового рынка.",
+    check: "Underlying → сессия → basis → funding → OI → спред.",
+    family: "US Stock / ETF → Perpetual → Funding / OI",
     group: "STOCK_PERPS",
     screenerGroup: "STOCK_PERPS",
-    apiStatus: "Stock-type futures уже выделяются из public UTA universe.",
+    apiStatus: "Stock-type perpetuals уже выделяются из public UTA и работают в скринере.",
   },
   OPTIONS: {
-    eyebrow: "НЕЛИНЕЙНЫЙ ДЕРИВАТИВ",
+    eyebrow: "АКЦИИ / ETF · ОПЦИОНЫ",
     title: "Опционы США",
-    thesis: "Один underlying превращается в целое дерево контрактов: экспирация → страйк → call/put. Здесь уже недостаточно смотреть только направление цены.",
+    plain: "Это не один тикер, а целое дерево контрактов на один underlying.",
+    thesis: "Каждый контракт определяется underlying, экспирацией, страйком и типом call/put. Направления цены уже недостаточно.",
     ownership: "Опционный контракт",
-    mechanics: "Underlying → expiry → strike → call/put. Цена зависит не только от движения underlying, но и от времени и волатильности.",
-    driver: "Underlying, implied volatility, срок до экспирации и структура конкретной серии.",
-    risk: "Theta, изменение волатильности, Greeks и ликвидность отдельного страйка.",
-    check: "Событие → expiry → IV → strike → bid/ask → open interest/ликвидность серии.",
-    family: ["US Stock / ETF", "→", "Expiry", "→", "Strike", "→", "Call / Put"],
-    apiStatus: "Option chain живёт в отдельном signed Stock+ API и будет отдельным адаптером.",
+    mechanics: "Underlying → expiry → strike → call/put. Цена зависит от underlying, времени и implied volatility.",
+    driver: "Underlying + IV + срок до экспирации + структура конкретной серии.",
+    risk: "Theta, волатильность, Greeks и ликвидность выбранного страйка.",
+    check: "Событие → expiry → IV → strike → bid/ask → OI/ликвидность серии.",
+    family: "US Stock / ETF → Expiry → Strike → Call / Put",
+    apiStatus: "Bitget уже предлагает U.S. stock options; наш option-chain adapter ещё не подключён к скринеру.",
   },
   GLOBAL_MARKET: {
-    eyebrow: "БАЗОВЫЙ TRADFI-КОНТЕКСТ",
-    title: "Глобальный рынок",
-    thesis: "Золото, нефть, FX и индексы имеют собственный основной рынок. Производный инструмент на Bitget нужно читать вместе с его внешним поводырём.",
+    eyebrow: "ГЛОБАЛЬНЫЕ РЫНКИ · ИСТОЧНИК ЦЕНЫ",
+    title: "Товары, FX и индексы",
+    plain: "Цена рождается не только в локальном стакане Bitget.",
+    thesis: "Золото, нефть, валюты и индексы имеют собственные основные рынки. Bitget-инструмент нужно читать вместе с внешним underlying.",
     ownership: "Внешний базовый рынок",
-    mechanics: "Цена формируется не только внутри локального стакана Bitget; важна связь с основным рынком underlying.",
-    driver: "Макро, процентные ставки, товарные потоки, индексы и глобальные торговые сессии.",
-    risk: "Локальная ликвидность может обещать одно, а основной рынок уже двигаться в другую сторону.",
-    check: "Сначала внешний рынок → затем локальный контракт → потом спред/funding/реакция.",
-    family: ["Global underlying", "→", "Bitget derivative / CFD"],
-    apiStatus: "Смысловой центр для commodity-perps и TradFi/CFD.",
+    mechanics: "Локальный инструмент Bitget отражает или отслеживает внешний market/index source.",
+    driver: "Макро, ставки, товарные потоки, мировые сессии и основной рынок underlying.",
+    risk: "Локальный стакан может выглядеть сильным, когда внешний рынок уже движется против него.",
+    check: "Внешний рынок → сессия → локальный инструмент → спред/funding → реакция.",
+    family: "Global underlying → Bitget derivative / CFD",
+    apiStatus: "Это смысловой центр для commodity perpetuals и отдельного TradFi-контура.",
   },
   COMMODITY_PERPS: {
-    eyebrow: "ТОВАРНЫЙ ДЕРИВАТИВ",
-    title: "Товары · Перпетуалы",
-    thesis: "Металл или commodity торгуется как бессрочный дериватив. Локальный контракт нельзя читать в отрыве от основного рынка золота, нефти или другого underlying.",
+    eyebrow: "ГЛОБАЛЬНЫЕ РЫНКИ · ТОВАРНЫЕ PERPETUALS",
+    title: "Товарные perpetuals",
+    plain: "Золото, серебро, нефть или газ торгуются как дериватив Bitget.",
+    thesis: "Это USDT-M perpetuals без физической поставки. Основной внешний рынок остаётся важным источником движения.",
     ownership: "Производный контракт",
-    mechanics: "Perpetual + плечо + funding/OI там, где поля доступны.",
-    driver: "Глобальный commodity-underlying + макро + локальное позиционирование на Bitget.",
-    risk: "Ликвидация, разрыв торговых режимов и расхождение с внешним рынком.",
-    check: "Underlying → сессия → локальный оборот → спред → funding/OI.",
-    family: ["Gold / Oil / Commodity", "→", "Perpetual"],
+    mechanics: "USDT-M perpetual + маржа + плечо + funding; без обычной даты экспирации.",
+    driver: "Глобальный commodity market + макро + локальное позиционирование Bitget.",
+    risk: "Ликвидация, funding и расхождение локального контракта с внешней ценой.",
+    check: "Underlying → мировая сессия → оборот → спред → funding/OI.",
+    family: "Gold / Oil / Gas → Perpetual",
     group: "COMMODITY_PERPS",
     screenerGroup: "COMMODITY_PERPS",
-    apiStatus: "Metal/commodity futures уже классифицируются в public UTA universe.",
+    apiStatus: "Metal/commodity futures уже выделены в текущем public screener.",
   },
   TRADFI: {
-    eyebrow: "ОТДЕЛЬНЫЙ TRADFI-КОНТУР",
-    title: "Forex / Индексы / CFD",
-    thesis: "Это не ещё одна строка crypto-futures. Здесь свои символы, торговые часы, источники цены и спецификации инструмента.",
-    ownership: "CFD / TradFi-позиция",
-    mechanics: "Отдельный торговый контур с собственной спецификацией и расписанием.",
-    driver: "FX, индексы, металлы и другие глобальные рынки в их основных сессиях.",
-    risk: "Плечо, торговые часы, overnight/сессионные разрывы и спецификация конкретного CFD.",
-    check: "Что является underlying → какая сейчас сессия → спецификация → спред → риск позиции.",
-    family: ["FX / Index / Metal", "→", "TradFi CFD"],
-    apiStatus: "Будет отдельным TradFi adapter; не маскируем отсутствие данных под public UTA.",
+    eyebrow: "ГЛОБАЛЬНЫЕ РЫНКИ · TRADFI",
+    title: "Forex / индексы / CFD",
+    plain: "Это отдельный TradFi-контур, а не часть текущего crypto UTA universe.",
+    thesis: "FX, индексы и CFD имеют собственные символы, часы и спецификации. Их нельзя подмешивать в crypto/futures таблицу без отдельного адаптера.",
+    ownership: "Контракт / CFD на внешний рынок",
+    mechanics: "Отдельные спецификации, trading hours и правила маржи в зависимости от продукта.",
+    driver: "Основной FX/index market + макро + мировые сессии.",
+    risk: "Плечо, гэпы между режимами и неверная интерпретация локальной котировки без внешнего контекста.",
+    check: "Underlying → trading hours → спецификация → ликвидность → локальный спред.",
+    family: "FX / Index → TradFi / CFD",
+    apiStatus: "Раздел есть у Bitget; наш TradFi adapter будет подключён отдельным слоем.",
   },
 };
 
-const nodeTone: Record<NodeId, string> = {
-  CRYPTO_SPOT: "cyan",
-  MARGIN: "amber",
-  CRYPTO_FUTURES: "violet",
-  US_STOCK: "slate",
-  RTOKEN_SPOT: "cyan",
-  STOCK_PLUS: "emerald",
-  STOCK_PERPS: "violet",
-  OPTIONS: "amber",
-  GLOBAL_MARKET: "slate",
-  COMMODITY_PERPS: "cyan",
-  TRADFI: "emerald",
+const WORLD_LABELS: Record<WorldId, { title: string; subtitle: string }> = {
+  CRYPTO: { title: "КРИПТО", subtitle: "сам токен → заём → дериватив" },
+  STOCKS: { title: "АКЦИИ / ETF", subtitle: "один underlying → четыре торговые оболочки" },
+  GLOBAL: { title: "ГЛОБАЛЬНЫЕ РЫНКИ", subtitle: "товары · FX · индексы" },
 };
 
-function toneClasses(id: NodeId, active: boolean) {
-  const tone = nodeTone[id];
-  if (tone === "amber") return active ? "border-amber-300/60 bg-amber-300/12 text-amber-100 shadow-[0_0_45px_rgba(251,191,36,0.12)]" : "border-amber-300/20 bg-amber-300/[0.035] text-amber-100/75 hover:border-amber-300/40";
-  if (tone === "violet") return active ? "border-violet-300/60 bg-violet-300/12 text-violet-100 shadow-[0_0_45px_rgba(167,139,250,0.12)]" : "border-violet-300/20 bg-violet-300/[0.035] text-violet-100/75 hover:border-violet-300/40";
-  if (tone === "emerald") return active ? "border-emerald-300/60 bg-emerald-300/12 text-emerald-100 shadow-[0_0_45px_rgba(52,211,153,0.12)]" : "border-emerald-300/20 bg-emerald-300/[0.035] text-emerald-100/75 hover:border-emerald-300/40";
-  if (tone === "slate") return active ? "border-slate-200/45 bg-white/[0.09] text-slate-100 shadow-[0_0_45px_rgba(148,163,184,0.08)]" : "border-white/12 bg-white/[0.025] text-slate-300 hover:border-white/25";
-  return active ? "border-cyan-300/60 bg-cyan-300/12 text-cyan-100 shadow-[0_0_45px_rgba(34,211,238,0.12)]" : "border-cyan-300/20 bg-cyan-300/[0.035] text-cyan-100/75 hover:border-cyan-300/40";
+function worldOf(id: NodeId): WorldId {
+  if (["CRYPTO_SPOT", "MARGIN", "CRYPTO_FUTURES"].includes(id)) return "CRYPTO";
+  if (["US_STOCK", "RTOKEN_SPOT", "STOCK_PLUS", "STOCK_PERPS", "OPTIONS"].includes(id)) return "STOCKS";
+  return "GLOBAL";
 }
 
-function MapNode({ id, label, icon, selected, onSelect, liveCount }: { id: NodeId; label: string; icon: React.ReactNode; selected: NodeId; onSelect: (id: NodeId) => void; liveCount?: number }) {
-  const active = selected === id;
+function nodeInRoute(node: NodeId, focus: NodeId): boolean {
+  if (node === focus) return true;
+  if ((focus === "MARGIN" || focus === "CRYPTO_FUTURES") && node === "CRYPTO_SPOT") return true;
+  if (["RTOKEN_SPOT", "STOCK_PLUS", "STOCK_PERPS", "OPTIONS"].includes(focus) && node === "US_STOCK") return true;
+  if ((focus === "COMMODITY_PERPS" || focus === "TRADFI") && node === "GLOBAL_MARKET") return true;
+  return false;
+}
+
+function Glyph({ id }: { id: NodeId }) {
+  const cls = "h-4 w-4";
+  switch (id) {
+    case "CRYPTO_SPOT": return <Bitcoin className={cls} />;
+    case "MARGIN": return <Scale className={cls} />;
+    case "CRYPTO_FUTURES": return <ChartCandlestick className={cls} />;
+    case "US_STOCK": return <TrendingUp className={cls} />;
+    case "RTOKEN_SPOT": return <Gem className={cls} />;
+    case "STOCK_PLUS": return <Landmark className={cls} />;
+    case "STOCK_PERPS": return <CircleDollarSign className={cls} />;
+    case "OPTIONS": return <Layers3 className={cls} />;
+    case "GLOBAL_MARKET": return <Orbit className={cls} />;
+    case "COMMODITY_PERPS": return <Coins className={cls} />;
+    case "TRADFI": return <CircleDollarSign className={cls} />;
+  }
+}
+
+function nodeSymbol(id: NodeId): string {
+  switch (id) {
+    case "CRYPTO_SPOT": return "₿";
+    case "MARGIN": return "M";
+    case "CRYPTO_FUTURES": return "∞";
+    case "US_STOCK": return "US";
+    case "RTOKEN_SPOT": return "R";
+    case "STOCK_PLUS": return "+";
+    case "STOCK_PERPS": return "∞";
+    case "OPTIONS": return "C/P";
+    case "GLOBAL_MARKET": return "GL";
+    case "COMMODITY_PERPS": return "Au";
+    case "TRADFI": return "FX";
+  }
+}
+
+function nodeShort(id: NodeId): string {
+  switch (id) {
+    case "CRYPTO_SPOT": return "сам токен";
+    case "MARGIN": return "spot + заём";
+    case "CRYPTO_FUTURES": return "long/short · OI · funding";
+    case "US_STOCK": return "базовая акция / ETF";
+    case "RTOKEN_SPOT": return "токенизированная экспозиция";
+    case "STOCK_PLUS": return "реальная акция / ETF";
+    case "STOCK_PERPS": return "бессрочный дериватив";
+    case "OPTIONS": return "expiry · strike · call/put";
+    case "GLOBAL_MARKET": return "внешний источник цены";
+    case "COMMODITY_PERPS": return "золото · нефть · газ";
+    case "TRADFI": return "FX · индексы · CFD";
+  }
+}
+
+function compact(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  if (abs >= 1e12) return `${(value / 1e12).toFixed(2)} трлн`;
+  if (abs >= 1e9) return `${(value / 1e9).toFixed(2)} млрд`;
+  if (abs >= 1e6) return `${(value / 1e6).toFixed(1)} млн`;
+  if (abs >= 1e3) return `${(value / 1e3).toFixed(1)} тыс.`;
+  return value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+}
+
+function price(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const digits = value >= 1000 ? 2 : value >= 1 ? 4 : 7;
+  return value.toLocaleString("ru-RU", { maximumFractionDigits: digits });
+}
+
+function pct(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function tone(value: number | null): string {
+  if (value == null || value === 0) return "text-slate-500";
+  return value > 0 ? "text-emerald-300" : "text-rose-300";
+}
+
+function statusFor(id: NodeId, counts: Partial<Record<BitgetMarketGroup, number>>): { text: string; mode: "live" | "pending" | "context" } {
+  const group = DETAILS[id].group;
+  if (group) return { text: `${counts[group] ?? 0} в скринере`, mode: "live" };
+  if (id === "STOCK_PLUS") return { text: "10 000+ на Bitget · адаптер скоро", mode: "pending" };
+  if (id === "OPTIONS") return { text: "2 800+ опционов · адаптер скоро", mode: "pending" };
+  if (id === "TRADFI") return { text: "отдельный контур · адаптер скоро", mode: "pending" };
+  return { text: id === "US_STOCK" ? "базовый underlying" : "источник внешней цены", mode: "context" };
+}
+
+function RoutePath({ d, active }: { d: string; active: boolean }) {
+  return (
+    <path
+      d={d}
+      fill="none"
+      strokeWidth={active ? 1.9 : 1.1}
+      strokeLinecap="round"
+      className={`transition-all duration-300 ${active ? "stroke-cyan-300/75 [filter:drop-shadow(0_0_7px_rgba(34,211,238,0.55))]" : "stroke-slate-700/45"}`}
+    />
+  );
+}
+
+function ProductNode({
+  id,
+  x,
+  y,
+  width,
+  selected,
+  hovered,
+  counts,
+  onSelect,
+  onHover,
+}: {
+  id: NodeId;
+  x: number;
+  y: number;
+  width: number;
+  selected: NodeId;
+  hovered: NodeId | null;
+  counts: Partial<Record<BitgetMarketGroup, number>>;
+  onSelect: (id: NodeId) => void;
+  onHover: (id: NodeId | null) => void;
+}) {
+  const focus = hovered ?? selected;
+  const active = nodeInRoute(id, focus);
+  const ownSelected = selected === id;
+  const status = statusFor(id, counts);
+  const hoverWorld = hovered ? worldOf(hovered) : null;
+  const dim = hoverWorld != null && hoverWorld !== worldOf(id);
+
   return (
     <button
       type="button"
       onClick={() => onSelect(id)}
-      className={`group relative flex min-h-20 w-full items-center gap-3 rounded-[999px] border px-4 py-3 text-left transition duration-300 hover:-translate-y-0.5 ${toneClasses(id, active)}`}
+      onMouseEnter={() => onHover(id)}
+      onMouseLeave={() => onHover(null)}
+      style={{ left: `${x}%`, top: `${y}%`, width }}
+      className={`absolute -translate-x-1/2 -translate-y-1/2 text-left transition-all duration-300 ${dim ? "opacity-30" : "opacity-100"}`}
     >
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition ${active ? "border-current/35 bg-black/20" : "border-current/20 bg-black/10"}`}>{icon}</span>
-      <span className="min-w-0">
-        <span className="block text-[11px] font-semibold leading-tight">{label}</span>
-        <span className="mt-1 block font-mono text-[9px] text-slate-500">{liveCount != null ? `${liveCount} инструментов` : DETAILS[id].apiStatus}</span>
-      </span>
-      <span className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full ${active ? "bg-current shadow-[0_0_14px_currentColor]" : "bg-current/35"}`} />
+      <div className={`group relative rounded-[26px] px-3 py-3 transition-all duration-300 ${ownSelected ? "bg-cyan-400/[0.085] ring-1 ring-cyan-300/35 shadow-[0_0_36px_rgba(34,211,238,0.10)]" : active ? "bg-white/[0.035] ring-1 ring-white/[0.10]" : "bg-slate-950/40 ring-1 ring-white/[0.055] hover:bg-white/[0.035] hover:ring-white/[0.13]"}`}>
+        <div className="flex items-start gap-2.5">
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border font-mono text-[10px] ${ownSelected ? "border-cyan-300/40 bg-cyan-400/[0.11] text-cyan-100" : active ? "border-cyan-400/20 bg-cyan-400/[0.045] text-cyan-300" : "border-white/[0.08] bg-white/[0.02] text-slate-500"}`}>
+            {nodeSymbol(id)}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className={`shrink-0 ${active ? "text-cyan-300/80" : "text-slate-700"}`}><Glyph id={id} /></span>
+              <p className={`truncate text-[11px] font-semibold ${ownSelected ? "text-white" : "text-slate-200"}`}>{DETAILS[id].title}</p>
+            </div>
+            <p className="mt-1 line-clamp-2 text-[9px] leading-relaxed text-slate-500">{nodeShort(id)}</p>
+            <div className="mt-2 flex items-center gap-1.5 text-[8px]">
+              <span className={`h-1.5 w-1.5 rounded-full ${status.mode === "live" ? "bg-emerald-400" : status.mode === "pending" ? "bg-amber-400" : "bg-slate-600"}`} />
+              <span className={status.mode === "live" ? "text-emerald-300/70" : status.mode === "pending" ? "text-amber-300/65" : "text-slate-600"}>{status.text}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </button>
   );
 }
 
-function countByGroup(data: BitgetScreenerResponse | null, group: BitgetMarketGroup) {
-  return (data?.rows ?? []).filter((row) => row.status.toLowerCase() === "online" && row.marketGroup === group).length;
+function WorldStage({
+  world,
+  selected,
+  hovered,
+  counts,
+  onSelect,
+  onHover,
+}: {
+  world: WorldId;
+  selected: NodeId;
+  hovered: NodeId | null;
+  counts: Partial<Record<BitgetMarketGroup, number>>;
+  onSelect: (id: NodeId) => void;
+  onHover: (id: NodeId | null) => void;
+}) {
+  const focus = hovered ?? selected;
+  const hoverWorld = hovered ? worldOf(hovered) : null;
+  const dim = hoverWorld != null && hoverWorld !== world;
+
+  return (
+    <div className={`relative min-h-[390px] transition-opacity duration-300 ${dim ? "opacity-35" : "opacity-100"}`}>
+      <div className="mb-1 text-center">
+        <p className="text-[9px] font-semibold tracking-[0.22em] text-slate-300">{WORLD_LABELS[world].title}</p>
+        <p className="mt-1 text-[9px] text-slate-600">{WORLD_LABELS[world].subtitle}</p>
+      </div>
+      <div className="relative mx-auto h-[350px] max-w-[430px]">
+        <svg viewBox="0 0 400 330" className="absolute inset-0 h-full w-full" aria-hidden="true">
+          {world === "CRYPTO" ? (
+            <>
+              <RoutePath d="M200 72 C200 115 200 135 200 158" active={worldOf(focus) === "CRYPTO"} />
+              <RoutePath d="M200 172 C168 201 137 224 92 260" active={focus === "MARGIN"} />
+              <RoutePath d="M200 172 C232 201 263 224 308 260" active={focus === "CRYPTO_FUTURES"} />
+            </>
+          ) : null}
+          {world === "STOCKS" ? (
+            <>
+              <RoutePath d="M200 78 C161 115 122 142 84 182" active={focus === "RTOKEN_SPOT" || focus === "US_STOCK"} />
+              <RoutePath d="M200 78 C239 115 278 142 316 182" active={focus === "STOCK_PLUS" || focus === "US_STOCK"} />
+              <RoutePath d="M200 78 C158 162 122 215 86 276" active={focus === "STOCK_PERPS" || focus === "US_STOCK"} />
+              <RoutePath d="M200 78 C242 162 278 215 314 276" active={focus === "OPTIONS" || focus === "US_STOCK"} />
+            </>
+          ) : null}
+          {world === "GLOBAL" ? (
+            <>
+              <RoutePath d="M200 80 C170 136 138 194 108 252" active={focus === "COMMODITY_PERPS" || focus === "GLOBAL_MARKET"} />
+              <RoutePath d="M200 80 C230 136 262 194 292 252" active={focus === "TRADFI" || focus === "GLOBAL_MARKET"} />
+            </>
+          ) : null}
+        </svg>
+
+        {world === "CRYPTO" ? (
+          <>
+            <ProductNode id="CRYPTO_SPOT" x={50} y={28} width={220} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="MARGIN" x={24} y={77} width={170} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="CRYPTO_FUTURES" x={76} y={77} width={180} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+          </>
+        ) : null}
+
+        {world === "STOCKS" ? (
+          <>
+            <ProductNode id="US_STOCK" x={50} y={27} width={230} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="RTOKEN_SPOT" x={22} y={55} width={172} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="STOCK_PLUS" x={78} y={55} width={176} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="STOCK_PERPS" x={22} y={83} width={176} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="OPTIONS" x={78} y={83} width={176} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+          </>
+        ) : null}
+
+        {world === "GLOBAL" ? (
+          <>
+            <ProductNode id="GLOBAL_MARKET" x={50} y={29} width={230} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="COMMODITY_PERPS" x={27} y={75} width={180} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+            <ProductNode id="TRADFI" x={73} y={75} width={180} selected={selected} hovered={hovered} counts={counts} onSelect={onSelect} onHover={onHover} />
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
-function topRows(data: BitgetScreenerResponse | null, group?: BitgetMarketGroup): BitgetScreenerRow[] {
-  if (!group) return [];
-  return (data?.rows ?? [])
-    .filter((row) => row.status.toLowerCase() === "online" && row.marketGroup === group && row.turnover24h != null)
-    .slice()
-    .sort((a, b) => (b.turnover24h ?? 0) - (a.turnover24h ?? 0))
-    .slice(0, 4);
-}
+function StockFamilyRail({ selected, onSelect }: { selected: NodeId; onSelect: (id: NodeId) => void }) {
+  const items: Array<{ id: NodeId; symbol: string; title: string; line: string; status: string }> = [
+    { id: "STOCK_PLUS", symbol: "+", title: "Stock+", line: "реальная акция / ETF", status: "владение" },
+    { id: "RTOKEN_SPOT", symbol: "R", title: "rToken", line: "токенизированная экспозиция", status: "spot-like" },
+    { id: "STOCK_PERPS", symbol: "∞", title: "Stock Perp", line: "бессрочный дериватив", status: "funding + плечо" },
+    { id: "OPTIONS", symbol: "C/P", title: "Options", line: "expiry + strike + call/put", status: "нелинейный риск" },
+  ];
 
-function displayTicker(row: BitgetScreenerRow) {
-  const base = (row.baseCoin || row.symbol).toUpperCase();
-  return row.isReality && base.startsWith("R") && base.length > 1 ? base.slice(1) : base;
-}
+  return (
+    <section className="relative overflow-hidden rounded-[30px] border border-white/[0.055] bg-slate-950/35 px-5 py-5">
+      <div className="absolute left-1/2 top-0 h-32 w-96 -translate-x-1/2 rounded-full bg-violet-500/[0.06] blur-3xl" />
+      <div className="relative">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[9px] tracking-[0.2em] text-violet-300/60">СЕМЕЙСТВО ОДНОГО ТИКЕРА</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-100">SPY / NVDA / AAPL — сначала выберите торговую оболочку</h2>
+            <p className="mt-1 max-w-3xl text-[10px] leading-relaxed text-slate-500">Одинаковый underlying не означает одинаковую сделку. Владение, funding, экспирация и права меняются вместе с продуктом.</p>
+          </div>
+          <button type="button" onClick={() => onSelect("US_STOCK")} className="text-[9px] text-cyan-300/70 hover:text-cyan-200">Показать базовый underlying →</button>
+        </div>
 
-function compact(value: number | null) {
-  if (value == null || !Number.isFinite(value)) return "—";
-  if (Math.abs(value) >= 1e9) return `$${(value / 1e9).toFixed(1)} млрд`;
-  if (Math.abs(value) >= 1e6) return `$${(value / 1e6).toFixed(1)} млн`;
-  if (Math.abs(value) >= 1e3) return `$${(value / 1e3).toFixed(0)} тыс.`;
-  return `$${value.toFixed(0)}`;
-}
+        <div className="relative mt-7 hidden lg:block">
+          <div className="absolute left-[12.5%] right-[12.5%] top-7 h-px bg-gradient-to-r from-transparent via-violet-400/25 to-transparent" />
+          <div className="grid grid-cols-4 gap-4">
+            {items.map((item) => {
+              const active = selected === item.id;
+              return (
+                <button key={item.id} type="button" onClick={() => onSelect(item.id)} className="group relative text-center">
+                  <div className={`relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border font-mono text-[11px] transition ${active ? "border-cyan-300/45 bg-cyan-400/[0.10] text-cyan-100 shadow-[0_0_30px_rgba(34,211,238,0.12)]" : "border-violet-300/15 bg-slate-950 text-violet-200/70 group-hover:border-violet-300/30"}`}>{item.symbol}</div>
+                  <p className="mt-3 text-[11px] font-semibold text-slate-200">{item.title}</p>
+                  <p className="mt-1 text-[9px] text-slate-500">{item.line}</p>
+                  <p className="mt-1 font-mono text-[8px] text-slate-700">{item.status}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-function RouteWord({ children, strong }: { children: React.ReactNode; strong?: boolean }) {
-  return <span className={strong ? "text-slate-100" : "text-slate-500"}>{children}</span>;
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:hidden">
+          {items.map((item) => (
+            <button key={item.id} type="button" onClick={() => onSelect(item.id)} className={`rounded-2xl border px-3 py-3 text-left ${selected === item.id ? "border-cyan-300/30 bg-cyan-400/[0.06]" : "border-white/[0.06] bg-white/[0.015]"}`}>
+              <div className="flex items-center gap-2"><span className="font-mono text-cyan-300">{item.symbol}</span><span className="text-[11px] font-semibold text-slate-200">{item.title}</span></div>
+              <p className="mt-1 text-[9px] text-slate-500">{item.line}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function BitgetMarketMap() {
-  const [selected, setSelected] = React.useState<NodeId>("CRYPTO_SPOT");
   const [data, setData] = React.useState<BitgetScreenerResponse | null>(null);
+  const [selected, setSelected] = React.useState<NodeId>("CRYPTO_SPOT");
+  const [hovered, setHovered] = React.useState<NodeId | null>(null);
 
   React.useEffect(() => {
-    let cancelled = false;
+    const params = new URLSearchParams(window.location.search);
+    const node = params.get("node") as NodeId | null;
+    if (node && node in DETAILS) setSelected(node);
     void fetch("/api/bitget/screener", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload: BitgetScreenerResponse | null) => { if (!cancelled && payload) setData(payload); })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload: BitgetScreenerResponse | null) => { if (payload) setData(payload); })
       .catch(() => undefined);
-    return () => { cancelled = true; };
   }, []);
 
-  const detail = DETAILS[selected];
-  const leaders = React.useMemo(() => topRows(data, detail.group), [data, detail.group]);
+  const selectNode = React.useCallback((id: NodeId) => {
+    setSelected(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set("node", id);
+    window.history.replaceState({}, "", url);
+  }, []);
 
-  const select = (id: NodeId) => setSelected(id);
+  const online = React.useMemo(
+    () => (data?.rows ?? []).filter((row) => row.status.toLowerCase() === "online"),
+    [data],
+  );
+
+  const counts = React.useMemo(() => {
+    const result: Partial<Record<BitgetMarketGroup, number>> = {};
+    for (const row of online) result[row.marketGroup] = (result[row.marketGroup] ?? 0) + 1;
+    return result;
+  }, [online]);
+
+  const detail = DETAILS[selected];
+  const representatives = React.useMemo(() => {
+    if (!detail.group) return [] as BitgetScreenerRow[];
+    return online
+      .filter((row) => row.marketGroup === detail.group && row.turnover24h != null)
+      .slice()
+      .sort((a, b) => (b.turnover24h ?? 0) - (a.turnover24h ?? 0))
+      .slice(0, 5);
+  }, [detail.group, online]);
+
+  const screenerHref = detail.screenerGroup ? `/screener/bitget?group=${detail.screenerGroup}` : null;
+  const stockRelated = worldOf(selected) === "STOCKS";
 
   return (
-    <div className="mx-auto w-full max-w-[1680px] space-y-7 pb-16">
-      <header className="relative overflow-hidden border-b border-white/[0.06] pb-6 pt-1">
-        <div className="pointer-events-none absolute -left-16 top-0 h-40 w-80 rounded-full bg-cyan-400/[0.035] blur-3xl" />
-        <Link href="/screener/bitget" className="relative text-[10px] text-cyan-300/70 transition hover:text-cyan-200">← Вернуться в скринер</Link>
-        <div className="relative mt-4 max-w-5xl">
-          <p className="text-[9px] uppercase tracking-[0.28em] text-cyan-300/50">BITGET · КАРТА МЕХАНИКИ</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-100 md:text-3xl">Один тикер может означать совершенно разные сделки</h1>
-          <p className="mt-2 max-w-4xl text-[12px] leading-6 text-slate-500">Карта построена не как меню биржи. Сначала определяем, <span className="text-slate-300">что именно принадлежит трейдеру</span>, затем — где формируется цена, где появляется заём, где начинается дериватив и какие данные нужно проверить перед входом.</p>
+    <div className="mx-auto w-full max-w-[1680px] space-y-5 pb-12">
+      <header className="border-b border-white/[0.055] pb-5">
+        <Link href="/screener/bitget" className="text-[9px] text-cyan-300/70 hover:text-cyan-200">← Вернуться в скринер</Link>
+        <p className="mt-4 text-[9px] tracking-[0.24em] text-cyan-300/50">BITGET · КАРТА МЕХАНИКИ</p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="max-w-5xl text-2xl font-semibold tracking-tight text-slate-50 md:text-3xl">Сначала определите, что именно вы торгуете</h1>
+            <p className="mt-2 max-w-4xl text-[11px] leading-relaxed text-slate-500">Один аккаунт Bitget объединяет разные рынки. На карте мы идём от базового актива к конкретной торговой механике — и только потом к скринеру.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-[8px] text-slate-600">
+            <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> уже в скринере</span>
+            <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> продукт есть, адаптер следующий</span>
+          </div>
         </div>
       </header>
 
-      <section className="relative min-h-[760px] overflow-hidden rounded-[36px] border border-white/[0.055] bg-[radial-gradient(circle_at_50%_8%,rgba(34,211,238,0.075),transparent_26%),linear-gradient(180deg,rgba(3,8,22,0.78),rgba(2,6,17,0.42))] px-4 py-7 md:px-7 lg:px-10">
-        <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] [background-size:44px_44px]" />
-        <svg className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block" viewBox="0 0 1400 760" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="cyanPath" x1="0" x2="1"><stop offset="0" stopColor="rgba(34,211,238,.08)"/><stop offset="1" stopColor="rgba(34,211,238,.42)"/></linearGradient>
-            <linearGradient id="violetPath" x1="0" x2="1"><stop offset="0" stopColor="rgba(167,139,250,.08)"/><stop offset="1" stopColor="rgba(167,139,250,.34)"/></linearGradient>
-          </defs>
-          <path d="M700 112 C520 150 355 175 220 250" fill="none" stroke="url(#cyanPath)" strokeWidth="1.5" />
-          <path d="M700 112 C700 175 700 205 700 250" fill="none" stroke="url(#violetPath)" strokeWidth="1.5" />
-          <path d="M700 112 C900 150 1050 180 1180 250" fill="none" stroke="url(#cyanPath)" strokeWidth="1.5" />
-          <path d="M220 305 C165 365 135 430 130 510" fill="none" stroke="rgba(251,191,36,.22)" strokeWidth="1.2" />
-          <path d="M220 305 C235 385 260 435 295 510" fill="none" stroke="rgba(167,139,250,.24)" strokeWidth="1.2" />
-          <path d="M700 305 C605 365 560 420 520 505" fill="none" stroke="rgba(34,211,238,.22)" strokeWidth="1.2" />
-          <path d="M700 305 C670 380 655 430 650 505" fill="none" stroke="rgba(52,211,153,.22)" strokeWidth="1.2" />
-          <path d="M700 305 C760 375 805 430 825 505" fill="none" stroke="rgba(167,139,250,.24)" strokeWidth="1.2" />
-          <path d="M700 305 C845 355 900 420 965 505" fill="none" stroke="rgba(251,191,36,.22)" strokeWidth="1.2" />
-          <path d="M1180 305 C1130 390 1110 445 1105 520" fill="none" stroke="rgba(34,211,238,.22)" strokeWidth="1.2" />
-          <path d="M1180 305 C1235 390 1260 445 1270 520" fill="none" stroke="rgba(52,211,153,.22)" strokeWidth="1.2" />
-        </svg>
-
-        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center">
-          <button type="button" onClick={() => select("US_STOCK")} className="group relative flex h-28 w-28 flex-col items-center justify-center rounded-full border border-cyan-300/25 bg-cyan-300/[0.055] text-center shadow-[0_0_80px_rgba(34,211,238,0.07)] transition hover:scale-[1.03] hover:border-cyan-300/45">
-            <Orbit className="h-5 w-5 text-cyan-300" />
-            <span className="mt-2 font-mono text-[12px] font-semibold tracking-[0.12em] text-slate-100">BITGET</span>
-            <span className="mt-0.5 text-[8px] uppercase tracking-[0.18em] text-slate-600">universe</span>
-            <span className="absolute -bottom-1 h-2 w-2 rounded-full bg-cyan-300/70 shadow-[0_0_14px_rgba(34,211,238,.7)]" />
-          </button>
-
-          <div className="mt-10 grid w-full gap-10 lg:grid-cols-[1fr_1.35fr_1fr] lg:gap-14">
-            <div className="space-y-5">
-              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.22em] text-cyan-300/45"><Bitcoin className="h-3.5 w-3.5" /> Крипто</div>
-              <MapNode id="CRYPTO_SPOT" label="Крипто · Спот" icon={<Coins className="h-4 w-4" />} selected={selected} onSelect={select} liveCount={countByGroup(data, "CRYPTO_SPOT")} />
-              <div className="grid gap-3 pl-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                <MapNode id="MARGIN" label="Маржинальный спот" icon={<Scale className="h-4 w-4" />} selected={selected} onSelect={select} liveCount={countByGroup(data, "MARGIN")} />
-                <MapNode id="CRYPTO_FUTURES" label="Крипто · Фьючерсы" icon={<ChartCandlestick className="h-4 w-4" />} selected={selected} onSelect={select} liveCount={countByGroup(data, "CRYPTO_FUTURES")} />
-              </div>
-              <p className="pl-5 text-[9px] leading-5 text-slate-700">Спот — базовый рынок. Margin добавляет долг. Futures меняет сам предмет сделки на производный контракт.</p>
+      <section className="relative overflow-hidden rounded-[38px] border border-white/[0.055] bg-[#050914]/65 px-3 py-7 md:px-7">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_5%,rgba(34,211,238,0.08),transparent_29%),radial-gradient(circle_at_50%_80%,rgba(139,92,246,0.045),transparent_35%)]" />
+        <div className="relative">
+          <div className="mx-auto max-w-xl text-center">
+            <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-400/[0.05] shadow-[0_0_55px_rgba(34,211,238,0.10)]">
+              <div className="absolute inset-2 rounded-full border border-cyan-300/[0.08]" />
+              <Sparkles className="h-4 w-4 text-cyan-300/65" />
             </div>
-
-            <div className="space-y-5 lg:-mt-1">
-              <div className="flex items-center justify-center gap-2 text-[9px] uppercase tracking-[0.22em] text-violet-300/45"><Landmark className="h-3.5 w-3.5" /> Акции и RWA</div>
-              <div className="mx-auto max-w-sm"><MapNode id="US_STOCK" label="Базовая акция / ETF США" icon={<TrendingUp className="h-4 w-4" />} selected={selected} onSelect={select} /></div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <MapNode id="RTOKEN_SPOT" label="R · rToken" icon={<Gem className="h-4 w-4" />} selected={selected} onSelect={select} liveCount={countByGroup(data, "RTOKEN_SPOT")} />
-                <MapNode id="STOCK_PLUS" label="Stock+ · Акция / ETF" icon={<BadgeDollarSign className="h-4 w-4" />} selected={selected} onSelect={select} />
-                <MapNode id="STOCK_PERPS" label="Stock · Perpetual" icon={<Layers3 className="h-4 w-4" />} selected={selected} onSelect={select} liveCount={countByGroup(data, "STOCK_PERPS")} />
-                <MapNode id="OPTIONS" label="Options · Call / Put" icon={<Sparkles className="h-4 w-4" />} selected={selected} onSelect={select} />
-              </div>
-              <p className="text-center text-[9px] leading-5 text-slate-700">Один underlying — четыре разные торговые оболочки. Совпадение тикера не означает совпадение механики.</p>
-            </div>
-
-            <div className="space-y-5">
-              <div className="flex items-center gap-2 text-[9px] uppercase tracking-[0.22em] text-emerald-300/40"><CircleDollarSign className="h-3.5 w-3.5" /> TradFi / Macro</div>
-              <MapNode id="GLOBAL_MARKET" label="Внешний базовый рынок" icon={<Boxes className="h-4 w-4" />} selected={selected} onSelect={select} />
-              <div className="grid gap-3 pl-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                <MapNode id="COMMODITY_PERPS" label="Товары · Perpetual" icon={<Gem className="h-4 w-4" />} selected={selected} onSelect={select} liveCount={countByGroup(data, "COMMODITY_PERPS")} />
-                <MapNode id="TRADFI" label="Forex / Индексы / CFD" icon={<CircleDollarSign className="h-4 w-4" />} selected={selected} onSelect={select} />
-              </div>
-              <p className="pl-5 text-[9px] leading-5 text-slate-700">Локальный инструмент может быть второй ногой. Перед входом нужно понимать, где сейчас находится основной источник движения.</p>
-            </div>
+            <p className="mt-3 text-[9px] tracking-[0.28em] text-cyan-300/45">BITGET</p>
+            <p className="mt-1 text-[13px] font-semibold text-slate-200">один аккаунт · разные механики сделки</p>
           </div>
+
+          <div className="relative mx-auto mt-3 hidden h-16 max-w-[1220px] lg:block" aria-hidden="true">
+            <div className="absolute left-1/2 top-0 h-7 w-px -translate-x-1/2 bg-gradient-to-b from-cyan-300/45 to-cyan-300/15" />
+            <div className="absolute left-[16.67%] right-[16.67%] top-7 h-px bg-gradient-to-r from-cyan-300/10 via-cyan-300/35 to-cyan-300/10" />
+            {[16.67, 50, 83.33].map((left) => <div key={left} style={{ left: `${left}%` }} className="absolute top-7 h-9 w-px bg-gradient-to-b from-cyan-300/30 to-transparent" />)}
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-3">
+            <WorldStage world="CRYPTO" selected={selected} hovered={hovered} counts={counts} onSelect={selectNode} onHover={setHovered} />
+            <WorldStage world="STOCKS" selected={selected} hovered={hovered} counts={counts} onSelect={selectNode} onHover={setHovered} />
+            <WorldStage world="GLOBAL" selected={selected} hovered={hovered} counts={counts} onSelect={selectNode} onHover={setHovered} />
+          </div>
+
+          <div className="mt-2 text-center text-[9px] text-slate-700">Наведение подсвечивает маршрут. Клик фиксирует продукт и раскрывает его механику ниже.</div>
         </div>
       </section>
 
-      <section className="relative overflow-hidden py-2">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-52 w-[70%] -translate-x-1/2 rounded-full bg-cyan-300/[0.025] blur-3xl" />
-        <div className="relative grid gap-7 xl:grid-cols-[0.9fr_2.1fr] xl:gap-12">
+      {stockRelated ? <StockFamilyRail selected={selected} onSelect={selectNode} /> : null}
+
+      <section className="relative overflow-hidden rounded-[32px] border border-white/[0.06] bg-slate-950/38 px-4 py-5 md:px-6">
+        <div className="absolute left-0 top-0 h-full w-1 bg-gradient-to-b from-cyan-300/55 via-cyan-300/10 to-transparent" />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-4xl">
+            <p className="text-[9px] tracking-[0.18em] text-cyan-300/55">{detail.eyebrow}</p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-50">{detail.title} <span className="font-normal text-slate-500">— {detail.plain}</span></h2>
+            <p className="mt-2 max-w-4xl text-[11px] leading-relaxed text-slate-400">{detail.thesis}</p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[8px] ${detail.group ? "border-emerald-400/20 bg-emerald-400/[0.04] text-emerald-300/70" : "border-amber-400/20 bg-amber-400/[0.04] text-amber-300/70"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${detail.group ? "bg-emerald-400" : "bg-amber-400"}`} />{detail.apiStatus}
+            </span>
+            {screenerHref ? (
+              <Link href={screenerHref} className="inline-flex items-center gap-1.5 rounded-full border border-cyan-300/20 bg-cyan-400/[0.045] px-3 py-1.5 text-[9px] text-cyan-200 hover:bg-cyan-400/[0.08]">Показать эти инструменты в скринере <ArrowRight className="h-3 w-3" /></Link>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] px-3 py-1.5 text-[9px] text-slate-600">Скринер этого раздела подключаем следующим адаптером</span>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-y border-white/[0.05] py-3">
+          <span className="text-[8px] tracking-[0.16em] text-slate-700">МЕХАНИКА</span>
+          {detail.family.split(" → ").map((part, index, array) => (
+            <React.Fragment key={`${part}-${index}`}>
+              <span className={`rounded-full border px-2.5 py-1 font-mono text-[9px] ${index === 0 ? "border-white/[0.09] text-slate-300" : "border-cyan-300/15 bg-cyan-400/[0.025] text-cyan-200/75"}`}>{part}</span>
+              {index < array.length - 1 ? <ArrowRight className="h-3 w-3 text-slate-700" /> : null}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <div className="mt-5 grid gap-0 md:grid-cols-5">
+          {[
+            ["01", "Что торгуете", detail.ownership, false],
+            ["02", "Как устроено", detail.mechanics, false],
+            ["03", "Где рождается движение", detail.driver, false],
+            ["04", "Главный риск", detail.risk, true],
+            ["05", "Перед входом", detail.check, false],
+          ].map(([num, label, value, danger], index) => (
+            <div key={String(num)} className={`min-h-32 px-3 py-2 ${index > 0 ? "border-l border-white/[0.055]" : ""}`}>
+              <div className="flex items-center gap-2"><span className="font-mono text-[8px] text-cyan-300/55">{String(num)}</span><span className="text-[8px] uppercase tracking-[0.11em] text-slate-600">{String(label)}</span></div>
+              <p className={`mt-3 text-[10px] leading-relaxed ${danger ? "text-rose-200/75" : "text-slate-300"}`}>{String(value)}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-white/[0.055] py-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[9px] uppercase tracking-[0.24em] text-cyan-300/45">{detail.eyebrow}</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-100">{detail.title}</h2>
-            <p className="mt-3 text-[13px] leading-6 text-slate-400">{detail.thesis}</p>
+            <p className="text-[9px] tracking-[0.18em] text-slate-600">ЖИВЫЕ ПРЕДСТАВИТЕЛИ СЕКЦИИ</p>
+            <p className="mt-1 text-[10px] text-slate-500">Не рекомендации. Самые крупные по текущему 24ч обороту среди уже подключённых public-инструментов.</p>
+          </div>
+          <span className="font-mono text-[8px] text-slate-700">{detail.group ? `${counts[detail.group] ?? 0} online` : "data-adapter pending"}</span>
+        </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-2 font-mono text-[10px]">
-              {detail.family.map((item, index) => <React.Fragment key={`${item}-${index}`}><RouteWord strong={index === 0 || index === detail.family.length - 1}>{item}</RouteWord></React.Fragment>)}
-            </div>
-
-            <div className="mt-6 border-l border-cyan-300/20 pl-4">
-              <p className="text-[8px] uppercase tracking-[0.2em] text-slate-700">Статус данных</p>
-              <p className="mt-1.5 text-[10px] leading-5 text-slate-500">{detail.apiStatus}</p>
-            </div>
-
-            {detail.screenerGroup ? (
-              <Link href={`/screener/bitget?group=${detail.screenerGroup}`} className="mt-6 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/[0.045] px-4 py-2 text-[10px] font-medium text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-300/[0.08]">
-                Показать эти инструменты в скринере <ArrowRight className="h-3.5 w-3.5" />
+        {representatives.length ? (
+          <div className="mt-5 grid gap-0 sm:grid-cols-2 lg:grid-cols-5">
+            {representatives.map((row, index) => (
+              <Link key={row.id} href={`/screener/bitget?group=${row.marketGroup}`} className={`group px-3 py-2 ${index > 0 ? "border-l border-white/[0.05]" : ""}`}>
+                <p className="font-mono text-[8px] text-slate-700">0{index + 1}</p>
+                <div className="mt-1 flex items-center justify-between gap-2"><span className="font-mono text-[11px] font-semibold text-slate-200 group-hover:text-cyan-200">{row.baseCoin || row.symbol}</span><span className={`font-mono text-[9px] ${tone(row.change24hPct)}`}>{pct(row.change24hPct)}</span></div>
+                <p className="mt-1 font-mono text-[9px] text-slate-500">{price(row.lastPrice)}</p>
+                <p className="mt-1 text-[8px] text-slate-700">оборот {compact(row.turnover24h)}</p>
               </Link>
-            ) : null}
+            ))}
           </div>
-
-          <div>
-            <div className="relative hidden h-8 md:block"><div className="absolute left-3 right-3 top-1/2 h-px bg-gradient-to-r from-cyan-300/15 via-white/12 to-rose-300/10" /></div>
-            <div className="grid gap-5 md:grid-cols-5">
-              {[
-                ["01", "Что у вас", detail.ownership, <Landmark key="a" className="h-4 w-4" />],
-                ["02", "Механика", detail.mechanics, <Orbit key="b" className="h-4 w-4" />],
-                ["03", "Откуда движение", detail.driver, <TrendingUp key="c" className="h-4 w-4" />],
-                ["04", "Главный риск", detail.risk, <ShieldAlert key="d" className="h-4 w-4" />],
-                ["05", "Перед входом", detail.check, <CircleDollarSign key="e" className="h-4 w-4" />],
-              ].map(([num, label, text, icon]) => (
-                <div key={String(num)} className="relative border-t border-white/[0.07] pt-4 md:border-t-0 md:pt-0">
-                  <div className="mb-4 flex items-center justify-between"><span className="font-mono text-[9px] text-cyan-300/55">{num}</span><span className="text-slate-700">{icon}</span></div>
-                  <p className="text-[9px] uppercase tracking-[0.15em] text-slate-600">{label}</p>
-                  <p className="mt-2 text-[11px] leading-5 text-slate-300">{text}</p>
-                </div>
-              ))}
-            </div>
+        ) : (
+          <div className="mt-5 flex items-center gap-3 rounded-2xl border border-dashed border-amber-400/12 px-4 py-4 text-[10px] text-slate-500">
+            <ShieldAlert className="h-4 w-4 text-amber-300/55" />
+            <span>Продукт существует в экосистеме Bitget, но его market-data adapter ещё не подключён к этой странице. Мы не подменяем отсутствие данных нулями.</span>
           </div>
-        </div>
+        )}
       </section>
 
-      {detail.group ? (
-        <section className="border-t border-white/[0.06] pt-6">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-[9px] uppercase tracking-[0.2em] text-slate-700">Живые представители секции</p>
-              <p className="mt-1 text-[11px] text-slate-500">Не рекомендации. Просто самые крупные по текущему 24ч обороту среди доступных public-инструментов.</p>
-            </div>
-            <span className="font-mono text-[9px] text-slate-700">{countByGroup(data, detail.group)} online</span>
-          </div>
-          <div className="mt-5 flex flex-wrap gap-x-8 gap-y-4">
-            {leaders.length ? leaders.map((row, index) => (
-              <div key={row.id} className="group min-w-40 border-l border-white/[0.07] pl-3 transition hover:border-cyan-300/30">
-                <p className="font-mono text-[9px] text-slate-700">0{index + 1}</p>
-                <p className="mt-1 font-mono text-[13px] font-semibold text-slate-200">{row.isReality ? <span className="mr-1 text-violet-300">R ·</span> : null}{displayTicker(row)}</p>
-                <p className="mt-1 text-[9px] text-slate-600">оборот {compact(row.turnover24h)}</p>
-              </div>
-            )) : <p className="text-[10px] text-slate-700">Живые данные этой секции пока не получены.</p>}
-          </div>
-        </section>
-      ) : null}
-
-      <footer className="border-t border-white/[0.05] pt-5 text-[9px] leading-5 text-slate-700">
-        Карта объясняет устройство рынка, а не выдаёт торговый сигнал. Динамические поля берутся из текущего Bitget public API; Stock+, options и TradFi подключаются отдельными адаптерами, поэтому отсутствие live-count не подменяется нулём.
+      <footer className="flex flex-wrap items-start justify-between gap-4 px-1 text-[8px] leading-relaxed text-slate-700">
+        <p className="max-w-4xl">Карта объясняет устройство продукта, а не выдаёт торговый сигнал. Live-count берётся из текущего Bitget public UTA. Статические ориентиры: Stock+ — 10 000+ U.S. stocks/ETFs по материалам Bitget от 03.07.2026; U.S. stock options — 2 800+ по запуску Bitget от 17.07.2026.</p>
+        <p className="font-mono">object → mechanics → driver → risk → action</p>
       </footer>
     </div>
   );
