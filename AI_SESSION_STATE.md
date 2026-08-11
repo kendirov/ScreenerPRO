@@ -4,33 +4,49 @@
 
 ## Текущая задача
 
-**Bitget Global Screener v1 — полный публичный UTA universe** (2026-08-11)
+**Bitget Global Screener — Terminal v3 + Market Map** (2026-08-11)
 
-Цель: добавить в существующий ScreenerPRO отдельный рабочий decision terminal `/screener/bitget`, не ломая стабильные MOEX-маршруты.
+Цель: превратить Bitget-срез в профессиональный briefing terminal внутри ScreenerPRO: один scroll, быстрый отбор, понятные классы рынка, inline-анализ инструмента и отдельная карта механики Bitget.
 
-Реализовано в ветке `feature/bitget-global-screener-v1`:
+Ветка: `feature/bitget-global-screener-v1`.
 
-- `frontend/lib/bitget/types.ts` — контракт данных Bitget screener;
-- `frontend/lib/server/services/bitget-market.ts` — адаптер публичного Bitget UTA v3;
-- `frontend/app/api/bitget/screener/route.ts` — bulk API для UI;
-- `frontend/components/bitget/bitget-global-screener.tsx` — рабочий экран;
-- `frontend/app/(app)/screener/bitget/page.tsx` — маршрут;
-- `docs/BITGET_GLOBAL_SCREENER.md` — логика и ограничения.
+Реализовано:
 
-Экран v1:
+- `frontend/lib/bitget/types.ts` — контракт public universe;
+- `frontend/lib/server/services/bitget-market.ts` — Bitget UTA v3 adapter;
+- `frontend/app/api/bitget/screener/route.ts` — bulk market endpoint;
+- `frontend/app/api/bitget/weekly/route.ts` — ленивый cached 7d слой по дневным свечам;
+- `frontend/components/bitget/tradingview-chart.tsx` — TradingView Advanced Chart embed;
+- `frontend/components/bitget/bitget-terminal-v3.tsx` — основной рабочий терминал;
+- `frontend/components/bitget/bitget-market-map.tsx` — интерактивная карта рынков;
+- `/screener/bitget` — terminal;
+- `/screener/bitget/map` — market map;
+- Bitget добавлен в основную навигацию.
 
-- весь публичный universe из `SPOT`, `MARGIN`, `USDT-FUTURES`, `USDC-FUTURES`, `COIN-FUTURES`;
-- автоматическая классификация crypto spot/futures, margin, rToken, stock perps, commodity perps;
-- bulk realtime ticker data;
-- 24ч move/range/turnover, spread, funding, OI;
-- прозрачный `attentionScore` + причины;
-- фильтры «В игре / Рост / Падение / Диапазон / Funding»;
-- поиск, инспектор, session watchlist;
-- компактный briefing view с копированием.
+Terminal v3:
 
-Важно: Stock+ equities/ETFs и options используют отдельный signed Stock+ API и не подмешиваются как будто входят в публичный UTA instruments endpoint. Для них нужен следующий adapter.
+- один вертикальный scroll страницы, без собственного вертикального scroll таблицы;
+- блоки `Сильнее всего / Слабее всего / Самый большой оборот / Funding экстремум`;
+- фильтры по классам рынка и рыночному состоянию;
+- цена, 24ч, реальный 7d по свечам, ход 24ч, оборот, spread, funding, focus;
+- null funding при сортировке всегда остаётся ниже реальных значений;
+- spread на поверхности в %, точные б.п. в деталях;
+- rToken: badge `R` + привычный underlying ticker;
+- клик по тикеру копирует код для TradingView;
+- клик по строке раскрывает inline workspace с TradingView, параметрами, watchlist и заметкой;
+- favorites/notes сохраняются локально в браузере;
+- `Открыть TradingView` ведёт в полный внешний workspace;
+- `Копировать контекст` создаёт структурированный блок для дальнейшего анализа/брифинга.
 
-Секреты Bitget в код/браузер не передаются. Торговых POST-запросов в этом срезе нет.
+Market Map объясняет отдельными секциями Spot, Margin, Futures, rToken, Stock Perps, Stock+, Options, Commodity Perps и TradFi. Отдельные API-контуры не маскируются под live-данные текущего UTA endpoint.
+
+Vercel build isolation:
+
+- карта без terminal v3 — SUCCESS;
+- terminal v3 без карты — SUCCESS;
+- текущий feature head после очистки промежуточных файлов должен проходить финальный Preview build перед показом владельцу.
+
+Секреты Bitget в код/браузер не передаются. Торговых POST-запросов нет.
 
 ---
 
@@ -38,40 +54,25 @@
 
 | Маршрут | Статус |
 |---------|--------|
-| `/screener` | стабилен, не менять без необходимости |
+| `/screener` | стабилен |
 | `/screener/stocks` | стабилен |
-| `/screener/futures` | стабилен, не трогать |
+| `/screener/futures` | стабилен |
 | `/screener/strategies` | Strategy Scanner v0 demo-ready |
-| `/screener/bitget` | новый вертикальный срез v1 |
-
----
-
-## Предыдущая завершённая задача
-
-**Strategy Scanner v0 — round-levels small universe** (2026-07-08)
-
-- `frontend/lib/strategies/strategy-runner-types.ts` ✅
-- `frontend/lib/strategies/round-levels-strategy-runner.ts` ✅
-- `frontend/scripts/scan-round-levels-strategy.ts` ✅
-- JSON snapshot: `frontend/public/strategy-runs/round-levels-stocks-5m-10d.json` ✅
-- verify script: `frontend/scripts/verify-strategy-scan-result.ts` ✅
-
-Документация: `docs/STRATEGY_LAB_TARGET.md`, `docs/ROUND_LEVELS_STRATEGY.md`, `docs/ZIGZAG_LITE_STRATEGY_LAYER.md`, `docs/STRATEGY_SCANNER_ARCHITECTURE.md`.
+| `/screener/bitget` | Bitget Terminal v3 |
+| `/screener/bitget/map` | Bitget Market Map |
 
 ---
 
 ## Следующий лучший срез Bitget
 
-1. Прогнать `pnpm -C frontend build` на машине с репозиторием и обычным интернетом.
-2. Добавить Bitget в основную навигацию после проверки UX.
-3. Создать signed server-only Stock+ adapter:
-   - securities static/quotes;
-   - option underlyings;
-   - expiries;
-   - option chains;
-   - quotes только при доступном entitlement/whitelist.
-4. Добавить фоновые свечи + cache для RSI14, ATR, relative volume и multi-timeframe momentum без N×2000 запросов на каждый UI refresh.
-5. Подключить private Classic v2 account read layer для истории пользователя как отдельную аналитическую поверхность; не смешивать его с public market adapter.
+1. Проверить новый Preview визуально вместе с владельцем.
+2. Улучшить Market Map после UX-ревью: live counts/top instruments и переходы в фильтр скринера.
+3. Создать signed Stock+ adapter: полный equities/ETF universe.
+4. Создать options adapter: underlying → expiry → strike → call/put.
+5. Добавить historical feature cache для RSI14, ATR, relative activity и multi-timeframe momentum.
+6. Связать выбранный инструмент с news/event-reaction pipeline: «что случилось → когда → реакция цены».
+7. Добавить облачный user workspace (auth/Supabase) для watchlist, notes, layouts и briefing history.
+8. Private Classic v2 account analytics держать отдельной поверхностью от public market adapter.
 
 ---
 
@@ -82,6 +83,8 @@ pnpm -C frontend dev:live
 pnpm -C frontend build
 ```
 
-**Bitget URL:** `/screener/bitget`
+**Bitget terminal:** `/screener/bitget`
 
-**Strategy debug URL:** `/screener/strategies?screenerChartDebug=1`
+**Bitget market map:** `/screener/bitget/map`
+
+**Strategy debug:** `/screener/strategies?screenerChartDebug=1`
