@@ -63,7 +63,7 @@ export type SidebarNavGroup = {
 };
 
 /**
- * Публичное ядро — «Лаборатория рынка»: Рынок / Акции / Фьючерсы / Стратегии.
+ * Публичное ядро — «Лаборатория рынка»: Рынок / Акции / Фьючерсы / Bitget / Стратегии.
  * Материалы, академия и lab-черновики — в hiddenDevNavConfig (прямые URL работают).
  */
 export const sidebarMainNavGroups: SidebarNavGroup[] = [
@@ -74,6 +74,7 @@ export const sidebarMainNavGroups: SidebarNavGroup[] = [
       { href: "/screener", label: "Рынок", icon: ChartColumn, visibility: "visible" },
       { href: "/screener/stocks", label: "Акции", icon: CandlestickChart, visibility: "visible" },
       { href: "/screener/futures", label: "Фьючерсы", icon: ChartCandlestick, visibility: "visible" },
+      { href: "/screener/bitget", label: "Bitget", icon: CircleDollarSign, visibility: "visible" },
       { href: "/screener/strategies", label: "Стратегии", icon: Layers, visibility: "visible" },
     ],
   },
