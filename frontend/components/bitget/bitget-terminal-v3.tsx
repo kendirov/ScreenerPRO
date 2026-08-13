@@ -301,7 +301,7 @@ function ExpandedRow({ row, week, favorite, note, onFavorite, onNote, onCopy }: 
   );
 }
 
-export function BitgetTerminalV3() {
+export function BitgetTerminalV3({ showRadar = true }: { showRadar?: boolean } = {}) {
   const [data, setData] = React.useState<BitgetScreenerResponse | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [group, setGroup] = React.useState<BitgetMarketGroup | "ALL">("ALL");
@@ -450,7 +450,7 @@ export function BitgetTerminalV3() {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-white/[0.065] bg-[#050914]/58">
+      {showRadar ? <section className="overflow-hidden rounded-[28px] border border-white/[0.065] bg-[#050914]/58">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.055] px-4 py-4">
           <div className="max-w-3xl">
             <div className="flex items-center gap-2 text-cyan-200/75">{radarCopy[radarMode].icon}<p className="text-[9px] uppercase tracking-[0.18em]">Радар рынка</p></div>
@@ -483,7 +483,7 @@ export function BitgetTerminalV3() {
           </div>
         ) : <div className="px-4 py-8 text-center text-[10px] text-slate-600">В этой секции сейчас нет достаточного количества данных для выбранного режима.</div>}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.05] px-4 py-2 text-[8px] text-slate-700"><span>Количество строк определяется состоянием рынка, а не фиксированным «топ-3».</span><span>Сравнение силы и активности идёт внутри своей секции.</span></div>
-      </section>
+      </section> : null}
 
       <section id="bitget-instruments" className="scroll-mt-3 overflow-hidden rounded-[22px] border border-white/[0.06] bg-slate-950/30">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.05] px-3 py-3">

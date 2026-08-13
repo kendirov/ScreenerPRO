@@ -47,6 +47,7 @@
     "verify:fetch-moex-candles": "tsx scripts/verify-fetch-moex-candles.ts",
     "verify:moex-data-mode": "tsx scripts/verify-moex-data-mode.ts",
     "verify:calculate-cbr-reaction": "tsx scripts/verify-calculate-cbr-reaction.ts"
+    ,"verify:bitget-briefing": "tsx scripts/verify-bitget-briefing.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
