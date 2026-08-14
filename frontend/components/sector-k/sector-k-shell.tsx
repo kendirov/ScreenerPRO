@@ -10,7 +10,7 @@ const nav = [
   { href: "/sector-k/stocks", label: "Акции" },
   { href: "/sector-k/futures", label: "Фьючерсы" },
   { href: "/sector-k/crypto", label: "Крипто" },
-  { href: "/sector-k/strategies", label: "Стратегии" },
+  { href: "/sector-k/strategies", label: "Инструменты" },
   { href: "/sector-k/materials", label: "Материалы" },
 ] as const;
 
@@ -91,7 +91,7 @@ export function SectorKShell({ children }: { children: React.ReactNode }) {
       <main className="sk-main" id="sector-k-main">{children}</main>
       <footer className="sk-footer">
         <span>Сектор K · MOEX ISS</span>
-        <span>Read-only · без исполнения сделок</span>
+        <span>Только просмотр · без исполнения сделок</span>
       </footer>
     </div>
   );

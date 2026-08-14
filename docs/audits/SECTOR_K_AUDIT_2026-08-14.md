@@ -99,9 +99,9 @@ Search also returned explicit backup copies of Trading/Platform navigation in th
 ## Data truth rules for implementation
 
 1. `source`, `generatedAt`, degraded state and baseline reliability stay visible.
-2. “В игре” is used only when the existing contract says `metrics.isInPlay=true`.
-3. A high score without reliable baseline is “Фокус”, not proven relative activity.
-4. Futures family metrics come from real FORTS rows; missing basis remains `null/—`.
+2. Sector K does not expose `isInPlay`, score or percentile labels as market facts while same-time baselines are missing.
+3. Every stock count and ranking uses the verified stock-only TQBR universe.
+4. Futures family metrics come from real FORTS rows; inferred signal copy is hidden and missing basis remains `null/—`.
 5. Friction calculator values are user assumptions. Live MOEX contributes only instrument identity, price, lot, turnover and trades.
 6. Crypto is not shown as live in this branch.
 
@@ -121,3 +121,71 @@ Search also returned explicit backup copies of Trading/Platform navigation in th
 - one interactive “Отбор инструментов” material;
 - typecheck, targeted lint, production build, API smoke and browser QA at desktop/mobile in both themes;
 - explicit Draft PR and Vercel Preview; production aliases untouched.
+
+## Iteration 02 — pre-change product critique
+
+Compared surfaces: current `/sector-k`, `/sector-k/stocks`, `/sector-k/futures`; legacy `/screener`, `/screener/stocks`, `/screener/futures`; dark and light themes; live MOEX response at 18:51 MSK.
+
+### Live universe audit
+
+The API returned 505 TQBR rows. The repository's existing `stock-universe-filter` classified them as:
+
+| Category | Rows |
+| --- | ---: |
+| Common shares | 214 |
+| Preferred shares | 48 |
+| ETF | 113 |
+| Funds | 66 |
+| Bond-like instruments | 63 |
+| Unknown | 1 |
+| Stock-only total | 262 |
+
+The required liquid and preferred symbols (`SBER`, `SBERP`, `TRNFP`, `VTBR`, `IRAO`, `SIBN`, `X5`) remain inside the 262-row stock universe.
+
+### Strongest current problems
+
+1. **Wrong stock universe.** Sector K reports all 505 TQBR rows as stocks and silently mixes 243 ETF/fund/bond/unknown rows with 262 shares.
+2. **Market hidden by the default algorithm.** `/sector-k/stocks` opens on 248 “active” rows instead of the complete stock universe. The first decision is made by the score before the user sees the market.
+3. **Sorting is in the wrong control.** A separate dropdown hides ordinary table behavior, supports no price/trades sort and uses absolute change only. Numeric headers are not interactive.
+4. **Today is a symmetric KPI dashboard.** “Акции в игре”, “Активные акции” and baseline coverage dominate the first screen but do not answer where turnover, trades, movement and range are concentrated.
+5. **Today has one opaque stock ranking.** The same seven score-ranked rows stand in for liquidity, trades, movement and range; these are different trader questions and need separate rankings.
+6. **Dead-end blocks.** The Today mini-list opens only the generic stock page; no block carries its relevant sort/filter. Stock table rows do not expose the existing detail/candles route.
+7. **Core columns are displaced by model state.** “Статус” and “Baseline” occupy permanent table width while price, change, turnover, trades and day range are the actual comparison core.
+8. **Inspector over-exposes internals.** `inPlayScore`, `activityRatio` and baseline implementation details appear before price structure and direct detail navigation.
+9. **Useful legacy mechanics were lost.** Legacy already has direct header sorting, full-universe browsing, market breadth, IMOEX context, leader rails, detail pages and candles. Its visual density and contrast are weak, but the mechanics are valuable donors.
+10. **Themes are visually coherent but the hierarchy is oversized.** Dark and light both work, yet the large page title and equal panels consume vertical space that should show more market rows above the fold.
+
+### Iteration 02 decision
+
+- Keep the Sector K shell, themes, MOEX source state and futures-family model.
+- Replace score-first Today with an asymmetric market cockpit: market breadth/context, top turnover table, trade-count leaders, movers, ranges and futures families.
+- Apply the existing verified stock-only classifier before every Sector K stock ranking and count.
+- Make the full 262-row stock universe the default.
+- Move sorting to numeric column headers with explicit ascending/descending state; remove the sort dropdown.
+- Keep presets as optional views, never as the only access to the market.
+- Use URL query state for Today → Stocks drill-down.
+- Keep model/baseline data secondary and truthful; never let it displace the market-comparison fields.
+
+## Iteration 02 — implemented result
+
+### Market workspace
+
+- **Today:** asymmetric cockpit with session/IMOEX/breadth, total stock turnover and trades, turnover leaders, movers, range leaders, trade-count leaders and futures families.
+- **Stocks:** 262 shares by default; common/preferred composition filters; ticker/name search; direct numeric header sorting; selectable columns; reset; sticky instrument column; selected row and instrument drill-down.
+- **Futures:** compact family/contract workspace; direct numeric header sorting; active and next-series drill-down; basis remains unavailable until spot and a common timestamp exist. The unverified inferred “signal” column is not rendered.
+- **Crypto:** one explicit unavailable-source state instead of three empty cards.
+- **Tools:** five existing analysis routes in a dense working list; no empty “public strategies” placeholder.
+- **Materials:** one real registry row; draft placeholders removed.
+- **Intraday selection:** stock-only market context, top-turnover instrument selector, live MOEX price/turnover/trades/lot, friction calculator and concrete include/exclude checks.
+- **Studio:** Russian scene labels and product-facing version data; schema internals removed from the main hierarchy.
+
+### Local verification
+
+- stock universe audit: 505 raw TQBR rows → 262 shares, 243 excluded;
+- contract and stock-universe verification scripts passed;
+- TypeScript and targeted ESLint passed;
+- production build passed with 70 routes;
+- desktop QA: all seven public Sector K routes plus Studio, dark/light themes;
+- mobile QA: stock table, horizontal comparison, mobile navigation and controls;
+- functional QA: stock search, header sort, column visibility/reset, futures sort and material calculator;
+- browser console: no warnings or errors in the verified run.

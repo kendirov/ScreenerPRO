@@ -6,7 +6,8 @@ import {
   sectorKContentItems,
   sectorKPublishReadiness,
 } from "@/lib/sector-k/content-model";
-import { getSectorKDisposition, getSectorKReasons, selectSectorKFocusRows } from "@/lib/sector-k/market";
+import { buildStockScreenerUniverse } from "@/lib/screener/stock-universe-filter";
+import { sortSectorKStocks } from "@/lib/sector-k/market";
 
 const fixture = screenerRowSchema.parse({
   ticker: "TEST",
@@ -52,14 +53,17 @@ const fixture = screenerRowSchema.parse({
   },
 });
 
-if (getSectorKDisposition(fixture) !== "focus") {
-  throw new Error("A strong row without a reliable in-play contract must remain focus, not in-play");
+const lowerPrice = screenerRowSchema.parse({ ...fixture, ticker: "LOW", lastPrice: 10, turnover: 10_000_000, tradesCount: 500 });
+const etf = screenerRowSchema.parse({ ...fixture, ticker: "ETF1", shortName: "ETF test", moexSecType: "J" });
+const stockUniverse = buildStockScreenerUniverse([fixture, lowerPrice, etf]);
+if (stockUniverse.stockRows.length !== 2 || stockUniverse.excludedCount !== 1) {
+  throw new Error("Sector K must use the verified stock-only universe");
 }
-if (!getSectorKReasons(fixture).some((reason) => reason.includes("baseline"))) {
-  throw new Error("Missing baseline must remain visible in reasons");
+if (sortSectorKStocks(stockUniverse.stockRows, "price", "asc")[0]?.ticker !== "LOW") {
+  throw new Error("Ascending price sort failed");
 }
-if (selectSectorKFocusRows([fixture], 1)[0]?.ticker !== "TEST") {
-  throw new Error("Focus ranking failed");
+if (sortSectorKStocks(stockUniverse.stockRows, "turnover", "desc")[0]?.ticker !== "TEST") {
+  throw new Error("Descending turnover sort failed");
 }
 
 const material = getSectorKContentItem("intraday-selection");
@@ -75,5 +79,5 @@ if (readiness.ready || !readiness.blockers.some((blocker) => blocker.includes("Ð
 console.log("Sector K contracts: OK", {
   contentItems: sectorKContentItems.length,
   scenes: getSectorKCurrentRevision(material)?.scenes.length ?? 0,
-  disposition: getSectorKDisposition(fixture),
+  stockRows: stockUniverse.stockRows.length,
 });

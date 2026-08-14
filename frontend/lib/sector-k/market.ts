@@ -1,56 +1,35 @@
 import type { ScreenerRow } from "@screenerpro/shared";
 
-export type SectorKDisposition = "in-play" | "focus" | "watch";
+export type SectorKStockSortKey = "price" | "change" | "turnover" | "trades" | "range";
+export type SectorKSortDirection = "asc" | "desc";
 
-function compactPercentile(value: number | null | undefined): string | null {
-  if (value == null || !Number.isFinite(value)) return null;
-  return `топ ${Math.max(1, Math.round(100 - value))}% рынка`;
+function stockSortValue(row: ScreenerRow, key: SectorKStockSortKey): number | null {
+  if (key === "price") return row.lastPrice;
+  if (key === "change") return row.percentChange;
+  if (key === "turnover") return row.turnover;
+  if (key === "trades") return row.tradesCount ?? null;
+  return row.metrics.dayRangePct;
 }
 
-export function getSectorKDisposition(row: ScreenerRow): SectorKDisposition {
-  if (row.metrics.isInPlay) return "in-play";
-  const score = row.metrics.inPlayScore ?? 0;
-  const activity = Math.max(row.metrics.turnoverPercentile ?? 0, row.metrics.tradesPercentile ?? 0);
-  if (score >= 70 || activity >= 82 || Math.abs(row.percentChange ?? 0) >= 2) return "focus";
-  return "watch";
+export function sortSectorKStocks(
+  rows: ScreenerRow[],
+  key: SectorKStockSortKey,
+  direction: SectorKSortDirection,
+): ScreenerRow[] {
+  const multiplier = direction === "asc" ? 1 : -1;
+  return [...rows].sort((left, right) => {
+    const leftValue = stockSortValue(left, key);
+    const rightValue = stockSortValue(right, key);
+    if (leftValue == null && rightValue == null) return left.ticker.localeCompare(right.ticker);
+    if (leftValue == null) return 1;
+    if (rightValue == null) return -1;
+    const diff = (leftValue - rightValue) * multiplier;
+    return diff || left.ticker.localeCompare(right.ticker);
+  });
 }
 
-export function getSectorKReasons(row: ScreenerRow, limit = 4): string[] {
-  const reasons: string[] = [];
-  const turnover = compactPercentile(row.metrics.turnoverPercentile);
-  const trades = compactPercentile(row.metrics.tradesPercentile);
-  const change = row.percentChange;
-  const range = row.metrics.dayRangePct;
-
-  if (row.metrics.isInPlay) reasons.push("isInPlay = true");
-  if (!row.metrics.baselineIsReliable) reasons.push("same-time baseline не подтверждён");
-  if (turnover && (row.metrics.turnoverPercentile ?? 0) >= 75) reasons.push(`оборот — ${turnover}`);
-  if (trades && (row.metrics.tradesPercentile ?? 0) >= 75) reasons.push(`сделки — ${trades}`);
-  if (change != null && Math.abs(change) >= 1.2) {
-    reasons.push(`движение ${change > 0 ? "+" : ""}${change.toFixed(1)}%`);
-  }
-  if (range != null && range >= 2.2) reasons.push(`диапазон ${range.toFixed(1)}%`);
-  if (!reasons.length) reasons.push("isInPlay = false");
-  return reasons.slice(0, limit);
-}
-
-export function selectSectorKFocusRows(rows: ScreenerRow[], limit = 8): ScreenerRow[] {
-  return [...rows]
-    .filter((row) => row.assetClass === "stock" && (row.turnover ?? 0) > 0)
-    .sort((a, b) => {
-      const dispositionDiff = dispositionWeight(getSectorKDisposition(b)) - dispositionWeight(getSectorKDisposition(a));
-      if (dispositionDiff !== 0) return dispositionDiff;
-      const scoreDiff = (b.metrics.inPlayScore ?? 0) - (a.metrics.inPlayScore ?? 0);
-      if (scoreDiff !== 0) return scoreDiff;
-      return (b.turnover ?? 0) - (a.turnover ?? 0);
-    })
-    .slice(0, limit);
-}
-
-function dispositionWeight(value: SectorKDisposition): number {
-  if (value === "in-play") return 3;
-  if (value === "focus") return 2;
-  return 1;
+export function getSectorKTotalTrades(rows: ScreenerRow[]): number {
+  return rows.reduce((sum, row) => sum + (row.tradesCount ?? 0), 0);
 }
 
 export function getSectorKMarketBreadth(rows: ScreenerRow[]): {
@@ -84,14 +63,4 @@ export function formatSectorKPrice(value: number | null | undefined): string {
 export function formatSectorKPercent(value: number | null | undefined, digits = 1): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
-}
-
-export function formatSectorKFutureSignal(value: string): string {
-  if (value.includes("Перекат")) return "Перекат";
-  if (value.includes("ОИ растет")) return "ОИ ↑";
-  if (value.includes("ОИ падает")) return "ОИ ↓";
-  if (value.includes("Кривая")) return "Кривая";
-  if (value.includes("Базис")) return "Carry";
-  if (value.includes("фронте")) return "Фронт";
-  return value;
 }

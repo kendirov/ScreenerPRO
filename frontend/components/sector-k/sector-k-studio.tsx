@@ -9,7 +9,16 @@ import {
   sectorKContentStatusLabels,
   sectorKPublishReadiness,
   sectorKVisibilityLabels,
+  type SectorKRevision,
 } from "@/lib/sector-k/content-model";
+
+const SCENE_TYPE_LABELS: Record<SectorKRevision["scenes"][number]["type"], string> = {
+  principle: "Контекст",
+  "live-snapshot": "Рынок",
+  calculator: "Калькулятор",
+  decision: "Решение",
+  checklist: "Фильтр",
+};
 
 export function SectorKStudio() {
   const [selectedId, setSelectedId] = useState(sectorKContentItems[0]?.id ?? "");
@@ -20,7 +29,7 @@ export function SectorKStudio() {
 
   return (
     <div className="sk-page">
-      <header className="sk-page-head">
+      <header className="sk-page-head sk-page-head--compact">
         <div className="sk-page-head__copy"><p className="sk-kicker">Управление материалами</p><h1>Studio</h1><p>Материалы, версии, статус и видимость.</p></div>
         <div className="sk-page-head__aside"><span className="sk-tag sk-tag--warning"><LockKeyhole size={11} /> Без авторизации</span><span className="sk-source"><span className="sk-source__dot" />Хранение в коде</span></div>
       </header>
@@ -38,12 +47,12 @@ export function SectorKStudio() {
         </aside>
 
         <section className="sk-panel">
-          <div className="sk-panel__head"><h2>Материал</h2><span className="sk-mono">schema v{revision?.schemaVersion ?? "—"}</span></div>
+          <div className="sk-panel__head"><h2>Материал</h2><span className="sk-mono">Версия {revision?.number ?? "—"}</span></div>
           <div className="sk-panel__body sk-grid">
-            <div className="sk-studio-title"><div><p className="sk-kicker">{item.type} · /{item.slug}</p><h2>{item.title}</h2><p>{item.summary}</p></div><div className="sk-tags"><span className="sk-tag sk-tag--violet">{sectorKContentStatusLabels[item.status]}</span><span className="sk-tag">{sectorKVisibilityLabels[item.visibility]}</span></div></div>
+            <div className="sk-studio-title"><div><p className="sk-kicker">Материал · /{item.slug}</p><h2>{item.title}</h2><p>{item.summary}</p></div><div className="sk-tags"><span className="sk-tag sk-tag--violet">{sectorKContentStatusLabels[item.status]}</span><span className="sk-tag">{sectorKVisibilityLabels[item.visibility]}</span></div></div>
             <div className="sk-scene-list">
               {revision?.scenes.map((scene, index) => (
-                <div className="sk-scene-row" key={scene.id}><span className="sk-mono">{String(index + 1).padStart(2, "0")}</span><div><strong>{scene.title}</strong><p>{scene.purpose}</p></div><span className="sk-tag">{scene.type}</span></div>
+                <div className="sk-scene-row" key={scene.id}><span className="sk-mono">{String(index + 1).padStart(2, "0")}</span><div><strong>{scene.title}</strong><p>{scene.purpose}</p></div><span className="sk-tag">{SCENE_TYPE_LABELS[scene.type]}</span></div>
               ))}
             </div>
           </div>

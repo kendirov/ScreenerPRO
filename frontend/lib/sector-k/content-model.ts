@@ -69,7 +69,7 @@ const intradaySelectionItem = {
   type: "material",
   title: "Отбор инструментов для внутридневной торговли",
   summary:
-    "Акции в игре, активные инструменты MOEX и расчёт расходов на вход и выход.",
+    "Рынок акций MOEX, стоимость исполнения и условия отказа от сделки.",
   status: "review",
   visibility: "unlisted",
   tags: ["MOEX", "отбор", "ликвидность", "калькулятор"],
@@ -83,13 +83,13 @@ const intradaySelectionItem = {
       schemaVersion: 1,
       createdAt: "2026-08-14T13:30:00.000Z",
       createdBy: "Редактор",
-      changelog: "2 блока: активность и расходы.",
+      changelog: "2 блока: отбор и расходы.",
       scenes: [
         {
           id: "selection-principle",
           type: "principle",
-          title: "Активные акции",
-          purpose: "Поля: isInPlay, score, turnover percentile.",
+          title: "Первичный отбор",
+          purpose: "Цена, оборот и количество сделок.",
         },
         {
           id: "selection-calculator",
@@ -105,19 +105,19 @@ const intradaySelectionItem = {
       schemaVersion: 1,
       createdAt: "2026-08-14T14:30:00.000Z",
       createdBy: "Редактор",
-      changelog: "5 блоков: статусы, MOEX, расходы, добавить, исключить.",
+      changelog: "5 блоков: рынок акций, инструменты, расходы, добавить, исключить.",
       scenes: [
         {
           id: "selection-principle",
           type: "principle",
-          title: "Акции в игре и активные акции",
-          purpose: "isInPlay, активные акции, надёжный baseline.",
+          title: "Состав и активность рынка акций",
+          purpose: "Количество акций, оборот и сделки MOEX.",
         },
         {
           id: "selection-live",
           type: "live-snapshot",
-          title: "Активные инструменты MOEX",
-          purpose: "Цена, оборот, сделки, лот.",
+          title: "Инструменты по обороту",
+          purpose: "Цена, место по обороту, сделки и лот.",
         },
         {
           id: "selection-calculator",
@@ -129,13 +129,13 @@ const intradaySelectionItem = {
           id: "selection-decision",
           type: "decision",
           title: "Добавить в список",
-          purpose: "Baseline, расходы, лот, цена входа и стоп.",
+          purpose: "Данные MOEX, расходы, лот, вход, стоп и размер позиции.",
         },
         {
           id: "selection-checklist",
           type: "checklist",
           title: "Не добавлять",
-          purpose: "Нет baseline, высокий спред, расходы выше лимита.",
+          purpose: "Нет рыночных данных, высокий спред или расходы выше лимита.",
         },
       ],
     },

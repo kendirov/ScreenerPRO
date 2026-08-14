@@ -3,12 +3,26 @@ import { DatabaseZap } from "lucide-react";
 
 export const metadata: Metadata = { title: "Крипто" };
 
+const DATA_STATUS = [
+  ["Инструменты", "0"],
+  ["Цены и сделки", "—"],
+  ["Стакан", "—"],
+  ["История", "—"],
+] as const;
+
 export default function SectorKCryptoPage() {
   return (
     <div className="sk-page">
-      <header className="sk-page-head"><div className="sk-page-head__copy"><p className="sk-kicker">Crypto</p><h1>Крипто-данные не подключены</h1><p>Инструменты, цены и метрики отсутствуют.</p></div><div className="sk-page-head__aside"><span className="sk-tag sk-tag--warning">Строк: 0</span></div></header>
-      <section className="sk-panel sk-empty"><div><DatabaseZap size={30} className="sk-arrow" /><h2>Источник данных: —</h2><div className="sk-tags"><span className="sk-tag">Биржа: —</span><span className="sk-tag">Обновление: —</span><span className="sk-tag">Baseline: —</span></div></div></section>
-      <div className="sk-grid sk-grid--3"><div className="sk-panel sk-panel__body"><p className="sk-kicker">Инструменты</p><h2 className="sk-scene-title">0</h2><p className="sk-lede">Universe не подключён.</p></div><div className="sk-panel sk-panel__body"><p className="sk-kicker">Same-time baseline</p><h2 className="sk-scene-title">—</h2><p className="sk-lede">История не подключена.</p></div><div className="sk-panel sk-panel__body"><p className="sk-kicker">Спред и глубина</p><h2 className="sk-scene-title">—</h2><p className="sk-lede">Order book не подключён.</p></div></div>
+      <header className="sk-page-head sk-page-head--compact">
+        <div className="sk-page-head__copy"><p className="sk-kicker">Crypto</p><h1>Крипто</h1><p>Рабочий источник данных не подключён.</p></div>
+        <div className="sk-page-head__aside"><span className="sk-tag sk-tag--warning">Недоступно</span></div>
+      </header>
+      <section className="sk-panel sk-unavailable">
+        <div className="sk-unavailable__head"><DatabaseZap size={20} className="sk-arrow" /><div><h2>Источник данных: —</h2><p>Биржа, список инструментов и время обновления не определены.</p></div></div>
+        <dl className="sk-status-grid">
+          {DATA_STATUS.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl>
+      </section>
     </div>
   );
 }

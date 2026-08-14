@@ -1,18 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { sectorKContentItems, sectorKContentStatusLabels, sectorKVisibilityLabels } from "@/lib/sector-k/content-model";
 
 export const metadata: Metadata = { title: "Материалы" };
 
 export default function SectorKMaterialsPage() {
   return (
     <div className="sk-page">
-      <header className="sk-page-head"><div className="sk-page-head__copy"><p className="sk-kicker">Материалы</p><h1>Учебные материалы и калькуляторы</h1><p>Опубликовано: 0 · на проверке: 1.</p></div><div className="sk-page-head__aside"><span className="sk-tag sk-tag--violet">1 на проверке</span></div></header>
-      <div className="sk-grid sk-grid--3">
-        <Link className="sk-panel sk-card-link" href="/sector-k/materials/intraday-selection"><div className="sk-card-link__top"><div className="sk-tags"><span className="sk-tag sk-tag--violet">На проверке</span><span className="sk-tag">По ссылке</span></div><ArrowUpRight className="sk-arrow" size={18} /></div><div><h2>Отбор инструментов для внутридневной торговли</h2><p>Акции в игре · MOEX · расходы на сделку · версия 2.</p></div></Link>
-        <div className="sk-panel sk-card-link"><div className="sk-card-link__top"><span className="sk-tag">Нет данных</span></div><div><h2>Перекат фьючерса</h2><p>Spot: — · expiry: MOEX · ALGOPACK: не подключён.</p></div></div>
-        <div className="sk-panel sk-card-link"><div className="sk-card-link__top"><span className="sk-tag">Черновик</span></div><div><h2>Расходы на исполнение</h2><p>Комиссия · спред · проскальзывание · стоимость лота.</p></div></div>
-      </div>
+      <header className="sk-page-head sk-page-head--compact"><div className="sk-page-head__copy"><p className="sk-kicker">Материалы</p><h1>Материалы</h1><p>Доступные учебные модули и калькуляторы.</p></div><div className="sk-page-head__aside"><span className="sk-mono sk-muted">{sectorKContentItems.length} материал</span></div></header>
+      <section className="sk-panel">
+        <div className="sk-panel__head"><h2>Реестр</h2><span>Статус и версия</span></div>
+        <ul className="sk-workspace-list">
+          {sectorKContentItems.map((item) => {
+            const revision = item.revisions.find((candidate) => candidate.id === item.currentDraftRevisionId);
+            return (
+              <li key={item.id}><Link href={`/sector-k/materials/${item.slug}`}><div><strong>{item.title}</strong><span>{item.summary}</span></div><div className="sk-workspace-list__meta"><span className="sk-tag sk-tag--violet">{sectorKContentStatusLabels[item.status]}</span><span className="sk-tag">{sectorKVisibilityLabels[item.visibility]}</span><span className="sk-mono">v{revision?.number ?? "—"}</span><ArrowUpRight size={15} className="sk-arrow" /></div></Link></li>
+            );
+          })}
+        </ul>
+      </section>
     </div>
   );
 }

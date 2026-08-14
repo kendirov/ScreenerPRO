@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { SectorKDataError, SectorKLoading, SectorKSource } from "@/components/sector-k/sector-k-data-state";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
-import { formatSectorKPercent, formatSectorKPrice, formatSectorKTurnover, selectSectorKFocusRows } from "@/lib/sector-k/market";
+import { buildStockScreenerUniverse } from "@/lib/screener/stock-universe-filter";
+import { formatSectorKPercent, formatSectorKPrice, formatSectorKTurnover, getSectorKTotalTrades, sortSectorKStocks } from "@/lib/sector-k/market";
 
 function positiveNumber(value: string, fallback: number): number {
   const normalized = Number(value.replace(",", "."));
@@ -13,10 +14,10 @@ function positiveNumber(value: string, fallback: number): number {
 export function SectorKMaterial() {
   const query = useScreenerQuery("stock");
   const allRows = useMemo(() => query.data?.rows ?? [], [query.data?.rows]);
-  const rows = useMemo(() => selectSectorKFocusRows(allRows, 20), [allRows]);
-  const inPlayCount = useMemo(() => allRows.filter((item) => item.metrics.isInPlay).length, [allRows]);
-  const activeCount = useMemo(() => allRows.filter((item) => item.metrics.isInPlay || (item.metrics.inPlayScore ?? 0) >= 70 || (item.metrics.turnoverPercentile ?? 0) >= 82).length, [allRows]);
-  const reliableBaselineCount = useMemo(() => allRows.filter((item) => item.metrics.baselineIsReliable).length, [allRows]);
+  const universe = useMemo(() => buildStockScreenerUniverse(allRows), [allRows]);
+  const rows = useMemo(() => sortSectorKStocks(universe.stockRows, "turnover", "desc").slice(0, 40), [universe.stockRows]);
+  const totalTurnover = useMemo(() => universe.stockRows.reduce((sum, item) => sum + (item.turnover ?? 0), 0), [universe.stockRows]);
+  const totalTrades = useMemo(() => getSectorKTotalTrades(universe.stockRows), [universe.stockRows]);
   const [ticker, setTicker] = useState<string | null>(null);
   const [commissionSidePct, setCommissionSidePct] = useState("0.05");
   const [spreadBps, setSpreadBps] = useState("8");
@@ -33,11 +34,11 @@ export function SectorKMaterial() {
 
   return (
     <article className="sk-page sk-article">
-      <header className="sk-page-head">
+      <header className="sk-page-head sk-page-head--compact">
         <div className="sk-page-head__copy">
           <p className="sk-kicker">Материал · версия 2 · на проверке</p>
           <h1>Отбор инструментов для внутридневной торговли</h1>
-          <p>Текущие инструменты MOEX, расходы на сделку и фильтр отказа.</p>
+          <p>Рынок акций MOEX, стоимость исполнения и условия отказа.</p>
         </div>
         <div className="sk-page-head__aside"><SectorKSource status={query.data?.status} error={error} /><span className="sk-tag sk-tag--violet">По ссылке</span></div>
       </header>
@@ -47,21 +48,21 @@ export function SectorKMaterial() {
       <section className="sk-article__scene sk-article__principle">
         <div className="sk-scene-index">01</div>
         <div>
-          <p className="sk-kicker">Текущий снимок</p>
-          <h2>Акции в игре и активные инструменты</h2>
+          <p className="sk-kicker">Рынок акций</p>
+          <h2>Состав и активность торгов</h2>
           <div className="sk-live-summary">
-            <div><span>Акции в игре</span><strong>{query.isPending ? "—" : inPlayCount}</strong><small>isInPlay = true</small></div>
-            <div><span>Активные акции</span><strong>{query.isPending ? "—" : activeCount}</strong><small>score ≥ 70 или оборот top 18%</small></div>
-            <div><span>Надёжный baseline</span><strong>{allRows.length ? `${reliableBaselineCount}/${allRows.length}` : "—"}</strong><small>same-time сравнение</small></div>
+            <div><span>Акции</span><strong>{query.isPending ? "—" : universe.stockRows.length}</strong><small>TQBR · фонды исключены</small></div>
+            <div><span>Оборот</span><strong>{query.isPending ? "—" : formatSectorKTurnover(totalTurnover)}</strong><small>Сумма по рынку акций</small></div>
+            <div><span>Сделки</span><strong>{query.isPending ? "—" : totalTrades.toLocaleString("ru-RU")}</strong><small>Количество сделок MOEX</small></div>
           </div>
         </div>
       </section>
 
       <section className="sk-panel sk-article__scene">
-        <div className="sk-panel__head"><h2>02 · Активные инструменты MOEX</h2><span>цена · оборот · сделки · лот</span></div>
+        <div className="sk-panel__head"><h2>02 · Инструменты по обороту</h2><span>40 акций · цена · сделки · лот</span></div>
         {query.isPending && !query.data ? <SectorKLoading /> : (
           <div className="sk-panel__body sk-grid">
-            <label className="sk-label">Активная акция
+            <label className="sk-label">Акция
               <select className="sk-select" value={row?.ticker ?? ""} onChange={(event) => setTicker(event.target.value)}>
                 {rows.map((item) => <option value={item.ticker} key={item.ticker}>{item.ticker} · {item.shortName}</option>)}
               </select>
@@ -69,7 +70,7 @@ export function SectorKMaterial() {
             {row ? (
               <div className="sk-metric-grid sk-snapshot-grid">
                 <div className="sk-metric"><span className="sk-metric__label">Цена</span><strong className="sk-metric__value">{formatSectorKPrice(row.lastPrice)}</strong><span className="sk-metric__note">{formatSectorKPercent(row.percentChange)}</span></div>
-                <div className="sk-metric"><span className="sk-metric__label">Оборот</span><strong className="sk-metric__value">{formatSectorKTurnover(row.turnover)}</strong><span className="sk-metric__note">Абсолютное значение</span></div>
+                <div className="sk-metric"><span className="sk-metric__label">Оборот</span><strong className="sk-metric__value">{formatSectorKTurnover(row.turnover)}</strong><span className="sk-metric__note">Ранг: {rows.findIndex((item) => item.ticker === row.ticker) + 1} из {universe.stockRows.length}</span></div>
                 <div className="sk-metric"><span className="sk-metric__label">Сделки</span><strong className="sk-metric__value">{row.tradesCount?.toLocaleString("ru-RU") ?? "—"}</strong><span className="sk-metric__note">Количество сделок MOEX</span></div>
                 <div className="sk-metric"><span className="sk-metric__label">Лот</span><strong className="sk-metric__value">{row.lotSize ?? "—"}</strong><span className="sk-metric__note">Стоимость лота ≈ {(price * lot).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽</span></div>
               </div>
@@ -104,12 +105,12 @@ export function SectorKMaterial() {
         <div className="sk-panel sk-panel__body">
           <p className="sk-kicker">04 · Фильтр</p>
           <h2 className="sk-scene-title">Добавить в список</h2>
-          <ul className="sk-checklist"><li>baselineIsReliable = true.</li><li>Ожидаемое движение / расходы ≥ 3×.</li><li>Стоимость лота не превышает лимит позиции.</li><li>Заданы цена входа и стоп.</li></ul>
+          <ul className="sk-checklist"><li>Цена, оборот, сделки и диапазон подтверждены MOEX.</li><li>Ожидаемое движение / расходы ≥ 3×.</li><li>Стоимость лота не превышает лимит позиции.</li><li>Заданы цена входа, стоп и размер позиции.</li></ul>
         </div>
         <div className="sk-panel sk-panel__body">
           <p className="sk-kicker">Стоп-фильтры</p>
           <h2 className="sk-scene-title">Не добавлять</h2>
-          <ul className="sk-checklist sk-checklist--danger"><li>baselineIsReliable = false.</li><li>Спред выше установленного лимита.</li><li>Ожидаемое движение / расходы &lt; 2×.</li><li>Стоимость лота выше лимита позиции.</li></ul>
+          <ul className="sk-checklist sk-checklist--danger"><li>Нет цены, оборота или количества сделок.</li><li>Спред выше установленного лимита.</li><li>Ожидаемое движение / расходы &lt; 2×.</li><li>Стоимость лота выше лимита позиции.</li></ul>
         </div>
       </section>
     </article>
