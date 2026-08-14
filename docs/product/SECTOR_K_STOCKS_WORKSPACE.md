@@ -28,8 +28,9 @@ Turn `/sector-k/stocks` into one continuous market workspace where the trader ca
 - show IMOEX2 and IMOEX as pinned market rows when MOEX returns them;
 - show aggregate stock-market turnover and trades only from the API contract;
 - add `Скрыть неликвиды`, enabled by default; hide only the bottom liquidity tail by current-session turnover and trades, not by a fixed ruble threshold;
-- add a compact, dynamically sized `В игре` area based on reliable same-time turnover baselines; do not cap it to five instruments;
-- add a separate current-market impulse area for liquid spikes and dumps; do not call it historical abnormality;
+- add a three-part market radar: `Ликвидность / В игре / Прострелы`;
+- keep `В игре` compact: at most eight strict-focus cards from the existing `stock-live-v0` engine, without score, mode labels or explanatory copy;
+- show liquidity by current turnover/trade participation and movement by signed change plus day range;
 - ticker click copies the symbol; row click selects; the disclosure arrow opens a real inline MOEX candlestick chart;
 - remove the table's vertical scroll container; page scroll is the only vertical scroll;
 - selected state uses a restrained matte highlight and one semantic accent, not permanent neon.
@@ -37,10 +38,10 @@ Turn `/sector-k/stocks` into one continuous market workspace where the trader ca
 ### Do not repeat
 
 - no marketing copy, generic slogans or explanatory water;
-- no fixed `top 5` / `top 20` when the market itself determines the count;
+- no decorative `top 5` / `top 20` labels; the only focus cap is the canonical strict-engine safety cap;
 - no common/preferred split in the main workflow;
 - no hidden algorithm in place of the full sortable universe;
-- no absolute-turnover claim that an instrument is `in play` without comparison to its own same-time baseline;
+- no claim that cross-sectional focus is an anomaly relative to the instrument's own history;
 - no raw exchange codes, universe counts or data-pipeline details above the working table;
 - no separate right inspector duplicating the selected row;
 - no nested vertical scrolling;
@@ -48,8 +49,9 @@ Turn `/sector-k/stocks` into one continuous market workspace where the trader ca
 
 ## Data rules
 
-- `В игре`: only reliable `same-time` turnover ratio from MOEX intraday history plus current liquidity/range confirmation. Missing baseline means no claim.
-- `Импульсы`: current cross-section only; liquid instruments with an extreme signed move and meaningful day range.
+- `Ликвидность`: current cross-section ranked by turnover, trades, volume and available execution quality from the canonical market-priority engine.
+- `В игре`: strict `stock-live-v0` focus. Requires participation plus range or directional movement; a real same-time baseline strengthens the result, while the fallback is only a current-market focus and is never displayed as `x` versus history.
+- `Прострелы`: liquid/risk-marked movement outside the focus set, ranked by range and absolute move; the interface shows only signed change and day range.
 - Illiquidity: compute turnover and trades ranks inside the stock-only universe; hide rows that remain in the bottom tail on both measures.
 - Historical dates: server may resolve a weekend/holiday to the nearest previous trading day; show the resolved date from status.
 - Index rows: price, change and range belong to the index; aggregate turnover and trades belong to the complete filtered stock market and must remain labeled as market totals.
@@ -87,3 +89,35 @@ Turn `/sector-k/stocks` into one continuous market workspace where the trader ca
 - no right inspector and no vertical table scroll;
 - desktop/mobile and dark/light visual QA pass in Preview;
 - production remains on its previous deployment.
+
+## Iteration 04 — legacy strength, Sector K precision
+
+Reference observed: production `/screener/stocks`, 2026-08-14.
+
+### Adopted
+
+- deep navy surface with cyan hairlines and a restrained focus glow;
+- vivid green/red signed values and amber range accents;
+- one first-screen hierarchy: money → current focus → movement;
+- compact monospaced market values and direct click-through to the table;
+- the canonical `stock-live-v0` calculation already used by the legacy screener.
+
+### Rejected
+
+- English mode names, setup/position labels and score badges;
+- long reasons, algorithm captions and generic product copy;
+- a tall one-column focus list;
+- permanent glow on every row;
+- removal of Sector K date, index, liquidity-filter, ticker-copy and inline-chart mechanics.
+
+### Visual tokens
+
+- background `#03070c`;
+- panel `#071019`;
+- focus `#43d7ff`;
+- positive `#43e79b`;
+- negative `#ff5574`;
+- range `#f7b94c`;
+- orange remains the Sector K brand/navigation accent, not a market-state color.
+
+Control matrix: desktop/mobile, dark/light, live/historical data, focus click, ticker copy, inline chart, liquidity toggle, no console errors.

@@ -7,9 +7,7 @@ export type SectorKStockActivity = {
   row: ScreenerRow;
   turnoverPercentile: number;
   tradesPercentile: number;
-  rangePercentile: number;
   liquidityPercentile: number;
-  volumeRatioNow: number | null;
 };
 
 const ILLIQUID_BOTTOM_TAIL = 42;
@@ -55,19 +53,9 @@ function percentileRanks(values: number[]): number[] {
   });
 }
 
-function honestSameTimeVolumeRatio(row: ScreenerRow): number | null {
-  const ratio = row.metrics.volumeRatioNow;
-  const reliable =
-    row.metrics.intradayBaselineKind === "intraday-ok" &&
-    row.metrics.baselineMode === "same-time" &&
-    row.metrics.baselineIsReliable === true;
-  return reliable && ratio != null && Number.isFinite(ratio) && ratio > 0 ? ratio : null;
-}
-
 export function buildSectorKStockActivity(rows: ScreenerRow[]): SectorKStockActivity[] {
   const turnoverRanks = percentileRanks(rows.map((row) => finiteOrZero(row.turnover)));
   const tradesRanks = percentileRanks(rows.map((row) => finiteOrZero(row.tradesCount)));
-  const rangeRanks = percentileRanks(rows.map((row) => finiteOrZero(row.metrics.dayRangePct)));
 
   return rows.map((row, index) => {
     const turnoverPercentile = turnoverRanks[index] ?? 0;
@@ -76,9 +64,7 @@ export function buildSectorKStockActivity(rows: ScreenerRow[]): SectorKStockActi
       row,
       turnoverPercentile,
       tradesPercentile,
-      rangePercentile: rangeRanks[index] ?? 0,
       liquidityPercentile: Math.min(turnoverPercentile, tradesPercentile),
-      volumeRatioNow: honestSameTimeVolumeRatio(row),
     };
   });
 }
@@ -90,39 +76,6 @@ export function getSectorKLiquidTickers(activity: SectorKStockActivity[]): Set<s
       .filter((item) => item.turnoverPercentile >= ILLIQUID_BOTTOM_TAIL || item.tradesPercentile >= ILLIQUID_BOTTOM_TAIL)
       .map((item) => item.row.ticker),
   );
-}
-
-/** Relative-to-own same-time baseline. No maximum count. */
-export function selectSectorKInPlay(activity: SectorKStockActivity[]): SectorKStockActivity[] {
-  return activity
-    .filter((item) =>
-      item.volumeRatioNow != null &&
-      item.volumeRatioNow >= 1.5 &&
-      item.liquidityPercentile >= 50 &&
-      (item.tradesPercentile >= 60 || item.rangePercentile >= 60),
-    )
-    .sort((left, right) =>
-      (right.volumeRatioNow ?? 0) - (left.volumeRatioNow ?? 0) ||
-      right.liquidityPercentile - left.liquidityPercentile,
-    );
-}
-
-/** Current-session cross-section. This is movement, not a historical abnormality claim. */
-export function selectSectorKImpulses(activity: SectorKStockActivity[]): SectorKStockActivity[] {
-  const liquid = activity.filter((item) => item.liquidityPercentile >= 45);
-  if (!liquid.length) return [];
-  const absoluteMoves = liquid.map((item) => Math.abs(finiteOrZero(item.row.percentChange))).sort((a, b) => a - b);
-  const dynamicIndex = Math.max(0, Math.floor(absoluteMoves.length * 0.88) - 1);
-  const moveThreshold = Math.max(1.2, absoluteMoves[dynamicIndex] ?? 0);
-
-  return liquid
-    .filter((item) => {
-      const move = Math.abs(finiteOrZero(item.row.percentChange));
-      return move >= moveThreshold && (item.rangePercentile >= 65 || move >= 2.5);
-    })
-    .sort((left, right) =>
-      Math.abs(finiteOrZero(right.row.percentChange)) - Math.abs(finiteOrZero(left.row.percentChange)),
-    );
 }
 
 export function getSectorKTotalTrades(rows: ScreenerRow[]): number {
@@ -160,4 +113,9 @@ export function formatSectorKPrice(value: number | null | undefined): string {
 export function formatSectorKPercent(value: number | null | undefined, digits = 1): string {
   if (value == null || !Number.isFinite(value)) return "—";
   return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
+}
+
+export function formatSectorKMagnitudePercent(value: number | null | undefined, digits = 1): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return `${Math.abs(value).toFixed(digits)}%`;
 }

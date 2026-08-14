@@ -16,20 +16,20 @@ import { Fragment, startTransition, useMemo, useOptimistic, useState } from "rea
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SectorKDataError, SectorKLoading, SectorKSource } from "@/components/sector-k/sector-k-data-state";
 import { SectorKStockChart } from "@/components/sector-k/sector-k-stock-chart";
+import { SectorKStockRadar } from "@/components/sector-k/sector-k-stock-radar";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 import { useSelectedTradingDate } from "@/lib/hooks/use-selected-trading-date";
+import { computeMarketPriority } from "@/lib/screener/market-priority-engine";
 import { buildStockScreenerUniverse } from "@/lib/screener/stock-universe-filter";
 import {
   buildSectorKStockActivity,
+  formatSectorKMagnitudePercent,
   formatSectorKPercent,
   formatSectorKPrice,
   formatSectorKTurnover,
   getSectorKLiquidTickers,
-  selectSectorKImpulses,
-  selectSectorKInPlay,
   sortSectorKStocks,
   type SectorKSortDirection,
-  type SectorKStockActivity,
   type SectorKStockSortKey,
 } from "@/lib/sector-k/market";
 import { formatCompactDateKey, moscowTodayKey } from "@/lib/domain/trading-calendar";
@@ -53,10 +53,6 @@ function benchmarkOrder(benchmark: ScreenerBenchmark): number {
   return 2;
 }
 
-function ratioLabel(item: SectorKStockActivity): string {
-  return item.volumeRatioNow == null ? "—" : `x${item.volumeRatioNow.toLocaleString("ru-RU", { maximumFractionDigits: 1 })}`;
-}
-
 export function SectorKStocks() {
   const date = useSelectedTradingDate();
   const query = useScreenerQuery("stock", date.apiDateParam);
@@ -74,8 +70,16 @@ export function SectorKStocks() {
   const universe = useMemo(() => buildStockScreenerUniverse(rawRows), [rawRows]);
   const activity = useMemo(() => buildSectorKStockActivity(universe.stockRows), [universe.stockRows]);
   const liquidTickers = useMemo(() => getSectorKLiquidTickers(activity), [activity]);
-  const inPlay = useMemo(() => date.isLive ? selectSectorKInPlay(activity) : [], [activity, date.isLive]);
-  const impulses = useMemo(() => selectSectorKImpulses(activity), [activity]);
+  const priority = useMemo(
+    () => computeMarketPriority(universe.stockRows, {
+      mode: "strict",
+      maxLiquidity: 8,
+      maxInPlay: 8,
+      maxVolatility: 8,
+      variant: "stock-live-v0",
+    }),
+    [universe.stockRows],
+  );
 
   const sortParam = searchParams.get("sort") as SectorKStockSortKey | null;
   const sortKey = sortParam && SORT_KEYS.has(sortParam) ? sortParam : "trades";
@@ -167,7 +171,7 @@ export function SectorKStocks() {
     <div className="sk-page sk-stocks-page">
       <h1 className="sk-sr-only">Акции</h1>
 
-      <StockSignalStrip inPlay={inPlay} impulses={impulses} onFocus={focusTicker} />
+      <SectorKStockRadar priority={priority} onFocus={focusTicker} />
 
       {error ? <SectorKDataError error={error} /> : null}
 
@@ -272,7 +276,7 @@ export function SectorKStocks() {
                         {visibleColumns.has("change") ? <td className={`sk-mono ${(row.percentChange ?? 0) >= 0 ? "sk-change--positive" : "sk-change--negative"}`}>{formatSectorKPercent(row.percentChange)}</td> : null}
                         {visibleColumns.has("turnover") ? <td className="sk-mono">{formatSectorKTurnover(row.turnover)}</td> : null}
                         {visibleColumns.has("trades") ? <td className="sk-mono">{row.tradesCount?.toLocaleString("ru-RU") ?? "—"}</td> : null}
-                        {visibleColumns.has("range") ? <td className="sk-mono">{formatSectorKPercent(row.metrics.dayRangePct)}</td> : null}
+                        {visibleColumns.has("range") ? <td className="sk-mono">{formatSectorKMagnitudePercent(row.metrics.dayRangePct)}</td> : null}
                         <td className="sk-table__chart-cell">
                           <button
                             type="button"
@@ -314,46 +318,6 @@ export function SectorKStocks() {
   );
 }
 
-function StockSignalStrip({
-  inPlay,
-  impulses,
-  onFocus,
-}: {
-  inPlay: SectorKStockActivity[];
-  impulses: SectorKStockActivity[];
-  onFocus: (ticker: string) => void;
-}) {
-  return (
-    <section className="sk-stock-signals" aria-label="Акции в игре и импульсы">
-      <div className="sk-stock-signals__lane">
-        <header><strong>В игре</strong><span className="sk-mono">{inPlay.length || "—"}</span></header>
-        <div className="sk-stock-signals__items">
-          {inPlay.map((item) => (
-            <button type="button" key={item.row.ticker} onClick={() => onFocus(item.row.ticker)} title={`Оборот к норме на тот же момент: ${ratioLabel(item)}`}>
-              <strong>{item.row.ticker}</strong><span>{ratioLabel(item)}</span>
-            </button>
-          ))}
-          {!inPlay.length ? <span className="sk-stock-signals__empty">—</span> : null}
-        </div>
-      </div>
-      <div className="sk-stock-signals__lane sk-stock-signals__lane--impulse">
-        <header><strong>Импульсы</strong><span className="sk-mono">{impulses.length || "—"}</span></header>
-        <div className="sk-stock-signals__items">
-          {impulses.map((item) => {
-            const positive = (item.row.percentChange ?? 0) >= 0;
-            return (
-              <button className={positive ? "is-positive" : "is-negative"} type="button" key={item.row.ticker} onClick={() => onFocus(item.row.ticker)}>
-                <strong>{item.row.ticker}</strong><span>{formatSectorKPercent(item.row.percentChange)}</span>
-              </button>
-            );
-          })}
-          {!impulses.length ? <span className="sk-stock-signals__empty">—</span> : null}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function BenchmarkRow({
   benchmark,
   visibleColumns,
@@ -370,7 +334,7 @@ function BenchmarkRow({
       {visibleColumns.has("change") ? <td className={`sk-mono ${(benchmark.percentChange ?? 0) >= 0 ? "sk-change--positive" : "sk-change--negative"}`}>{formatSectorKPercent(benchmark.percentChange)}</td> : null}
       {visibleColumns.has("turnover") ? <td className="sk-mono" title="Суммарный оборот рынка акций">{formatSectorKTurnover(benchmark.aggregateTurnover)}</td> : null}
       {visibleColumns.has("trades") ? <td className="sk-mono" title="Суммарные сделки рынка акций">{benchmark.aggregateTrades?.toLocaleString("ru-RU") ?? "—"}</td> : null}
-      {visibleColumns.has("range") ? <td className="sk-mono">{formatSectorKPercent(benchmark.dayRangePct)}</td> : null}
+      {visibleColumns.has("range") ? <td className="sk-mono">{formatSectorKMagnitudePercent(benchmark.dayRangePct)}</td> : null}
       <td />
     </tr>
   );

@@ -7,11 +7,11 @@ import {
   sectorKPublishReadiness,
 } from "@/lib/sector-k/content-model";
 import { buildStockScreenerUniverse } from "@/lib/screener/stock-universe-filter";
+import { computeMarketPriority } from "@/lib/screener/market-priority-engine";
 import {
   buildSectorKStockActivity,
+  formatSectorKMagnitudePercent,
   getSectorKLiquidTickers,
-  selectSectorKImpulses,
-  selectSectorKInPlay,
   sortSectorKStocks,
 } from "@/lib/sector-k/market";
 
@@ -64,8 +64,8 @@ const illiquid = screenerRowSchema.parse({ ...fixture, ticker: "TAIL", lastPrice
 const relativeLeader = screenerRowSchema.parse({
   ...fixture,
   ticker: "REL",
-  turnover: 80_000_000,
-  tradesCount: 8_000,
+  turnover: 900_000_000,
+  tradesCount: 28_000,
   percentChange: 4.2,
   metrics: {
     ...fixture.metrics,
@@ -83,21 +83,31 @@ if (stockUniverse.stockRows.length !== 4 || stockUniverse.excludedCount !== 1) {
 if (sortSectorKStocks(stockUniverse.stockRows, "price", "asc")[0]?.ticker !== "LOW") {
   throw new Error("Ascending price sort failed");
 }
-if (sortSectorKStocks(stockUniverse.stockRows, "turnover", "desc")[0]?.ticker !== "TEST") {
+if (sortSectorKStocks(stockUniverse.stockRows, "turnover", "desc")[0]?.ticker !== "REL") {
   throw new Error("Descending turnover sort failed");
+}
+if (formatSectorKMagnitudePercent(-5.15) !== "5.2%") {
+  throw new Error("Day range must be rendered as magnitude without a direction sign");
 }
 const activity = buildSectorKStockActivity(stockUniverse.stockRows);
 if (getSectorKLiquidTickers(activity).has("TAIL")) {
   throw new Error("Bottom liquidity tail must be hidden by default");
 }
-if (!selectSectorKInPlay(activity).some((item) => item.row.ticker === "REL")) {
-  throw new Error("Reliable same-time relative activity must enter the in-play strip");
+const priority = computeMarketPriority(stockUniverse.stockRows, {
+  mode: "strict",
+  maxLiquidity: 8,
+  maxInPlay: 8,
+  maxVolatility: 8,
+  variant: "stock-live-v0",
+});
+if (!priority.liquidityLeaders.some((item) => item.secid === "TEST")) {
+  throw new Error("Sector K liquidity radar must reuse the verified priority engine");
 }
-if (selectSectorKInPlay(activity).some((item) => item.row.ticker === "TEST")) {
-  throw new Error("Cross-section strength alone must not be called relative in-play");
+if (!priority.focusInPlayLeaders.some((item) => item.secid === "REL")) {
+  throw new Error("Sector K focus radar must use the stock-live-v0 gate");
 }
-if (!selectSectorKImpulses(activity).some((item) => item.row.ticker === "REL")) {
-  throw new Error("Liquid signed impulse selection failed");
+if (!priority.excluded.some((item) => item.secid === "TAIL")) {
+  throw new Error("Hard illiquid tail must not enter the priority radar");
 }
 
 const material = getSectorKContentItem("intraday-selection");
