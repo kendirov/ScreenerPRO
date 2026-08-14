@@ -5,11 +5,15 @@ import { usePathname } from "next/navigation";
 import { Menu, Moon, PanelRight, Sun, X } from "lucide-react";
 import { useState } from "react";
 
-const nav = [
-  { href: "/sector-k", label: "Сегодня", exact: true },
+const primaryNav = { href: "/sector-k", label: "Рынок", exact: true } as const;
+
+const screenerNav = [
   { href: "/sector-k/stocks", label: "Акции" },
   { href: "/sector-k/futures", label: "Фьючерсы" },
   { href: "/sector-k/crypto", label: "Крипто" },
+] as const;
+
+const secondaryNav = [
   { href: "/sector-k/strategies", label: "Инструменты" },
   { href: "/sector-k/materials", label: "Материалы" },
 ] as const;
@@ -32,7 +36,7 @@ export function SectorKShell({ children }: { children: React.ReactNode }) {
       </a>
       <header className="sk-header">
         <div className="sk-header__inner">
-          <Link className="sk-brand" href="/sector-k" aria-label="Сектор K — сегодня">
+          <Link className="sk-brand" href="/sector-k" aria-label="Сектор K — рынок">
             <span className="sk-brand__mark" aria-hidden="true">K</span>
             <span className="sk-brand__text">
               <strong>Сектор K</strong>
@@ -41,15 +45,34 @@ export function SectorKShell({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="sk-nav" aria-label="Основная навигация">
-            {nav.map((item) => (
+            <Link
+              className={isActive(pathname, primaryNav.href, primaryNav.exact) ? "is-active" : undefined}
+              href={primaryNav.href}
+            >
+              {primaryNav.label}
+            </Link>
+            <div className="sk-nav__screener" role="group" aria-label="Скринер">
+              {screenerNav.map((item) => (
+                <Link
+                  className={isActive(pathname, item.href) ? "is-active" : undefined}
+                  href={item.href}
+                  key={item.href}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            <div className="sk-nav__secondary">
+              {secondaryNav.map((item) => (
               <Link
-                className={isActive(pathname, item.href, "exact" in item ? item.exact : false) ? "is-active" : undefined}
+                className={isActive(pathname, item.href) ? "is-active" : undefined}
                 href={item.href}
                 key={item.href}
               >
                 {item.label}
               </Link>
-            ))}
+              ))}
+            </div>
           </nav>
 
           <div className="sk-header__actions">
@@ -79,7 +102,7 @@ export function SectorKShell({ children }: { children: React.ReactNode }) {
         </div>
         {menuOpen ? (
           <nav className="sk-mobile-nav" id="sector-k-mobile-nav" aria-label="Мобильная навигация">
-            {[...nav, { href: "/sector-k/studio", label: "Studio" }].map((item) => (
+            {[primaryNav, ...screenerNav, ...secondaryNav, { href: "/sector-k/studio", label: "Studio" }].map((item) => (
               <Link className={isActive(pathname, item.href, item.href === "/sector-k") ? "is-active" : undefined} href={item.href} key={item.href} onClick={() => setMenuOpen(false)}>
                 {item.label}
               </Link>
