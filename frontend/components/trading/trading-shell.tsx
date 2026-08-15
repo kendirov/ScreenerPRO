@@ -5,14 +5,21 @@ import { usePathname } from "next/navigation";
 import { Menu, Moon, Sun, X } from "lucide-react";
 import { useState } from "react";
 
-const navigation = [
+type NavigationItem = {
+  href: string;
+  label: string;
+  exact?: boolean;
+  secondary?: boolean;
+};
+
+const navigation: readonly NavigationItem[] = [
   { href: "/trading", label: "Рынок", exact: true },
   { href: "/trading/stocks", label: "Акции" },
   { href: "/trading/futures", label: "Фьючерсы" },
   { href: "/trading/crypto", label: "Крипто" },
   { href: "/trading/strategies", label: "Стратегии", secondary: true },
   { href: "/trading/materials", label: "Материалы", secondary: true },
-] as const;
+];
 
 type TradingTheme = "dark" | "light";
 
