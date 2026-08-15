@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { TradingShell } from "@/components/trading/trading-shell";
-import "../../(sector-k)/sector-k/sector-k.css";
 import "./trading.css";
 
 export const metadata: Metadata = {
