@@ -10,7 +10,7 @@ export type StockSparklineCandle = {
 };
 
 export type StockSparklineSource = "intraday" | "daily";
-export type StockSparklineScope = "today" | "twoSessions";
+export type StockSparklineScope = "today" | "twoSessions" | "threeSessions";
 
 export type StockSparklineSeries = {
   secid: string;
@@ -126,6 +126,9 @@ export function formatSparklineScopeLabel(series: StockSparklineSeries | null | 
   if (!series || series.status !== "ok") return null;
   if (series.scope === "twoSessions" && (series.sessionKeys?.length ?? 0) >= 2) {
     return `2С · ${series.interval}м · ${series.candleCount} св.`;
+  }
+  if (series.scope === "threeSessions" && (series.sessionKeys?.length ?? 0) >= 3) {
+    return `3С · ${series.interval}м · ${series.candleCount} св.`;
   }
   return formatSparklineSourceLabel(series);
 }

@@ -1,6 +1,7 @@
 import { screenerBenchmarkSchema, screenerRowSchema } from "@screenerpro/shared";
 import {
   buildTradingWhyReasons,
+  deriveTradingMarketState,
   summarizeTradingMarket,
   tradingBenchmarkPosition,
   tradingDayPosition,
@@ -102,6 +103,14 @@ const benchmark = screenerBenchmarkSchema.parse({
 
 if (tradingBenchmarkPosition(benchmark) !== 75 || tradingMarketDelta(base, benchmark) !== 1) {
   throw new Error("Benchmark position or delta versus market is incorrect");
+}
+
+const fallingState = deriveTradingMarketState(
+  { ...benchmark, percentChange: -4.3 },
+  { ...summary, rising: 40, falling: 211, turnoverBalancePct: -92 },
+);
+if (fallingState.tone !== "negative" || !fallingState.evidence.includes("40↑ / 211↓")) {
+  throw new Error("Computed market state must preserve direction and its numeric evidence");
 }
 
 const reasons = buildTradingWhyReasons(base, benchmark, [base, falling, flat, unknown], 8);

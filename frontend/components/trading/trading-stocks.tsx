@@ -19,10 +19,12 @@ import { SectorKStockChart } from "@/components/sector-k/sector-k-stock-chart";
 import { TradingMiniChart } from "@/components/trading/trading-mini-chart";
 import { resolveHonestTradesRatio, resolveHonestVolumeRatio } from "@/lib/domain/baseline-info";
 import type { StockSparklineSeries } from "@/lib/domain/stock-sparkline";
+import type { TradingIndexSession, TradingTurnoverSession } from "@/lib/domain/trading-market-context";
 import { formatCompactDateKey, moscowTodayKey } from "@/lib/domain/trading-calendar";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
 import { useRadarSparklineCandles } from "@/lib/hooks/use-radar-sparkline-candles";
 import { useSelectedTradingDate } from "@/lib/hooks/use-selected-trading-date";
+import { useTradingMarketContext } from "@/lib/hooks/use-trading-market-context";
 import { computeMarketPriority, type PriorityInstrument } from "@/lib/screener/market-priority-engine";
 import { buildStockScreenerUniverse } from "@/lib/screener/stock-universe-filter";
 import {
@@ -38,6 +40,7 @@ import {
 } from "@/lib/sector-k/market";
 import {
   buildTradingWhyReasons,
+  deriveTradingMarketState,
   isFiniteMetric,
   summarizeTradingMarket,
   tradingBenchmarkPosition,
@@ -112,7 +115,7 @@ export function TradingStocks() {
     () => computeMarketPriority(universe.stockRows, {
       mode: "strict",
       maxLiquidity: 6,
-      maxInPlay: 3,
+      maxInPlay: 5,
       maxVolatility: 6,
       variant: "stock-live-v0",
     }),
@@ -120,6 +123,8 @@ export function TradingStocks() {
   );
   const benchmark = useMemo(() => chooseBenchmark(query.data?.benchmarks ?? []), [query.data?.benchmarks]);
   const market = useMemo(() => summarizeTradingMarket(universe.stockRows), [universe.stockRows]);
+  const marketContextDateKey = query.data?.status.resolvedTradingDateKey ?? date.selectedDateKey;
+  const marketContext = useTradingMarketContext(marketContextDateKey);
   const focusTickers = useMemo(
     () => priority.focusInPlayLeaders.map((item) => item.row.ticker),
     [priority.focusInPlayLeaders],
@@ -152,7 +157,7 @@ export function TradingStocks() {
   const expandedRow = expandedTicker ? universe.stockRows.find((row) => row.ticker === expandedTicker) ?? null : null;
   const error = query.error instanceof Error ? query.error : null;
   const hasCustomState = sortKey !== "trades" || direction !== "desc" || Boolean(search) || !hideIlliquid || view !== "all" || visibleColumns.size !== STOCK_COLUMNS.length;
-  const resolvedDateKey = query.data?.status.resolvedTradingDateKey ?? date.selectedDateKey;
+  const resolvedDateKey = marketContext.data?.resolvedDateKey ?? query.data?.status.resolvedTradingDateKey ?? date.selectedDateKey;
   const chartDateKey = date.isLive ? null : resolvedDateKey;
 
   function replaceQuery(updates: Record<string, string | null>) {
@@ -204,24 +209,40 @@ export function TradingStocks() {
 
   function focusTicker(ticker: string) {
     setSelectedTicker(ticker);
-    document.getElementById(`tr-stock-${ticker}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setExpandedTicker(ticker);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`tr-stock-${ticker}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   return (
     <div className="sk-page tr-stocks-page">
       <h1 className="sk-sr-only">Акции</h1>
 
-      <MarketStrip benchmark={benchmark} summary={market} status={query.data?.status} />
-      <InPlayWorkspace
-        items={priority.focusInPlayLeaders}
+      <MarketStrip
         benchmark={benchmark}
-        universe={universe.stockRows}
-        seriesByTicker={focusCharts.seriesByTicker}
-        chartsLoading={focusCharts.isLoading}
-        chartsError={focusCharts.isError}
-        chartsEnabled={date.isLive}
-        onFocus={focusTicker}
+        summary={market}
+        status={query.data?.status}
+        indexSessions={marketContext.data?.indexSessions ?? []}
+        turnoverSessions={marketContext.data?.turnoverSessions ?? []}
+        contextLoading={marketContext.isLoading}
       />
+      <div className="tr-priority-workspace">
+        <InPlayWorkspace
+          items={priority.focusInPlayLeaders}
+          benchmark={benchmark}
+          universe={universe.stockRows}
+          seriesByTicker={focusCharts.seriesByTicker}
+          chartsLoading={focusCharts.isLoading}
+          chartsError={focusCharts.isError}
+          chartsEnabled={date.isLive}
+          onFocus={focusTicker}
+        />
+        <aside className="tr-support-rails" aria-label="Дополнительные радары">
+          <PriorityRail kind="liquidity" items={priority.liquidityLeaders} onFocus={focusTicker} />
+          <PriorityRail kind="shots" items={priority.volatilityLeaders} onFocus={focusTicker} />
+        </aside>
+      </div>
 
       {error ? <SectorKDataError error={error} /> : null}
 
@@ -240,7 +261,7 @@ export function TradingStocks() {
               <input type="date" value={date.selectedDateKey} max={moscowTodayKey()} onChange={(event) => date.setPickedDate(event.target.value)} aria-label="Торговая дата" />
             </label>
             {!date.isLive ? <button className="sk-compact-action" type="button" onClick={date.setToday}>Сейчас</button> : null}
-            <label className="sk-liquidity-toggle" title="Скрывает нижний хвост рынка по обороту и сделкам">
+            <label className="sk-liquidity-toggle" title="Скрывает бумаги из нижних 42% рынка одновременно по обороту и сделкам в текущем срезе">
               <input
                 type="checkbox"
                 checked={hideIlliquid}
@@ -253,7 +274,7 @@ export function TradingStocks() {
                   });
                 }}
               />
-              <span>Скрыть неликвиды</span>
+              <span>Скрыть жёсткий неликвид</span>
             </label>
           </div>
 
@@ -290,7 +311,7 @@ export function TradingStocks() {
                   {visibleColumns.has("trades") ? <SortableHeader label="Сделки" sortKey="trades" activeKey={sortKey} direction={direction} onSort={setSort} /> : null}
                   {visibleColumns.has("range") ? <SortableHeader label="Диапазон" sortKey="range" activeKey={sortKey} direction={direction} onSort={setSort} /> : null}
                   <th>Позиция</th>
-                  <th>К рынку</th>
+                  <th>К {benchmark?.code ?? "рынку"}</th>
                   <th className="sk-table__chart-head"><span className="sk-sr-only">График</span></th>
                 </tr>
               </thead>
@@ -301,7 +322,7 @@ export function TradingStocks() {
                   const relative = tradingMarketDelta(row, benchmark);
                   return (
                     <Fragment key={row.ticker}>
-                      <tr id={`tr-stock-${row.ticker}`} className={selected ? "is-selected" : undefined} onClick={() => setSelectedTicker(row.ticker)} tabIndex={0} aria-selected={selected}>
+                      <tr id={`tr-stock-${row.ticker}`} className={[selected ? "is-selected" : "", changeClass(row.percentChange)].filter(Boolean).join(" ") || undefined} onClick={() => setSelectedTicker(row.ticker)} tabIndex={0} aria-selected={selected}>
                         <td className="sk-table__sticky sk-table__instrument">
                           <button className="sk-ticker-copy" type="button" onClick={(event) => { event.stopPropagation(); void copyTicker(row.ticker); }} title="Скопировать тикер">
                             <span className="sk-ticker"><strong>{row.ticker}</strong><small>{row.shortName}</small></span>
@@ -373,17 +394,23 @@ function MarketStrip({
   benchmark,
   summary,
   status,
+  indexSessions,
+  turnoverSessions,
+  contextLoading,
 }: {
   benchmark: ScreenerBenchmark | null;
   summary: TradingMarketSummary;
   status?: ScreenerDataStatus;
+  indexSessions: TradingIndexSession[];
+  turnoverSessions: TradingTurnoverSession[];
+  contextLoading: boolean;
 }) {
   const position = tradingBenchmarkPosition(benchmark);
   const directional = summary.risingTurnover + summary.fallingTurnover;
   const upShare = directional > 0 ? (summary.risingTurnover / directional) * 100 : 50;
   const downShare = directional > 0 ? (summary.fallingTurnover / directional) * 100 : 50;
   const balance = summary.turnoverBalancePct;
-  const breadthCount = summary.rising + summary.falling + summary.flat;
+  const marketState = deriveTradingMarketState(benchmark, summary);
   const sourceLabel = status?.source === "moex" ? "MOEX ISS" : (status?.source ?? "источник");
   const sourceState = status?.staleCache
     ? "кэш"
@@ -392,6 +419,8 @@ function MarketStrip({
       : status?.degraded
         ? "ограничено"
         : "актуально";
+  const resolvedDate = turnoverSessions.at(-1)?.dateKey ?? status?.resolvedTradingDateKey ?? null;
+  const marketClosed = status?.marketStatus === "closed" || (resolvedDate !== null && resolvedDate !== moscowTodayKey());
 
   return (
     <section className="tr-market-strip" aria-label="Состояние рынка акций">
@@ -404,19 +433,25 @@ function MarketStrip({
           <b className="sk-mono">{formatSectorKPrice(benchmark?.lastValue)}</b>
           <span className={`sk-mono ${changeClass(benchmark?.percentChange)}`}>{formatSectorKPercent(benchmark?.percentChange)}</span>
         </div>
-        <div className="tr-range-line">
-          <span className="sk-mono">{formatSectorKPrice(benchmark?.low)}</span>
+        <div className={`tr-market-state is-${marketState.tone}`}>
+          <strong>{marketState.label}</strong>
+          <small className="sk-mono">{marketState.evidence || "данных недостаточно"}</small>
+        </div>
+        <MarketIndexSessions sessions={indexSessions} loading={contextLoading} />
+        <div className="tr-range-line" title="Положение закрытия внутри диапазона последней сессии">
+          <span className="sk-mono">L {formatSectorKPrice(benchmark?.low)}</span>
           <DayPosition value={position} />
-          <span className="sk-mono">{formatSectorKPrice(benchmark?.high)}</span>
+          <span className="sk-mono">H {formatSectorKPrice(benchmark?.high)}</span>
         </div>
       </div>
 
-      <MarketFact
-        label="Растёт / падает"
-        value={breadthCount ? `${summary.rising} / ${summary.falling}` : "—"}
-        note={[summary.flat ? `без изм. ${summary.flat}` : null, summary.unknown ? `нет данных ${summary.unknown}` : null].filter(Boolean).join(" · ") || undefined}
+      <MarketBreadthFact summary={summary} />
+      <MarketTurnoverFact
+        current={summary.totalTurnover}
+        sessions={turnoverSessions}
+        loading={contextLoading}
+        marketClosed={marketClosed}
       />
-      <MarketFact label="Оборот рынка" value={formatSectorKTurnover(summary.totalTurnover)} />
       <MarketFact label="Сделки" value={formatTrades(summary.totalTrades)} />
 
       <div className="tr-turnover-balance">
@@ -435,8 +470,95 @@ function MarketStrip({
         <small className={`tr-source-note ${status?.degraded || status?.staleCache ? "is-warning" : ""}`}>
           {sourceState} · {formatStatusTime(status)}
         </small>
+        <small className="tr-session-note">
+          {marketClosed ? "рынок закрыт" : "торги идут"}
+          {resolvedDate ? ` · данные ${formatCompactDateKey(resolvedDate)}` : ""}
+        </small>
       </div>
     </section>
+  );
+}
+
+function MarketBreadthFact({ summary }: { summary: TradingMarketSummary }) {
+  const total = summary.rising + summary.falling;
+  const up = total > 0 ? (summary.rising / total) * 100 : 50;
+  return (
+    <div className="tr-market-fact tr-market-breadth">
+      <span className="tr-label">Ширина рынка</span>
+      <strong className="sk-mono">
+        <span className="sk-change--positive">{summary.rising} ↑</span>
+        <span className="sk-change--negative">{summary.falling} ↓</span>
+      </strong>
+      <div className="tr-breadth-bar"><i className="is-up" style={{ width: `${up}%` }} /><i className="is-down" style={{ width: `${100 - up}%` }} /></div>
+      <small>{summary.flat ? `без изменений ${summary.flat}` : "зелёные / красные бумаги"}</small>
+    </div>
+  );
+}
+
+function MarketTurnoverFact({
+  current,
+  sessions,
+  loading,
+  marketClosed,
+}: {
+  current: number | null;
+  sessions: TradingTurnoverSession[];
+  loading: boolean;
+  marketClosed: boolean;
+}) {
+  const values = sessions.slice(-8).map((session, index, list) => ({
+    ...session,
+    turnover: index === list.length - 1 && isFiniteMetric(current) ? current : session.turnover,
+  }));
+  const max = Math.max(...values.map((item) => item.turnover), 1);
+  return (
+    <div className="tr-market-fact tr-market-turnover">
+      <span className="tr-label">Оборот рынка</span>
+      <strong className="sk-mono">{formatSectorKTurnover(current)}</strong>
+      <div className="tr-turnover-bars" aria-label="Оборот за восемь последних торговых сессий">
+        {values.map((item, index) => (
+          <i
+            className={index === values.length - 1 ? "is-current" : ""}
+            key={item.dateKey}
+            style={{ height: `${Math.max(8, (item.turnover / max) * 100)}%` }}
+            title={`${formatCompactDateKey(item.dateKey)} · ${formatSectorKTurnover(item.turnover)}`}
+          />
+        ))}
+        {!values.length && !loading ? <span>истории нет</span> : null}
+        {loading ? <span>история…</span> : null}
+      </div>
+      <small>{marketClosed ? "8 последних сессий" : "текущий срез + полные сессии; без ложной нормы"}</small>
+    </div>
+  );
+}
+
+function MarketIndexSessions({ sessions, loading }: { sessions: TradingIndexSession[]; loading: boolean }) {
+  const width = 270;
+  const height = 54;
+  const allValues = sessions.flatMap((session) => session.points.map((point) => point.normalizedPct));
+  const low = Math.min(...allValues, -0.1);
+  const high = Math.max(...allValues, 0.1);
+  const span = high - low || 1;
+  const path = (session: TradingIndexSession) => session.points.map((point, index) => {
+    const x = (index / Math.max(1, session.points.length - 1)) * width;
+    const y = height - ((point.normalizedPct - low) / span) * height;
+    return `${index ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(" ");
+  const zeroY = height - ((0 - low) / span) * height;
+
+  return (
+    <div className="tr-index-sessions">
+      <div className="tr-index-sessions__legend">
+        <span>внутри дня</span>
+        {sessions.map((session, index) => <i className={index === sessions.length - 1 ? "is-current" : ""} key={session.dateKey}>{formatCompactDateKey(session.dateKey)}</i>)}
+      </div>
+      {sessions.length ? (
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label="IMOEX: последняя сессия и две предыдущие, нормированные к открытию">
+          <line className="tr-index-sessions__zero" x1="0" x2={width} y1={zeroY} y2={zeroY} />
+          {sessions.map((session, index) => <path className={index === sessions.length - 1 ? "is-current" : ""} d={path(session)} key={session.dateKey} />)}
+        </svg>
+      ) : <div className="tr-index-sessions__empty">{loading ? "получаем IMOEX" : "интрадей недоступен"}</div>}
+    </div>
   );
 }
 
@@ -470,7 +592,10 @@ function InPlayWorkspace({
           <span className="tr-label">Главный фокус</span>
           <h2>В игре <b className="sk-mono">{items.length || "—"}</b></h2>
         </div>
-        <p>Числовые причины без скрытого score. Относительные × показываются только при надёжном same-time baseline.</p>
+        <details className="tr-method">
+          <summary>Как считаем</summary>
+          <p>Бумага проходит ликвидность, имеет участие рынка и минимум два подтверждения: диапазон, движение, оборот или сделки. × показываем только при надёжном сравнении с тем же временем прошлых сессий.</p>
+        </details>
       </header>
       <div className="tr-inplay__rows">
         {items.map((item) => (
@@ -524,7 +649,7 @@ function InPlayRow({
   const reasons = buildTradingWhyReasons(row, benchmark, universe);
 
   return (
-    <button className="tr-inplay-row" type="button" onClick={() => onFocus(row.ticker)} title={`Перейти к ${row.shortName}`}>
+    <button className={`tr-inplay-row ${changeClass(row.percentChange)}`} type="button" onClick={() => onFocus(row.ticker)} title={`Открыть ${row.shortName} в таблице и показать график`}>
       <div className="tr-inplay-row__identity">
         <div>
           <strong className="sk-mono">{row.ticker}</strong>
@@ -548,8 +673,8 @@ function InPlayRow({
         <InPlayFact label="Диапазон" value={formatSectorKMagnitudePercent(row.metrics.dayRangePct)} />
         <InPlayFact label="Позиция" value={isFiniteMetric(position) ? `${position.toFixed(0)}%` : "—"} />
         <InPlayFact label={`К ${benchmark?.code ?? "IMOEX"}`} value={formatMarketDelta(relative)} tone={changeClass(relative)} />
-        <InPlayFact label="Оборот ×" value={formatRatio(volumeRatio)} />
-        <InPlayFact label="Сделки ×" value={formatRatio(tradesRatio)} />
+        <InPlayFact label="Оборот к норме" value={formatRatio(volumeRatio)} />
+        <InPlayFact label="Сделки к норме" value={formatRatio(tradesRatio)} />
       </div>
       <div className="tr-inplay-row__why">
         <span className="tr-label">Почему здесь</span>
@@ -559,6 +684,48 @@ function InPlayRow({
         </div>
       </div>
     </button>
+  );
+}
+
+function PriorityRail({
+  kind,
+  items,
+  onFocus,
+}: {
+  kind: "liquidity" | "shots";
+  items: StockPriority[];
+  onFocus: (ticker: string) => void;
+}) {
+  const liquidity = kind === "liquidity";
+  return (
+    <section className={`tr-support-rail is-${kind}`}>
+      <header>
+        <div>
+          <span className="tr-label">{liquidity ? "Участие рынка" : "Аномалия"}</span>
+          <h3>{liquidity ? "Ликвидность" : "Прострелы"}</h3>
+        </div>
+        <b className="sk-mono">{items.length}</b>
+      </header>
+      <div className="tr-support-rail__list">
+        {items.slice(0, 6).map((item) => {
+          const row = item.row;
+          return (
+            <button type="button" key={item.secid} onClick={() => onFocus(row.ticker)}>
+              <span><strong className="sk-mono">{row.ticker}</strong><small>{row.shortName}</small></span>
+              <span className="sk-mono">
+                <b className={liquidity ? "" : changeClass(row.percentChange)}>
+                  {liquidity ? formatSectorKTurnover(row.turnover) : formatSectorKMagnitudePercent(row.metrics.dayRangePct)}
+                </b>
+                <small>{liquidity ? `${formatTrades(row.tradesCount)} сделок` : `${formatSectorKPercent(row.percentChange)} · ${formatTrades(row.tradesCount)} сделок`}</small>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <footer>{liquidity
+        ? "Верх рынка одновременно по обороту и числу сделок. Это доступность исполнения, не торговый сигнал."
+        : "Диапазон от 2% или движение от 1,5% + верх волатильности. Цвет показывает направление; янтарный — только факт аномалии."}</footer>
+    </section>
   );
 }
 

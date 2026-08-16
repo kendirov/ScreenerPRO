@@ -44,7 +44,8 @@ function parseDays(raw: string | null): number {
   return Math.min(10, Math.max(1, Math.trunc(n)));
 }
 
-function parseSessions(raw: string | null): 1 | 2 {
+function parseSessions(raw: string | null): 1 | 2 | 3 {
+  if (raw === "3") return 3;
   return raw === "2" ? 2 : 1;
 }
 
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view");
   const sessions = parseSessions(searchParams.get("sessions"));
-  const maxSecids = sessions === 2 ? RADAR_SPARKLINE_MAX_SECIDS : STOCK_SPARKLINE_MAX_SECIDS;
+  const maxSecids = sessions >= 2 ? RADAR_SPARKLINE_MAX_SECIDS : STOCK_SPARKLINE_MAX_SECIDS;
   const secids = parseSecids(searchParams.get("secids"), maxSecids);
   const secid = (searchParams.get("secid") ?? secids[0] ?? "").trim().toUpperCase();
 

@@ -19,6 +19,12 @@ export type TradingWhyReason = {
   tone: "positive" | "negative" | "attention" | "neutral";
 };
 
+export type TradingMarketState = {
+  label: string;
+  evidence: string;
+  tone: "positive" | "negative" | "neutral";
+};
+
 export function isFiniteMetric(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -76,6 +82,35 @@ export function summarizeTradingMarket(rows: ScreenerRow[]): TradingMarketSummar
       ? ((risingTurnover - fallingTurnover) / directionalTurnover) * 100
       : null,
   };
+}
+
+export function deriveTradingMarketState(
+  benchmark: ScreenerBenchmark | null,
+  summary: TradingMarketSummary,
+): TradingMarketState {
+  const observed = summary.rising + summary.falling;
+  const fallingShare = observed > 0 ? summary.falling / observed : 0.5;
+  const risingShare = observed > 0 ? summary.rising / observed : 0.5;
+  const indexChange = benchmark?.percentChange;
+  const balance = summary.turnoverBalancePct;
+  const evidence = [
+    isFiniteMetric(indexChange) ? `${benchmark?.code ?? "Индекс"} ${indexChange > 0 ? "+" : ""}${indexChange.toFixed(1)}%` : null,
+    observed ? `${summary.rising}↑ / ${summary.falling}↓` : null,
+    isFiniteMetric(balance) ? `баланс ${balance > 0 ? "+" : ""}${balance.toFixed(0)}%` : null,
+  ].filter(Boolean).join(" · ");
+
+  if ((isFiniteMetric(indexChange) && indexChange <= -1) || (fallingShare >= 0.7 && (balance ?? 0) <= -30)) {
+    return { label: "Широкое давление продавцов", evidence, tone: "negative" };
+  }
+  if ((isFiniteMetric(indexChange) && indexChange >= 1) || (risingShare >= 0.7 && (balance ?? 0) >= 30)) {
+    return { label: "Широкий спрос", evidence, tone: "positive" };
+  }
+  if (Math.abs(fallingShare - risingShare) <= 0.15 || (isFiniteMetric(balance) && Math.abs(balance) < 20)) {
+    return { label: "Смешанный рынок", evidence, tone: "neutral" };
+  }
+  return fallingShare > risingShare
+    ? { label: "Перевес продавцов", evidence, tone: "negative" }
+    : { label: "Перевес покупателей", evidence, tone: "positive" };
 }
 
 export function tradingDayPosition(row: Pick<ScreenerRow, "lastPrice" | "low" | "high">): number | null {
