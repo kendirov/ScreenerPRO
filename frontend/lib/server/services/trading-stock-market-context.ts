@@ -52,7 +52,7 @@ function normalizeIndexSession(dateKey: string, bars: Array<{ timestamp: string;
 }
 
 async function fetchIndexSessions(from: string, till: string): Promise<TradingIndexSession[]> {
-  const payload = moexPayloadSchema.parse(await moexGetJson(indexCandlesUrl("IMOEX", from, till, 10), 90));
+  const payload = moexPayloadSchema.parse(await moexGetJson(indexCandlesUrl("IMOEX2", from, till, 10), 90));
   const table = payload.candles;
   if (!table?.data?.length) return [];
 
@@ -98,7 +98,7 @@ export async function buildTradingStockMarketContext(requestedDateKey: string): 
   const payload: TradingMarketContextResponse = {
     fetchedAt: new Date().toISOString(),
     resolvedDateKey,
-    indexCode: "IMOEX",
+    indexCode: "IMOEX2",
     indexSessions,
     turnoverSessions,
   };

@@ -94,7 +94,7 @@ export function deriveTradingMarketState(
   const indexChange = benchmark?.percentChange;
   const balance = summary.turnoverBalancePct;
   const evidence = [
-    isFiniteMetric(indexChange) ? `${benchmark?.code ?? "Индекс"} ${indexChange > 0 ? "+" : ""}${indexChange.toFixed(1)}%` : null,
+    isFiniteMetric(indexChange) ? `MOEX ${indexChange > 0 ? "+" : ""}${indexChange.toFixed(1)}%` : null,
     observed ? `${summary.rising}↑ / ${summary.falling}↓` : null,
     isFiniteMetric(balance) ? `баланс ${balance > 0 ? "+" : ""}${balance.toFixed(0)}%` : null,
   ].filter(Boolean).join(" · ");
@@ -172,7 +172,7 @@ export function buildTradingWhyReasons(
   if (isFiniteMetric(relative) && Math.abs(relative) >= 0.5) {
     reasons.push({
       code: "market-delta",
-      label: `${signed(relative)} п.п. к ${benchmark?.code ?? "IMOEX"}`,
+      label: relative > 0 ? `сильнее MOEX на ${signed(relative)} п.п.` : `слабее MOEX на ${Math.abs(relative).toFixed(1)} п.п.`,
       tone: relative > 0 ? "positive" : "negative",
     });
   }
@@ -182,7 +182,7 @@ export function buildTradingWhyReasons(
   if (isFiniteMetric(position) && (position >= 75 || position <= 25)) {
     reasons.push({
       code: "range-position",
-      label: `позиция ${position.toFixed(0)}% диапазона`,
+      label: position >= 75 ? `закрытие в верхних ${(100 - position).toFixed(0)}% диапазона` : `закрытие в нижних ${position.toFixed(0)}% диапазона`,
       tone: position >= 75 ? "positive" : "negative",
     });
   }
