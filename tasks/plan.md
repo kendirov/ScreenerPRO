@@ -1,7 +1,15 @@
-# Plan — Sector K Stocks Workspace
+# Plan — Trading Workspace / Stocks Radar v1
 
-1. Ground current stock/API/chart behavior and preserve the production boundary.
-2. Record approved keep/change/do-not-repeat decisions.
-3. Implement the stock workspace as one vertical slice: navigation, date, activity strip, liquidity tail, pinned indices, table interactions and inline chart.
-4. Verify contracts, stock universe, TypeScript, lint, build, live/historical API and browser behavior.
-5. Commit only scoped files, update Draft PR, create a new Vercel Preview and read back the canonical Drive journal.
+1. Preserve `main` and continue the existing Draft PR branch in a separate worktree.
+2. Turn the current `/trading/stocks` header into one decision path: market state → instruments in play → evidence → full table.
+3. Reuse the existing MOEX screener and candle contracts; expose missing data as `—` and never replace absent baselines with cross-sectional guesses.
+4. Add compact real intraday charts and explicit numeric reasons to the focus rows without introducing a hidden score.
+5. Verify data contracts, TypeScript, targeted lint, production build, missing/stale states, desktop/mobile UI and console.
+6. Update Draft PR #10 and publish a protected Vercel Preview only after local verification.
+
+## Boundaries
+
+- Production `main` and `screenerpro.vercel.app` remain unchanged.
+- No Futures, Crypto, Strategies, Materials, full Inspector or global platform redesign in this slice.
+- Existing dirty CRLF-only changes outside Trading Workspace remain untouched and excluded from commits.
+- No new dependency unless the existing stack cannot provide the required behavior.

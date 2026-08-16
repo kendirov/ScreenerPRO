@@ -1,6 +1,6 @@
 "use client";
 
-import type { ScreenerBenchmark, ScreenerRow } from "@screenerpro/shared";
+import type { ScreenerBenchmark, ScreenerDataStatus, ScreenerRow } from "@screenerpro/shared";
 import {
   ArrowDown,
   ArrowUp,
@@ -12,13 +12,16 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { Fragment, startTransition, useMemo, useOptimistic, useState, type CSSProperties } from "react";
+import { Fragment, startTransition, useMemo, useOptimistic, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SectorKDataError, SectorKLoading, SectorKSource } from "@/components/sector-k/sector-k-data-state";
 import { SectorKStockChart } from "@/components/sector-k/sector-k-stock-chart";
+import { TradingMiniChart } from "@/components/trading/trading-mini-chart";
 import { resolveHonestTradesRatio, resolveHonestVolumeRatio } from "@/lib/domain/baseline-info";
+import type { StockSparklineSeries } from "@/lib/domain/stock-sparkline";
 import { formatCompactDateKey, moscowTodayKey } from "@/lib/domain/trading-calendar";
 import { useScreenerQuery } from "@/lib/hooks/use-screener-query";
+import { useRadarSparklineCandles } from "@/lib/hooks/use-radar-sparkline-candles";
 import { useSelectedTradingDate } from "@/lib/hooks/use-selected-trading-date";
 import { computeMarketPriority, type PriorityInstrument } from "@/lib/screener/market-priority-engine";
 import { buildStockScreenerUniverse } from "@/lib/screener/stock-universe-filter";
@@ -33,28 +36,18 @@ import {
   type SectorKSortDirection,
   type SectorKStockSortKey,
 } from "@/lib/sector-k/market";
+import {
+  buildTradingWhyReasons,
+  isFiniteMetric,
+  summarizeTradingMarket,
+  tradingBenchmarkPosition,
+  tradingDayPosition,
+  tradingMarketDelta,
+  type TradingMarketSummary,
+} from "@/lib/trading/stocks-radar";
 
 type TableView = "all" | "in-play" | "liquidity" | "shots";
 type StockPriority = PriorityInstrument<ScreenerRow>;
-
-type MarketSummary = {
-  rising: number;
-  falling: number;
-  flat: number;
-  totalTurnover: number;
-  totalTrades: number;
-  risingTurnover: number;
-  fallingTurnover: number;
-  flatTurnover: number;
-  turnoverBalancePct: number | null;
-};
-
-type SharedScales = {
-  turnover: number;
-  trades: number;
-  range: number;
-  marketDelta: number;
-};
 
 const SORT_KEYS = new Set<SectorKStockSortKey>(["price", "change", "turnover", "trades", "range"]);
 const STOCK_COLUMNS: Array<{ id: SectorKStockSortKey; label: string }> = [
@@ -65,120 +58,37 @@ const STOCK_COLUMNS: Array<{ id: SectorKStockSortKey; label: string }> = [
   { id: "range", label: "Диапазон" },
 ];
 
-function finite(value: number | null | undefined): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
 function defaultDirection(key: SectorKStockSortKey): SectorKSortDirection {
   return key === "price" ? "asc" : "desc";
 }
 
 function benchmarkOrder(benchmark: ScreenerBenchmark): number {
-  if (benchmark.code === "IMOEX2") return 0;
-  if (benchmark.code === "IMOEX") return 1;
+  if (benchmark.code === "IMOEX") return 0;
+  if (benchmark.code === "IMOEX2") return 1;
   return 2;
 }
 
 function chooseBenchmark(benchmarks: ScreenerBenchmark[]): ScreenerBenchmark | null {
   const sorted = [...benchmarks].sort((left, right) => benchmarkOrder(left) - benchmarkOrder(right));
-  return sorted.find((item) => item.code === "IMOEX2") ?? sorted.find((item) => item.code === "IMOEX") ?? null;
-}
-
-function summarizeMarket(rows: ScreenerRow[]): MarketSummary {
-  let rising = 0;
-  let falling = 0;
-  let flat = 0;
-  let totalTurnover = 0;
-  let totalTrades = 0;
-  let risingTurnover = 0;
-  let fallingTurnover = 0;
-  let flatTurnover = 0;
-
-  for (const row of rows) {
-    const change = finite(row.percentChange) ? row.percentChange : 0;
-    const turnover = finite(row.turnover) ? row.turnover : 0;
-    const trades = finite(row.tradesCount) ? row.tradesCount : 0;
-    totalTurnover += turnover;
-    totalTrades += trades;
-    if (change > 0) {
-      rising += 1;
-      risingTurnover += turnover;
-    } else if (change < 0) {
-      falling += 1;
-      fallingTurnover += turnover;
-    } else {
-      flat += 1;
-      flatTurnover += turnover;
-    }
-  }
-
-  const directionalTurnover = risingTurnover + fallingTurnover;
-  return {
-    rising,
-    falling,
-    flat,
-    totalTurnover,
-    totalTrades,
-    risingTurnover,
-    fallingTurnover,
-    flatTurnover,
-    turnoverBalancePct: directionalTurnover > 0
-      ? ((risingTurnover - fallingTurnover) / directionalTurnover) * 100
-      : null,
-  };
-}
-
-function dayPosition(row: ScreenerRow): number | null {
-  if (!finite(row.lastPrice) || !finite(row.low) || !finite(row.high) || row.high <= row.low) return null;
-  return Math.min(100, Math.max(0, ((row.lastPrice - row.low) / (row.high - row.low)) * 100));
-}
-
-function benchmarkPosition(benchmark: ScreenerBenchmark | null): number | null {
-  if (!benchmark || !finite(benchmark.lastValue) || !finite(benchmark.low) || !finite(benchmark.high) || benchmark.high <= benchmark.low) return null;
-  return Math.min(100, Math.max(0, ((benchmark.lastValue - benchmark.low) / (benchmark.high - benchmark.low)) * 100));
-}
-
-function marketDelta(row: ScreenerRow, benchmark: ScreenerBenchmark | null): number | null {
-  if (!finite(row.percentChange) || !benchmark || !finite(benchmark.percentChange)) return null;
-  return row.percentChange - benchmark.percentChange;
+  return sorted.find((item) => item.code === "IMOEX") ?? sorted.find((item) => item.code === "IMOEX2") ?? null;
 }
 
 function formatMarketDelta(value: number | null): string {
-  if (!finite(value)) return "—";
+  if (!isFiniteMetric(value)) return "—";
   return `${value > 0 ? "+" : ""}${value.toFixed(1)} п.п.`;
 }
 
 function formatTrades(value: number | null | undefined): string {
-  return finite(value) ? Math.round(value).toLocaleString("ru-RU") : "—";
+  return isFiniteMetric(value) ? Math.round(value).toLocaleString("ru-RU") : "—";
 }
 
 function formatRatio(value: number | null): string {
-  return finite(value) ? `x${value.toFixed(1)}` : "—";
+  return isFiniteMetric(value) ? `${value.toFixed(1)}×` : "—";
 }
 
 function changeClass(value: number | null | undefined): string {
-  if (!finite(value) || value === 0) return "";
+  if (!isFiniteMetric(value) || value === 0) return "";
   return value > 0 ? "sk-change--positive" : "sk-change--negative";
-}
-
-function scalePct(value: number | null | undefined, max: number): number {
-  if (!finite(value) || max <= 0) return 0;
-  return Math.min(100, Math.max(4, (Math.abs(value) / max) * 100));
-}
-
-function buildSharedScales(items: StockPriority[], benchmark: ScreenerBenchmark | null): SharedScales {
-  let turnover = 0;
-  let trades = 0;
-  let range = 0;
-  let delta = 0;
-  for (const item of items) {
-    turnover = Math.max(turnover, finite(item.row.turnover) ? item.row.turnover : 0);
-    trades = Math.max(trades, finite(item.row.tradesCount) ? item.row.tradesCount : 0);
-    range = Math.max(range, finite(item.row.metrics.dayRangePct) ? Math.abs(item.row.metrics.dayRangePct) : 0);
-    const relative = marketDelta(item.row, benchmark);
-    delta = Math.max(delta, finite(relative) ? Math.abs(relative) : 0);
-  }
-  return { turnover, trades, range, marketDelta: delta };
 }
 
 export function TradingStocks() {
@@ -209,8 +119,12 @@ export function TradingStocks() {
     [universe.stockRows],
   );
   const benchmark = useMemo(() => chooseBenchmark(query.data?.benchmarks ?? []), [query.data?.benchmarks]);
-  const market = useMemo(() => summarizeMarket(universe.stockRows), [universe.stockRows]);
-  const sharedScales = useMemo(() => buildSharedScales(priority.focusInPlayLeaders, benchmark), [benchmark, priority.focusInPlayLeaders]);
+  const market = useMemo(() => summarizeTradingMarket(universe.stockRows), [universe.stockRows]);
+  const focusTickers = useMemo(
+    () => priority.focusInPlayLeaders.map((item) => item.row.ticker),
+    [priority.focusInPlayLeaders],
+  );
+  const focusCharts = useRadarSparklineCandles(focusTickers, date.isLive);
 
   const sortParam = searchParams.get("sort") as SectorKStockSortKey | null;
   const sortKey = sortParam && SORT_KEYS.has(sortParam) ? sortParam : "trades";
@@ -297,8 +211,17 @@ export function TradingStocks() {
     <div className="sk-page tr-stocks-page">
       <h1 className="sk-sr-only">Акции</h1>
 
-      <MarketStrip benchmark={benchmark} summary={market} />
-      <PriorityWorkspace priority={priority} benchmark={benchmark} scales={sharedScales} onFocus={focusTicker} />
+      <MarketStrip benchmark={benchmark} summary={market} status={query.data?.status} />
+      <InPlayWorkspace
+        items={priority.focusInPlayLeaders}
+        benchmark={benchmark}
+        universe={universe.stockRows}
+        seriesByTicker={focusCharts.seriesByTicker}
+        chartsLoading={focusCharts.isLoading}
+        chartsError={focusCharts.isError}
+        chartsEnabled={date.isLive}
+        onFocus={focusTicker}
+      />
 
       {error ? <SectorKDataError error={error} /> : null}
 
@@ -375,7 +298,7 @@ export function TradingStocks() {
                 {visible.map((row) => {
                   const selected = row.ticker === selectedTicker;
                   const expanded = row.ticker === expandedTicker;
-                  const relative = marketDelta(row, benchmark);
+                  const relative = tradingMarketDelta(row, benchmark);
                   return (
                     <Fragment key={row.ticker}>
                       <tr id={`tr-stock-${row.ticker}`} className={selected ? "is-selected" : undefined} onClick={() => setSelectedTicker(row.ticker)} tabIndex={0} aria-selected={selected}>
@@ -390,7 +313,7 @@ export function TradingStocks() {
                         {visibleColumns.has("turnover") ? <td className="sk-mono">{formatSectorKTurnover(row.turnover)}</td> : null}
                         {visibleColumns.has("trades") ? <td className="sk-mono">{formatTrades(row.tradesCount)}</td> : null}
                         {visibleColumns.has("range") ? <td className="sk-mono">{formatSectorKMagnitudePercent(row.metrics.dayRangePct)}</td> : null}
-                        <td><DayPosition value={dayPosition(row)} compact /></td>
+                        <td><DayPosition value={tradingDayPosition(row)} compact /></td>
                         <td className={`sk-mono ${changeClass(relative)}`}>{formatMarketDelta(relative)}</td>
                         <td className="sk-table__chart-cell">
                           <button
@@ -433,18 +356,48 @@ export function TradingStocks() {
   );
 }
 
-function MarketStrip({ benchmark, summary }: { benchmark: ScreenerBenchmark | null; summary: MarketSummary }) {
-  const position = benchmarkPosition(benchmark);
+function formatStatusTime(status: ScreenerDataStatus | undefined): string {
+  const raw = status?.sourceTimestamp ?? status?.fetchTimestamp;
+  if (!raw) return "время —";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "время —";
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Europe/Moscow",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date) + " МСК";
+}
+
+function MarketStrip({
+  benchmark,
+  summary,
+  status,
+}: {
+  benchmark: ScreenerBenchmark | null;
+  summary: TradingMarketSummary;
+  status?: ScreenerDataStatus;
+}) {
+  const position = tradingBenchmarkPosition(benchmark);
   const directional = summary.risingTurnover + summary.fallingTurnover;
   const upShare = directional > 0 ? (summary.risingTurnover / directional) * 100 : 50;
   const downShare = directional > 0 ? (summary.fallingTurnover / directional) * 100 : 50;
   const balance = summary.turnoverBalancePct;
+  const breadthCount = summary.rising + summary.falling + summary.flat;
+  const sourceLabel = status?.source === "moex" ? "MOEX ISS" : (status?.source ?? "источник");
+  const sourceState = status?.staleCache
+    ? "кэш"
+    : status?.source === "moex" && status?.degraded
+      ? "рынок актуален · baseline —"
+      : status?.degraded
+        ? "ограничено"
+        : "актуально";
 
   return (
     <section className="tr-market-strip" aria-label="Состояние рынка акций">
       <div className="tr-market-index">
         <div className="tr-market-index__top">
-          <span className="tr-label">Рынок</span>
+          <span className="tr-label">Рынок · {sourceLabel}</span>
           <strong className="sk-mono">{benchmark?.code ?? "IMOEX"}</strong>
         </div>
         <div className="tr-market-index__quote">
@@ -458,7 +411,11 @@ function MarketStrip({ benchmark, summary }: { benchmark: ScreenerBenchmark | nu
         </div>
       </div>
 
-      <MarketFact label="Растёт / падает" value={`${summary.rising} / ${summary.falling}`} note={summary.flat ? `без изм. ${summary.flat}` : undefined} />
+      <MarketFact
+        label="Растёт / падает"
+        value={breadthCount ? `${summary.rising} / ${summary.falling}` : "—"}
+        note={[summary.flat ? `без изм. ${summary.flat}` : null, summary.unknown ? `нет данных ${summary.unknown}` : null].filter(Boolean).join(" · ") || undefined}
+      />
       <MarketFact label="Оборот рынка" value={formatSectorKTurnover(summary.totalTurnover)} />
       <MarketFact label="Сделки" value={formatTrades(summary.totalTrades)} />
 
@@ -475,6 +432,9 @@ function MarketStrip({ benchmark, summary }: { benchmark: ScreenerBenchmark | nu
           <span className="is-up" style={{ width: `${upShare}%` }} />
           <span className="is-down" style={{ width: `${downShare}%` }} />
         </div>
+        <small className={`tr-source-note ${status?.degraded || status?.staleCache ? "is-warning" : ""}`}>
+          {sourceState} · {formatStatusTime(status)}
+        </small>
       </div>
     </section>
   );
@@ -484,110 +444,119 @@ function MarketFact({ label, value, note }: { label: string; value: string; note
   return <div className="tr-market-fact"><span className="tr-label">{label}</span><strong className="sk-mono">{value}</strong>{note ? <small>{note}</small> : null}</div>;
 }
 
-function PriorityWorkspace({
-  priority,
+function InPlayWorkspace({
+  items,
   benchmark,
-  scales,
+  universe,
+  seriesByTicker,
+  chartsLoading,
+  chartsError,
+  chartsEnabled,
   onFocus,
 }: {
-  priority: ReturnType<typeof computeMarketPriority<ScreenerRow>>;
+  items: StockPriority[];
   benchmark: ScreenerBenchmark | null;
-  scales: SharedScales;
+  universe: ScreenerRow[];
+  seriesByTicker: Map<string, StockSparklineSeries>;
+  chartsLoading: boolean;
+  chartsError: boolean;
+  chartsEnabled: boolean;
   onFocus: (ticker: string) => void;
 }) {
-  const inPlaySet = new Set(priority.focusInPlayLeaders.map((item) => item.row.ticker));
-  const shots = priority.volatilityLeaders.filter((item) => !inPlaySet.has(item.row.ticker)).slice(0, 6);
   return (
-    <section className="tr-priority" aria-label="Рабочий отбор акций">
-      <div className="tr-priority__rail">
-        <PriorityHead title="Ликвидность" count={priority.liquidityLeaders.length} />
-        <div className="tr-compact-list">
-          {priority.liquidityLeaders.slice(0, 6).map((item) => <LiquidityRow item={item} onFocus={onFocus} key={item.secid} />)}
+    <section className="tr-inplay-workspace" aria-label="Акции в игре">
+      <header className="tr-inplay-workspace__head">
+        <div>
+          <span className="tr-label">Главный фокус</span>
+          <h2>В игре <b className="sk-mono">{items.length || "—"}</b></h2>
         </div>
-      </div>
-
-      <div className="tr-inplay">
-        <PriorityHead title="В игре" count={priority.focusInPlayLeaders.length} strong />
-        <div className="tr-inplay__rows">
-          {priority.focusInPlayLeaders.map((item) => <InPlayRow item={item} benchmark={benchmark} scales={scales} onFocus={onFocus} key={item.secid} />)}
-          {!priority.focusInPlayLeaders.length ? <div className="tr-priority-empty sk-mono">—</div> : null}
-        </div>
-      </div>
-
-      <div className="tr-priority__rail tr-priority__rail--shots">
-        <PriorityHead title="Прострелы" count={shots.length} />
-        <div className="tr-compact-list">
-          {shots.map((item) => <ShotRow item={item} onFocus={onFocus} key={item.secid} />)}
-          {!shots.length ? <div className="tr-priority-empty sk-mono">—</div> : null}
-        </div>
+        <p>Числовые причины без скрытого score. Относительные × показываются только при надёжном same-time baseline.</p>
+      </header>
+      <div className="tr-inplay__rows">
+        {items.map((item) => (
+          <InPlayRow
+            item={item}
+            benchmark={benchmark}
+            universe={universe}
+            series={seriesByTicker.get(item.row.ticker)}
+            chartLoading={chartsEnabled && chartsLoading}
+            chartError={chartsEnabled && chartsError}
+            chartsEnabled={chartsEnabled}
+            onFocus={onFocus}
+            key={item.secid}
+          />
+        ))}
+        {!items.length ? (
+          <div className="tr-inplay-empty">
+            <strong>Подтверждённых ситуаций нет</strong>
+            <span>Интерфейс не заполняет «В игре» случайными ликвидными бумагами.</span>
+          </div>
+        ) : null}
       </div>
     </section>
-  );
-}
-
-function PriorityHead({ title, count, strong = false }: { title: string; count: number; strong?: boolean }) {
-  return <header className={`tr-priority-head ${strong ? "is-strong" : ""}`}><strong>{title}</strong><span className="sk-mono">{count || "—"}</span></header>;
-}
-
-function LiquidityRow({ item, onFocus }: { item: StockPriority; onFocus: (ticker: string) => void }) {
-  return (
-    <button className="tr-compact-row" type="button" onClick={() => onFocus(item.row.ticker)} title={item.row.shortName}>
-      <strong className="sk-mono">{item.row.ticker}</strong>
-      <span className="sk-mono">{formatSectorKTurnover(item.row.turnover)}</span>
-      <small className="sk-mono">{formatTrades(item.row.tradesCount)}</small>
-    </button>
-  );
-}
-
-function ShotRow({ item, onFocus }: { item: StockPriority; onFocus: (ticker: string) => void }) {
-  return (
-    <button className="tr-shot-row" type="button" onClick={() => onFocus(item.row.ticker)} title={item.row.shortName}>
-      <div><strong className="sk-mono">{item.row.ticker}</strong><span className={`sk-mono ${changeClass(item.row.percentChange)}`}>{formatSectorKPercent(item.row.percentChange)}</span></div>
-      <div className="sk-mono"><span>↕ {formatSectorKMagnitudePercent(item.row.metrics.dayRangePct)}</span><span>{formatSectorKTurnover(item.row.turnover)}</span></div>
-      <small className="sk-mono">{formatTrades(item.row.tradesCount)} сделок</small>
-    </button>
   );
 }
 
 function InPlayRow({
   item,
   benchmark,
-  scales,
+  universe,
+  series,
+  chartLoading,
+  chartError,
+  chartsEnabled,
   onFocus,
 }: {
   item: StockPriority;
   benchmark: ScreenerBenchmark | null;
-  scales: SharedScales;
+  universe: ScreenerRow[];
+  series?: StockSparklineSeries;
+  chartLoading: boolean;
+  chartError: boolean;
+  chartsEnabled: boolean;
   onFocus: (ticker: string) => void;
 }) {
   const row = item.row;
-  const relative = marketDelta(row, benchmark);
+  const relative = tradingMarketDelta(row, benchmark);
   const volumeRatio = resolveHonestVolumeRatio(row);
   const tradesRatio = resolveHonestTradesRatio(row);
-  const range = row.metrics.dayRangePct;
-  const barStyle = (pct: number) => ({ "--tr-bar": `${pct}%` } as CSSProperties);
+  const position = tradingDayPosition(row);
+  const reasons = buildTradingWhyReasons(row, benchmark, universe);
 
   return (
-    <button className="tr-inplay-row" type="button" onClick={() => onFocus(row.ticker)} title={row.shortName}>
+    <button className="tr-inplay-row" type="button" onClick={() => onFocus(row.ticker)} title={`Перейти к ${row.shortName}`}>
       <div className="tr-inplay-row__identity">
-        <div><strong className="sk-mono">{row.ticker}</strong><small>{row.shortName}</small></div>
-        <b className={`sk-mono ${changeClass(row.percentChange)}`}>{formatSectorKPercent(row.percentChange)}</b>
+        <div>
+          <strong className="sk-mono">{row.ticker}</strong>
+          <small>{row.shortName}</small>
+        </div>
+        <div className="tr-inplay-row__quote">
+          <b className="sk-mono">{formatSectorKPrice(row.lastPrice)}</b>
+          <span className={`sk-mono ${changeClass(row.percentChange)}`}>{formatSectorKPercent(row.percentChange)}</span>
+        </div>
       </div>
-
+      <TradingMiniChart
+        series={series}
+        change={row.percentChange}
+        loading={chartLoading}
+        error={chartError || !chartsEnabled}
+        unavailableLabel={chartsEnabled ? undefined : "график только для текущей сессии"}
+      />
       <div className="tr-inplay-row__facts">
         <InPlayFact label="Оборот" value={formatSectorKTurnover(row.turnover)} />
         <InPlayFact label="Сделки" value={formatTrades(row.tradesCount)} />
-        <InPlayFact label="Range" value={formatSectorKMagnitudePercent(range)} />
-        <InPlayFact label="К рынку" value={formatMarketDelta(relative)} tone={changeClass(relative)} />
-        <InPlayFact label="Vol x" value={formatRatio(volumeRatio)} />
-        <InPlayFact label="Trades x" value={formatRatio(tradesRatio)} />
+        <InPlayFact label="Диапазон" value={formatSectorKMagnitudePercent(row.metrics.dayRangePct)} />
+        <InPlayFact label="Позиция" value={isFiniteMetric(position) ? `${position.toFixed(0)}%` : "—"} />
+        <InPlayFact label={`К ${benchmark?.code ?? "IMOEX"}`} value={formatMarketDelta(relative)} tone={changeClass(relative)} />
+        <InPlayFact label="Оборот ×" value={formatRatio(volumeRatio)} />
+        <InPlayFact label="Сделки ×" value={formatRatio(tradesRatio)} />
       </div>
-
-      <div className="tr-comparison-bars" aria-label="Сравнение бумаг в игре">
-        <ComparisonBar label="Оборот" style={barStyle(scalePct(row.turnover, scales.turnover))} />
-        <ComparisonBar label="Сделки" style={barStyle(scalePct(row.tradesCount, scales.trades))} />
-        <ComparisonBar label="Range" style={barStyle(scalePct(range, scales.range))} />
-        <ComparisonBar label="к рынку" style={barStyle(scalePct(relative, scales.marketDelta))} tone={changeClass(relative)} />
+      <div className="tr-inplay-row__why">
+        <span className="tr-label">Почему здесь</span>
+        <div>
+          {reasons.map((reason) => <span className={`is-${reason.tone}`} key={reason.code}>{reason.label}</span>)}
+          {!reasons.length ? <span className="is-neutral">причина не подтверждена</span> : null}
+        </div>
       </div>
     </button>
   );
@@ -597,16 +566,12 @@ function InPlayFact({ label, value, tone = "" }: { label: string; value: string;
   return <span><small>{label}</small><strong className={`sk-mono ${tone}`}>{value}</strong></span>;
 }
 
-function ComparisonBar({ label, style, tone = "" }: { label: string; style: CSSProperties; tone?: string }) {
-  return <span className="tr-comparison-bar"><small>{label}</small><i className={tone} style={style} /></span>;
-}
-
 function DayPosition({ value, compact = false }: { value: number | null; compact?: boolean }) {
-  const pct = finite(value) ? value : 50;
+  const pct = isFiniteMetric(value) ? value : 50;
   return (
-    <span className={`tr-day-position ${compact ? "is-compact" : ""}`} title={finite(value) ? `${value.toFixed(0)}% диапазона дня` : "Нет полного диапазона"}>
+    <span className={`tr-day-position ${compact ? "is-compact" : ""}`} title={isFiniteMetric(value) ? `${value.toFixed(0)}% диапазона дня` : "Нет полного диапазона"}>
       <i style={{ left: `${pct}%` }} />
-      {compact ? <b className="sk-mono">{finite(value) ? `${value.toFixed(0)}%` : "—"}</b> : null}
+      {compact ? <b className="sk-mono">{isFiniteMetric(value) ? `${value.toFixed(0)}%` : "—"}</b> : null}
     </span>
   );
 }

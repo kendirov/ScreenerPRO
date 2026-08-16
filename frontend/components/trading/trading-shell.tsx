@@ -9,16 +9,12 @@ type NavigationItem = {
   href: string;
   label: string;
   exact?: boolean;
-  secondary?: boolean;
 };
 
 const navigation: readonly NavigationItem[] = [
   { href: "/trading", label: "Рынок", exact: true },
   { href: "/trading/stocks", label: "Акции" },
   { href: "/trading/futures", label: "Фьючерсы" },
-  { href: "/trading/crypto", label: "Крипто" },
-  { href: "/trading/strategies", label: "Стратегии", secondary: true },
-  { href: "/trading/materials", label: "Материалы", secondary: true },
 ];
 
 type TradingTheme = "dark" | "light";
@@ -31,37 +27,24 @@ export function TradingShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<TradingTheme>("dark");
   const [menuOpen, setMenuOpen] = useState(false);
-  const primary = navigation.filter((item) => !item.secondary);
-  const secondary = navigation.filter((item) => item.secondary);
 
   return (
     <div className="sk-root tr-root" data-sector-theme={theme}>
       <a className="sk-skip" href="#trading-main">К содержанию</a>
       <header className="tr-header">
         <div className="tr-header__inner">
-          <Link className="tr-brand" href="/trading/stocks" aria-label="TRADING — акции">
-            <span className="tr-brand__mark" aria-hidden="true">T</span>
-            <strong>TRADING</strong>
+          <Link className="tr-brand" href="/trading/stocks" aria-label="Trading Workspace — акции">
+            <span className="tr-brand__mark" aria-hidden="true">TW</span>
+            <strong>TRADING WORKSPACE</strong>
           </Link>
 
           <nav className="tr-nav" aria-label="Основная навигация">
             <div className="tr-nav__primary">
-              {primary.map((item) => (
+              {navigation.map((item) => (
                 <Link
                   href={item.href}
                   key={item.href}
                   className={isActive(pathname, item.href, item.exact) ? "is-active" : undefined}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-            <div className="tr-nav__secondary">
-              {secondary.map((item) => (
-                <Link
-                  href={item.href}
-                  key={item.href}
-                  className={isActive(pathname, item.href) ? "is-active" : undefined}
                 >
                   {item.label}
                 </Link>

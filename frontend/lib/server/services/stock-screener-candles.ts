@@ -68,21 +68,15 @@ function candleSessionKey(timestamp: string): string {
   }).format(new Date(timestamp));
 }
 
-function previousTradingDateKey(from = new Date()): string {
-  const cursor = new Date(from);
-  for (let i = 0; i < 8; i++) {
-    cursor.setDate(cursor.getDate() - 1);
-    const weekday = moscowWeekday(cursor);
-    if (weekday >= 1 && weekday <= 5) {
-      return moscowDateKey(cursor);
-    }
-  }
-  return moscowDateKey(cursor);
+function lookbackDateKey(days: number, from = new Date()): string {
+  return moscowDateKey(new Date(from.getTime() - days * 24 * 3600 * 1000));
 }
 
 async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): Promise<StockSparklineSeries> {
   const till = moscowDateKey();
-  const from = previousTradingDateKey();
+  // A calendar window is intentional: on weekends and holidays the nearest
+  // previous weekday alone contains only one real trading session.
+  const from = lookbackDateKey(7);
 
   try {
     const payload = moexPayloadSchema.parse(
@@ -93,7 +87,7 @@ async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): 
       return { ...emptySeries(secid, "intraday", interval), scope: "twoSessions", sessionKeys: [] };
     }
 
-    const candles: StockSparklineCandle[] = mapIntradayCandlesBars(table.columns, table.data)
+    const allCandles: StockSparklineCandle[] = mapIntradayCandlesBars(table.columns, table.data)
       .filter((bar) => bar.close != null && Number.isFinite(bar.close))
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
       .map((bar) => ({
@@ -104,7 +98,10 @@ async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): 
         sessionKey: candleSessionKey(bar.timestamp),
       }));
 
-    const sessionKeys = [...new Set(candles.map((c) => c.sessionKey).filter(Boolean))] as string[];
+    const allSessionKeys = [...new Set(allCandles.map((c) => c.sessionKey).filter(Boolean))] as string[];
+    const sessionKeys = allSessionKeys.slice(-2);
+    const selectedSessions = new Set(sessionKeys);
+    const candles = allCandles.filter((candle) => candle.sessionKey && selectedSessions.has(candle.sessionKey));
 
     if (candles.length < 3 || sessionKeys.length < 2) {
       return {
