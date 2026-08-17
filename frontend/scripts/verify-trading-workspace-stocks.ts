@@ -3,6 +3,7 @@ import {
   buildTradingWhyReasons,
   deriveTradingMarketState,
   summarizeTradingMarket,
+  summarizeTradingTurnoverComparison,
   tradingBenchmarkPosition,
   tradingDayPosition,
   tradingMarketDelta,
@@ -52,6 +53,7 @@ const base = screenerRowSchema.parse({
     intradayBaselineKind: "intraday-ok",
     baselineMode: "same-time",
     baselineTimeMsk: "14:20",
+    baselineSessionsCount: 5,
     avgTurnoverAtTimeRub: 50,
     volumeRatioNow: 2,
     avgTradesAtTimeRub: 5,
@@ -82,6 +84,25 @@ if (summarizeTradingMarket([unknown]).totalTurnover !== null) {
 }
 if (tradingDayPosition(base) !== 80) {
   throw new Error("Day position must be calculated inside the real low/high range");
+}
+
+const confirmedTurnover = summarizeTradingTurnoverComparison([base]);
+if (!confirmedTurnover || confirmedTurnover.ratio !== 2 || confirmedTurnover.coveragePct !== 100 || confirmedTurnover.quality !== "confirmed") {
+  throw new Error("Same-time turnover comparison must aggregate current and baseline turnover honestly");
+}
+
+const partialBaseline = screenerRowSchema.parse({
+  ...base,
+  ticker: "PART",
+  metrics: {
+    ...base.metrics,
+    baselineIsReliable: false,
+    intradayBaselineKind: "intraday-partial",
+  },
+});
+const partialTurnover = summarizeTradingTurnoverComparison([base, partialBaseline]);
+if (!partialTurnover || partialTurnover.quality !== "partial" || partialTurnover.instruments !== 2 || partialTurnover.sessions !== 5) {
+  throw new Error("Partial same-time history must remain visible and explicitly marked partial");
 }
 
 const benchmark = screenerBenchmarkSchema.parse({

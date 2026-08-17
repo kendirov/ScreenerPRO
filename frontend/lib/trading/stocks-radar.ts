@@ -25,6 +25,17 @@ export type TradingMarketState = {
   tone: "positive" | "negative" | "neutral";
 };
 
+export type TradingTurnoverComparison = {
+  currentTurnover: number;
+  baselineTurnover: number;
+  ratio: number;
+  coveragePct: number;
+  instruments: number;
+  sessions: number;
+  timeMsk: string | null;
+  quality: "confirmed" | "partial";
+};
+
 export function isFiniteMetric(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -81,6 +92,53 @@ export function summarizeTradingMarket(rows: ScreenerRow[]): TradingMarketSummar
     turnoverBalancePct: directionalTurnover > 0
       ? ((risingTurnover - fallingTurnover) / directionalTurnover) * 100
       : null,
+  };
+}
+
+export function tradingTurnoverComparisonForRow(row: ScreenerRow): Omit<TradingTurnoverComparison, "coveragePct" | "instruments"> | null {
+  const metrics = row.metrics;
+  const kind = metrics.intradayBaselineKind;
+  const currentTurnover = metrics.currentTurnoverRub ?? row.turnover;
+  const baselineTurnover = metrics.avgTurnoverAtTimeRub;
+  const sessions = metrics.baselineSessionsCount ?? 0;
+  if (
+    (kind !== "intraday-ok" && kind !== "intraday-partial") ||
+    !isFiniteMetric(currentTurnover) ||
+    !isFiniteMetric(baselineTurnover) ||
+    baselineTurnover <= 0 ||
+    sessions < 3
+  ) {
+    return null;
+  }
+  return {
+    currentTurnover,
+    baselineTurnover,
+    ratio: currentTurnover / baselineTurnover,
+    sessions,
+    timeMsk: metrics.baselineTimeMsk ?? null,
+    quality: kind === "intraday-ok" && metrics.baselineIsReliable === true ? "confirmed" : "partial",
+  };
+}
+
+export function summarizeTradingTurnoverComparison(rows: ScreenerRow[]): TradingTurnoverComparison | null {
+  const totalTurnover = rows.reduce((sum, row) => sum + (isFiniteMetric(row.turnover) ? row.turnover : 0), 0);
+  const comparisons = rows.map(tradingTurnoverComparisonForRow).filter((item): item is NonNullable<typeof item> => item !== null);
+  if (!comparisons.length || totalTurnover <= 0) return null;
+
+  const currentTurnover = comparisons.reduce((sum, item) => sum + item.currentTurnover, 0);
+  const baselineTurnover = comparisons.reduce((sum, item) => sum + item.baselineTurnover, 0);
+  if (baselineTurnover <= 0) return null;
+  const confirmed = comparisons.every((item) => item.quality === "confirmed");
+
+  return {
+    currentTurnover,
+    baselineTurnover,
+    ratio: currentTurnover / baselineTurnover,
+    coveragePct: (currentTurnover / totalTurnover) * 100,
+    instruments: comparisons.length,
+    sessions: Math.min(...comparisons.map((item) => item.sessions)),
+    timeMsk: comparisons.find((item) => item.timeMsk)?.timeMsk ?? null,
+    quality: confirmed ? "confirmed" : "partial",
   };
 }
 
@@ -157,14 +215,19 @@ export function buildTradingWhyReasons(
   maxReasons = 3,
 ): TradingWhyReason[] {
   const reasons: TradingWhyReason[] = [];
-  const volumeRatio = resolveHonestVolumeRatio(row);
+  const turnoverComparison = tradingTurnoverComparisonForRow(row);
+  const honestVolumeRatio = resolveHonestVolumeRatio(row);
+  const volumeRatio = honestVolumeRatio ?? turnoverComparison?.ratio ?? null;
   const tradesRatio = resolveHonestTradesRatio(row);
   const relative = tradingMarketDelta(row, benchmark);
   const position = tradingDayPosition(row);
   const range = row.metrics.dayRangePct;
 
   if (isFiniteMetric(volumeRatio) && volumeRatio >= 1.2) {
-    reasons.push({ code: "turnover-ratio", label: `оборот ${volumeRatio.toFixed(1)}× нормы`, tone: "attention" });
+    const comparisonLabel = honestVolumeRatio != null
+      ? `оборот ${volumeRatio.toFixed(1)}× нормы`
+      : `оборот ${volumeRatio.toFixed(1)}× к прошлым ${turnoverComparison?.sessions ?? "—"} сессиям`;
+    reasons.push({ code: "turnover-ratio", label: comparisonLabel, tone: "attention" });
   }
   if (isFiniteMetric(tradesRatio) && tradesRatio >= 1.2) {
     reasons.push({ code: "trades-ratio", label: `сделки ${tradesRatio.toFixed(1)}×`, tone: "attention" });

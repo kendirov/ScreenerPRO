@@ -17,7 +17,9 @@ export type TradingTurnoverSession = {
 
 export type TradingMarketContextResponse = {
   fetchedAt: string;
+  requestedDateKey: string;
   resolvedDateKey: string | null;
+  isLive: boolean;
   indexCode: string;
   indexSessions: TradingIndexSession[];
   turnoverSessions: TradingTurnoverSession[];

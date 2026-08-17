@@ -39,13 +39,15 @@ import {
 } from "@/lib/sector-k/market";
 import {
   buildTradingWhyReasons,
-  deriveTradingMarketState,
   isFiniteMetric,
+  summarizeTradingTurnoverComparison,
   summarizeTradingMarket,
+  tradingTurnoverComparisonForRow,
   tradingBenchmarkPosition,
   tradingDayPosition,
   tradingMarketDelta,
   type TradingMarketSummary,
+  type TradingTurnoverComparison,
 } from "@/lib/trading/stocks-radar";
 
 type StockPriority = PriorityInstrument<ScreenerRow>;
@@ -96,6 +98,49 @@ function changeValueClass(value: number | null | undefined): string {
   return `${direction} ${intensity}`;
 }
 
+function focusScore(item: StockPriority): number {
+  const ratio = tradingTurnoverComparisonForRow(item.row)?.ratio ?? null;
+  const activityBonus = ratio == null ? 0 : ratio >= 2.5 ? 12 : ratio >= 1.8 ? 8 : ratio >= 1.25 ? 4 : 0;
+  return item.inPlayScore + activityBonus;
+}
+
+function selectTradingFocus(items: StockPriority[]): StockPriority[] {
+  return items
+    .filter((item) => {
+      const change = Math.abs(item.row.percentChange ?? 0);
+      const range = Math.abs(item.row.metrics.dayRangePct ?? 0);
+      const liquidMove = item.liquidityScore >= 90 && change >= 2 && range >= 2.5;
+      const liquidRange = item.liquidityScore >= 90 && change >= 1.5 && range >= 3.5;
+      return focusScore(item) >= 72 || liquidMove || liquidRange;
+    })
+    .sort((left, right) => focusScore(right) - focusScore(left));
+}
+
+function selectTradingLiquidity(items: StockPriority[]): StockPriority[] {
+  return items.filter((item) => item.liquidityScore >= 92);
+}
+
+function selectTradingShots(items: StockPriority[], focus: StockPriority[]): StockPriority[] {
+  const focusTickers = new Set(focus.map((item) => item.secid));
+  return items
+    .filter((item) => {
+      if (focusTickers.has(item.secid) || item.isHardExcluded) return false;
+      const row = item.row;
+      const change = Math.abs(row.percentChange ?? 0);
+      const range = Math.abs(row.metrics.dayRangePct ?? 0);
+      const turnover = row.turnover ?? 0;
+      const trades = row.tradesCount ?? 0;
+      const tradableThinMove = turnover >= 5_000_000 && turnover < 50_000_000 && trades >= 500;
+      const extremeIlliquidMove = turnover >= 500_000 && turnover < 5_000_000 && range >= 8 && change >= 5;
+      return range >= 5 && change >= 3 && (tradableThinMove || extremeIlliquidMove);
+    })
+    .sort((left, right) => {
+      const leftMove = Math.abs(left.row.metrics.dayRangePct ?? 0) + Math.abs(left.row.percentChange ?? 0);
+      const rightMove = Math.abs(right.row.metrics.dayRangePct ?? 0) + Math.abs(right.row.percentChange ?? 0);
+      return rightMove - leftMove;
+    });
+}
+
 export function TradingStocks() {
   const date = useSelectedTradingDate();
   const query = useScreenerQuery("stock", date.apiDateParam);
@@ -116,9 +161,9 @@ export function TradingStocks() {
   const priority = useMemo(
     () => computeMarketPriority(universe.stockRows, {
       mode: "strict",
-      maxLiquidity: 6,
-      maxInPlay: 5,
-      maxVolatility: 6,
+      maxLiquidity: Math.max(1, universe.stockRows.length),
+      maxInPlay: 8,
+      maxVolatility: Math.max(1, universe.stockRows.length),
       variant: "stock-live-v0",
     }),
     [universe.stockRows],
@@ -127,11 +172,12 @@ export function TradingStocks() {
   const market = useMemo(() => summarizeTradingMarket(universe.stockRows), [universe.stockRows]);
   const marketContextDateKey = query.data?.status.resolvedTradingDateKey ?? date.selectedDateKey;
   const marketContext = useTradingMarketContext(marketContextDateKey);
-  const focusTickers = useMemo(
-    () => priority.focusInPlayLeaders.map((item) => item.row.ticker),
-    [priority.focusInPlayLeaders],
-  );
+  const focusItems = useMemo(() => selectTradingFocus(priority.inPlayCandidateLeaders), [priority.inPlayCandidateLeaders]);
+  const liquidityItems = useMemo(() => selectTradingLiquidity(priority.liquidityLeaders), [priority.liquidityLeaders]);
+  const shotItems = useMemo(() => selectTradingShots(priority.all, focusItems), [focusItems, priority.all]);
+  const focusTickers = useMemo(() => focusItems.map((item) => item.row.ticker), [focusItems]);
   const focusCharts = useRadarSparklineCandles(focusTickers, date.isLive);
+  const turnoverComparison = useMemo(() => summarizeTradingTurnoverComparison(universe.stockRows), [universe.stockRows]);
 
   const sortParam = searchParams.get("sort") as SectorKStockSortKey | null;
   const sortKey = sortParam && SORT_KEYS.has(sortParam) ? sortParam : "trades";
@@ -231,10 +277,12 @@ export function TradingStocks() {
         indexSessions={marketContext.data?.indexSessions ?? []}
         turnoverSessions={marketContext.data?.turnoverSessions ?? []}
         contextLoading={marketContext.isLoading}
+        isLive={date.isLive}
+        turnoverComparison={turnoverComparison}
       />
       <div className="tr-priority-workspace">
         <InPlayWorkspace
-          items={priority.focusInPlayLeaders}
+          items={focusItems}
           benchmark={benchmark}
           universe={universe.stockRows}
           seriesByTicker={focusCharts.seriesByTicker}
@@ -244,8 +292,8 @@ export function TradingStocks() {
           onFocus={focusTicker}
         />
         <aside className="tr-support-rails" aria-label="Дополнительные радары">
-          <PriorityRail kind="liquidity" items={priority.liquidityLeaders} onFocus={focusTicker} />
-          <PriorityRail kind="shots" items={priority.volatilityLeaders} onFocus={focusTicker} />
+          <PriorityRail kind="liquidity" items={liquidityItems} onFocus={focusTicker} />
+          <PriorityRail kind="shots" items={shotItems} onFocus={focusTicker} />
         </aside>
       </div>
 
@@ -386,19 +434,6 @@ export function TradingStocks() {
   );
 }
 
-function formatStatusTime(status: ScreenerDataStatus | undefined): string {
-  const raw = status?.sourceTimestamp ?? status?.fetchTimestamp;
-  if (!raw) return "время —";
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return "время —";
-  return new Intl.DateTimeFormat("ru-RU", {
-    timeZone: "Europe/Moscow",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(date) + " МСК";
-}
-
 function MarketStrip({
   benchmark,
   summary,
@@ -406,6 +441,8 @@ function MarketStrip({
   indexSessions,
   turnoverSessions,
   contextLoading,
+  isLive,
+  turnoverComparison,
 }: {
   benchmark: ScreenerBenchmark | null;
   summary: TradingMarketSummary;
@@ -413,23 +450,16 @@ function MarketStrip({
   indexSessions: TradingIndexSession[];
   turnoverSessions: TradingTurnoverSession[];
   contextLoading: boolean;
+  isLive: boolean;
+  turnoverComparison: TradingTurnoverComparison | null;
 }) {
   const position = tradingBenchmarkPosition(benchmark);
   const directional = summary.risingTurnover + summary.fallingTurnover;
   const upShare = directional > 0 ? (summary.risingTurnover / directional) * 100 : 50;
   const downShare = directional > 0 ? (summary.fallingTurnover / directional) * 100 : 50;
   const balance = summary.turnoverBalancePct;
-  const marketState = deriveTradingMarketState(benchmark, summary);
   const sourceLabel = status?.source === "moex" ? "MOEX ISS" : (status?.source ?? "источник");
-  const sourceState = status?.staleCache
-    ? "кэш"
-    : status?.source === "moex" && status?.degraded
-      ? "рынок актуален · baseline —"
-      : status?.degraded
-        ? "ограничено"
-        : "актуально";
-  const resolvedDate = turnoverSessions.at(-1)?.dateKey ?? status?.resolvedTradingDateKey ?? null;
-  const marketClosed = status?.marketStatus === "closed" || (resolvedDate !== null && resolvedDate !== moscowTodayKey());
+  const resolvedDate = status?.resolvedTradingDateKey ?? turnoverSessions.at(-1)?.dateKey ?? null;
 
   return (
     <section className="tr-market-strip" aria-label="Состояние рынка акций">
@@ -442,11 +472,7 @@ function MarketStrip({
           <b className="sk-mono">{formatSectorKPrice(benchmark?.lastValue)}</b>
           <span className={`sk-mono tr-change-value ${changeValueClass(benchmark?.percentChange)}`}>{formatSectorKPercent(benchmark?.percentChange)}</span>
         </div>
-        <div className={`tr-market-state is-${marketState.tone}`}>
-          <strong>{marketState.label}</strong>
-          <small className="sk-mono">{marketState.evidence || "данных недостаточно"}</small>
-        </div>
-        <MarketIndexSessions sessions={indexSessions} loading={contextLoading} indexCode={benchmark?.code ?? "IMOEX2"} />
+        <MarketIndexSessions sessions={indexSessions} loading={contextLoading} indexCode={benchmark?.code ?? "IMOEX2"} isLive={isLive} />
         <div className="tr-range-line" title="Положение закрытия внутри диапазона последней сессии">
           <span className="sk-mono">L {formatSectorKPrice(benchmark?.low)}</span>
           <DayPosition value={position} />
@@ -458,17 +484,15 @@ function MarketStrip({
         current={summary.totalTurnover}
         sessions={turnoverSessions}
         loading={contextLoading}
-        marketClosed={marketClosed}
+        isLive={isLive}
+        currentDate={resolvedDate}
+        comparison={turnoverComparison}
       />
       <MarketInternalsFact
         summary={summary}
         balance={balance}
         upShare={upShare}
         downShare={downShare}
-        status={status}
-        sourceState={sourceState}
-        marketClosed={marketClosed}
-        resolvedDate={resolvedDate}
       />
     </section>
   );
@@ -479,19 +503,11 @@ function MarketInternalsFact({
   balance,
   upShare,
   downShare,
-  status,
-  sourceState,
-  marketClosed,
-  resolvedDate,
 }: {
   summary: TradingMarketSummary;
   balance: number | null;
   upShare: number;
   downShare: number;
-  status?: ScreenerDataStatus;
-  sourceState: string;
-  marketClosed: boolean;
-  resolvedDate: string | null;
 }) {
   return (
     <div className="tr-market-internals">
@@ -518,10 +534,7 @@ function MarketInternalsFact({
         <span className="is-up" style={{ width: `${upShare}%` }} />
         <span className="is-down" style={{ width: `${downShare}%` }} />
       </div>
-      <div className="tr-internals-status">
-        <small className={`tr-source-note ${status?.degraded || status?.staleCache ? "is-warning" : ""}`}>{sourceState} · {formatStatusTime(status)}</small>
-        <small className="tr-session-note">{marketClosed ? "рынок закрыт" : "торги идут"}{resolvedDate ? ` · ${formatCompactDateKey(resolvedDate)}` : ""}</small>
-      </div>
+      <small className="tr-internals-foot sk-mono">без изменений {summary.flat} · источник направления — изменение к предыдущему закрытию</small>
     </div>
   );
 }
@@ -530,22 +543,36 @@ function MarketTurnoverFact({
   current,
   sessions,
   loading,
-  marketClosed,
+  isLive,
+  currentDate,
+  comparison,
 }: {
   current: number | null;
   sessions: TradingTurnoverSession[];
   loading: boolean;
-  marketClosed: boolean;
+  isLive: boolean;
+  currentDate: string | null;
+  comparison: TradingTurnoverComparison | null;
 }) {
-  const values = sessions.slice(-8).map((session, index, list) => ({
-    ...session,
-    turnover: index === list.length - 1 && isFiniteMetric(current) ? current : session.turnover,
-  }));
+  const completed = sessions.filter((session) => !isLive || session.dateKey !== currentDate);
+  const values = isLive && currentDate && isFiniteMetric(current)
+    ? [...completed.slice(-7), { dateKey: currentDate, turnover: current, trades: 0 }]
+    : sessions.slice(-8).map((session, index, list) => ({
+        ...session,
+        turnover: index === list.length - 1 && isFiniteMetric(current) ? current : session.turnover,
+      }));
   const max = Math.max(...values.map((item) => item.turnover), 1);
+  const ratioTone = comparison == null ? "is-muted" : comparison.ratio >= 1.15 ? "is-strong" : comparison.ratio <= 0.85 ? "is-weak" : "is-normal";
+  const ratioLabel = comparison
+    ? `${comparison.ratio >= 1.15 ? "выше" : comparison.ratio <= 0.85 ? "ниже" : "около"} прошлых ${comparison.sessions} сессий к ${comparison.timeMsk ?? "текущему времени"}`
+    : isLive ? "сравнение к этому времени недоступно" : "8 завершённых сессий";
   return (
     <div className="tr-market-fact tr-market-turnover">
       <span className="tr-label">Оборот рынка</span>
-      <strong className="sk-mono">{formatSectorKTurnover(current)}</strong>
+      <div className="tr-turnover-quote">
+        <strong className="sk-mono">{formatSectorKTurnover(current)}</strong>
+        {comparison ? <b className={`sk-mono tr-turnover-ratio ${ratioTone}`}>{comparison.ratio.toFixed(1)}×</b> : null}
+      </div>
       <div className="tr-turnover-bars" aria-label="Оборот за восемь последних торговых сессий">
         {values.map((item, index) => (
           <i
@@ -558,7 +585,7 @@ function MarketTurnoverFact({
         {!values.length && !loading ? <span>истории нет</span> : null}
         {loading ? <span>история…</span> : null}
       </div>
-      <small>{marketClosed ? "8 последних сессий" : "текущий срез + полные сессии; без ложной нормы"}</small>
+      <small title={comparison ? `Покрытие ${comparison.coveragePct.toFixed(0)}% оборота · ${comparison.instruments} инструментов` : undefined}>{ratioLabel}</small>
     </div>
   );
 }
@@ -584,59 +611,77 @@ function moscowMinutes(raw: string): number | null {
   return Number.isFinite(hour) && Number.isFinite(minute) ? hour * 60 + minute : null;
 }
 
-function MarketIndexSessions({ sessions, loading, indexCode }: { sessions: TradingIndexSession[]; loading: boolean; indexCode: string }) {
+function MarketIndexSessions({ sessions, loading, indexCode, isLive }: { sessions: TradingIndexSession[]; loading: boolean; indexCode: string; isLive: boolean }) {
   const width = 420;
-  const height = 68;
+  const height = 72;
   const previousWidth = 126;
   const currentStart = 146;
   const marketStart = 7 * 60;
   const marketEnd = 23 * 60 + 50;
-  const allValues = sessions.flatMap((session) => session.points.map((point) => point.normalizedPct));
-  const low = Math.min(...allValues, -0.1);
-  const high = Math.max(...allValues, 0.1);
+  const todayKey = moscowTodayKey();
+  const targetDateKey = isLive ? todayKey : sessions.at(-1)?.dateKey ?? null;
+  const currentSession = targetDateKey ? sessions.find((session) => session.dateKey === targetDateKey) : undefined;
+  const previousSessions = sessions.filter((session) => session.dateKey !== targetDateKey).slice(-2);
+  const visibleSessions = [...previousSessions, ...(currentSession ? [currentSession] : [])];
+  const allValues = visibleSessions.flatMap((session) => session.points.map((point) => point.close));
+  const low = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const high = allValues.length > 0 ? Math.max(...allValues) : 1;
   const span = high - low || 1;
-  const chartTop = 12;
+  const padding = span * 0.08;
+  const chartTop = 14;
   const chartBottom = height - 7;
-  const yFor = (value: number) => chartBottom - ((value - low) / span) * (chartBottom - chartTop);
-  const previousSessions = sessions.slice(0, -1).slice(-2);
-  const currentSession = sessions.at(-1);
-  const path = (session: TradingIndexSession, xStart: number, xEnd: number, byTime = false) => session.points.map((point, index) => {
+  const yFor = (value: number) => chartBottom - ((value - (low - padding)) / (span + padding * 2)) * (chartBottom - chartTop);
+  const coordinates = (session: TradingIndexSession, xStart: number, xEnd: number, byTime = false) => session.points.map((point, index) => {
     const minute = byTime ? moscowMinutes(point.time) : null;
     const progress = minute == null
       ? index / Math.max(1, session.points.length - 1)
       : Math.min(1, Math.max(0, (minute - marketStart) / (marketEnd - marketStart)));
-    const x = xStart + progress * (xEnd - xStart);
-    const y = yFor(point.normalizedPct);
-    return `${index ? "L" : "M"}${x.toFixed(2)},${y.toFixed(2)}`;
-  }).join(" ");
-  const zeroY = yFor(0);
+    return { x: xStart + progress * (xEnd - xStart), y: yFor(point.close) };
+  });
+  const path = (points: Array<{ x: number; y: number }>) => points.map((point, index) => `${index ? "L" : "M"}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
+  const previousSegments = previousSessions.map((session, index) => {
+    const segment = previousWidth / Math.max(1, previousSessions.length);
+    const xStart = index * segment;
+    return { session, points: coordinates(session, xStart, xStart + segment - 7) };
+  });
+  const currentPoints = currentSession ? coordinates(currentSession, currentStart, width, true) : [];
+  const renderedSegments = [...previousSegments, ...(currentSession ? [{ session: currentSession, points: currentPoints }] : [])];
+  const gapPaths = renderedSegments.slice(1).map((segment, index) => {
+    const previous = renderedSegments[index]?.points.at(-1);
+    const next = segment.points[0];
+    return previous && next ? `M${previous.x.toFixed(2)},${previous.y.toFixed(2)} L${next.x.toFixed(2)},${next.y.toFixed(2)}` : "";
+  }).filter(Boolean);
+  const nowMinutes = isLive ? moscowMinutes(new Date().toISOString()) : null;
+  const nowX = nowMinutes == null ? null : currentStart + Math.min(1, Math.max(0, (nowMinutes - marketStart) / (marketEnd - marketStart))) * (width - currentStart);
+  const currentPoint = currentPoints.at(-1);
+  const shortDate = (dateKey: string) => dateKey.slice(5).split("-").reverse().join(".");
 
   return (
     <div className="tr-index-sessions">
       <div className="tr-index-sessions__legend">
-        <span>2 прошлые сессии</span>
-        <i className="is-current">текущая · {currentSession ? formatCompactDateKey(currentSession.dateKey) : "—"}</i>
+        <span>{previousSessions.length ? `прошлые · ${previousSessions.map((session) => shortDate(session.dateKey)).join(" / ")}` : "прошлые сессии —"}</span>
+        <i className="is-current">{isLive ? "сегодня" : "сессия"} · {currentSession ? shortDate(currentSession.dateKey) : "данных пока нет"}</i>
       </div>
-      {sessions.length ? (
-        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={`${indexCode}: текущая сессия и две предыдущие, нормированные к открытию`}>
-          <line className="tr-index-sessions__zero" x1="0" x2={width} y1={zeroY} y2={zeroY} />
+      {visibleSessions.length ? (
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={`${indexCode}: фактические уровни двух прошлых сессий и выбранной сессии; разрывы между днями сохранены`}>
+          <line className="tr-index-sessions__grid" x1="0" x2={width} y1={height / 2} y2={height / 2} />
           <line className="tr-index-sessions__divider" x1="136" x2="136" y1="5" y2={height} />
-          {previousSessions.map((session, index) => {
-            const segment = previousWidth / Math.max(1, previousSessions.length);
-            const xStart = index * segment;
-            return <path d={path(session, xStart, xStart + segment - 7)} key={session.dateKey} />;
-          })}
+          {previousSegments.map(({ session, points }) => <path d={path(points)} key={session.dateKey} />)}
+          {gapPaths.map((gap, index) => <path className="is-gap" d={gap} key={`gap-${index}`} />)}
           {MARKET_DAY_MARKERS.map((marker) => {
             const x = currentStart + ((marker.minutes - marketStart) / (marketEnd - marketStart)) * (width - currentStart);
+            const future = isLive && nowMinutes != null && marker.minutes > nowMinutes;
             return (
-              <g className="tr-index-sessions__marker" key={marker.minutes}>
+              <g className={`tr-index-sessions__marker ${future ? "is-future" : ""}`} key={marker.minutes}>
                 <title>{marker.title}</title>
                 <line x1={x} x2={x} y1="11" y2={height} />
                 <text x={x + 3} y="8">{marker.label}</text>
               </g>
             );
           })}
-          {currentSession ? <path className="is-current" d={path(currentSession, currentStart, width, true)} /> : null}
+          {currentSession ? <path className="is-current" d={path(currentPoints)} /> : null}
+          {isLive && nowX != null ? <line className="tr-index-sessions__now" x1={nowX} x2={nowX} y1="12" y2={height} /> : null}
+          {isLive && currentPoint ? <circle className="tr-index-sessions__current-point" cx={currentPoint.x} cy={currentPoint.y} r="2.4" /> : null}
         </svg>
       ) : <div className="tr-index-sessions__empty">{loading ? "получаем IMOEX" : "интрадей недоступен"}</div>}
     </div>
@@ -717,6 +762,7 @@ function InPlayRow({
   const row = item.row;
   const relative = tradingMarketDelta(row, benchmark);
   const position = tradingDayPosition(row);
+  const turnoverComparison = tradingTurnoverComparisonForRow(row);
   const reasons = buildTradingWhyReasons(row, benchmark, universe);
 
   return (
@@ -741,6 +787,11 @@ function InPlayRow({
       <div className="tr-inplay-row__analysis">
         <div className="tr-inplay-row__facts">
           <InPlayFact label="Оборот" value={formatSectorKTurnover(row.turnover)} />
+          <InPlayFact
+            label="Оборот ×"
+            value={turnoverComparison ? `${turnoverComparison.ratio.toFixed(1)}×` : "—"}
+            title={turnoverComparison ? `К прошлым ${turnoverComparison.sessions} сессиям на ${turnoverComparison.timeMsk ?? "это время"}; ${turnoverComparison.quality === "confirmed" ? "подтверждённая" : "частичная"} база` : "Сопоставимой истории к этому времени нет"}
+          />
           <InPlayFact label="Сделки" value={formatTrades(row.tradesCount)} />
           <InPlayFact label="Диапазон" value={formatSectorKMagnitudePercent(row.metrics.dayRangePct)} />
           <InPlayFact label="Закрытие" value={isFiniteMetric(position) ? `${position.toFixed(0)}% снизу` : "—"} title="0% — минимум дня, 100% — максимум" />
@@ -772,13 +823,13 @@ function PriorityRail({
     <section className={`tr-support-rail is-${kind}`}>
       <header>
         <div>
-          <span className="tr-label">{liquidity ? "Участие рынка" : "Аномалия"}</span>
+          <span className="tr-label">{liquidity ? "Исполнение" : "Тонкое движение"}</span>
           <h3>{liquidity ? "Ликвидность" : "Прострелы"}</h3>
         </div>
         <b className="sk-mono">{items.length}</b>
       </header>
       <div className="tr-support-rail__list">
-        {items.slice(0, 4).map((item) => {
+        {items.map((item) => {
           const row = item.row;
           return (
             <button type="button" key={item.secid} onClick={() => onFocus(row.ticker)}>
@@ -787,15 +838,13 @@ function PriorityRail({
                 <b className={liquidity ? "" : changeClass(row.percentChange)}>
                   {liquidity ? formatSectorKTurnover(row.turnover) : formatSectorKMagnitudePercent(row.metrics.dayRangePct)}
                 </b>
-                <small>{liquidity ? `${formatTrades(row.tradesCount)} сделок` : `${formatSectorKPercent(row.percentChange)} · ${formatTrades(row.tradesCount)} сделок`}</small>
+                <small>{liquidity ? `${formatTrades(row.tradesCount)} сделок` : `${formatSectorKPercent(row.percentChange)} · ${formatSectorKTurnover(row.turnover)}`}</small>
               </span>
             </button>
           );
         })}
+        {!items.length ? <div className="tr-support-rail__empty">—</div> : null}
       </div>
-      <footer>{liquidity
-        ? "Доступность исполнения · не сигнал"
-        : "Аномалия диапазона · не сигнал"}</footer>
     </section>
   );
 }

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, Moon, Sun, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type NavigationItem = {
   href: string;
@@ -11,16 +11,49 @@ type NavigationItem = {
   exact?: boolean;
 };
 
-const navigation: readonly NavigationItem[] = [
-  { href: "/trading", label: "Рынок", exact: true },
+const primaryNavigation: readonly NavigationItem[] = [
   { href: "/trading/stocks", label: "Акции" },
   { href: "/trading/futures", label: "Фьючерсы" },
+  { href: "/trading/crypto", label: "Криптовалюта" },
 ];
+
+const secondaryNavigation: readonly NavigationItem[] = [
+  { href: "/sector-k/strategies", label: "Стратегии" },
+  { href: "/sector-k/materials", label: "Материалы" },
+];
+
+const navigation = [...primaryNavigation, ...secondaryNavigation] as const;
 
 type TradingTheme = "dark" | "light";
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
   return exact ? pathname === href : pathname.startsWith(href);
+}
+
+function MoscowClock() {
+  const [time, setTime] = useState("—:—:—");
+
+  useEffect(() => {
+    const format = () => new Intl.DateTimeFormat("ru-RU", {
+      timeZone: "Europe/Moscow",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date());
+    const tick = () => setTime(format());
+    tick();
+    const timer = window.setInterval(tick, 250);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="tr-moex-clock" title="Текущее время Europe/Moscow">
+      <span>MOEX</span>
+      <b className="sk-mono" aria-label={`Московское время ${time}`}>{time}</b>
+      <small>МСК</small>
+    </div>
+  );
 }
 
 export function TradingShell({ children }: { children: React.ReactNode }) {
@@ -40,7 +73,19 @@ export function TradingShell({ children }: { children: React.ReactNode }) {
 
           <nav className="tr-nav" aria-label="Основная навигация">
             <div className="tr-nav__primary">
-              {navigation.map((item) => (
+              {primaryNavigation.map((item) => (
+                <Link
+                  href={item.href}
+                  key={item.href}
+                  className={isActive(pathname, item.href, item.exact) ? "is-active" : undefined}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            <MoscowClock />
+            <div className="tr-nav__secondary">
+              {secondaryNavigation.map((item) => (
                 <Link
                   href={item.href}
                   key={item.href}
@@ -53,6 +98,7 @@ export function TradingShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="tr-header__actions">
+            <MoscowClock />
             <button
               className="tr-icon-button"
               type="button"

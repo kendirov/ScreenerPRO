@@ -4,7 +4,7 @@ import type {
   TradingMarketContextResponse,
   TradingTurnoverSession,
 } from "@/lib/domain/trading-market-context";
-import { shiftCalendarDaysKey } from "@/lib/domain/trading-calendar";
+import { moscowTodayKey, shiftCalendarDaysKey } from "@/lib/domain/trading-calendar";
 import { indexCandlesUrl } from "@/lib/server/integrations/moex/endpoints";
 import { moexGetJson } from "@/lib/server/integrations/moex/client";
 import { mapIntradayCandlesBars } from "@/lib/server/integrations/moex/mappers";
@@ -85,9 +85,12 @@ export async function buildTradingStockMarketContext(requestedDateKey: string): 
   const cached = contextCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.payload;
 
-  const dateKeys = await resolveRecentSessions(requestedDateKey, 8);
-  const resolvedDateKey = dateKeys.at(-1) ?? null;
-  const from = dateKeys.at(-3) ?? shiftCalendarDaysKey(requestedDateKey, -8);
+  const isLive = requestedDateKey === moscowTodayKey();
+  const completedSessionCursor = isLive ? shiftCalendarDaysKey(requestedDateKey, -1) : requestedDateKey;
+  const dateKeys = await resolveRecentSessions(completedSessionCursor, isLive ? 7 : 8);
+  const resolvedDateKey = isLive ? requestedDateKey : dateKeys.at(-1) ?? null;
+  const indexDateKeys = isLive ? [...dateKeys, requestedDateKey] : dateKeys;
+  const from = indexDateKeys.at(-3) ?? shiftCalendarDaysKey(requestedDateKey, -8);
   const till = resolvedDateKey ?? requestedDateKey;
 
   const [indexSessions, turnoverSessions] = await Promise.all([
@@ -97,7 +100,9 @@ export async function buildTradingStockMarketContext(requestedDateKey: string): 
 
   const payload: TradingMarketContextResponse = {
     fetchedAt: new Date().toISOString(),
+    requestedDateKey,
     resolvedDateKey,
+    isLive,
     indexCode: "IMOEX2",
     indexSessions,
     turnoverSessions,
