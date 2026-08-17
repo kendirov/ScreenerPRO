@@ -809,11 +809,13 @@ function InPlayRow({
       <div className="tr-inplay-row__analysis">
         <div className="tr-inplay-row__facts">
           <InPlayFact label="Оборот" value={formatSectorKTurnover(row.turnover)} />
-          <InPlayFact
-            label="Оборот ×"
-            value={turnoverComparison ? `${turnoverComparison.ratio.toFixed(1)}×` : "—"}
-            title={turnoverComparison ? `К прошлым ${turnoverComparison.sessions} сессиям на ${turnoverComparison.timeMsk ?? "это время"}; ${turnoverComparison.quality === "confirmed" ? "подтверждённая" : "частичная"} база` : "Сопоставимой истории к этому времени нет"}
-          />
+          {turnoverComparison ? (
+            <InPlayFact
+              label="Оборот ×"
+              value={`${turnoverComparison.ratio.toFixed(1)}×`}
+              title={`К прошлым ${turnoverComparison.sessions} сессиям на ${turnoverComparison.timeMsk ?? "это время"}; ${turnoverComparison.quality === "confirmed" ? "подтверждённая" : "частичная"} база`}
+            />
+          ) : null}
           <InPlayFact label="Сделки" value={formatTrades(row.tradesCount)} />
           <InPlayFact label="Диапазон" value={formatSectorKMagnitudePercent(row.metrics.dayRangePct)} />
           <InPlayFact label="Закрытие" value={isFiniteMetric(position) ? `${position.toFixed(0)}% снизу` : "—"} title="0% — минимум дня, 100% — максимум" />
