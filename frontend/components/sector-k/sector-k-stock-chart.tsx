@@ -19,13 +19,15 @@ const MarketCandleChart = dynamic(
 export function SectorKStockChart({
   row,
   dateKey,
+  initialInterval = 10,
   onClose,
 }: {
   row: ScreenerRow;
   dateKey: string | null;
+  initialInterval?: StockExpandedChartInterval;
   onClose: () => void;
 }) {
-  const [interval, setInterval] = useState<StockExpandedChartInterval>(10);
+  const [interval, setInterval] = useState<StockExpandedChartInterval>(initialInterval);
   const { series, isLoading, isError } = useStockExpandedCandles(row.ticker, interval, dateKey);
 
   return (

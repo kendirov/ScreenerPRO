@@ -1,18 +1,13 @@
-# Tasks — Trading Workspace / Stocks Radar v2
+# Tasks — Trading Workspace / Stocks v5 + Futures v1
 
-- [x] Create a separate worktree tracking `codex/trading-stocks-v2-2026-08-15`.
-- [x] Record scope, data truth and acceptance criteria before implementation.
-- [x] Make Market Strip expose source, freshness and degraded/stale status.
-- [x] Replace the three-column priority area with a dominant explainable `В игре` workspace.
-- [x] Add real compact intraday charts with honest loading/no-data states.
-- [x] Add testable numeric `Почему здесь` reasons without a universal score.
-- [x] Record the second-iteration hierarchy, formula and chart decisions.
-- [x] Add computed market state, real IMOEX session comparison and eight-session turnover context.
-- [x] Expand `В игре` to five candidates and restore compact supporting liquidity/shot radars.
-- [x] Connect top rows to table selection and the full interactive candle chart.
-- [x] Make the expanded intraday chart resolve the last actual session on weekends.
-- [x] Run targeted data, lint, type and build checks.
-- [x] Verify `/trading/stocks` in desktop/mobile browser, including closed-market state, OZON drill-down, chart intervals and console.
-- [ ] Commit only scoped files, push Draft PR #10 and verify protected Vercel Preview.
-- [x] Record accepted/rejected feedback in CANON `09_PRODUCT_STANDARDS_AND_ANTIPATTERNS` with connector readback.
-- [ ] Add the final Preview result to `30_WORK_LOG` after deployment verification.
+- [x] Confirm checkout, branch, Production boundary and preserved dirty files.
+- [x] Record product/data truth and acceptance criteria.
+- [x] Clarify Stocks multi-session chart legend and compact support rails.
+- [x] Add honest Stocks session microvisual and compact toolbar.
+- [x] Add MOEX `ASSETCODE` to the normalized Futures contract.
+- [x] Implement Futures family/ranking model and same-time activity context.
+- [x] Build `/trading/futures` desktop/mobile screen and contract chart flow.
+- [x] Add deterministic Futures verifier.
+- [x] Run contract, type, lint, build and browser checks; repair defects.
+- [x] Update CANON product standards and read back the revision.
+- [x] Commit scoped changes, push Draft PR #10 and verify Vercel Preview.

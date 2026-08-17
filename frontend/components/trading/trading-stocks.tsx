@@ -51,6 +51,7 @@ import {
 } from "@/lib/trading/stocks-radar";
 
 type StockPriority = PriorityInstrument<ScreenerRow>;
+const SUPPORT_RAIL_LIMIT = 6;
 type MarketTurnoverComparison = Pick<TradingTurnoverComparison, "ratio" | "sessions" | "timeMsk" | "quality"> & {
   source: "stock-baseline" | "imoex2-candles";
   coveragePct?: number;
@@ -122,7 +123,12 @@ function selectTradingFocus(items: StockPriority[]): StockPriority[] {
 }
 
 function selectTradingLiquidity(items: StockPriority[]): StockPriority[] {
-  return items.filter((item) => item.liquidityScore >= 92);
+  return items
+    .filter((item) => item.liquidityScore >= 92)
+    .sort((left, right) => {
+      const turnover = (right.row.turnover ?? 0) - (left.row.turnover ?? 0);
+      return turnover || (right.row.tradesCount ?? 0) - (left.row.tradesCount ?? 0);
+    });
 }
 
 function selectTradingShots(items: StockPriority[], focus: StockPriority[]): StockPriority[] {
@@ -154,6 +160,7 @@ export function TradingStocks() {
   const router = useRouter();
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
+  const [expandedInterval, setExpandedInterval] = useState<5 | 10>(10);
   const [copiedTicker, setCopiedTicker] = useState<string | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<Set<SectorKStockSortKey>>(() => new Set(SORT_KEYS));
   const hideIlliquidParam = searchParams.get("illiquid") !== "show";
@@ -180,8 +187,13 @@ export function TradingStocks() {
   const focusItems = useMemo(() => selectTradingFocus(priority.inPlayCandidateLeaders), [priority.inPlayCandidateLeaders]);
   const liquidityItems = useMemo(() => selectTradingLiquidity(priority.liquidityLeaders), [priority.liquidityLeaders]);
   const shotItems = useMemo(() => selectTradingShots(priority.all, focusItems), [focusItems, priority.all]);
-  const focusTickers = useMemo(() => focusItems.map((item) => item.row.ticker), [focusItems]);
-  const focusCharts = useRadarSparklineCandles(focusTickers, date.isLive);
+  const liquidityTop = useMemo(() => liquidityItems.slice(0, SUPPORT_RAIL_LIMIT), [liquidityItems]);
+  const shotTop = useMemo(() => shotItems.slice(0, SUPPORT_RAIL_LIMIT), [shotItems]);
+  const radarTickers = useMemo(
+    () => [...focusItems, ...shotTop].map((item) => item.row.ticker),
+    [focusItems, shotTop],
+  );
+  const radarCharts = useRadarSparklineCandles(radarTickers, date.isLive);
   const stockTurnoverComparison = useMemo(() => summarizeTradingTurnoverComparison(universe.stockRows), [universe.stockRows]);
   const turnoverComparison = useMemo<MarketTurnoverComparison | null>(() => {
     if (stockTurnoverComparison) return { ...stockTurnoverComparison, source: "stock-baseline" };
@@ -262,8 +274,9 @@ export function TradingStocks() {
     }
   }
 
-  function focusTicker(ticker: string) {
+  function focusTicker(ticker: string, interval: 5 | 10 = 10) {
     setSelectedTicker(ticker);
+    setExpandedInterval(interval);
     setExpandedTicker(ticker);
     window.requestAnimationFrame(() => {
       document.getElementById(`tr-stock-${ticker}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -302,15 +315,23 @@ export function TradingStocks() {
           items={focusItems}
           benchmark={benchmark}
           universe={universe.stockRows}
-          seriesByTicker={focusCharts.seriesByTicker}
-          chartsLoading={focusCharts.isLoading}
-          chartsError={focusCharts.isError}
+          seriesByTicker={radarCharts.seriesByTicker}
+          chartsLoading={radarCharts.isLoading}
+          chartsError={radarCharts.isError}
           chartsEnabled={date.isLive}
           onFocus={focusTicker}
         />
         <aside className="tr-support-rails" aria-label="Дополнительные радары">
-          <PriorityRail kind="liquidity" items={liquidityItems} onFocus={focusTicker} />
-          <PriorityRail kind="shots" items={shotItems} onFocus={focusTicker} />
+          <PriorityRail kind="liquidity" items={liquidityTop} total={liquidityItems.length} onFocus={(ticker) => focusTicker(ticker, 10)} />
+          <PriorityRail
+            kind="shots"
+            items={shotTop}
+            total={shotItems.length}
+            seriesByTicker={radarCharts.seriesByTicker}
+            chartsLoading={date.isLive && radarCharts.isLoading}
+            chartsError={!date.isLive || radarCharts.isError}
+            onFocus={(ticker) => focusTicker(ticker, 5)}
+          />
         </aside>
       </div>
 
@@ -318,12 +339,12 @@ export function TradingStocks() {
 
       <section className="sk-panel tr-screener-workspace">
         <div className="tr-table-heading">
-          <div><span className="tr-label">Скринер акций</span><strong>Полный список</strong></div>
-          <span className="sk-mono">показано {visible.length} из {universe.stockRows.length}</span>
-        </div>
-
-        <div className="sk-screener-toolbar tr-screener-toolbar">
-          <div className="sk-toolbar-group">
+          <div className="tr-table-heading__copy">
+            <span className="tr-label">Скринер акций</span>
+            <strong>Полный список</strong>
+            <span className="sk-mono">{visible.length} из {universe.stockRows.length}</span>
+          </div>
+          <div className="tr-table-heading__actions">
             <label className="sk-liquidity-toggle" title="Скрывает бумаги из нижних 42% рынка одновременно по обороту и сделкам в текущем срезе">
               <input
                 type="checkbox"
@@ -338,9 +359,6 @@ export function TradingStocks() {
               />
               <span>Скрыть жёсткий неликвид</span>
             </label>
-          </div>
-
-          <div className="sk-toolbar-group sk-toolbar-group--right">
             <label className="sk-search" aria-label="Поиск инструмента">
               <Search size={14} aria-hidden />
               <input name="stock-search" autoComplete="off" className="sk-input" value={search} onChange={(event) => replaceQuery({ q: event.target.value || null })} placeholder="Тикер или название…" />
@@ -372,7 +390,7 @@ export function TradingStocks() {
                   {visibleColumns.has("turnover") ? <SortableHeader label="Оборот" sortKey="turnover" activeKey={sortKey} direction={direction} onSort={setSort} /> : null}
                   {visibleColumns.has("trades") ? <SortableHeader label="Сделки" sortKey="trades" activeKey={sortKey} direction={direction} onSort={setSort} /> : null}
                   {visibleColumns.has("range") ? <SortableHeader label="Диапазон" sortKey="range" activeKey={sortKey} direction={direction} onSort={setSort} /> : null}
-                  <th title="Положение закрытия внутри диапазона дня">Закрытие</th>
+                  <th title="Открытие и последняя цена внутри фактического диапазона дня">Сессия</th>
                   <th title="Изменение бумаги минус изменение индекса MOEX">От рынка</th>
                   <th className="sk-table__chart-head"><span className="sk-sr-only">График</span></th>
                 </tr>
@@ -408,7 +426,7 @@ export function TradingStocks() {
                         {visibleColumns.has("turnover") ? <td className="sk-mono">{formatSectorKTurnover(row.turnover)}</td> : null}
                         {visibleColumns.has("trades") ? <td className="sk-mono">{formatTrades(row.tradesCount)}</td> : null}
                         {visibleColumns.has("range") ? <td className="sk-mono">{formatSectorKMagnitudePercent(row.metrics.dayRangePct)}</td> : null}
-                        <td title="Положение закрытия: 0% — минимум дня, 100% — максимум"><DayPosition value={tradingDayPosition(row)} compact /></td>
+                        <td><SessionRangeMicro row={row} /></td>
                         <td className="sk-mono tr-market-relative" title="Изменение бумаги минус изменение индекса MOEX. Минус — слабее рынка, плюс — сильнее.">{formatMarketDelta(relative)}</td>
                         <td className="sk-table__chart-cell">
                           <button
@@ -429,7 +447,7 @@ export function TradingStocks() {
                       {expanded && expandedRow ? (
                         <tr className="sk-chart-row">
                           <td colSpan={visibleColumns.size + 4}>
-                            <SectorKStockChart row={expandedRow} dateKey={chartDateKey} onClose={() => setExpandedTicker(null)} />
+                            <SectorKStockChart key={`${expandedRow.ticker}:${expandedInterval}`} row={expandedRow} dateKey={chartDateKey} initialInterval={expandedInterval} onClose={() => setExpandedTicker(null)} />
                           </td>
                         </tr>
                       ) : null}
@@ -836,10 +854,18 @@ function InPlayRow({
 function PriorityRail({
   kind,
   items,
+  total,
+  seriesByTicker,
+  chartsLoading = false,
+  chartsError = false,
   onFocus,
 }: {
   kind: "liquidity" | "shots";
   items: StockPriority[];
+  total: number;
+  seriesByTicker?: Map<string, StockSparklineSeries>;
+  chartsLoading?: boolean;
+  chartsError?: boolean;
   onFocus: (ticker: string) => void;
 }) {
   const liquidity = kind === "liquidity";
@@ -847,10 +873,10 @@ function PriorityRail({
     <section className={`tr-support-rail is-${kind}`}>
       <header>
         <div>
-          <span className="tr-label">{liquidity ? "Исполнение" : "Тонкое движение"}</span>
+          {!liquidity ? <span className="tr-label">Тонкое движение</span> : null}
           <h3>{liquidity ? "Ликвидность" : "Прострелы"}</h3>
         </div>
-        <b className="sk-mono">{items.length}</b>
+        <b className="sk-mono">{items.length} из {total}</b>
       </header>
       <div className="tr-support-rail__list">
         {items.map((item) => {
@@ -858,6 +884,16 @@ function PriorityRail({
           return (
             <button type="button" key={item.secid} onClick={() => onFocus(row.ticker)}>
               <span><strong className="sk-mono">{row.ticker}</strong><small>{row.shortName}</small></span>
+              {!liquidity ? (
+                <TradingMiniChart
+                  series={seriesByTicker?.get(row.ticker)}
+                  change={row.percentChange}
+                  loading={chartsLoading}
+                  error={chartsError}
+                  compact
+                  unavailableLabel="10м график —"
+                />
+              ) : null}
               <span className="sk-mono">
                 <b className={liquidity ? "" : changeClass(row.percentChange)}>
                   {liquidity ? formatSectorKTurnover(row.turnover) : formatSectorKMagnitudePercent(row.metrics.dayRangePct)}
@@ -869,7 +905,36 @@ function PriorityRail({
         })}
         {!items.length ? <div className="tr-support-rail__empty">—</div> : null}
       </div>
+      <footer>{liquidity ? "Топ по обороту и числу сделок." : "Клик открывает реальный свечной график сразу на 5 минутах."}</footer>
     </section>
+  );
+}
+
+function SessionRangeMicro({ row }: { row: ScreenerRow }) {
+  const low = row.low;
+  const high = row.high;
+  const open = row.open;
+  const last = row.lastPrice;
+  const valid = [low, high, open, last].every(isFiniteMetric) && high !== null && low !== null && high > low;
+  if (!valid || low === null || high === null || open === null || last === null) {
+    return <span className="tr-session-range is-empty">—</span>;
+  }
+  const x = (value: number) => 5 + Math.min(1, Math.max(0, (value - low) / (high - low))) * 88;
+  const openX = x(open);
+  const lastX = x(last);
+  const tone = last > open ? "is-positive" : last < open ? "is-negative" : "is-neutral";
+  const position = tradingDayPosition(row);
+  return (
+    <span className={`tr-session-range ${tone}`} title={`L ${formatSectorKPrice(low)} · O ${formatSectorKPrice(open)} · сейчас ${formatSectorKPrice(last)} · H ${formatSectorKPrice(high)}. Это OHLC-диапазон, не выдуманная траектория.`}>
+      <svg viewBox="0 0 100 20" role="img" aria-label={`Открытие и последняя цена ${row.ticker} внутри диапазона дня`}>
+        <line className="tr-session-range__base" x1="5" x2="93" y1="10" y2="10" />
+        <line className="tr-session-range__move" x1={openX} x2={lastX} y1="10" y2="10" />
+        <line className="tr-session-range__open" x1={openX} x2={openX} y1="5" y2="15" />
+        <circle className="tr-session-range__last" cx={lastX} cy="10" r="2.6" />
+        <text x="1" y="18">L</text><text x="94" y="18">H</text>
+      </svg>
+      <b className="sk-mono">{isFiniteMetric(position) ? `${position.toFixed(0)}%` : "—"}</b>
+    </span>
   );
 }
 

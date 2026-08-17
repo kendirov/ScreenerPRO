@@ -66,6 +66,8 @@ export const marketSnapshotSchema = z.object({
   tradesCount: z.number().nullable().optional(),
   openInterest: z.number().nullable().optional(),
   expiryDate: z.string().nullable().optional(),
+  /** MOEX ISS ASSETCODE for exact futures-family resolution. */
+  assetCode: z.string().nullable().optional(),
   stockActivityClass: stockActivityClassSchema,
   tradingStatus: tradingStatusSchema,
   lotSize: z.number().nullable(),

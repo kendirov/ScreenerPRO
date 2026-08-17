@@ -24,17 +24,19 @@ export function TradingMiniChart({
   loading,
   error,
   unavailableLabel,
+  compact = false,
 }: {
   series: StockSparklineSeries | null | undefined;
   change: number | null | undefined;
   loading: boolean;
   error: boolean;
   unavailableLabel?: string;
+  compact?: boolean;
 }) {
   const ready = hasEnoughSparklinePoints(series);
 
-  if (loading) return <div className="tr-mini-chart__state">получаем свечи</div>;
-  if (error || !ready) return <div className="tr-mini-chart__state">{unavailableLabel ?? "свечей нет"}</div>;
+  if (loading) return <div className={`tr-mini-chart__state ${compact ? "is-compact" : ""}`}>получаем свечи</div>;
+  if (error || !ready) return <div className={`tr-mini-chart__state ${compact ? "is-compact" : ""}`}>{unavailableLabel ?? "свечей нет"}</div>;
 
   const candles = series?.candles ?? [];
   const sessionKeys = series?.sessionKeys?.length ? series.sessionKeys : ["session"];
@@ -57,9 +59,15 @@ export function TradingMiniChart({
   const tone = (change ?? 0) > 0 ? "is-positive" : (change ?? 0) < 0 ? "is-negative" : "is-neutral";
 
   return (
-    <div className={`tr-mini-chart ${tone}`}>
+    <div className={`tr-mini-chart ${tone} ${compact ? "is-compact" : ""}`}>
       <div className="tr-mini-chart__meta">
-        <span>{sessions.length > 1 ? `${sessions.length} сессии · к открытию` : "сессия"}</span>
+        <span className="tr-mini-chart__legend" aria-label="Легенда сессий">
+          {sessions.map((session, index) => {
+            const distance = sessions.length - 1 - index;
+            const label = distance === 0 ? "сегодня" : `−${distance}`;
+            return <i className={distance === 0 ? "is-current" : `is-previous-${distance}`} key={session.key}>{label}</i>;
+          })}
+        </span>
         <span>{series?.interval}м · MOEX</span>
       </div>
       <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" aria-label="Реальный внутридневной график MOEX">
@@ -71,10 +79,10 @@ export function TradingMiniChart({
         })}
         {sessions.map((session, index) => (
           <path
-            className={`tr-mini-chart__line ${index === sessions.length - 1 ? "is-current" : "is-previous"}`}
+            className={`tr-mini-chart__line ${index === sessions.length - 1 ? "is-current" : `is-previous is-previous-${sessions.length - 1 - index}`}`}
             d={linePath(session.values, low, high)}
             key={session.key}
-          />
+          ><title>{index === sessions.length - 1 ? "Текущая сессия" : `Предыдущая сессия −${sessions.length - 1 - index}`}</title></path>
         ))}
       </svg>
     </div>
