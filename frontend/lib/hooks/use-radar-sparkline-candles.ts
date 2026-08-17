@@ -13,7 +13,7 @@ async function fetchRadarSparklineChunk(secids: string[]): Promise<StockSparklin
   const params = new URLSearchParams({
     secids: secids.join(","),
     interval: "10",
-    sessions: "2",
+    sessions: "3",
   });
 
   const response = await fetch(`/api/screener/stocks/candles?${params.toString()}`, {

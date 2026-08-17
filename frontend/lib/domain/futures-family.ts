@@ -1,15 +1,20 @@
 import type { ScreenerRow } from "@screenerpro/shared";
 
 export type FuturesPageMode = "market" | "curve" | "roll";
+export type FuturesMarketSegment = "Индексы" | "Валюта" | "Акции" | "Энергия" | "Металлы" | "Сырьё" | "Другое";
+export type FuturesContractKind = "quarterly" | "perpetual" | "mini";
 
 export interface FuturesContractInFamily {
   ticker: string;
   shortName: string;
+  assetCode: string | null;
+  contractKind: FuturesContractKind;
   expiryDate: string | null;
   dte: number | null;
   lastPrice: number | null;
   percentChange: number | null;
   turnover: number;
+  tradesCount: number;
   openInterest: number;
   dayRangePct: number | null;
   turnoverShareWithinGroup: number;
@@ -31,13 +36,17 @@ export interface FuturesFamilyBasis {
 export interface FuturesFamilyGroup {
   familyKey: string;
   familyLabel: string;
+  segment: FuturesMarketSegment;
   activeContractTicker: string;
   activeContractScore: number;
   totalTurnover: number;
+  totalTrades: number;
   totalOpenInterest: number;
   activePrice: number | null;
   activePercentChange: number | null;
   activeRangePct: number | null;
+  activeTradesCount: number;
+  activeOpenInterest: number;
   signal: string;
   curve: FuturesFamilyCurve;
   basis: FuturesFamilyBasis;
@@ -69,6 +78,7 @@ export interface FuturesSubfamily {
 interface FamilyAlias {
   key: string;
   label: string;
+  segment: FuturesMarketSegment;
   spotTicker?: string;
 }
 
@@ -76,16 +86,51 @@ const MONTH_CODES = "FGHJKMNQUVXZ";
 const MS_IN_DAY = 24 * 60 * 60 * 1000;
 
 const STATIC_ALIASES: Array<{ match: RegExp; alias: FamilyAlias }> = [
-  { match: /^(si|usdrub)/i, alias: { key: "usd_rub", label: "Доллар/рубль" } },
-  { match: /^(cr|cny|uc)/i, alias: { key: "cny_rub", label: "Юань/рубль" } },
-  { match: /^(eu|ed|eur)/i, alias: { key: "eur_rub", label: "Евро/рубль" } },
-  { match: /^(br|bm)/i, alias: { key: "brent", label: "Brent" } },
-  { match: /^(ng)/i, alias: { key: "natural_gas", label: "Газ" } },
-  { match: /^(gd|gold)/i, alias: { key: "gold", label: "Золото" } },
-  { match: /^(sv|silver)/i, alias: { key: "silver", label: "Серебро" } },
-  { match: /^(ri|rts)/i, alias: { key: "rts", label: "RTS" } },
-  { match: /^(mx|mm|imoex)/i, alias: { key: "imoex", label: "IMOEX" } },
+  { match: /^(si|usdrub)/i, alias: { key: "usd_rub", label: "Доллар/рубль", segment: "Валюта" } },
+  { match: /^(cr|cny|uc)/i, alias: { key: "cny_rub", label: "Юань/рубль", segment: "Валюта" } },
+  { match: /^(eu|ed|eur)/i, alias: { key: "eur_rub", label: "Евро/рубль", segment: "Валюта" } },
+  { match: /^(br|bm)/i, alias: { key: "brent", label: "Brent", segment: "Энергия" } },
+  { match: /^(ng)/i, alias: { key: "natural_gas", label: "Природный газ", segment: "Энергия" } },
+  { match: /^(gd|gold)/i, alias: { key: "gold", label: "Золото", segment: "Металлы" } },
+  { match: /^(sv|silver)/i, alias: { key: "silver", label: "Серебро", segment: "Металлы" } },
+  { match: /^(ri|rts)/i, alias: { key: "rts", label: "RTS", segment: "Индексы" } },
+  { match: /^(mx|mm|imoex)/i, alias: { key: "imoex", label: "Индекс МосБиржи", segment: "Индексы" } },
 ];
+
+const ASSET_ALIASES: Record<string, FamilyAlias> = {
+  MIX: { key: "imoex", label: "Индекс МосБиржи", segment: "Индексы" },
+  MXI: { key: "imoex", label: "Индекс МосБиржи", segment: "Индексы" },
+  IMOEX: { key: "imoex", label: "Индекс МосБиржи", segment: "Индексы" },
+  RTS: { key: "rts", label: "RTS", segment: "Индексы" },
+  NASD: { key: "nasdaq", label: "Nasdaq", segment: "Индексы" },
+  SPYF: { key: "sp500", label: "S&P 500", segment: "Индексы" },
+  SI: { key: "usd_rub", label: "Доллар/рубль", segment: "Валюта" },
+  USDRUBTOM: { key: "usd_rub", label: "Доллар/рубль", segment: "Валюта" },
+  CNY: { key: "cny_rub", label: "Юань/рубль", segment: "Валюта" },
+  CNYRUBTOM: { key: "cny_rub", label: "Юань/рубль", segment: "Валюта" },
+  EUR: { key: "eur_rub", label: "Евро/рубль", segment: "Валюта" },
+  EURRUBTOM: { key: "eur_rub", label: "Евро/рубль", segment: "Валюта" },
+  BR: { key: "brent", label: "Brent", segment: "Энергия" },
+  NG: { key: "natural_gas", label: "Природный газ", segment: "Энергия" },
+  GOLD: { key: "gold", label: "Золото", segment: "Металлы" },
+  GLDRUBTOM: { key: "gold", label: "Золото", segment: "Металлы" },
+  SILV: { key: "silver", label: "Серебро", segment: "Металлы" },
+  PLD: { key: "palladium", label: "Палладий", segment: "Металлы" },
+  PLT: { key: "platinum", label: "Платина", segment: "Металлы" },
+  COCOA: { key: "cocoa", label: "Какао", segment: "Сырьё" },
+  COFFEE: { key: "coffee", label: "Кофе", segment: "Сырьё" },
+  SBRF: { key: "stock:sber", label: "Сбербанк", segment: "Акции" },
+  SBERF: { key: "stock:sber", label: "Сбербанк", segment: "Акции" },
+  GAZR: { key: "stock:gazp", label: "Газпром", segment: "Акции" },
+  GAZPF: { key: "stock:gazp", label: "Газпром", segment: "Акции" },
+  VTBR: { key: "stock:vtbr", label: "ВТБ", segment: "Акции" },
+  LKOH: { key: "stock:lkoh", label: "Лукойл", segment: "Акции" },
+  ROSN: { key: "stock:rosn", label: "Роснефть", segment: "Акции" },
+  NVTK: { key: "stock:nvtk", label: "Новатэк", segment: "Акции" },
+  OZON: { key: "stock:ozon", label: "Ozon", segment: "Акции" },
+  PLZL: { key: "stock:plzl", label: "Полюс", segment: "Акции" },
+  PLZLM: { key: "stock:plzl", label: "Полюс", segment: "Акции" },
+};
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
@@ -107,22 +152,48 @@ function daysToExpiry(expiryDate: string | null | undefined, nowDate: Date): num
   return Math.ceil((date.getTime() - nowDate.getTime()) / MS_IN_DAY);
 }
 
-function detectFromTicker(ticker: string, shortName: string): FamilyAlias {
+function inferSegment(value: string): FuturesMarketSegment {
+  if (/cocoa|coffee|wheat|sugar|corn|какао|кофе|пшениц/i.test(value)) return "Сырьё";
+  if (/gold|silv|platinum|pltm|pallad|nickel|copper|alum|zinc|золот|сереб|платин|паллад|никел|мед/i.test(value)) return "Металлы";
+  if (/brent|wti|oil|natural gas|нефт|газ/i.test(value)) return "Энергия";
+  if (/rub|usd|eur|cny|try|hkd|aed|kzt|byn|валют|доллар|юан|евро|лир/i.test(value)) return "Валюта";
+  if (/index|imoex|rts|rvi|nasd|spy|china|india|hang|индекс/i.test(value)) return "Индексы";
+  return "Акции";
+}
+
+function detectFromTicker(ticker: string, shortName: string, assetCode?: string | null): FamilyAlias {
   const normalizedTicker = ticker.toLowerCase();
   const normalizedName = shortName.toLowerCase();
+  const normalizedAsset = assetCode?.trim().toUpperCase() ?? "";
+  const byAsset = ASSET_ALIASES[normalizedAsset];
+  if (byAsset) return byAsset;
   for (const entry of STATIC_ALIASES) {
     if (entry.match.test(normalizedTicker) || entry.match.test(normalizedName)) {
       return entry.alias;
     }
   }
 
+  if (normalizedAsset) {
+    return {
+      key: `asset:${normalizedAsset.toLowerCase()}`,
+      label: normalizedAsset,
+      segment: inferSegment(`${normalizedAsset} ${normalizedName}`),
+    };
+  }
+
   const prefix = normalizedTicker.replace(/[0-9]/g, "").replace(new RegExp(`[${MONTH_CODES}]`, "gi"), "");
   if (prefix.length >= 3) {
     const equity = prefix.toUpperCase();
-    return { key: `equity:${equity}`, label: equity };
+    return { key: `equity:${equity}`, label: equity, segment: inferSegment(`${normalizedAsset} ${normalizedName}`) };
   }
   const fallback = normalizedTicker.slice(0, 3).toUpperCase() || ticker.toUpperCase();
-  return { key: `other:${fallback}`, label: fallback };
+  return { key: `other:${fallback}`, label: normalizedAsset || fallback, segment: inferSegment(`${normalizedAsset} ${normalizedName}`) };
+}
+
+function contractKind(ticker: string, assetCode: string | null, expiryDate: string | null): FuturesContractKind {
+  if (expiryDate?.startsWith("2100-") || /F$/i.test(ticker)) return "perpetual";
+  if (assetCode === "MXI" || /^MM/i.test(ticker) || /мини/i.test(ticker)) return "mini";
+  return "quarterly";
 }
 
 function frontRecencyScore(rank: number, dte: number | null): number {
@@ -239,11 +310,9 @@ function signalForGroup(active: FuturesContractInFamily, contracts: FuturesContr
     const oiRoll = front.openInterest > 0 && next.openInterest >= front.openInterest * 0.8;
     if (turnoverRoll || oiRoll) return "Перекат в следующую";
   }
-  if (active.openInterest > 0 && Math.abs(active.percentChange ?? 0) >= 0.7) {
-    return (active.percentChange ?? 0) > 0 ? "ОИ растет на движении" : "ОИ падает на движении";
-  }
+  if (Math.abs(active.dayRangePct ?? 0) >= 2 && Math.abs(active.percentChange ?? 0) >= 1) return "Расширение диапазона";
   if (curve.curveShape === "backwardation") return "Кривая инвертируется";
-  if (Math.abs(curve.annualizedCarry ?? 0) >= 25) return "Базис растянут";
+  if (Math.abs(curve.annualizedCarry ?? 0) >= 25) return "Разница серий расширена";
   return "Деньги во фронте";
 }
 
@@ -252,7 +321,7 @@ export function buildFuturesFamilies(rows: ScreenerRow[], now = new Date()): Fut
   const grouped = new Map<string, { alias: FamilyAlias; rows: ScreenerRow[] }>();
 
   for (const row of futures) {
-    const alias = detectFromTicker(row.ticker, row.shortName);
+    const alias = detectFromTicker(row.ticker, row.shortName, row.assetCode);
     const bucket = grouped.get(alias.key);
     if (bucket) {
       bucket.rows.push(row);
@@ -270,6 +339,7 @@ export function buildFuturesFamilies(rows: ScreenerRow[], now = new Date()): Fut
       return (b.turnover ?? 0) - (a.turnover ?? 0);
     });
     const totalTurnover = sorted.reduce((acc, row) => acc + toFinite(row.turnover), 0);
+    const totalTrades = sorted.reduce((acc, row) => acc + toFinite(row.tradesCount), 0);
     const totalOi = sorted.reduce((acc, row) => acc + toFinite(row.openInterest), 0);
     const contracts: FuturesContractInFamily[] = sorted.map((row, idx) => {
       const turnover = toFinite(row.turnover);
@@ -278,11 +348,14 @@ export function buildFuturesFamilies(rows: ScreenerRow[], now = new Date()): Fut
       return {
         ticker: row.ticker,
         shortName: row.shortName,
+        assetCode: row.assetCode ?? null,
+        contractKind: contractKind(row.ticker, row.assetCode ?? null, row.expiryDate ?? null),
         expiryDate: row.expiryDate ?? null,
         dte,
         lastPrice: row.lastPrice,
         percentChange: row.percentChange,
         turnover,
+        tradesCount: toFinite(row.tradesCount),
         openInterest: oi,
         dayRangePct: row.metrics.dayRangePct,
         turnoverShareWithinGroup: totalTurnover > 0 ? round2(turnover / totalTurnover) : 0,
@@ -295,9 +368,7 @@ export function buildFuturesFamilies(rows: ScreenerRow[], now = new Date()): Fut
     const { subfamilies, anchorContracts } = buildSubfamilies(contracts);
     const mainTradingLine = [...subfamilies].sort((a, b) => b.totalTurnover - a.totalTurnover)[0] ?? null;
     const mainOILine = [...subfamilies].sort((a, b) => b.totalOpenInterest - a.totalOpenInterest)[0] ?? null;
-    const tradingContracts = mainTradingLine?.contracts ?? contracts;
-
-    const scores = tradingContracts.map((contract) => ({
+    const scores = contracts.map((contract) => ({
       ticker: contract.ticker,
       score: round2(
         contract.turnoverShareWithinGroup * 0.55
@@ -305,20 +376,18 @@ export function buildFuturesFamilies(rows: ScreenerRow[], now = new Date()): Fut
           + contract.frontRecencyScore * 0.15,
       ),
     }));
-    const bestByScore = [...scores].sort((a, b) => b.score - a.score)[0];
-    const front = tradingContracts[0];
-    const next = tradingContracts[1];
-    let activeTicker = bestByScore?.ticker ?? tradingContracts[0]?.ticker ?? contracts[0].ticker;
-    if (front && next) {
-      const frontDtePenalty = front.dte !== null && front.dte <= 7;
-      const turnoverRoll = front.turnover > 0 && next.turnover >= front.turnover * 0.65;
-      if (frontDtePenalty && turnoverRoll) {
-        activeTicker = next.ticker;
-      }
-    }
-    const active = tradingContracts.find((contract) => contract.ticker === activeTicker) ?? tradingContracts[0] ?? contracts[0];
+    const eligible = contracts.filter((contract) => contract.dte === null || contract.dte >= 0);
+    const active = [...(eligible.length ? eligible : contracts)].sort((left, right) => {
+      const turnover = right.turnover - left.turnover;
+      if (turnover) return turnover;
+      const trades = right.tradesCount - left.tradesCount;
+      if (trades) return trades;
+      return (left.dte ?? Number.POSITIVE_INFINITY) - (right.dte ?? Number.POSITIVE_INFINITY);
+    })[0] ?? contracts[0];
     const activeScore = scores.find((item) => item.ticker === active.ticker)?.score ?? 0;
-    const comparableContracts = tradingContracts.filter((item) => contractsCompatibleByPriceScale(item, active.lastPrice));
+    const activeSubfamily = subfamilies.find((subfamily) => subfamily.contracts.some((contract) => contract.ticker === active.ticker));
+    const activeLine = activeSubfamily?.contracts ?? [active];
+    const comparableContracts = activeLine.filter((item) => contractsCompatibleByPriceScale(item, active.lastPrice));
     const curve = computeCurve(comparableContracts.length >= 2 ? comparableContracts : contracts);
     const signal = signalForGroup(active, contracts, curve);
     const frontComparable = comparableContracts[0];
@@ -333,13 +402,17 @@ export function buildFuturesFamilies(rows: ScreenerRow[], now = new Date()): Fut
     families.push({
       familyKey: value.alias.key,
       familyLabel: value.alias.label,
+      segment: value.alias.segment,
       activeContractTicker: active.ticker,
       activeContractScore: activeScore,
       totalTurnover,
+      totalTrades,
       totalOpenInterest: totalOi,
       activePrice: active.lastPrice,
       activePercentChange: active.percentChange,
       activeRangePct: active.dayRangePct,
+      activeTradesCount: active.tradesCount,
+      activeOpenInterest: active.openInterest,
       signal,
       curve,
       basis: {
