@@ -51,6 +51,11 @@ import {
 } from "@/lib/trading/stocks-radar";
 
 type StockPriority = PriorityInstrument<ScreenerRow>;
+type MarketTurnoverComparison = Pick<TradingTurnoverComparison, "ratio" | "sessions" | "timeMsk" | "quality"> & {
+  source: "stock-baseline" | "imoex2-candles";
+  coveragePct?: number;
+  instruments?: number;
+};
 
 const SORT_KEYS = new Set<SectorKStockSortKey>(["price", "change", "turnover", "trades", "range"]);
 const STOCK_COLUMNS: Array<{ id: SectorKStockSortKey; label: string }> = [
@@ -177,7 +182,19 @@ export function TradingStocks() {
   const shotItems = useMemo(() => selectTradingShots(priority.all, focusItems), [focusItems, priority.all]);
   const focusTickers = useMemo(() => focusItems.map((item) => item.row.ticker), [focusItems]);
   const focusCharts = useRadarSparklineCandles(focusTickers, date.isLive);
-  const turnoverComparison = useMemo(() => summarizeTradingTurnoverComparison(universe.stockRows), [universe.stockRows]);
+  const stockTurnoverComparison = useMemo(() => summarizeTradingTurnoverComparison(universe.stockRows), [universe.stockRows]);
+  const turnoverComparison = useMemo<MarketTurnoverComparison | null>(() => {
+    if (stockTurnoverComparison) return { ...stockTurnoverComparison, source: "stock-baseline" };
+    const indexComparison = marketContext.data?.sameTimeTurnoverComparison;
+    if (!date.isLive || !indexComparison) return null;
+    return {
+      ratio: indexComparison.ratio,
+      sessions: indexComparison.sessions,
+      timeMsk: indexComparison.timeMsk,
+      quality: "confirmed",
+      source: indexComparison.source,
+    };
+  }, [date.isLive, marketContext.data?.sameTimeTurnoverComparison, stockTurnoverComparison]);
 
   const sortParam = searchParams.get("sort") as SectorKStockSortKey | null;
   const sortKey = sortParam && SORT_KEYS.has(sortParam) ? sortParam : "trades";
@@ -451,7 +468,7 @@ function MarketStrip({
   turnoverSessions: TradingTurnoverSession[];
   contextLoading: boolean;
   isLive: boolean;
-  turnoverComparison: TradingTurnoverComparison | null;
+  turnoverComparison: MarketTurnoverComparison | null;
 }) {
   const position = tradingBenchmarkPosition(benchmark);
   const directional = summary.risingTurnover + summary.fallingTurnover;
@@ -552,7 +569,7 @@ function MarketTurnoverFact({
   loading: boolean;
   isLive: boolean;
   currentDate: string | null;
-  comparison: TradingTurnoverComparison | null;
+  comparison: MarketTurnoverComparison | null;
 }) {
   const completed = sessions.filter((session) => !isLive || session.dateKey !== currentDate);
   const values = isLive && currentDate && isFiniteMetric(current)
@@ -564,8 +581,13 @@ function MarketTurnoverFact({
   const max = Math.max(...values.map((item) => item.turnover), 1);
   const ratioTone = comparison == null ? "is-muted" : comparison.ratio >= 1.15 ? "is-strong" : comparison.ratio <= 0.85 ? "is-weak" : "is-normal";
   const ratioLabel = comparison
-    ? `${comparison.ratio >= 1.15 ? "выше" : comparison.ratio <= 0.85 ? "ниже" : "около"} прошлых ${comparison.sessions} сессий к ${comparison.timeMsk ?? "текущему времени"}`
+    ? `${comparison.ratio >= 1.15 ? "выше" : comparison.ratio <= 0.85 ? "ниже" : "около"} прошлых ${comparison.sessions} сессий к ${comparison.timeMsk ?? "текущему времени"}${comparison.source === "imoex2-candles" ? " · IMOEX2" : ""}`
     : isLive ? "сравнение к этому времени недоступно" : "8 завершённых сессий";
+  const comparisonTitle = comparison?.source === "imoex2-candles"
+    ? "Относительный оборот рассчитан по накопленному value 10-минутных свечей IMOEX2 к тому же времени прошлых сессий"
+    : comparison && comparison.coveragePct != null && comparison.instruments != null
+      ? `Покрытие ${comparison.coveragePct.toFixed(0)}% оборота · ${comparison.instruments} инструментов`
+      : undefined;
   return (
     <div className="tr-market-fact tr-market-turnover">
       <span className="tr-label">Оборот рынка</span>
@@ -585,7 +607,7 @@ function MarketTurnoverFact({
         {!values.length && !loading ? <span>истории нет</span> : null}
         {loading ? <span>история…</span> : null}
       </div>
-      <small title={comparison ? `Покрытие ${comparison.coveragePct.toFixed(0)}% оборота · ${comparison.instruments} инструментов` : undefined}>{ratioLabel}</small>
+      <small title={comparisonTitle}>{ratioLabel}</small>
     </div>
   );
 }

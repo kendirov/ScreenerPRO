@@ -1,4 +1,5 @@
 import { screenerBenchmarkSchema, screenerRowSchema } from "@screenerpro/shared";
+import { summarizeSameTimeIndexTurnover, type TradingIndexSession } from "@/lib/domain/trading-market-context";
 import {
   buildTradingWhyReasons,
   deriveTradingMarketState,
@@ -84,6 +85,25 @@ if (summarizeTradingMarket([unknown]).totalTurnover !== null) {
 }
 if (tradingDayPosition(base) !== 80) {
   throw new Error("Day position must be calculated inside the real low/high range");
+}
+
+const indexSession = (dateKey: string, values: number[]): TradingIndexSession => ({
+  dateKey,
+  points: values.map((turnover, index) => ({
+    time: `${dateKey}T${index === 0 ? "07:00" : "09:20"}:00+03:00`,
+    close: 2_100 - index,
+    normalizedPct: -index / 10,
+    turnover,
+  })),
+});
+const indexTurnover = summarizeSameTimeIndexTurnover([
+  indexSession("2026-08-12", [40, 60]),
+  indexSession("2026-08-13", [50, 50]),
+  indexSession("2026-08-14", [60, 40]),
+  indexSession("2026-08-17", [100, 100]),
+], "2026-08-17");
+if (!indexTurnover || indexTurnover.ratio !== 2 || indexTurnover.sessions !== 3 || indexTurnover.timeMsk !== "09:20") {
+  throw new Error("IMOEX2 same-time turnover must compare cumulative value at the same session minute");
 }
 
 const confirmedTurnover = summarizeTradingTurnoverComparison([base]);

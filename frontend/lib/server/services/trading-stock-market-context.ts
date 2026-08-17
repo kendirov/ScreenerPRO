@@ -4,6 +4,7 @@ import type {
   TradingMarketContextResponse,
   TradingTurnoverSession,
 } from "@/lib/domain/trading-market-context";
+import { summarizeSameTimeIndexTurnover } from "@/lib/domain/trading-market-context";
 import { moscowTodayKey, shiftCalendarDaysKey } from "@/lib/domain/trading-calendar";
 import { indexCandlesUrl } from "@/lib/server/integrations/moex/endpoints";
 import { moexGetJson } from "@/lib/server/integrations/moex/client";
@@ -37,7 +38,7 @@ async function resolveRecentSessions(requestedDateKey: string, count: number): P
   return result.sort();
 }
 
-function normalizeIndexSession(dateKey: string, bars: Array<{ timestamp: string; close: number | null }>): TradingIndexSession | null {
+function normalizeIndexSession(dateKey: string, bars: Array<{ timestamp: string; close: number | null; turnover: number | null }>): TradingIndexSession | null {
   const valid = bars.filter((bar) => bar.close != null && Number.isFinite(bar.close));
   const first = valid[0]?.close;
   if (first == null || first === 0) return null;
@@ -46,6 +47,7 @@ function normalizeIndexSession(dateKey: string, bars: Array<{ timestamp: string;
     time: bar.timestamp,
     close: bar.close!,
     normalizedPct: ((bar.close! - first) / first) * 100,
+    turnover: bar.turnover,
   }));
 
   return points.length >= 3 ? { dateKey, points } : null;
@@ -66,7 +68,6 @@ async function fetchIndexSessions(from: string, till: string): Promise<TradingIn
 
   return [...bySession.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .slice(-3)
     .map(([dateKey, bars]) => normalizeIndexSession(dateKey, bars))
     .filter((session): session is TradingIndexSession => session !== null);
 }
@@ -90,13 +91,17 @@ export async function buildTradingStockMarketContext(requestedDateKey: string): 
   const dateKeys = await resolveRecentSessions(completedSessionCursor, isLive ? 7 : 8);
   const resolvedDateKey = isLive ? requestedDateKey : dateKeys.at(-1) ?? null;
   const indexDateKeys = isLive ? [...dateKeys, requestedDateKey] : dateKeys;
-  const from = indexDateKeys.at(-3) ?? shiftCalendarDaysKey(requestedDateKey, -8);
+  const from = indexDateKeys.at(-5) ?? shiftCalendarDaysKey(requestedDateKey, -8);
   const till = resolvedDateKey ?? requestedDateKey;
 
-  const [indexSessions, turnoverSessions] = await Promise.all([
+  const [availableIndexSessions, turnoverSessions] = await Promise.all([
     fetchIndexSessions(from, till).catch(() => []),
     fetchTurnoverSessions(dateKeys).catch(() => []),
   ]);
+  const indexSessions = availableIndexSessions.slice(-3);
+  const sameTimeTurnoverComparison = isLive
+    ? summarizeSameTimeIndexTurnover(availableIndexSessions, requestedDateKey)
+    : null;
 
   const payload: TradingMarketContextResponse = {
     fetchedAt: new Date().toISOString(),
@@ -106,6 +111,7 @@ export async function buildTradingStockMarketContext(requestedDateKey: string): 
     indexCode: "IMOEX2",
     indexSessions,
     turnoverSessions,
+    sameTimeTurnoverComparison,
   };
 
   contextCache.set(cacheKey, { expiresAt: Date.now() + CONTEXT_CACHE_TTL_MS, payload });
