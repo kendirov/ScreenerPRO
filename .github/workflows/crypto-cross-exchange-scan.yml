@@ -7,6 +7,7 @@ on:
     paths:
       - scripts/crypto-cross-exchange-scan.mjs
       - scripts/crypto-market-scan-v2.mjs
+      - scripts/filter-crypto-scan.mjs
       - .github/workflows/crypto-cross-exchange-scan.yml
       - scanner-trigger.txt
   workflow_dispatch:
@@ -31,11 +32,12 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run public market scan
+      - name: Run public crypto market scan
         run: |
           mkdir -p data
           node scripts/crypto-market-scan-v2.mjs > data/crypto-scan-latest.json
-          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status, x.sources, x.errors); console.log(x.topOverall.slice(0,8).map(r=>[r.symbol,r.type,r.direction,r.overall]));"
+          node scripts/filter-crypto-scan.mjs
+          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status, x.sources, x.errors, x.cryptoFilter); console.log(x.topOverall.slice(0,8).map(r=>[r.symbol,r.type,r.direction,r.overall]));"
 
       - name: Commit latest public snapshot
         run: |
