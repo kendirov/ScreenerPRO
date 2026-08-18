@@ -13,6 +13,10 @@ type BitgetEnvelope<T = unknown> = {
 
 type JsonRecord = Record<string, unknown>;
 
+type SafeResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 export class BitgetPrivateConfigError extends Error {
   constructor(public readonly missing: string[]) {
     super(`Missing Bitget server secrets: ${missing.join(", ")}`);
@@ -90,7 +94,7 @@ async function privateGet<T = unknown>(path: string, params?: URLSearchParams): 
   return body.data as T;
 }
 
-async function safe<T>(label: string, action: () => Promise<T>) {
+async function safe<T>(label: string, action: () => Promise<T>): Promise<SafeResult<T>> {
   try {
     return { ok: true as const, data: await action() };
   } catch (error) {
@@ -101,6 +105,38 @@ async function safe<T>(label: string, action: () => Promise<T>) {
 
 function productParams(productType: (typeof POSITION_CATEGORIES)[number]) {
   return new URLSearchParams({ productType });
+}
+
+function numberFrom(value: unknown) {
+  const parsed = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function accountBalanceSummary(result: SafeResult<JsonRecord[]>) {
+  if (!result.ok) return result;
+
+  const accounts = result.data.map((row) => ({
+    accountType: String(row.accountType ?? "unknown"),
+    usdtBalance: numberFrom(row.usdtBalance),
+  }));
+
+  return {
+    ok: true as const,
+    data: accounts,
+    totalUsdt: accounts.reduce((sum, row) => sum + row.usdtBalance, 0),
+  };
+}
+
+function nonZeroAssets(result: SafeResult<JsonRecord[]>, valueKeys: string[]) {
+  if (!result.ok) return result;
+
+  return {
+    ok: true as const,
+    data: result.data.filter((row) =>
+      valueKeys.some((key) => Math.abs(numberFrom(row[key])) > 0),
+    ),
+    rawCount: result.data.length,
+  };
 }
 
 async function getUtaV3Snapshot() {
@@ -126,8 +162,10 @@ async function getUtaV3Snapshot() {
 }
 
 async function getClassicV2Snapshot() {
-  const [info, spotAssets, ...rest] = await Promise.all([
+  const [info, allAccountBalanceRaw, fundingAssetsRaw, spotAssetsRaw, ...rest] = await Promise.all([
     safe("classic account info", () => privateGet<JsonRecord>("/api/v2/spot/account/info")),
+    safe("classic all account balance", () => privateGet<JsonRecord[]>("/api/v2/account/all-account-balance")),
+    safe("classic funding assets", () => privateGet<JsonRecord[]>("/api/v2/account/funding-assets")),
     safe("classic spot assets", () =>
       privateGet<JsonRecord[]>("/api/v2/spot/account/assets", new URLSearchParams({ assetType: "all" })),
     ),
@@ -158,7 +196,34 @@ async function getClassicV2Snapshot() {
     }),
   );
 
-  return { info, spotAssets, futures };
+  return {
+    info,
+    allAccountBalance: accountBalanceSummary(allAccountBalanceRaw),
+    fundingAssets: nonZeroAssets(fundingAssetsRaw, ["available", "frozen", "usdtValue"]),
+    spotAssets: nonZeroAssets(spotAssetsRaw, ["available", "frozen", "locked", "limitAvailable"]),
+    futures,
+  };
+}
+
+export async function getBitgetPrivateBalanceSummary() {
+  const startedAt = Date.now();
+  const [allAccountBalanceRaw, fundingAssetsRaw, spotAssetsRaw] = await Promise.all([
+    safe("classic all account balance", () => privateGet<JsonRecord[]>("/api/v2/account/all-account-balance")),
+    safe("classic funding assets", () => privateGet<JsonRecord[]>("/api/v2/account/funding-assets")),
+    safe("classic spot assets", () =>
+      privateGet<JsonRecord[]>("/api/v2/spot/account/assets", new URLSearchParams({ assetType: "hold_only" })),
+    ),
+  ]);
+
+  return {
+    mode: "read-only" as const,
+    source: "bitget-classic-balance-v1" as const,
+    asOf: new Date().toISOString(),
+    latencyMs: Date.now() - startedAt,
+    allAccountBalance: accountBalanceSummary(allAccountBalanceRaw),
+    fundingAssets: nonZeroAssets(fundingAssetsRaw, ["available", "frozen", "usdtValue"]),
+    spotAssets: nonZeroAssets(spotAssetsRaw, ["available", "frozen", "locked", "limitAvailable"]),
+  };
 }
 
 export async function getBitgetPrivateReadOnlySnapshot() {
@@ -169,7 +234,7 @@ export async function getBitgetPrivateReadOnlySnapshot() {
 
   return {
     mode: "read-only" as const,
-    source: "bitget-private-auto-v2" as const,
+    source: "bitget-private-auto-v3" as const,
     asOf: new Date().toISOString(),
     latencyMs: Date.now() - startedAt,
     credentialShape: secrets.meta,
