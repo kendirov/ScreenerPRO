@@ -6,6 +6,7 @@ const POSITION_CATEGORIES = ["USDT-FUTURES", "USDC-FUTURES", "COIN-FUTURES"] as 
 type BitgetEnvelope<T = unknown> = {
   code?: string;
   msg?: string;
+  message?: string;
   requestTime?: number;
   data?: T;
 };
@@ -58,9 +59,17 @@ async function privateGet<T = unknown>(path: string, params?: URLSearchParams): 
     signal: AbortSignal.timeout(12_000),
   });
 
-  const body = (await response.json()) as BitgetEnvelope<T>;
-  if (!response.ok) throw new Error(`Bitget HTTP ${response.status} for ${path}`);
-  if (body.code !== "00000") throw new Error(`Bitget ${body.code ?? "unknown"}: ${body.msg ?? "request failed"}`);
+  let body: BitgetEnvelope<T>;
+  try {
+    body = (await response.json()) as BitgetEnvelope<T>;
+  } catch {
+    throw new Error(`Bitget HTTP ${response.status} for ${path}`);
+  }
+
+  if (!response.ok || body.code !== "00000") {
+    const detail = body.msg ?? body.message ?? "request failed";
+    throw new Error(`Bitget ${body.code ?? `HTTP ${response.status}`}: ${detail}`);
+  }
   return body.data as T;
 }
 
@@ -73,10 +82,11 @@ async function safe<T>(label: string, action: () => Promise<T>) {
   }
 }
 
-export async function getBitgetPrivateReadOnlySnapshot() {
-  const startedAt = Date.now();
-  requireSecrets();
+function productParams(productType: (typeof POSITION_CATEGORIES)[number]) {
+  return new URLSearchParams({ productType });
+}
 
+async function getUtaV3Snapshot() {
   const [info, assets, fundingAssets, openOrders, ...positions] = await Promise.all([
     safe("account info", () => privateGet<JsonRecord>("/api/v3/account/info")),
     safe("account assets", () => privateGet<JsonRecord>("/api/v3/account/assets")),
@@ -89,19 +99,62 @@ export async function getBitgetPrivateReadOnlySnapshot() {
     ),
   ]);
 
-  const positionByCategory = Object.fromEntries(
-    POSITION_CATEGORIES.map((category, index) => [category, positions[index]]),
-  );
-
   return {
-    mode: "read-only" as const,
-    source: "bitget-uta-v3" as const,
-    asOf: new Date().toISOString(),
-    latencyMs: Date.now() - startedAt,
     info,
     assets,
     fundingAssets,
-    positions: positionByCategory,
+    positions: Object.fromEntries(POSITION_CATEGORIES.map((category, index) => [category, positions[index]])),
     openOrders,
+  };
+}
+
+async function getClassicV2Snapshot() {
+  const [spotAssets, ...rest] = await Promise.all([
+    safe("classic spot assets", () =>
+      privateGet<JsonRecord[]>("/api/v2/spot/account/assets", new URLSearchParams({ assetType: "all" })),
+    ),
+    ...POSITION_CATEGORIES.flatMap((category) => [
+      safe(`${category} classic accounts`, () =>
+        privateGet<JsonRecord[]>("/api/v2/mix/account/accounts", productParams(category)),
+      ),
+      safe(`${category} classic positions`, () =>
+        privateGet<JsonRecord[]>("/api/v2/mix/position/all-position", productParams(category)),
+      ),
+      safe(`${category} classic open orders`, () =>
+        privateGet<JsonRecord>("/api/v2/mix/order/orders-pending", productParams(category)),
+      ),
+    ]),
+  ]);
+
+  const futures = Object.fromEntries(
+    POSITION_CATEGORIES.map((category, index) => {
+      const offset = index * 3;
+      return [
+        category,
+        {
+          accounts: rest[offset],
+          positions: rest[offset + 1],
+          openOrders: rest[offset + 2],
+        },
+      ];
+    }),
+  );
+
+  return { spotAssets, futures };
+}
+
+export async function getBitgetPrivateReadOnlySnapshot() {
+  const startedAt = Date.now();
+  requireSecrets();
+
+  const [utaV3, classicV2] = await Promise.all([getUtaV3Snapshot(), getClassicV2Snapshot()]);
+
+  return {
+    mode: "read-only" as const,
+    source: "bitget-private-auto" as const,
+    asOf: new Date().toISOString(),
+    latencyMs: Date.now() - startedAt,
+    utaV3,
+    classicV2,
   };
 }
