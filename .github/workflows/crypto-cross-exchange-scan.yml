@@ -6,6 +6,7 @@ on:
       - codex/bitget-private-readonly-v1-2026-08-18
     paths:
       - scripts/crypto-market-scan-v3.mjs
+      - scripts/crypto-rebound-scan-v1.mjs
       - .github/workflows/crypto-cross-exchange-scan.yml
       - scanner-trigger.txt
   workflow_dispatch:
@@ -30,20 +31,22 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run public crypto market scan v3
+      - name: Run public crypto market scans
         run: |
           mkdir -p data
           node scripts/crypto-market-scan-v3.mjs > data/crypto-scan-latest.json
-          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status); console.log(x.topOverall.slice(0,10).map(r=>[r.symbol,r.type,r.direction,r.overall,r.price]));"
+          node scripts/crypto-rebound-scan-v1.mjs > data/crypto-rebound-latest.json
+          node -e "const x=require('./data/crypto-scan-latest.json'); console.log('explosion', x.asOf, x.status); console.log(x.topOverall.slice(0,10).map(r=>[r.symbol,r.type,r.direction,r.overall,r.price]));"
+          node -e "const x=require('./data/crypto-rebound-latest.json'); console.log('rebound', x.asOf, x.status); console.log('DOGE', x.doge); console.log(x.topTradeable.slice(0,10).map(r=>[r.symbol,r.stage,r.reboundScore,r.price]));"
 
-      - name: Commit latest public snapshot
+      - name: Commit latest public snapshots
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/crypto-scan-latest.json
+          git add data/crypto-scan-latest.json data/crypto-rebound-latest.json
           if git diff --cached --quiet; then
             echo "No scan changes"
             exit 0
           fi
-          git commit -m "data: refresh clean crypto market scan [skip ci]"
+          git commit -m "data: refresh crypto market scans [skip ci]"
           git push origin HEAD:codex/bitget-private-readonly-v1-2026-08-18
