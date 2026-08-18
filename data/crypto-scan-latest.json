@@ -1,0 +1,27 @@
+{
+  "asOf": "2026-08-18T13:08:57.667Z",
+  "source": "public APIs: Binance USD-M + Bybit linear + OKX USDT swaps; execution filter: Bitget USDT futures",
+  "methodologyVersion": "explosion-score-v0.2",
+  "status": {
+    "bulkErrors": [
+      "binance24h: 451 ",
+      "binancePremium: 451 ",
+      "binanceBook: 451 ",
+      "bybitTickers: 403 Forbidden"
+    ],
+    "universeCount": 793,
+    "eligibleOnBitgetAnd2PlusRadarExchanges": 0,
+    "detailedPoolSize": 0
+  },
+  "topOverall": [],
+  "topIgnition": [],
+  "topPreBreakout": [],
+  "topSqueeze": [],
+  "topMomentum": [],
+  "topLiquidity": [],
+  "notes": [
+    "OI trend uses Binance/Bybit 5m history where available; current OKX and Bitget data are used for cross-exchange confirmation/execution filtering.",
+    "Scores rank attention, not certainty. Entry still requires a trigger and invalidation level.",
+    "Funding is a crowding signal, not a directional forecast by itself."
+  ]
+}
