@@ -1,0 +1,1592 @@
+{
+  "asOf": "2026-08-18T13:56:56.681Z",
+  "methodologyVersion": "crypto-rebound-v2-fast-global",
+  "purpose": "Separate fast capitulation rebounds from global bases; penalize persistent grinding downtrends.",
+  "sources": [
+    "Bitget USDT futures instruments/tickers/5m+4H candles",
+    "OKX USDT swap tickers/5m candles"
+  ],
+  "limitations": [
+    "Binance and Bybit are still absent while their public APIs are geo-blocked from the collector.",
+    "FAST-FLUSH and GLOBAL-BASE are watchlist classifications, not automatic entries.",
+    "OI delta is not yet included; it will materially improve squeeze/falling-knife discrimination."
+  ],
+  "status": {
+    "bitgetCryptoUsdtFutures": 471,
+    "commonWithOkx": 258,
+    "deepScanned": 257,
+    "tradeable": 68,
+    "fastCandidates": 11,
+    "globalBaseCandidates": 11,
+    "grindingDowntrends": 6
+  },
+  "examples": {
+    "ETCUSDT": {
+      "symbol": "ETCUSDT",
+      "price": 6.034,
+      "setupType": "WATCH",
+      "primaryScore": 31.4,
+      "scores": {
+        "fastFlush": 31.4,
+        "globalBase": 29.8,
+        "grindingPenalty": 25.1,
+        "execution": 54.7
+      },
+      "metrics": {
+        "change24hPct": -2.36,
+        "ret1hPct": -0.09,
+        "ret4hPct": -0.56,
+        "ret12hPct": -1.75,
+        "rsi15m": 32.8,
+        "rsi1h": 25.2,
+        "volumeAcceleration": 0.88,
+        "climaxRatio": 6.17,
+        "barsSinceFastLow": 75,
+        "lowerWickScore": 13,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1043608,
+        "bitgetSpreadBps": 1.66,
+        "distance24hLowPct": 0.32,
+        "ret1dPct": -2.58,
+        "ret7dPct": -4.36,
+        "ret30dPct": -13.23,
+        "rsi4h": 36.3,
+        "rsi1d": 24.9,
+        "distance30dLowPct": 0.32,
+        "higherLowPct": -0.31,
+        "globalCompression": 1.17,
+        "ema20SlopePct": -0.89,
+        "belowEma20Pct": -1.92,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 6.0825,
+        "invalidationReference": 6.012,
+        "global30dLow": 6.015,
+        "global30dHigh": 7.191
+      },
+      "reasons": [
+        "у 24h low +0.32%",
+        "volume climax x6.2",
+        "у 30d low +0.3%"
+      ]
+    },
+    "DOGEUSDT": {
+      "symbol": "DOGEUSDT",
+      "price": 0.06973,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 45.6,
+      "scores": {
+        "fastFlush": 25.6,
+        "globalBase": 45.6,
+        "grindingPenalty": 0,
+        "execution": 65.9
+      },
+      "metrics": {
+        "change24hPct": -0.64,
+        "ret1hPct": -0.11,
+        "ret4hPct": -0.16,
+        "ret12hPct": -0.35,
+        "rsi15m": 40.2,
+        "rsi1h": 29.7,
+        "volumeAcceleration": 0.86,
+        "climaxRatio": 3.21,
+        "barsSinceFastLow": 116,
+        "lowerWickScore": 54,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 18934702,
+        "bitgetSpreadBps": 1.43,
+        "distance24hLowPct": 0.24,
+        "ret1dPct": -1.02,
+        "ret7dPct": -1.16,
+        "ret30dPct": -3.46,
+        "rsi4h": 47.8,
+        "rsi1d": 47.1,
+        "distance30dLowPct": 3.12,
+        "higherLowPct": 0.77,
+        "globalCompression": 0.87,
+        "ema20SlopePct": -0.05,
+        "belowEma20Pct": -0.4,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.07,
+        "invalidationReference": 0.06956,
+        "global30dLow": 0.06762,
+        "global30dHigh": 0.07403
+      },
+      "reasons": [
+        "у 24h low +0.24%",
+        "volume climax x3.2",
+        "higher low +0.77%"
+      ]
+    },
+    "WLDUSDT": {
+      "symbol": "WLDUSDT",
+      "price": 0.3238,
+      "setupType": "WATCH",
+      "primaryScore": 29.8,
+      "scores": {
+        "fastFlush": 29.8,
+        "globalBase": 0,
+        "grindingPenalty": 32,
+        "execution": 61.9
+      },
+      "metrics": {
+        "change24hPct": -9.17,
+        "ret1hPct": -0.43,
+        "ret4hPct": 0.19,
+        "ret12hPct": -4.2,
+        "rsi15m": 50.6,
+        "rsi1h": 25.9,
+        "volumeAcceleration": 1.48,
+        "climaxRatio": 3.13,
+        "barsSinceFastLow": 94,
+        "lowerWickScore": 41,
+        "fundingPct": -0.0129,
+        "turnover24hUsd": 17370134,
+        "bitgetSpreadBps": 3.09,
+        "distance24hLowPct": 2.02,
+        "ret1dPct": -10.16,
+        "ret7dPct": -1.85,
+        "ret30dPct": -10.06,
+        "rsi4h": 36.7,
+        "rsi1d": 50.2,
+        "distance30dLowPct": 10.55,
+        "higherLowPct": -5.2,
+        "globalCompression": 1.34,
+        "ema20SlopePct": -2.73,
+        "belowEma20Pct": -5.43,
+        "fastCandleSources": 1
+      },
+      "levels": {
+        "trigger": 0.3274,
+        "invalidationReference": 0.3174,
+        "global30dLow": 0.2929,
+        "global30dHigh": 0.4031
+      },
+      "reasons": [
+        "volume climax x3.1"
+      ]
+    }
+  },
+  "topFastFlush": [
+    {
+      "symbol": "JTOUSDT",
+      "price": 0.5579,
+      "setupType": "FAST-FLUSH",
+      "primaryScore": 54.9,
+      "scores": {
+        "fastFlush": 54.9,
+        "globalBase": 34.9,
+        "grindingPenalty": 0,
+        "execution": 55.6
+      },
+      "metrics": {
+        "change24hPct": -6.6,
+        "ret1hPct": -0.78,
+        "ret4hPct": -2.47,
+        "ret12hPct": -2.8,
+        "rsi15m": 11.5,
+        "rsi1h": 29.4,
+        "volumeAcceleration": 0.44,
+        "climaxRatio": 8.04,
+        "barsSinceFastLow": 1,
+        "lowerWickScore": 25,
+        "fundingPct": -0.0014,
+        "turnover24hUsd": 1611578,
+        "bitgetSpreadBps": 1.79,
+        "distance24hLowPct": 0.02,
+        "ret1dPct": -6.71,
+        "ret7dPct": 3.89,
+        "ret30dPct": -1.5,
+        "rsi4h": 36.2,
+        "rsi1d": 60.8,
+        "distance30dLowPct": 19.06,
+        "higherLowPct": 2.25,
+        "globalCompression": 0.87,
+        "ema20SlopePct": -0.93,
+        "belowEma20Pct": -3.74,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.57075,
+        "invalidationReference": 0.5578,
+        "global30dLow": 0.4686,
+        "global30dHigh": 0.6537
+      },
+      "reasons": [
+        "быстрый приход: 4h -2.5%, 12h -2.8%",
+        "у 24h low +0.02%",
+        "volume climax x8",
+        "после слива volume dry x0.44",
+        "higher low +2.25%"
+      ]
+    },
+    {
+      "symbol": "CHIPUSDT",
+      "price": 0.02709,
+      "setupType": "FAST-FLUSH",
+      "primaryScore": 52.3,
+      "scores": {
+        "fastFlush": 52.3,
+        "globalBase": 43.4,
+        "grindingPenalty": 0,
+        "execution": 55.2
+      },
+      "metrics": {
+        "change24hPct": -10.24,
+        "ret1hPct": -2.24,
+        "ret4hPct": -5.13,
+        "ret12hPct": -2.97,
+        "rsi15m": 20.3,
+        "rsi1h": 45.3,
+        "volumeAcceleration": 0.82,
+        "climaxRatio": 7.54,
+        "barsSinceFastLow": 4,
+        "lowerWickScore": 26,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 4952555,
+        "bitgetSpreadBps": 3.69,
+        "distance24hLowPct": 1.23,
+        "ret1dPct": -7.1,
+        "ret7dPct": 20.87,
+        "ret30dPct": -10.65,
+        "rsi4h": 48.6,
+        "rsi1d": 58.5,
+        "distance30dLowPct": 27.23,
+        "higherLowPct": 19.46,
+        "globalCompression": 0.77,
+        "ema20SlopePct": 0.93,
+        "belowEma20Pct": -2.39,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.02874,
+        "invalidationReference": 0.02675,
+        "global30dLow": 0.0213,
+        "global30dHigh": 0.03287
+      },
+      "reasons": [
+        "быстрый приход: 4h -5.1%, 12h -3%",
+        "volume climax x7.5",
+        "higher low +19.46%"
+      ]
+    },
+    {
+      "symbol": "USELESSUSDT",
+      "price": 0.03773,
+      "setupType": "FAST-FLUSH",
+      "primaryScore": 49.9,
+      "scores": {
+        "fastFlush": 49.9,
+        "globalBase": 17.4,
+        "grindingPenalty": 0,
+        "execution": 52.2
+      },
+      "metrics": {
+        "change24hPct": -8.2,
+        "ret1hPct": -0.26,
+        "ret4hPct": -1.92,
+        "ret12hPct": -8.53,
+        "rsi15m": 46.2,
+        "rsi1h": 16.5,
+        "volumeAcceleration": 2.1,
+        "climaxRatio": 74.37,
+        "barsSinceFastLow": 1,
+        "lowerWickScore": 36,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 900742,
+        "bitgetSpreadBps": 2.65,
+        "distance24hLowPct": 1.4,
+        "ret1dPct": -8.33,
+        "ret7dPct": 6.01,
+        "ret30dPct": -33.17,
+        "rsi4h": 40.7,
+        "rsi1d": 33.3,
+        "distance30dLowPct": 13.98,
+        "higherLowPct": -2.95,
+        "globalCompression": 1.36,
+        "ema20SlopePct": -0.45,
+        "belowEma20Pct": -5.48,
+        "fastCandleSources": 1
+      },
+      "levels": {
+        "trigger": 0.03843,
+        "invalidationReference": 0.03721,
+        "global30dLow": 0.03311,
+        "global30dHigh": 0.06762
+      },
+      "reasons": [
+        "быстрый приход: 4h -1.9%, 12h -8.5%",
+        "volume climax x74.4"
+      ]
+    },
+    {
+      "symbol": "ZECUSDT",
+      "price": 500.81,
+      "setupType": "FAST-WATCH",
+      "primaryScore": 45.7,
+      "scores": {
+        "fastFlush": 45.7,
+        "globalBase": 40.7,
+        "grindingPenalty": 0,
+        "execution": 72.3
+      },
+      "metrics": {
+        "change24hPct": -2.34,
+        "ret1hPct": -0.75,
+        "ret4hPct": -1.09,
+        "ret12hPct": -2.31,
+        "rsi15m": 30.2,
+        "rsi1h": 25.8,
+        "volumeAcceleration": 1.99,
+        "climaxRatio": 5.1,
+        "barsSinceFastLow": 0,
+        "lowerWickScore": 24,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 42781632,
+        "bitgetSpreadBps": 0.2,
+        "distance24hLowPct": 0.08,
+        "ret1dPct": -2.47,
+        "ret7dPct": 6.36,
+        "ret30dPct": -8.9,
+        "rsi4h": 60.4,
+        "rsi1d": 50.6,
+        "distance30dLowPct": 10.94,
+        "higherLowPct": 3.5,
+        "globalCompression": 1.06,
+        "ema20SlopePct": 1.08,
+        "belowEma20Pct": -0.08,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 507.295,
+        "invalidationReference": 500.395,
+        "global30dLow": 451.42,
+        "global30dHigh": 557.45
+      },
+      "reasons": [
+        "у 24h low +0.08%",
+        "volume climax x5.1",
+        "higher low +3.5%"
+      ]
+    },
+    {
+      "symbol": "CRVUSDT",
+      "price": 0.2387,
+      "setupType": "FAST-FLUSH",
+      "primaryScore": 45.2,
+      "scores": {
+        "fastFlush": 45.2,
+        "globalBase": 0.7,
+        "grindingPenalty": 34.6,
+        "execution": 50.9
+      },
+      "metrics": {
+        "change24hPct": -2.77,
+        "ret1hPct": -0.48,
+        "ret4hPct": -2.63,
+        "ret12hPct": -2.01,
+        "rsi15m": 11.2,
+        "rsi1h": 40.5,
+        "volumeAcceleration": 1.78,
+        "climaxRatio": 18.33,
+        "barsSinceFastLow": 0,
+        "lowerWickScore": 66,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1970417,
+        "bitgetSpreadBps": 4.19,
+        "distance24hLowPct": 0.21,
+        "ret1dPct": -2.41,
+        "ret7dPct": -9.92,
+        "ret30dPct": 13.55,
+        "rsi4h": 47.4,
+        "rsi1d": 64.2,
+        "distance30dLowPct": 20.23,
+        "higherLowPct": 0.29,
+        "globalCompression": 1.04,
+        "ema20SlopePct": -0.79,
+        "belowEma20Pct": -2.45,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.24525,
+        "invalidationReference": 0.2382,
+        "global30dLow": 0.1987,
+        "global30dHigh": 0.286
+      },
+      "reasons": [
+        "быстрый приход: 4h -2.6%, 12h -2%",
+        "у 24h low +0.21%",
+        "volume climax x18.3",
+        "higher low +0.29%"
+      ]
+    },
+    {
+      "symbol": "BNBUSDT",
+      "price": 599.78,
+      "setupType": "FAST-WATCH",
+      "primaryScore": 44.8,
+      "scores": {
+        "fastFlush": 44.8,
+        "globalBase": 26.5,
+        "grindingPenalty": 5.2,
+        "execution": 64.9
+      },
+      "metrics": {
+        "change24hPct": -1,
+        "ret1hPct": -0.18,
+        "ret4hPct": -0.21,
+        "ret12hPct": -0.66,
+        "rsi15m": 39.5,
+        "rsi1h": 22.7,
+        "volumeAcceleration": 0.46,
+        "climaxRatio": 41.31,
+        "barsSinceFastLow": 6,
+        "lowerWickScore": 40,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 7876519,
+        "bitgetSpreadBps": 0.17,
+        "distance24hLowPct": 0.02,
+        "ret1dPct": -1.16,
+        "ret7dPct": -1.34,
+        "ret30dPct": 5.64,
+        "rsi4h": 35.6,
+        "rsi1d": 55.1,
+        "distance30dLowPct": 7.94,
+        "higherLowPct": -0.17,
+        "globalCompression": 0.81,
+        "ema20SlopePct": -0.28,
+        "belowEma20Pct": -0.85,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 602.255,
+        "invalidationReference": 599.475,
+        "global30dLow": 555.68,
+        "global30dHigh": 620
+      },
+      "reasons": [
+        "у 24h low +0.02%",
+        "volume climax x41.3",
+        "после слива volume dry x0.46"
+      ]
+    },
+    {
+      "symbol": "HUSDT",
+      "price": 0.1118,
+      "setupType": "FAST-FLUSH",
+      "primaryScore": 43.7,
+      "scores": {
+        "fastFlush": 43.7,
+        "globalBase": 39.6,
+        "grindingPenalty": 0,
+        "execution": 48.2
+      },
+      "metrics": {
+        "change24hPct": -10.15,
+        "ret1hPct": -1.63,
+        "ret4hPct": -3.72,
+        "ret12hPct": -4.46,
+        "rsi15m": 27.2,
+        "rsi1h": 32.6,
+        "volumeAcceleration": 0.28,
+        "climaxRatio": 2.47,
+        "barsSinceFastLow": 8,
+        "lowerWickScore": 35,
+        "fundingPct": 0.029,
+        "turnover24hUsd": 3438523,
+        "bitgetSpreadBps": 6.29,
+        "distance24hLowPct": 1.16,
+        "ret1dPct": -4.35,
+        "ret7dPct": 31.01,
+        "ret30dPct": 91.29,
+        "rsi4h": 21.2,
+        "rsi1d": 64.1,
+        "distance30dLowPct": 105.33,
+        "higherLowPct": 9.72,
+        "globalCompression": 0.58,
+        "ema20SlopePct": -2.96,
+        "belowEma20Pct": -9.81,
+        "fastCandleSources": 1
+      },
+      "levels": {
+        "trigger": 0.11773,
+        "invalidationReference": 0.11052,
+        "global30dLow": 0.05421,
+        "global30dHigh": 0.17032
+      },
+      "reasons": [
+        "быстрый приход: 4h -3.7%, 12h -4.5%",
+        "volume climax x2.5",
+        "после слива volume dry x0.28",
+        "higher low +9.72%",
+        "4H compression/base"
+      ]
+    },
+    {
+      "symbol": "XLMUSDT",
+      "price": 0.15336,
+      "setupType": "FAST-WATCH",
+      "primaryScore": 39.5,
+      "scores": {
+        "fastFlush": 39.5,
+        "globalBase": 27.8,
+        "grindingPenalty": 24.7,
+        "execution": 60.6
+      },
+      "metrics": {
+        "change24hPct": -2.66,
+        "ret1hPct": 0.54,
+        "ret4hPct": -0.18,
+        "ret12hPct": -1.98,
+        "rsi15m": 52.6,
+        "rsi1h": 24.1,
+        "volumeAcceleration": 0.51,
+        "climaxRatio": 5.04,
+        "barsSinceFastLow": 12,
+        "lowerWickScore": 39,
+        "fundingPct": -0.0119,
+        "turnover24hUsd": 3459186,
+        "bitgetSpreadBps": 0.65,
+        "distance24hLowPct": 0.71,
+        "ret1dPct": -3.43,
+        "ret7dPct": -4.14,
+        "ret30dPct": -19.55,
+        "rsi4h": 36.8,
+        "rsi1d": 24.1,
+        "distance30dLowPct": 0.71,
+        "higherLowPct": -1.98,
+        "globalCompression": 1.33,
+        "ema20SlopePct": -0.95,
+        "belowEma20Pct": -2.13,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.153915,
+        "invalidationReference": 0.15228,
+        "global30dLow": 0.15228,
+        "global30dHigh": 0.1964
+      },
+      "reasons": [
+        "у 24h low +0.71%",
+        "volume climax x5",
+        "после слива volume dry x0.51",
+        "у 30d low +0.7%"
+      ]
+    },
+    {
+      "symbol": "NEARUSDT",
+      "price": 1.6137,
+      "setupType": "FAST-WATCH",
+      "primaryScore": 44,
+      "scores": {
+        "fastFlush": 38.8,
+        "globalBase": 44,
+        "grindingPenalty": 0,
+        "execution": 63.4
+      },
+      "metrics": {
+        "change24hPct": -2.09,
+        "ret1hPct": -0.18,
+        "ret4hPct": 0.17,
+        "ret12hPct": -1.23,
+        "rsi15m": 44.9,
+        "rsi1h": 40,
+        "volumeAcceleration": 0.33,
+        "climaxRatio": 7.83,
+        "barsSinceFastLow": 10,
+        "lowerWickScore": 29,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 9794646,
+        "bitgetSpreadBps": 1.24,
+        "distance24hLowPct": 0.54,
+        "ret1dPct": -1.62,
+        "ret7dPct": 4,
+        "ret30dPct": -15.79,
+        "rsi4h": 50.6,
+        "rsi1d": 37.1,
+        "distance30dLowPct": 5.22,
+        "higherLowPct": 1.42,
+        "globalCompression": 1.35,
+        "ema20SlopePct": -0.02,
+        "belowEma20Pct": -0.75,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 1.62945,
+        "invalidationReference": 1.6051,
+        "global30dLow": 1.5336,
+        "global30dHigh": 2.063
+      },
+      "reasons": [
+        "у 24h low +0.54%",
+        "volume climax x7.8",
+        "после слива volume dry x0.33",
+        "higher low +1.42%"
+      ]
+    },
+    {
+      "symbol": "GIGGLEUSDT",
+      "price": 33.18,
+      "setupType": "FAST-WATCH",
+      "primaryScore": 35.6,
+      "scores": {
+        "fastFlush": 35.6,
+        "globalBase": 33.1,
+        "grindingPenalty": 14,
+        "execution": 54.4
+      },
+      "metrics": {
+        "change24hPct": -0.87,
+        "ret1hPct": -0.06,
+        "ret4hPct": -3.15,
+        "ret12hPct": -1.88,
+        "rsi15m": 36.4,
+        "rsi1h": 38.5,
+        "volumeAcceleration": 0.21,
+        "climaxRatio": 4.55,
+        "barsSinceFastLow": 77,
+        "lowerWickScore": 37,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 2648177,
+        "bitgetSpreadBps": 3.02,
+        "distance24hLowPct": 2,
+        "ret1dPct": -2.93,
+        "ret7dPct": -11.43,
+        "ret30dPct": 27.86,
+        "rsi4h": 64.6,
+        "rsi1d": 49.2,
+        "distance30dLowPct": 34.55,
+        "higherLowPct": 9.12,
+        "globalCompression": 1.02,
+        "ema20SlopePct": 1.96,
+        "belowEma20Pct": 1.09,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 33.6,
+        "invalidationReference": 32.515,
+        "global30dLow": 24.66,
+        "global30dHigh": 55.67
+      },
+      "reasons": [
+        "volume climax x4.6",
+        "после слива volume dry x0.21",
+        "higher low +9.12%"
+      ]
+    },
+    {
+      "symbol": "OPNUSDT",
+      "price": 0.05847,
+      "setupType": "FAST-WATCH",
+      "primaryScore": 41.3,
+      "scores": {
+        "fastFlush": 35.2,
+        "globalBase": 41.3,
+        "grindingPenalty": 0,
+        "execution": 46.4
+      },
+      "metrics": {
+        "change24hPct": 13.89,
+        "ret1hPct": -2.08,
+        "ret4hPct": -0.24,
+        "ret12hPct": 10.6,
+        "rsi15m": 47,
+        "rsi1h": 78.7,
+        "volumeAcceleration": 0.36,
+        "climaxRatio": 39.1,
+        "barsSinceFastLow": 143,
+        "lowerWickScore": 20,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 2993716,
+        "bitgetSpreadBps": 6.84,
+        "distance24hLowPct": 14.38,
+        "ret1dPct": 12.63,
+        "ret7dPct": 16.3,
+        "ret30dPct": -4.93,
+        "rsi4h": 66.4,
+        "rsi1d": 65.9,
+        "distance30dLowPct": 30.83,
+        "higherLowPct": 9.81,
+        "globalCompression": 1.86,
+        "ema20SlopePct": 4.96,
+        "belowEma20Pct": 9.28,
+        "fastCandleSources": 1
+      },
+      "levels": {
+        "trigger": 0.06114,
+        "invalidationReference": 0.05112,
+        "global30dLow": 0.04466,
+        "global30dHigh": 0.0756
+      },
+      "reasons": [
+        "volume climax x39.1",
+        "после слива volume dry x0.36",
+        "higher low +9.81%"
+      ]
+    }
+  ],
+  "topGlobalBase": [
+    {
+      "symbol": "HBARUSDT",
+      "price": 0.06577,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 58.1,
+      "scores": {
+        "fastFlush": 30,
+        "globalBase": 58.1,
+        "grindingPenalty": 0,
+        "execution": 56.5
+      },
+      "metrics": {
+        "change24hPct": 0.12,
+        "ret1hPct": -0.45,
+        "ret4hPct": -0.07,
+        "ret12hPct": 0.13,
+        "rsi15m": 47.8,
+        "rsi1h": 45.7,
+        "volumeAcceleration": 0.26,
+        "climaxRatio": 19.38,
+        "barsSinceFastLow": 132,
+        "lowerWickScore": 10,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1805403,
+        "bitgetSpreadBps": 1.52,
+        "distance24hLowPct": 0.97,
+        "ret1dPct": -0.75,
+        "ret7dPct": -0.5,
+        "ret30dPct": -0.93,
+        "rsi4h": 57.7,
+        "rsi1d": 30.4,
+        "distance30dLowPct": 2.53,
+        "higherLowPct": 1.54,
+        "globalCompression": 0.91,
+        "ema20SlopePct": 0.11,
+        "belowEma20Pct": 0.14,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0661,
+        "invalidationReference": 0.065105,
+        "global30dLow": 0.06415,
+        "global30dHigh": 0.07445
+      },
+      "reasons": [
+        "у 24h low +0.97%",
+        "volume climax x19.4",
+        "после слива volume dry x0.26",
+        "у 30d low +2.5%",
+        "higher low +1.54%"
+      ]
+    },
+    {
+      "symbol": "ONDOUSDT",
+      "price": 0.3282,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 54,
+      "scores": {
+        "fastFlush": 31.8,
+        "globalBase": 54,
+        "grindingPenalty": 0,
+        "execution": 56.9
+      },
+      "metrics": {
+        "change24hPct": -3.27,
+        "ret1hPct": -0.52,
+        "ret4hPct": -0.64,
+        "ret12hPct": -0.89,
+        "rsi15m": 39,
+        "rsi1h": 28.8,
+        "volumeAcceleration": 0.8,
+        "climaxRatio": 12.79,
+        "barsSinceFastLow": 132,
+        "lowerWickScore": 28,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 5310180,
+        "bitgetSpreadBps": 3.05,
+        "distance24hLowPct": 0.24,
+        "ret1dPct": -3.01,
+        "ret7dPct": -1.44,
+        "ret30dPct": -5.5,
+        "rsi4h": 54.2,
+        "rsi1d": 30.2,
+        "distance30dLowPct": 2.18,
+        "higherLowPct": 1.93,
+        "globalCompression": 1.08,
+        "ema20SlopePct": -0.14,
+        "belowEma20Pct": -1.03,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.33185,
+        "invalidationReference": 0.3274,
+        "global30dLow": 0.3212,
+        "global30dHigh": 0.4277
+      },
+      "reasons": [
+        "у 24h low +0.24%",
+        "volume climax x12.8",
+        "у 30d low +2.2%",
+        "higher low +1.93%"
+      ]
+    },
+    {
+      "symbol": "BTCUSDT",
+      "price": 64145.9,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 53.9,
+      "scores": {
+        "fastFlush": 25.8,
+        "globalBase": 53.9,
+        "grindingPenalty": 0,
+        "execution": 90
+      },
+      "metrics": {
+        "change24hPct": 0.87,
+        "ret1hPct": -0.08,
+        "ret4hPct": -0.01,
+        "ret12hPct": -0.06,
+        "rsi15m": 49.9,
+        "rsi1h": 36.5,
+        "volumeAcceleration": 1.36,
+        "climaxRatio": 6.89,
+        "barsSinceFastLow": 65,
+        "lowerWickScore": 29,
+        "fundingPct": 0.0031,
+        "turnover24hUsd": 1754571588,
+        "bitgetSpreadBps": 0.02,
+        "distance24hLowPct": 0.93,
+        "ret1dPct": -0.03,
+        "ret7dPct": 0.87,
+        "ret30dPct": -0.46,
+        "rsi4h": 70.4,
+        "rsi1d": 50.6,
+        "distance30dLowPct": 3.07,
+        "higherLowPct": 2.02,
+        "globalCompression": 1.24,
+        "ema20SlopePct": 0.65,
+        "belowEma20Pct": 0.62,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 64378.45,
+        "invalidationReference": 63555,
+        "global30dLow": 62231.1,
+        "global30dHigh": 66926.1
+      },
+      "reasons": [
+        "у 24h low +0.93%",
+        "volume climax x6.9",
+        "higher low +2.02%"
+      ]
+    },
+    {
+      "symbol": "LTCUSDT",
+      "price": 44.4,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 52.3,
+      "scores": {
+        "fastFlush": 23.7,
+        "globalBase": 52.3,
+        "grindingPenalty": 0,
+        "execution": 54.6
+      },
+      "metrics": {
+        "change24hPct": 0.32,
+        "ret1hPct": -0.25,
+        "ret4hPct": -0.38,
+        "ret12hPct": -0.03,
+        "rsi15m": 34.8,
+        "rsi1h": 45.6,
+        "volumeAcceleration": 5.8,
+        "climaxRatio": 18.44,
+        "barsSinceFastLow": 132,
+        "lowerWickScore": 45,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1651644,
+        "bitgetSpreadBps": 2.25,
+        "distance24hLowPct": 0.63,
+        "ret1dPct": 0.16,
+        "ret7dPct": -1.36,
+        "ret30dPct": -6.76,
+        "rsi4h": 52.9,
+        "rsi1d": 50.4,
+        "distance30dLowPct": 2.4,
+        "higherLowPct": 1.75,
+        "globalCompression": 0.94,
+        "ema20SlopePct": 0.14,
+        "belowEma20Pct": 0.04,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 44.565,
+        "invalidationReference": 44.115,
+        "global30dLow": 43.36,
+        "global30dHigh": 48.23
+      },
+      "reasons": [
+        "у 24h low +0.63%",
+        "volume climax x18.4",
+        "у 30d low +2.4%",
+        "higher low +1.75%"
+      ]
+    },
+    {
+      "symbol": "XRPUSDT",
+      "price": 0.9966,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 51.2,
+      "scores": {
+        "fastFlush": 18.3,
+        "globalBase": 51.2,
+        "grindingPenalty": 0,
+        "execution": 73.3
+      },
+      "metrics": {
+        "change24hPct": -0.37,
+        "ret1hPct": -0.08,
+        "ret4hPct": 0.12,
+        "ret12hPct": 0.05,
+        "rsi15m": 58.1,
+        "rsi1h": 39.1,
+        "volumeAcceleration": 1.75,
+        "climaxRatio": 2.87,
+        "barsSinceFastLow": 132,
+        "lowerWickScore": 43,
+        "fundingPct": 0.0004,
+        "turnover24hUsd": 78801755,
+        "bitgetSpreadBps": 1,
+        "distance24hLowPct": 0.82,
+        "ret1dPct": -0.96,
+        "ret7dPct": -0.67,
+        "ret30dPct": -8.91,
+        "rsi4h": 45.5,
+        "rsi1d": 23.3,
+        "distance30dLowPct": 1.32,
+        "higherLowPct": 0.5,
+        "globalCompression": 1.2,
+        "ema20SlopePct": -0.25,
+        "belowEma20Pct": -0.38,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 1.00165,
+        "invalidationReference": 0.98835,
+        "global30dLow": 0.9836,
+        "global30dHigh": 1.1639
+      },
+      "reasons": [
+        "у 24h low +0.82%",
+        "volume climax x2.9",
+        "у 30d low +1.3%",
+        "higher low +0.5%"
+      ]
+    },
+    {
+      "symbol": "BCHUSDT",
+      "price": 203.17,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 49.1,
+      "scores": {
+        "fastFlush": 24.9,
+        "globalBase": 49.1,
+        "grindingPenalty": 2.1,
+        "execution": 57.6
+      },
+      "metrics": {
+        "change24hPct": -0.35,
+        "ret1hPct": 0.01,
+        "ret4hPct": -0.18,
+        "ret12hPct": -0.38,
+        "rsi15m": 47.6,
+        "rsi1h": 32.8,
+        "volumeAcceleration": 1.55,
+        "climaxRatio": 6.78,
+        "barsSinceFastLow": 130,
+        "lowerWickScore": 45,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1184460,
+        "bitgetSpreadBps": 0.49,
+        "distance24hLowPct": 0.41,
+        "ret1dPct": -0.83,
+        "ret7dPct": -3.81,
+        "ret30dPct": -6.61,
+        "rsi4h": 47.7,
+        "rsi1d": 34.9,
+        "distance30dLowPct": 1.93,
+        "higherLowPct": 0.62,
+        "globalCompression": 0.84,
+        "ema20SlopePct": -0.33,
+        "belowEma20Pct": -0.68,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 203.99,
+        "invalidationReference": 202.325,
+        "global30dLow": 199.32,
+        "global30dHigh": 226.67
+      },
+      "reasons": [
+        "у 24h low +0.41%",
+        "volume climax x6.8",
+        "у 30d low +1.9%",
+        "higher low +0.62%"
+      ]
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "price": 0.06973,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 45.6,
+      "scores": {
+        "fastFlush": 25.6,
+        "globalBase": 45.6,
+        "grindingPenalty": 0,
+        "execution": 65.9
+      },
+      "metrics": {
+        "change24hPct": -0.64,
+        "ret1hPct": -0.11,
+        "ret4hPct": -0.16,
+        "ret12hPct": -0.35,
+        "rsi15m": 40.2,
+        "rsi1h": 29.7,
+        "volumeAcceleration": 0.86,
+        "climaxRatio": 3.21,
+        "barsSinceFastLow": 116,
+        "lowerWickScore": 54,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 18934702,
+        "bitgetSpreadBps": 1.43,
+        "distance24hLowPct": 0.24,
+        "ret1dPct": -1.02,
+        "ret7dPct": -1.16,
+        "ret30dPct": -3.46,
+        "rsi4h": 47.8,
+        "rsi1d": 47.1,
+        "distance30dLowPct": 3.12,
+        "higherLowPct": 0.77,
+        "globalCompression": 0.87,
+        "ema20SlopePct": -0.05,
+        "belowEma20Pct": -0.4,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.07,
+        "invalidationReference": 0.06956,
+        "global30dLow": 0.06762,
+        "global30dHigh": 0.07403
+      },
+      "reasons": [
+        "у 24h low +0.24%",
+        "volume climax x3.2",
+        "higher low +0.77%"
+      ]
+    },
+    {
+      "symbol": "ETHUSDT",
+      "price": 1895.34,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 43.5,
+      "scores": {
+        "fastFlush": 28.6,
+        "globalBase": 43.5,
+        "grindingPenalty": 0,
+        "execution": 86.5
+      },
+      "metrics": {
+        "change24hPct": -0.37,
+        "ret1hPct": -0.17,
+        "ret4hPct": -0.04,
+        "ret12hPct": -0.29,
+        "rsi15m": 47.9,
+        "rsi1h": 34,
+        "volumeAcceleration": 1.19,
+        "climaxRatio": 6.03,
+        "barsSinceFastLow": 125,
+        "lowerWickScore": 33,
+        "fundingPct": 0.001,
+        "turnover24hUsd": 840290623,
+        "bitgetSpreadBps": 0.05,
+        "distance24hLowPct": 0.55,
+        "ret1dPct": -0.89,
+        "ret7dPct": 1.78,
+        "ret30dPct": 1.82,
+        "rsi4h": 57.4,
+        "rsi1d": 55.5,
+        "distance30dLowPct": 4.07,
+        "higherLowPct": 0.9,
+        "globalCompression": 1.25,
+        "ema20SlopePct": 0.27,
+        "belowEma20Pct": 0.04,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 1904.765,
+        "invalidationReference": 1884.895,
+        "global30dLow": 1821.2,
+        "global30dHigh": 1981.7
+      },
+      "reasons": [
+        "у 24h low +0.55%",
+        "volume climax x6",
+        "higher low +0.9%"
+      ]
+    },
+    {
+      "symbol": "RENDERUSDT",
+      "price": 1.2619,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 42.7,
+      "scores": {
+        "fastFlush": 21,
+        "globalBase": 42.7,
+        "grindingPenalty": 0,
+        "execution": 54.8
+      },
+      "metrics": {
+        "change24hPct": -1.02,
+        "ret1hPct": -0.31,
+        "ret4hPct": -0.5,
+        "ret12hPct": -0.06,
+        "rsi15m": 48.3,
+        "rsi1h": 40.5,
+        "volumeAcceleration": 1.03,
+        "climaxRatio": 6.23,
+        "barsSinceFastLow": 129,
+        "lowerWickScore": 38,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1005659,
+        "bitgetSpreadBps": 1.59,
+        "distance24hLowPct": 1.3,
+        "ret1dPct": -0.92,
+        "ret7dPct": 1.61,
+        "ret30dPct": -14.81,
+        "rsi4h": 50.7,
+        "rsi1d": 31.3,
+        "distance30dLowPct": 2.89,
+        "higherLowPct": 0.31,
+        "globalCompression": 1.13,
+        "ema20SlopePct": -0.08,
+        "belowEma20Pct": -0.19,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 1.27025,
+        "invalidationReference": 1.2457,
+        "global30dLow": 1.2265,
+        "global30dHigh": 1.563
+      },
+      "reasons": [
+        "volume climax x6.2",
+        "у 30d low +2.9%",
+        "higher low +0.31%"
+      ]
+    },
+    {
+      "symbol": "TIAUSDT",
+      "price": 0.3,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 39.7,
+      "scores": {
+        "fastFlush": 14.5,
+        "globalBase": 39.7,
+        "grindingPenalty": 0,
+        "execution": 51.4
+      },
+      "metrics": {
+        "change24hPct": -0.33,
+        "ret1hPct": -0.07,
+        "ret4hPct": 0.32,
+        "ret12hPct": -0.05,
+        "rsi15m": 52.3,
+        "rsi1h": 42.4,
+        "volumeAcceleration": 1.43,
+        "climaxRatio": 19.18,
+        "barsSinceFastLow": 131,
+        "lowerWickScore": 54,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1199631,
+        "bitgetSpreadBps": 3.33,
+        "distance24hLowPct": 2.88,
+        "ret1dPct": -0.43,
+        "ret7dPct": -2.22,
+        "ret30dPct": -16.62,
+        "rsi4h": 47.2,
+        "rsi1d": 20.7,
+        "distance30dLowPct": 3.09,
+        "higherLowPct": 0.21,
+        "globalCompression": 1.03,
+        "ema20SlopePct": -0.68,
+        "belowEma20Pct": -0.75,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.30165,
+        "invalidationReference": 0.2916,
+        "global30dLow": 0.291,
+        "global30dHigh": 0.3713
+      },
+      "reasons": [
+        "volume climax x19.2",
+        "higher low +0.21%"
+      ]
+    },
+    {
+      "symbol": "UNIUSDT",
+      "price": 3.267,
+      "setupType": "GLOBAL-BASE",
+      "primaryScore": 36.8,
+      "scores": {
+        "fastFlush": 21,
+        "globalBase": 36.8,
+        "grindingPenalty": 41.2,
+        "execution": 56.5
+      },
+      "metrics": {
+        "change24hPct": -0.31,
+        "ret1hPct": -0.26,
+        "ret4hPct": 0.02,
+        "ret12hPct": 0.57,
+        "rsi15m": 52.1,
+        "rsi1h": 43.8,
+        "volumeAcceleration": 0.88,
+        "climaxRatio": 6.65,
+        "barsSinceFastLow": 139,
+        "lowerWickScore": 25,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 4842066,
+        "bitgetSpreadBps": 3.06,
+        "distance24hLowPct": 1.3,
+        "ret1dPct": -1.24,
+        "ret7dPct": -11.65,
+        "ret30dPct": -6.44,
+        "rsi4h": 48.2,
+        "rsi1d": 28.7,
+        "distance30dLowPct": 3.39,
+        "higherLowPct": 2.06,
+        "globalCompression": 0.63,
+        "ema20SlopePct": -0.66,
+        "belowEma20Pct": -0.93,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 3.295,
+        "invalidationReference": 3.2245,
+        "global30dLow": 3.16,
+        "global30dHigh": 4.572
+      },
+      "reasons": [
+        "volume climax x6.6",
+        "higher low +2.06%",
+        "4H compression/base"
+      ]
+    }
+  ],
+  "avoidGrinding": [
+    {
+      "symbol": "GALAUSDT",
+      "price": 0.001397,
+      "setupType": "GRINDING-DOWNTREND",
+      "primaryScore": 34.2,
+      "scores": {
+        "fastFlush": 34.2,
+        "globalBase": 0,
+        "grindingPenalty": 100,
+        "execution": 44.1
+      },
+      "metrics": {
+        "change24hPct": -14.29,
+        "ret1hPct": -0.96,
+        "ret4hPct": -0.75,
+        "ret12hPct": -12.87,
+        "rsi15m": 37.1,
+        "rsi1h": 14.8,
+        "volumeAcceleration": 3.87,
+        "climaxRatio": 5.57,
+        "barsSinceFastLow": 114,
+        "lowerWickScore": 36,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1779545,
+        "bitgetSpreadBps": 7.16,
+        "distance24hLowPct": 3.1,
+        "ret1dPct": -14.56,
+        "ret7dPct": -18.45,
+        "ret30dPct": -30.53,
+        "rsi4h": 11.7,
+        "rsi1d": 13.3,
+        "distance30dLowPct": 3.1,
+        "higherLowPct": -16.15,
+        "globalCompression": 3.5,
+        "ema20SlopePct": -5.16,
+        "belowEma20Pct": -11.09,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.001422,
+        "invalidationReference": 0.001355,
+        "global30dLow": 0.001355,
+        "global30dHigh": 0.002095
+      },
+      "reasons": [
+        "volume climax x5.6",
+        "grinding down: 7d -18.4%, EMA slope -5.2%"
+      ]
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "price": 0.3375,
+      "setupType": "GRINDING-DOWNTREND",
+      "primaryScore": 17,
+      "scores": {
+        "fastFlush": 17,
+        "globalBase": 0,
+        "grindingPenalty": 100,
+        "execution": 50.1
+      },
+      "metrics": {
+        "change24hPct": -4.28,
+        "ret1hPct": -0.04,
+        "ret4hPct": 1.05,
+        "ret12hPct": 3.66,
+        "rsi15m": 58.5,
+        "rsi1h": 59.7,
+        "volumeAcceleration": 0.73,
+        "climaxRatio": 2.06,
+        "barsSinceFastLow": 125,
+        "lowerWickScore": 46,
+        "fundingPct": -0.0378,
+        "turnover24hUsd": 4714209,
+        "bitgetSpreadBps": 5.93,
+        "distance24hLowPct": 5.73,
+        "ret1dPct": -8.93,
+        "ret7dPct": -48.26,
+        "ret30dPct": -64.15,
+        "rsi4h": 41.5,
+        "rsi1d": 10.7,
+        "distance30dLowPct": 5.48,
+        "higherLowPct": -2.92,
+        "globalCompression": 0.98,
+        "ema20SlopePct": -5.82,
+        "belowEma20Pct": -6.12,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.34065,
+        "invalidationReference": 0.3192,
+        "global30dLow": 0.3192,
+        "global30dHigh": 1.3779
+      },
+      "reasons": [
+        "volume climax x2.1",
+        "после слива volume dry x0.73",
+        "grinding down: 7d -48.3%, EMA slope -5.8%",
+        "funding -0.038%"
+      ]
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "price": 0.006381,
+      "setupType": "GRINDING-DOWNTREND",
+      "primaryScore": 32.4,
+      "scores": {
+        "fastFlush": 32.4,
+        "globalBase": 0,
+        "grindingPenalty": 100,
+        "execution": 45.9
+      },
+      "metrics": {
+        "change24hPct": -5.21,
+        "ret1hPct": -0.48,
+        "ret4hPct": 1.53,
+        "ret12hPct": -5.56,
+        "rsi15m": 54.1,
+        "rsi1h": 39.9,
+        "volumeAcceleration": 0.78,
+        "climaxRatio": 14.86,
+        "barsSinceFastLow": 108,
+        "lowerWickScore": 40,
+        "fundingPct": -0.1753,
+        "turnover24hUsd": 1698365,
+        "bitgetSpreadBps": 6.26,
+        "distance24hLowPct": 2.64,
+        "ret1dPct": -6.42,
+        "ret7dPct": -26.62,
+        "ret30dPct": -17.84,
+        "rsi4h": 22.5,
+        "rsi1d": 36.1,
+        "distance30dLowPct": 30.82,
+        "higherLowPct": -7.32,
+        "globalCompression": 0.75,
+        "ema20SlopePct": -8.81,
+        "belowEma20Pct": -13.41,
+        "fastCandleSources": 1
+      },
+      "levels": {
+        "trigger": 0.006523,
+        "invalidationReference": 0.006217,
+        "global30dLow": 0.00488,
+        "global30dHigh": 0.012269
+      },
+      "reasons": [
+        "volume climax x14.9",
+        "4H compression/base",
+        "grinding down: 7d -26.6%, EMA slope -8.8%",
+        "funding -0.175%"
+      ]
+    },
+    {
+      "symbol": "MMTUSDT",
+      "price": 0.1703,
+      "setupType": "GRINDING-DOWNTREND",
+      "primaryScore": 14.7,
+      "scores": {
+        "fastFlush": 14.7,
+        "globalBase": 0,
+        "grindingPenalty": 100,
+        "execution": 45.9
+      },
+      "metrics": {
+        "change24hPct": -1.16,
+        "ret1hPct": -0.03,
+        "ret4hPct": 1.55,
+        "ret12hPct": 3.81,
+        "rsi15m": 70.8,
+        "rsi1h": 59.5,
+        "volumeAcceleration": 0.65,
+        "climaxRatio": 4.35,
+        "barsSinceFastLow": 134,
+        "lowerWickScore": 15,
+        "fundingPct": -0.0029,
+        "turnover24hUsd": 1251884,
+        "bitgetSpreadBps": 5.87,
+        "distance24hLowPct": 6.5,
+        "ret1dPct": -1.67,
+        "ret7dPct": -22.87,
+        "ret30dPct": -5.96,
+        "rsi4h": 42.5,
+        "rsi1d": 55,
+        "distance30dLowPct": 23.05,
+        "higherLowPct": -5.55,
+        "globalCompression": 0.8,
+        "ema20SlopePct": -2.77,
+        "belowEma20Pct": -1.93,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.17125,
+        "invalidationReference": 0.15985,
+        "global30dLow": 0.1384,
+        "global30dHigh": 0.4663
+      },
+      "reasons": [
+        "volume climax x4.4",
+        "после слива volume dry x0.65",
+        "grinding down: 7d -22.9%, EMA slope -2.8%"
+      ]
+    },
+    {
+      "symbol": "FILUSDT",
+      "price": 0.6194,
+      "setupType": "GRINDING-DOWNTREND",
+      "primaryScore": 39.2,
+      "scores": {
+        "fastFlush": 39.2,
+        "globalBase": 0,
+        "grindingPenalty": 74,
+        "execution": 63.5
+      },
+      "metrics": {
+        "change24hPct": -7.51,
+        "ret1hPct": -0.2,
+        "ret4hPct": -0.96,
+        "ret12hPct": -6.5,
+        "rsi15m": 32.1,
+        "rsi1h": 15.3,
+        "volumeAcceleration": 2.43,
+        "climaxRatio": 5.8,
+        "barsSinceFastLow": 121,
+        "lowerWickScore": 76,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 11974880,
+        "bitgetSpreadBps": 1.61,
+        "distance24hLowPct": 1.99,
+        "ret1dPct": -7.68,
+        "ret7dPct": -10.85,
+        "ret30dPct": -13.26,
+        "rsi4h": 21.6,
+        "rsi1d": 27.6,
+        "distance30dLowPct": 1.99,
+        "higherLowPct": -7.65,
+        "globalCompression": 2.06,
+        "ema20SlopePct": -2.8,
+        "belowEma20Pct": -5.85,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 0.6266,
+        "invalidationReference": 0.60715,
+        "global30dLow": 0.6073,
+        "global30dHigh": 0.7833
+      },
+      "reasons": [
+        "volume climax x5.8",
+        "у 30d low +2%",
+        "grinding down: 7d -10.9%, EMA slope -2.8%"
+      ]
+    },
+    {
+      "symbol": "INJUSDT",
+      "price": 4.056,
+      "setupType": "GRINDING-DOWNTREND",
+      "primaryScore": 18.5,
+      "scores": {
+        "fastFlush": 18.5,
+        "globalBase": 2.9,
+        "grindingPenalty": 56.9,
+        "execution": 50.5
+      },
+      "metrics": {
+        "change24hPct": -1.41,
+        "ret1hPct": -0.44,
+        "ret4hPct": 0.82,
+        "ret12hPct": 0.06,
+        "rsi15m": 57.3,
+        "rsi1h": 47.1,
+        "volumeAcceleration": 0.59,
+        "climaxRatio": 3.42,
+        "barsSinceFastLow": 132,
+        "lowerWickScore": 68,
+        "fundingPct": -0.0034,
+        "turnover24hUsd": 2911968,
+        "bitgetSpreadBps": 4.93,
+        "distance24hLowPct": 2.66,
+        "ret1dPct": -1.84,
+        "ret7dPct": -9.79,
+        "ret30dPct": -21.04,
+        "rsi4h": 42.3,
+        "rsi1d": 15.4,
+        "distance30dLowPct": 2.66,
+        "higherLowPct": -1.94,
+        "globalCompression": 0.86,
+        "ema20SlopePct": -1.58,
+        "belowEma20Pct": -2,
+        "fastCandleSources": 2
+      },
+      "levels": {
+        "trigger": 4.088,
+        "invalidationReference": 3.9505,
+        "global30dLow": 3.951,
+        "global30dHigh": 5.481
+      },
+      "reasons": [
+        "volume climax x3.4",
+        "после слива volume dry x0.59",
+        "у 30d low +2.7%",
+        "grinding down: 7d -9.8%, EMA slope -1.6%"
+      ]
+    }
+  ]
+}

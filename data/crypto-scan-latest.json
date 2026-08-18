@@ -1,5 +1,5 @@
 {
-  "asOf": "2026-08-18T13:46:10.979Z",
+  "asOf": "2026-08-18T13:56:41.796Z",
   "methodologyVersion": "crypto-scan-v3-okx-bitget",
   "sources": [
     "Bitget USDT futures instruments/tickers/candles",
@@ -17,76 +17,114 @@
   },
   "topOverall": [
     {
-      "symbol": "2ZUSDT",
-      "price": 0.04679,
-      "type": "PRE-BREAKOUT",
+      "symbol": "PUMPUSDT",
+      "price": 0.002778,
+      "type": "IGNITION",
       "direction": "SHORT",
-      "overall": 61.1,
+      "overall": 63.8,
       "scores": {
-        "ignition": 32.2,
-        "prebreakout": 78.4,
-        "momentum": 13.1,
-        "squeeze": 17.6,
-        "liquidity": 4.3,
-        "execution": 74.4
+        "ignition": 75.4,
+        "prebreakout": 54,
+        "momentum": 45.4,
+        "squeeze": 11.3,
+        "liquidity": 26.2,
+        "execution": 85.6
       },
       "metrics": {
-        "change24hPct": -6.35,
-        "okxChange24hPct": -6.38,
-        "ret15Pct": -0.21,
-        "ret60Pct": -0.66,
-        "volumeAcceleration": 0.32,
-        "fundingPct": 0.0037,
-        "turnover24hUsd": 508923,
-        "bitgetSpreadBps": 6.41,
-        "compressionRatio": 0.39,
-        "rangePosition": -0.09,
-        "candleSources": 1
-      },
-      "levels": {
-        "trigger": 0.04686,
-        "invalidationReference": 0.0476
-      },
-      "reasons": [
-        "5m breakout down",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "HOMEUSDT",
-      "price": 0.006428,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 58.7,
-      "scores": {
-        "ignition": 23.4,
-        "prebreakout": 63.9,
-        "momentum": 12.8,
-        "squeeze": 70.9,
-        "liquidity": 10.3,
-        "execution": 87.6
-      },
-      "metrics": {
-        "change24hPct": -4.52,
-        "okxChange24hPct": -4.52,
-        "ret15Pct": -0.03,
-        "ret60Pct": 0.66,
-        "volumeAcceleration": 0.38,
-        "fundingPct": -0.1759,
-        "turnover24hUsd": 1695358,
-        "bitgetSpreadBps": 3.11,
-        "compressionRatio": 0.53,
-        "rangePosition": 0.33,
+        "change24hPct": -4.5,
+        "okxChange24hPct": -4.54,
+        "ret15Pct": -1.03,
+        "ret60Pct": -1.44,
+        "volumeAcceleration": 4.72,
+        "fundingPct": -0.0064,
+        "turnover24hUsd": 11407058,
+        "bitgetSpreadBps": 3.6,
+        "compressionRatio": 1.98,
+        "rangePosition": -0.81,
         "candleSources": 2
       },
       "levels": {
-        "trigger": 0.006522,
-        "invalidationReference": 0.0063805
+        "trigger": 0.0027985,
+        "invalidationReference": 0.0028255
       },
       "reasons": [
-        "funding -0.176%",
-        "до границы ~0.73%",
+        "volume x4.7",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "BICOUSDT",
+      "price": 0.0202,
+      "type": "SQUEEZE-WATCH",
+      "direction": "LONG",
+      "overall": 57.6,
+      "scores": {
+        "ignition": 46.1,
+        "prebreakout": 43.1,
+        "momentum": 28.1,
+        "squeeze": 70.9,
+        "liquidity": 14.7,
+        "execution": 80.2
+      },
+      "metrics": {
+        "change24hPct": -4.31,
+        "okxChange24hPct": -4.07,
+        "ret15Pct": 1.43,
+        "ret60Pct": 1.2,
+        "volumeAcceleration": 1.43,
+        "fundingPct": -0.501,
+        "turnover24hUsd": 3097243,
+        "bitgetSpreadBps": 4.95,
+        "compressionRatio": 1.15,
+        "rangePosition": 0.93,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.020245,
+        "invalidationReference": 0.019725
+      },
+      "reasons": [
+        "funding -0.501%",
+        "до границы ~0.17%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOPHUSDT",
+      "price": 0.003356,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 57,
+      "scores": {
+        "ignition": 30.9,
+        "prebreakout": 69.7,
+        "momentum": 12.4,
+        "squeeze": 16.8,
+        "liquidity": 2.8,
+        "execution": 88.1
+      },
+      "metrics": {
+        "change24hPct": -5.41,
+        "okxChange24hPct": -5.33,
+        "ret15Pct": -0.47,
+        "ret60Pct": -0.18,
+        "volumeAcceleration": 0.39,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 313561,
+        "bitgetSpreadBps": 2.98,
+        "compressionRatio": 0.55,
+        "rangePosition": 0.19,
+        "candleSources": 1
+      },
+      "levels": {
+        "trigger": 0.003346,
+        "invalidationReference": 0.0034
+      },
+      "reasons": [
+        "до границы ~0.3%",
         "compression",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
@@ -94,148 +132,1642 @@
     },
     {
       "symbol": "RVNUSDT",
-      "price": 0.002733,
+      "price": 0.002737,
       "type": "PRE-BREAKOUT",
       "direction": "LONG",
-      "overall": 55.4,
+      "overall": 56.4,
       "scores": {
-        "ignition": 27.5,
-        "prebreakout": 72.4,
-        "momentum": 9.6,
-        "squeeze": 50,
+        "ignition": 28.6,
+        "prebreakout": 73.7,
+        "momentum": 11,
+        "squeeze": 53.3,
         "liquidity": 1.7,
-        "execution": 70.7
+        "execution": 70.8
       },
       "metrics": {
-        "change24hPct": -3.63,
-        "okxChange24hPct": -3.11,
-        "ret15Pct": -0.11,
-        "ret60Pct": 0.13,
-        "volumeAcceleration": 0.29,
-        "fundingPct": -0.0604,
-        "turnover24hUsd": 182122,
-        "bitgetSpreadBps": 7.31,
-        "compressionRatio": 0.49,
-        "rangePosition": 0.74,
-        "candleSources": 2
+        "change24hPct": -3.39,
+        "okxChange24hPct": -2.97,
+        "ret15Pct": 0.15,
+        "ret60Pct": 0.37,
+        "volumeAcceleration": 0.04,
+        "fundingPct": -0.0607,
+        "turnover24hUsd": 177280,
+        "bitgetSpreadBps": 7.3,
+        "compressionRatio": 0.43,
+        "rangePosition": 0.8,
+        "candleSources": 1
       },
       "levels": {
-        "trigger": 0.0027475,
-        "invalidationReference": 0.002713
+        "trigger": 0.002744,
+        "invalidationReference": 0.002709
       },
       "reasons": [
-        "funding -0.06%",
-        "до границы ~0.33%",
+        "funding -0.061%",
+        "до границы ~0.26%",
         "compression",
         "OKX/Bitget 24h direction agree"
       ]
     },
     {
       "symbol": "AVNTUSDT",
-      "price": 0.09126,
+      "price": 0.09142,
       "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 54.6,
+      "overall": 55.9,
       "scores": {
-        "ignition": 35.5,
-        "prebreakout": 68,
-        "momentum": 16.4,
-        "squeeze": 14.6,
+        "ignition": 29,
+        "prebreakout": 72,
+        "momentum": 12.3,
+        "squeeze": 16.8,
         "liquidity": 3.5,
-        "execution": 82.5
+        "execution": 73.7
       },
       "metrics": {
-        "change24hPct": -7.01,
-        "okxChange24hPct": -6.93,
-        "ret15Pct": 0.04,
-        "ret60Pct": -0.83,
-        "volumeAcceleration": 1.55,
+        "change24hPct": -7.36,
+        "okxChange24hPct": -7.53,
+        "ret15Pct": 0.03,
+        "ret60Pct": -0.77,
+        "volumeAcceleration": 0.41,
         "fundingPct": 0.005,
-        "turnover24hUsd": 396954,
-        "bitgetSpreadBps": 4.38,
-        "compressionRatio": 0.64,
+        "turnover24hUsd": 395558,
+        "bitgetSpreadBps": 6.57,
+        "compressionRatio": 0.55,
         "rangePosition": 0.11,
         "candleSources": 2
       },
       "levels": {
-        "trigger": 0.09116,
+        "trigger": 0.091165,
         "invalidationReference": 0.092395
       },
       "reasons": [
-        "до границы ~0.14%",
+        "до границы ~0.15%",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "APRUSDT",
+      "price": 0.2112,
+      "type": "MOMENTUM",
+      "direction": "LONG",
+      "overall": 53.5,
+      "scores": {
+        "ignition": 46.8,
+        "prebreakout": 14.5,
+        "momentum": 67.5,
+        "squeeze": 10,
+        "liquidity": 22.9,
+        "execution": 69.7
+      },
+      "metrics": {
+        "change24hPct": 13.74,
+        "okxChange24hPct": 13.87,
+        "ret15Pct": -3.51,
+        "ret60Pct": 6.14,
+        "volumeAcceleration": 2.06,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 7956682,
+        "bitgetSpreadBps": 7.58,
+        "compressionRatio": 1.9,
+        "rangePosition": 0.67,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.2218,
+        "invalidationReference": 0.189475
+      },
+      "reasons": [
+        "volume x2.1",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "GALAUSDT",
+      "price": 0.001397,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 53.3,
+      "scores": {
+        "ignition": 68.3,
+        "prebreakout": 52.5,
+        "momentum": 36.7,
+        "squeeze": 9.9,
+        "liquidity": 10.7,
+        "execution": 71.4
+      },
+      "metrics": {
+        "change24hPct": -14.29,
+        "okxChange24hPct": -14.07,
+        "ret15Pct": -0.46,
+        "ret60Pct": -0.96,
+        "volumeAcceleration": 3.94,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1779545,
+        "bitgetSpreadBps": 7.16,
+        "compressionRatio": 1.23,
+        "rangePosition": -0.21,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0014015,
+        "invalidationReference": 0.0014205
+      },
+      "reasons": [
+        "volume x3.9",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "price": 0.006381,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.6,
+      "scores": {
+        "ignition": 38.1,
+        "prebreakout": 66.9,
+        "momentum": 16.9,
+        "squeeze": 59.5,
+        "liquidity": 10.3,
+        "execution": 68.7
+      },
+      "metrics": {
+        "change24hPct": -5.21,
+        "okxChange24hPct": -5.07,
+        "ret15Pct": -0.65,
+        "ret60Pct": -0.46,
+        "volumeAcceleration": 1.14,
+        "fundingPct": -0.1753,
+        "turnover24hUsd": 1698365,
+        "bitgetSpreadBps": 7.83,
+        "compressionRatio": 0.68,
+        "rangePosition": 0.02,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0063805,
+        "invalidationReference": 0.006522
+      },
+      "reasons": [
+        "funding -0.175%",
+        "5m breakout down",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "WLDUSDT",
+      "price": 0.3238,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 47.2,
+      "scores": {
+        "ignition": 55,
+        "prebreakout": 52.5,
+        "momentum": 27.7,
+        "squeeze": 15.3,
+        "liquidity": 30.3,
+        "execution": 87.6
+      },
+      "metrics": {
+        "change24hPct": -9.17,
+        "okxChange24hPct": -9.25,
+        "ret15Pct": -0.4,
+        "ret60Pct": -0.43,
+        "volumeAcceleration": 2.61,
+        "fundingPct": -0.0129,
+        "turnover24hUsd": 17370134,
+        "bitgetSpreadBps": 3.09,
+        "compressionRatio": 1.33,
+        "rangePosition": -0.08,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.32405,
+        "invalidationReference": 0.32735
+      },
+      "reasons": [
+        "volume x2.6",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "BTCUSDT",
+      "price": 64145.8,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 45.8,
+      "scores": {
+        "ignition": 37.6,
+        "prebreakout": 47.4,
+        "momentum": 19.6,
+        "squeeze": 20.1,
+        "liquidity": 77.9,
+        "execution": 99.9
+      },
+      "metrics": {
+        "change24hPct": 0.87,
+        "okxChange24hPct": 0.86,
+        "ret15Pct": -0.04,
+        "ret60Pct": -0.09,
+        "volumeAcceleration": 0.72,
+        "fundingPct": 0.0031,
+        "turnover24hUsd": 1754556892,
+        "bitgetSpreadBps": 0.02,
+        "compressionRatio": 3.27,
+        "rangePosition": 0.34,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 64013.15,
+        "invalidationReference": 64378.45
+      },
+      "reasons": [
+        "до границы ~0.19%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "ETHUSDT",
+      "price": 1895.49,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 45.7,
+      "scores": {
+        "ignition": 37.4,
+        "prebreakout": 47.8,
+        "momentum": 18.9,
+        "squeeze": 17.5,
+        "liquidity": 70.2,
+        "execution": 99.8
+      },
+      "metrics": {
+        "change24hPct": -0.37,
+        "okxChange24hPct": -0.38,
+        "ret15Pct": -0.05,
+        "ret60Pct": -0.16,
+        "volumeAcceleration": 0.76,
+        "fundingPct": 0.001,
+        "turnover24hUsd": 840284349,
+        "bitgetSpreadBps": 0.05,
+        "compressionRatio": 2.99,
+        "rangePosition": 0.21,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 1893.05,
+        "invalidationReference": 1904.415
+      },
+      "reasons": [
+        "до границы ~0.13%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "ALLOUSDT",
+      "price": 0.29081,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 45.1,
+      "scores": {
+        "ignition": 30.3,
+        "prebreakout": 56.4,
+        "momentum": 13,
+        "squeeze": 18.5,
+        "liquidity": 10.8,
+        "execution": 78
+      },
+      "metrics": {
+        "change24hPct": 4.59,
+        "okxChange24hPct": 4.53,
+        "ret15Pct": -0.22,
+        "ret60Pct": -0.43,
+        "volumeAcceleration": 0.38,
+        "fundingPct": -0.0159,
+        "turnover24hUsd": 1819175,
+        "bitgetSpreadBps": 5.51,
+        "compressionRatio": 0.76,
+        "rangePosition": 0.08,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.29019,
+        "invalidationReference": 0.298875
+      },
+      "reasons": [
+        "до границы ~0.25%",
+        "OKX/Bitget 24h direction agree"
+      ]
+    }
+  ],
+  "topIgnition": [
+    {
+      "symbol": "PUMPUSDT",
+      "price": 0.002778,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 63.8,
+      "scores": {
+        "ignition": 75.4,
+        "prebreakout": 54,
+        "momentum": 45.4,
+        "squeeze": 11.3,
+        "liquidity": 26.2,
+        "execution": 85.6
+      },
+      "metrics": {
+        "change24hPct": -4.5,
+        "okxChange24hPct": -4.54,
+        "ret15Pct": -1.03,
+        "ret60Pct": -1.44,
+        "volumeAcceleration": 4.72,
+        "fundingPct": -0.0064,
+        "turnover24hUsd": 11407058,
+        "bitgetSpreadBps": 3.6,
+        "compressionRatio": 1.98,
+        "rangePosition": -0.81,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0027985,
+        "invalidationReference": 0.0028255
+      },
+      "reasons": [
+        "volume x4.7",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "GALAUSDT",
+      "price": 0.001397,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 53.3,
+      "scores": {
+        "ignition": 68.3,
+        "prebreakout": 52.5,
+        "momentum": 36.7,
+        "squeeze": 9.9,
+        "liquidity": 10.7,
+        "execution": 71.4
+      },
+      "metrics": {
+        "change24hPct": -14.29,
+        "okxChange24hPct": -14.07,
+        "ret15Pct": -0.46,
+        "ret60Pct": -0.96,
+        "volumeAcceleration": 3.94,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1779545,
+        "bitgetSpreadBps": 7.16,
+        "compressionRatio": 1.23,
+        "rangePosition": -0.21,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0014015,
+        "invalidationReference": 0.0014205
+      },
+      "reasons": [
+        "volume x3.9",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "SENTUSDT",
+      "price": 0.01167,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 43.9,
+      "scores": {
+        "ignition": 58.5,
+        "prebreakout": 51.5,
+        "momentum": 32.5,
+        "squeeze": 5.7,
+        "liquidity": 1.6,
+        "execution": 65.8
+      },
+      "metrics": {
+        "change24hPct": -7.97,
+        "okxChange24hPct": -7.89,
+        "ret15Pct": -0.6,
+        "ret60Pct": -1.35,
+        "volumeAcceleration": 3.08,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 170830,
+        "bitgetSpreadBps": 8.56,
+        "compressionRatio": 1.61,
+        "rangePosition": -0.32,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.011725,
+        "invalidationReference": 0.0119
+      },
+      "reasons": [
+        "volume x3.1",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "WLDUSDT",
+      "price": 0.3238,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 47.2,
+      "scores": {
+        "ignition": 55,
+        "prebreakout": 52.5,
+        "momentum": 27.7,
+        "squeeze": 15.3,
+        "liquidity": 30.3,
+        "execution": 87.6
+      },
+      "metrics": {
+        "change24hPct": -9.17,
+        "okxChange24hPct": -9.25,
+        "ret15Pct": -0.4,
+        "ret60Pct": -0.43,
+        "volumeAcceleration": 2.61,
+        "fundingPct": -0.0129,
+        "turnover24hUsd": 17370134,
+        "bitgetSpreadBps": 3.09,
+        "compressionRatio": 1.33,
+        "rangePosition": -0.08,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.32405,
+        "invalidationReference": 0.32735
+      },
+      "reasons": [
+        "volume x2.6",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "OUSDT",
+      "price": 0.4637,
+      "type": "IGNITION",
+      "direction": "LONG",
+      "overall": 32.5,
+      "scores": {
+        "ignition": 47.8,
+        "prebreakout": 47.1,
+        "momentum": 35.7,
+        "squeeze": 6.9,
+        "liquidity": 7.5,
+        "execution": 39.5
+      },
+      "metrics": {
+        "change24hPct": -7.06,
+        "okxChange24hPct": -7.34,
+        "ret15Pct": 0.93,
+        "ret60Pct": 3.13,
+        "volumeAcceleration": 1.84,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1055317,
+        "bitgetSpreadBps": 15.13,
+        "compressionRatio": 2.4,
+        "rangePosition": 1.33,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.45955,
+        "invalidationReference": 0.44895
+      },
+      "reasons": [
+        "volume x1.8",
+        "5m breakout up",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "APRUSDT",
+      "price": 0.2112,
+      "type": "MOMENTUM",
+      "direction": "LONG",
+      "overall": 53.5,
+      "scores": {
+        "ignition": 46.8,
+        "prebreakout": 14.5,
+        "momentum": 67.5,
+        "squeeze": 10,
+        "liquidity": 22.9,
+        "execution": 69.7
+      },
+      "metrics": {
+        "change24hPct": 13.74,
+        "okxChange24hPct": 13.87,
+        "ret15Pct": -3.51,
+        "ret60Pct": 6.14,
+        "volumeAcceleration": 2.06,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 7956682,
+        "bitgetSpreadBps": 7.58,
+        "compressionRatio": 1.9,
+        "rangePosition": 0.67,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.2218,
+        "invalidationReference": 0.189475
+      },
+      "reasons": [
+        "volume x2.1",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "ZECUSDT",
+      "price": 500.87,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 44.6,
+      "scores": {
+        "ignition": 46.2,
+        "prebreakout": 49.2,
+        "momentum": 25,
+        "squeeze": 15.7,
+        "liquidity": 39.4,
+        "execution": 99.2
+      },
+      "metrics": {
+        "change24hPct": -2.33,
+        "okxChange24hPct": -2.32,
+        "ret15Pct": -0.62,
+        "ret60Pct": -0.74,
+        "volumeAcceleration": 1.57,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 42781551,
+        "bitgetSpreadBps": 0.2,
+        "compressionRatio": 1.73,
+        "rangePosition": -0.86,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 503.325,
+        "invalidationReference": 506.2
+      },
+      "reasons": [
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "BICOUSDT",
+      "price": 0.0202,
+      "type": "SQUEEZE-WATCH",
+      "direction": "LONG",
+      "overall": 57.6,
+      "scores": {
+        "ignition": 46.1,
+        "prebreakout": 43.1,
+        "momentum": 28.1,
+        "squeeze": 70.9,
+        "liquidity": 14.7,
+        "execution": 80.2
+      },
+      "metrics": {
+        "change24hPct": -4.31,
+        "okxChange24hPct": -4.07,
+        "ret15Pct": 1.43,
+        "ret60Pct": 1.2,
+        "volumeAcceleration": 1.43,
+        "fundingPct": -0.501,
+        "turnover24hUsd": 3097243,
+        "bitgetSpreadBps": 4.95,
+        "compressionRatio": 1.15,
+        "rangePosition": 0.93,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.020245,
+        "invalidationReference": 0.019725
+      },
+      "reasons": [
+        "funding -0.501%",
+        "до границы ~0.17%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    }
+  ],
+  "topPreBreakout": [
+    {
+      "symbol": "RVNUSDT",
+      "price": 0.002737,
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 56.4,
+      "scores": {
+        "ignition": 28.6,
+        "prebreakout": 73.7,
+        "momentum": 11,
+        "squeeze": 53.3,
+        "liquidity": 1.7,
+        "execution": 70.8
+      },
+      "metrics": {
+        "change24hPct": -3.39,
+        "okxChange24hPct": -2.97,
+        "ret15Pct": 0.15,
+        "ret60Pct": 0.37,
+        "volumeAcceleration": 0.04,
+        "fundingPct": -0.0607,
+        "turnover24hUsd": 177280,
+        "bitgetSpreadBps": 7.3,
+        "compressionRatio": 0.43,
+        "rangePosition": 0.8,
+        "candleSources": 1
+      },
+      "levels": {
+        "trigger": 0.002744,
+        "invalidationReference": 0.002709
+      },
+      "reasons": [
+        "funding -0.061%",
+        "до границы ~0.26%",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "AVNTUSDT",
+      "price": 0.09142,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 55.9,
+      "scores": {
+        "ignition": 29,
+        "prebreakout": 72,
+        "momentum": 12.3,
+        "squeeze": 16.8,
+        "liquidity": 3.5,
+        "execution": 73.7
+      },
+      "metrics": {
+        "change24hPct": -7.36,
+        "okxChange24hPct": -7.53,
+        "ret15Pct": 0.03,
+        "ret60Pct": -0.77,
+        "volumeAcceleration": 0.41,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 395558,
+        "bitgetSpreadBps": 6.57,
+        "compressionRatio": 0.55,
+        "rangePosition": 0.11,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.091165,
+        "invalidationReference": 0.092395
+      },
+      "reasons": [
+        "до границы ~0.15%",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "SOPHUSDT",
+      "price": 0.003356,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 57,
+      "scores": {
+        "ignition": 30.9,
+        "prebreakout": 69.7,
+        "momentum": 12.4,
+        "squeeze": 16.8,
+        "liquidity": 2.8,
+        "execution": 88.1
+      },
+      "metrics": {
+        "change24hPct": -5.41,
+        "okxChange24hPct": -5.33,
+        "ret15Pct": -0.47,
+        "ret60Pct": -0.18,
+        "volumeAcceleration": 0.39,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 313561,
+        "bitgetSpreadBps": 2.98,
+        "compressionRatio": 0.55,
+        "rangePosition": 0.19,
+        "candleSources": 1
+      },
+      "levels": {
+        "trigger": 0.003346,
+        "invalidationReference": 0.0034
+      },
+      "reasons": [
+        "до границы ~0.3%",
         "compression",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
-      "symbol": "ETHFIUSDT",
-      "price": 0.4849,
-      "type": "IGNITION",
+      "symbol": "HOMEUSDT",
+      "price": 0.006381,
+      "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 54.3,
+      "overall": 51.6,
       "scores": {
-        "ignition": 64.2,
-        "prebreakout": 47.7,
-        "momentum": 33.6,
-        "squeeze": 8,
-        "liquidity": 13.1,
-        "execution": 91.8
+        "ignition": 38.1,
+        "prebreakout": 66.9,
+        "momentum": 16.9,
+        "squeeze": 59.5,
+        "liquidity": 10.3,
+        "execution": 68.7
       },
       "metrics": {
-        "change24hPct": -3.77,
-        "okxChange24hPct": -3.65,
-        "ret15Pct": 0.23,
-        "ret60Pct": -0.47,
-        "volumeAcceleration": 16.88,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 2523566,
-        "bitgetSpreadBps": 2.06,
-        "compressionRatio": 1.74,
-        "rangePosition": 0.2,
-        "candleSources": 1
+        "change24hPct": -5.21,
+        "okxChange24hPct": -5.07,
+        "ret15Pct": -0.65,
+        "ret60Pct": -0.46,
+        "volumeAcceleration": 1.14,
+        "fundingPct": -0.1753,
+        "turnover24hUsd": 1698365,
+        "bitgetSpreadBps": 7.83,
+        "compressionRatio": 0.68,
+        "rangePosition": 0.02,
+        "candleSources": 2
       },
       "levels": {
-        "trigger": 0.4835,
-        "invalidationReference": 0.4904
+        "trigger": 0.0063805,
+        "invalidationReference": 0.006522
       },
       "reasons": [
-        "volume x16.9",
-        "до границы ~0.29%",
+        "funding -0.175%",
+        "5m breakout down",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "LAUSDT",
+      "price": 0.05672,
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 43.1,
+      "scores": {
+        "ignition": 44.3,
+        "prebreakout": 60.3,
+        "momentum": 35.1,
+        "squeeze": 12.5,
+        "liquidity": 8.1,
+        "execution": 50.6
+      },
+      "metrics": {
+        "change24hPct": 11.72,
+        "okxChange24hPct": 11.52,
+        "ret15Pct": 1.48,
+        "ret60Pct": 3.2,
+        "volumeAcceleration": 1.14,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1170228,
+        "bitgetSpreadBps": 12.34,
+        "compressionRatio": 0.77,
+        "rangePosition": 1.16,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.056305,
+        "invalidationReference": 0.05349
+      },
+      "reasons": [
+        "5m breakout up",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "IMXUSDT",
+      "price": 0.0995,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 43.5,
+      "scores": {
+        "ignition": 30.3,
+        "prebreakout": 59.4,
+        "momentum": 10.4,
+        "squeeze": 10.9,
+        "liquidity": 1.6,
+        "execution": 59.9
+      },
+      "metrics": {
+        "change24hPct": -7.87,
+        "okxChange24hPct": -7.86,
+        "ret15Pct": -0.15,
+        "ret60Pct": -0.25,
+        "volumeAcceleration": 0.94,
+        "fundingPct": 0.0029,
+        "turnover24hUsd": 164317,
+        "bitgetSpreadBps": 10.04,
+        "compressionRatio": 0.74,
+        "rangePosition": 0.1,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.09945,
+        "invalidationReference": 0.1005
+      },
+      "reasons": [
+        "до границы ~0.1%",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "PEOPLEUSDT",
+      "price": 0.007746,
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 43.3,
+      "scores": {
+        "ignition": 22.9,
+        "prebreakout": 57.8,
+        "momentum": 9.2,
+        "squeeze": 18,
+        "liquidity": 5.2,
+        "execution": 63.9
+      },
+      "metrics": {
+        "change24hPct": 7.3,
+        "okxChange24hPct": 7.38,
+        "ret15Pct": -0.01,
+        "ret60Pct": 0.08,
+        "volumeAcceleration": 0.53,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 644224,
+        "bitgetSpreadBps": 9.03,
+        "compressionRatio": 0.62,
+        "rangePosition": 0.58,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.007808,
+        "invalidationReference": 0.007677
+      },
+      "reasons": [
+        "до границы ~0.71%",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "ALLOUSDT",
+      "price": 0.29081,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 45.1,
+      "scores": {
+        "ignition": 30.3,
+        "prebreakout": 56.4,
+        "momentum": 13,
+        "squeeze": 18.5,
+        "liquidity": 10.8,
+        "execution": 78
+      },
+      "metrics": {
+        "change24hPct": 4.59,
+        "okxChange24hPct": 4.53,
+        "ret15Pct": -0.22,
+        "ret60Pct": -0.43,
+        "volumeAcceleration": 0.38,
+        "fundingPct": -0.0159,
+        "turnover24hUsd": 1819175,
+        "bitgetSpreadBps": 5.51,
+        "compressionRatio": 0.76,
+        "rangePosition": 0.08,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.29019,
+        "invalidationReference": 0.298875
+      },
+      "reasons": [
+        "до границы ~0.25%",
+        "OKX/Bitget 24h direction agree"
+      ]
+    }
+  ],
+  "topSqueeze": [
+    {
+      "symbol": "BICOUSDT",
+      "price": 0.0202,
+      "type": "SQUEEZE-WATCH",
+      "direction": "LONG",
+      "overall": 57.6,
+      "scores": {
+        "ignition": 46.1,
+        "prebreakout": 43.1,
+        "momentum": 28.1,
+        "squeeze": 70.9,
+        "liquidity": 14.7,
+        "execution": 80.2
+      },
+      "metrics": {
+        "change24hPct": -4.31,
+        "okxChange24hPct": -4.07,
+        "ret15Pct": 1.43,
+        "ret60Pct": 1.2,
+        "volumeAcceleration": 1.43,
+        "fundingPct": -0.501,
+        "turnover24hUsd": 3097243,
+        "bitgetSpreadBps": 4.95,
+        "compressionRatio": 1.15,
+        "rangePosition": 0.93,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.020245,
+        "invalidationReference": 0.019725
+      },
+      "reasons": [
+        "funding -0.501%",
+        "до границы ~0.17%",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
-      "symbol": "XLMUSDT",
-      "price": 0.15364,
+      "symbol": "HOMEUSDT",
+      "price": 0.006381,
       "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 53.8,
+      "direction": "SHORT",
+      "overall": 51.6,
       "scores": {
-        "ignition": 31.7,
-        "prebreakout": 62.1,
-        "momentum": 13.4,
-        "squeeze": 18,
-        "liquidity": 15.6,
-        "execution": 97.4
+        "ignition": 38.1,
+        "prebreakout": 66.9,
+        "momentum": 16.9,
+        "squeeze": 59.5,
+        "liquidity": 10.3,
+        "execution": 68.7
       },
       "metrics": {
-        "change24hPct": -2.48,
-        "okxChange24hPct": -2.46,
-        "ret15Pct": 0.07,
-        "ret60Pct": 0.58,
+        "change24hPct": -5.21,
+        "okxChange24hPct": -5.07,
+        "ret15Pct": -0.65,
+        "ret60Pct": -0.46,
+        "volumeAcceleration": 1.14,
+        "fundingPct": -0.1753,
+        "turnover24hUsd": 1698365,
+        "bitgetSpreadBps": 7.83,
+        "compressionRatio": 0.68,
+        "rangePosition": 0.02,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0063805,
+        "invalidationReference": 0.006522
+      },
+      "reasons": [
+        "funding -0.175%",
+        "5m breakout down",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "RVNUSDT",
+      "price": 0.002737,
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 56.4,
+      "scores": {
+        "ignition": 28.6,
+        "prebreakout": 73.7,
+        "momentum": 11,
+        "squeeze": 53.3,
+        "liquidity": 1.7,
+        "execution": 70.8
+      },
+      "metrics": {
+        "change24hPct": -3.39,
+        "okxChange24hPct": -2.97,
+        "ret15Pct": 0.15,
+        "ret60Pct": 0.37,
         "volumeAcceleration": 0.04,
-        "fundingPct": -0.0112,
-        "turnover24hUsd": 3456071,
-        "bitgetSpreadBps": 0.65,
-        "compressionRatio": 0.73,
-        "rangePosition": 0.93,
+        "fundingPct": -0.0607,
+        "turnover24hUsd": 177280,
+        "bitgetSpreadBps": 7.3,
+        "compressionRatio": 0.43,
+        "rangePosition": 0.8,
         "candleSources": 1
       },
       "levels": {
-        "trigger": 0.15375,
-        "invalidationReference": 0.15228
+        "trigger": 0.002744,
+        "invalidationReference": 0.002709
+      },
+      "reasons": [
+        "funding -0.061%",
+        "до границы ~0.26%",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "GPSUSDT",
+      "price": 0.01799,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 40.3,
+      "scores": {
+        "ignition": 29,
+        "prebreakout": 45.6,
+        "momentum": 30.5,
+        "squeeze": 33.8,
+        "liquidity": 44.6,
+        "execution": 88.9
+      },
+      "metrics": {
+        "change24hPct": 12.01,
+        "okxChange24hPct": 12.09,
+        "ret15Pct": -1.46,
+        "ret60Pct": -1.37,
+        "volumeAcceleration": 0.62,
+        "fundingPct": -0.0327,
+        "turnover24hUsd": 71021675,
+        "bitgetSpreadBps": 2.78,
+        "compressionRatio": 0.62,
+        "rangePosition": 0.32,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.017688,
+        "invalidationReference": 0.0186015
+      },
+      "reasons": [
+        "funding -0.033%",
+        "compression",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "price": 1.3937,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 29,
+      "scores": {
+        "ignition": 27.4,
+        "prebreakout": 34.9,
+        "momentum": 12.3,
+        "squeeze": 32.1,
+        "liquidity": 11.8,
+        "execution": 88.5
+      },
+      "metrics": {
+        "change24hPct": -2.09,
+        "okxChange24hPct": -2.39,
+        "ret15Pct": -0.23,
+        "ret60Pct": 0.23,
+        "volumeAcceleration": 0.06,
+        "fundingPct": -0.0472,
+        "turnover24hUsd": 2102793,
+        "bitgetSpreadBps": 2.88,
+        "compressionRatio": 1.17,
+        "rangePosition": 0.53,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 1.3827,
+        "invalidationReference": 1.39825
+      },
+      "reasons": [
+        "funding -0.047%",
+        "до границы ~0.53%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "KAITOUSDT",
+      "price": 0.3375,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 27.7,
+      "scores": {
+        "ignition": 23.6,
+        "prebreakout": 35.9,
+        "momentum": 13.2,
+        "squeeze": 30.5,
+        "liquidity": 18.2,
+        "execution": 64.4
+      },
+      "metrics": {
+        "change24hPct": -4.28,
+        "okxChange24hPct": -4.48,
+        "ret15Pct": -0.35,
+        "ret60Pct": 0.06,
+        "volumeAcceleration": 0.56,
+        "fundingPct": -0.0378,
+        "turnover24hUsd": 4714209,
+        "bitgetSpreadBps": 8.9,
+        "compressionRatio": 0.87,
+        "rangePosition": 0.65,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.33055,
+        "invalidationReference": 0.34065
+      },
+      "reasons": [
+        "funding -0.038%",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "HUSDT",
+      "price": 0.1118,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 40.3,
+      "scores": {
+        "ignition": 24.9,
+        "prebreakout": 50.6,
+        "momentum": 19.5,
+        "squeeze": 27.8,
+        "liquidity": 15.5,
+        "execution": 74.9
+      },
+      "metrics": {
+        "change24hPct": -10.15,
+        "okxChange24hPct": -10.37,
+        "ret15Pct": -0.44,
+        "ret60Pct": -1.34,
+        "volumeAcceleration": 0.38,
+        "fundingPct": 0.029,
+        "turnover24hUsd": 3438523,
+        "bitgetSpreadBps": 6.29,
+        "compressionRatio": 0.68,
+        "rangePosition": 0.17,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.110455,
+        "invalidationReference": 0.11652
+      },
+      "reasons": [
+        "до границы ~0.95%",
+        "compression",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "PROVEUSDT",
+      "price": 0.1566,
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 32,
+      "scores": {
+        "ignition": 22.7,
+        "prebreakout": 41.3,
+        "momentum": 15.6,
+        "squeeze": 24.9,
+        "liquidity": 1,
+        "execution": 74.4
+      },
+      "metrics": {
+        "change24hPct": 5.03,
+        "okxChange24hPct": 5.25,
+        "ret15Pct": -0.48,
+        "ret60Pct": 0.9,
+        "volumeAcceleration": 0.81,
+        "fundingPct": -0.0315,
+        "turnover24hUsd": 97681,
+        "bitgetSpreadBps": 6.39,
+        "compressionRatio": 0.77,
+        "rangePosition": 0.48,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.15825,
+        "invalidationReference": 0.1549
+      },
+      "reasons": [
+        "funding -0.032%",
+        "OKX/Bitget 24h direction agree"
+      ]
+    }
+  ],
+  "topMomentum": [
+    {
+      "symbol": "APRUSDT",
+      "price": 0.2112,
+      "type": "MOMENTUM",
+      "direction": "LONG",
+      "overall": 53.5,
+      "scores": {
+        "ignition": 46.8,
+        "prebreakout": 14.5,
+        "momentum": 67.5,
+        "squeeze": 10,
+        "liquidity": 22.9,
+        "execution": 69.7
+      },
+      "metrics": {
+        "change24hPct": 13.74,
+        "okxChange24hPct": 13.87,
+        "ret15Pct": -3.51,
+        "ret60Pct": 6.14,
+        "volumeAcceleration": 2.06,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 7956682,
+        "bitgetSpreadBps": 7.58,
+        "compressionRatio": 1.9,
+        "rangePosition": 0.67,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.2218,
+        "invalidationReference": 0.189475
+      },
+      "reasons": [
+        "volume x2.1",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "PUMPUSDT",
+      "price": 0.002778,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 63.8,
+      "scores": {
+        "ignition": 75.4,
+        "prebreakout": 54,
+        "momentum": 45.4,
+        "squeeze": 11.3,
+        "liquidity": 26.2,
+        "execution": 85.6
+      },
+      "metrics": {
+        "change24hPct": -4.5,
+        "okxChange24hPct": -4.54,
+        "ret15Pct": -1.03,
+        "ret60Pct": -1.44,
+        "volumeAcceleration": 4.72,
+        "fundingPct": -0.0064,
+        "turnover24hUsd": 11407058,
+        "bitgetSpreadBps": 3.6,
+        "compressionRatio": 1.98,
+        "rangePosition": -0.81,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0027985,
+        "invalidationReference": 0.0028255
+      },
+      "reasons": [
+        "volume x4.7",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "GALAUSDT",
+      "price": 0.001397,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 53.3,
+      "scores": {
+        "ignition": 68.3,
+        "prebreakout": 52.5,
+        "momentum": 36.7,
+        "squeeze": 9.9,
+        "liquidity": 10.7,
+        "execution": 71.4
+      },
+      "metrics": {
+        "change24hPct": -14.29,
+        "okxChange24hPct": -14.07,
+        "ret15Pct": -0.46,
+        "ret60Pct": -0.96,
+        "volumeAcceleration": 3.94,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1779545,
+        "bitgetSpreadBps": 7.16,
+        "compressionRatio": 1.23,
+        "rangePosition": -0.21,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.0014015,
+        "invalidationReference": 0.0014205
+      },
+      "reasons": [
+        "volume x3.9",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "OUSDT",
+      "price": 0.4637,
+      "type": "IGNITION",
+      "direction": "LONG",
+      "overall": 32.5,
+      "scores": {
+        "ignition": 47.8,
+        "prebreakout": 47.1,
+        "momentum": 35.7,
+        "squeeze": 6.9,
+        "liquidity": 7.5,
+        "execution": 39.5
+      },
+      "metrics": {
+        "change24hPct": -7.06,
+        "okxChange24hPct": -7.34,
+        "ret15Pct": 0.93,
+        "ret60Pct": 3.13,
+        "volumeAcceleration": 1.84,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1055317,
+        "bitgetSpreadBps": 15.13,
+        "compressionRatio": 2.4,
+        "rangePosition": 1.33,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.45955,
+        "invalidationReference": 0.44895
+      },
+      "reasons": [
+        "volume x1.8",
+        "5m breakout up",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "LAUSDT",
+      "price": 0.05672,
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 43.1,
+      "scores": {
+        "ignition": 44.3,
+        "prebreakout": 60.3,
+        "momentum": 35.1,
+        "squeeze": 12.5,
+        "liquidity": 8.1,
+        "execution": 50.6
+      },
+      "metrics": {
+        "change24hPct": 11.72,
+        "okxChange24hPct": 11.52,
+        "ret15Pct": 1.48,
+        "ret60Pct": 3.2,
+        "volumeAcceleration": 1.14,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1170228,
+        "bitgetSpreadBps": 12.34,
+        "compressionRatio": 0.77,
+        "rangePosition": 1.16,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.056305,
+        "invalidationReference": 0.05349
+      },
+      "reasons": [
+        "5m breakout up",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "SENTUSDT",
+      "price": 0.01167,
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 43.9,
+      "scores": {
+        "ignition": 58.5,
+        "prebreakout": 51.5,
+        "momentum": 32.5,
+        "squeeze": 5.7,
+        "liquidity": 1.6,
+        "execution": 65.8
+      },
+      "metrics": {
+        "change24hPct": -7.97,
+        "okxChange24hPct": -7.89,
+        "ret15Pct": -0.6,
+        "ret60Pct": -1.35,
+        "volumeAcceleration": 3.08,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 170830,
+        "bitgetSpreadBps": 8.56,
+        "compressionRatio": 1.61,
+        "rangePosition": -0.32,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.011725,
+        "invalidationReference": 0.0119
+      },
+      "reasons": [
+        "volume x3.1",
+        "5m breakout down",
+        "OKX/Bitget 24h direction agree"
+      ]
+    },
+    {
+      "symbol": "GPSUSDT",
+      "price": 0.01799,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 40.3,
+      "scores": {
+        "ignition": 29,
+        "prebreakout": 45.6,
+        "momentum": 30.5,
+        "squeeze": 33.8,
+        "liquidity": 44.6,
+        "execution": 88.9
+      },
+      "metrics": {
+        "change24hPct": 12.01,
+        "okxChange24hPct": 12.09,
+        "ret15Pct": -1.46,
+        "ret60Pct": -1.37,
+        "volumeAcceleration": 0.62,
+        "fundingPct": -0.0327,
+        "turnover24hUsd": 71021675,
+        "bitgetSpreadBps": 2.78,
+        "compressionRatio": 0.62,
+        "rangePosition": 0.32,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.017688,
+        "invalidationReference": 0.0186015
+      },
+      "reasons": [
+        "funding -0.033%",
+        "compression",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "BICOUSDT",
+      "price": 0.0202,
+      "type": "SQUEEZE-WATCH",
+      "direction": "LONG",
+      "overall": 57.6,
+      "scores": {
+        "ignition": 46.1,
+        "prebreakout": 43.1,
+        "momentum": 28.1,
+        "squeeze": 70.9,
+        "liquidity": 14.7,
+        "execution": 80.2
+      },
+      "metrics": {
+        "change24hPct": -4.31,
+        "okxChange24hPct": -4.07,
+        "ret15Pct": 1.43,
+        "ret60Pct": 1.2,
+        "volumeAcceleration": 1.43,
+        "fundingPct": -0.501,
+        "turnover24hUsd": 3097243,
+        "bitgetSpreadBps": 4.95,
+        "compressionRatio": 1.15,
+        "rangePosition": 0.93,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 0.020245,
+        "invalidationReference": 0.019725
+      },
+      "reasons": [
+        "funding -0.501%",
+        "до границы ~0.17%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    }
+  ],
+  "topLiquidity": [
+    {
+      "symbol": "BTCUSDT",
+      "price": 64145.8,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 45.8,
+      "scores": {
+        "ignition": 37.6,
+        "prebreakout": 47.4,
+        "momentum": 19.6,
+        "squeeze": 20.1,
+        "liquidity": 77.9,
+        "execution": 99.9
+      },
+      "metrics": {
+        "change24hPct": 0.87,
+        "okxChange24hPct": 0.86,
+        "ret15Pct": -0.04,
+        "ret60Pct": -0.09,
+        "volumeAcceleration": 0.72,
+        "fundingPct": 0.0031,
+        "turnover24hUsd": 1754556892,
+        "bitgetSpreadBps": 0.02,
+        "compressionRatio": 3.27,
+        "rangePosition": 0.34,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 64013.15,
+        "invalidationReference": 64378.45
+      },
+      "reasons": [
+        "до границы ~0.19%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "ETHUSDT",
+      "price": 1895.49,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 45.7,
+      "scores": {
+        "ignition": 37.4,
+        "prebreakout": 47.8,
+        "momentum": 18.9,
+        "squeeze": 17.5,
+        "liquidity": 70.2,
+        "execution": 99.8
+      },
+      "metrics": {
+        "change24hPct": -0.37,
+        "okxChange24hPct": -0.38,
+        "ret15Pct": -0.05,
+        "ret60Pct": -0.16,
+        "volumeAcceleration": 0.76,
+        "fundingPct": 0.001,
+        "turnover24hUsd": 840284349,
+        "bitgetSpreadBps": 0.05,
+        "compressionRatio": 2.99,
+        "rangePosition": 0.21,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 1893.05,
+        "invalidationReference": 1904.415
+      },
+      "reasons": [
+        "до границы ~0.13%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOLUSDT",
+      "price": 76.066,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 43.1,
+      "scores": {
+        "ignition": 35.5,
+        "prebreakout": 46.7,
+        "momentum": 16.1,
+        "squeeze": 17.1,
+        "liquidity": 49.6,
+        "execution": 99.5
+      },
+      "metrics": {
+        "change24hPct": 0.71,
+        "okxChange24hPct": 0.69,
+        "ret15Pct": -0.04,
+        "ret60Pct": -0.19,
+        "volumeAcceleration": 0.88,
+        "fundingPct": 0.0087,
+        "turnover24hUsd": 116141204,
+        "bitgetSpreadBps": 0.13,
+        "compressionRatio": 1.8,
+        "rangePosition": 0.11,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 76.009,
+        "invalidationReference": 76.4915
       },
       "reasons": [
         "до границы ~0.07%",
@@ -244,1615 +1776,75 @@
       ]
     },
     {
-      "symbol": "APRUSDT",
-      "price": 0.21889,
-      "type": "MOMENTUM",
-      "direction": "LONG",
-      "overall": 53.6,
-      "scores": {
-        "ignition": 61.7,
-        "prebreakout": 49.5,
-        "momentum": 70.3,
-        "squeeze": 9.8,
-        "liquidity": 22.1,
-        "execution": 59.8
-      },
-      "metrics": {
-        "change24hPct": 19.32,
-        "okxChange24hPct": 19.43,
-        "ret15Pct": 2.1,
-        "ret60Pct": 9.41,
-        "volumeAcceleration": 2.08,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 7348393,
-        "bitgetSpreadBps": 10.05,
-        "compressionRatio": 1.74,
-        "rangePosition": 1.07,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.21658,
-        "invalidationReference": 0.18453
-      },
-      "reasons": [
-        "volume x2.1",
-        "5m breakout up",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "SENTUSDT",
-      "price": 0.01174,
+      "symbol": "XRPUSDT",
+      "price": 0.9966,
       "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 51.5,
-      "scores": {
-        "ignition": 68.3,
-        "prebreakout": 68.6,
-        "momentum": 36,
-        "squeeze": 11.6,
-        "liquidity": 1.6,
-        "execution": 65.9
-      },
-      "metrics": {
-        "change24hPct": -7.41,
-        "okxChange24hPct": -7.42,
-        "ret15Pct": -0.51,
-        "ret60Pct": -0.93,
-        "volumeAcceleration": 12.69,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 165995,
-        "bitgetSpreadBps": 8.52,
-        "compressionRatio": 0.76,
-        "rangePosition": -0.3,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.01177,
-        "invalidationReference": 0.011905
-      },
-      "reasons": [
-        "volume x12.7",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "PIEVERSEUSDT",
-      "price": 0.92464,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 51,
-      "scores": {
-        "ignition": 30,
-        "prebreakout": 67.6,
-        "momentum": 12.2,
-        "squeeze": 17.9,
-        "liquidity": 15,
-        "execution": 60.9
-      },
-      "metrics": {
-        "change24hPct": 9.39,
-        "okxChange24hPct": 9.14,
-        "ret15Pct": 0.14,
-        "ret60Pct": 0.24,
-        "volumeAcceleration": 0.82,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 3198433,
-        "bitgetSpreadBps": 9.76,
-        "compressionRatio": 0.6,
-        "rangePosition": 0.89,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.925745,
-        "invalidationReference": 0.90338
-      },
-      "reasons": [
-        "до границы ~0.27%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "PUMPUSDT",
-      "price": 0.002786,
-      "type": "IGNITION",
-      "direction": "SHORT",
-      "overall": 49.8,
-      "scores": {
-        "ignition": 62,
-        "prebreakout": 52.6,
-        "momentum": 35.4,
-        "squeeze": 10.7,
-        "liquidity": 26.3,
-        "execution": 71.3
-      },
-      "metrics": {
-        "change24hPct": -4.78,
-        "okxChange24hPct": -4.72,
-        "ret15Pct": -1.14,
-        "ret60Pct": -0.96,
-        "volumeAcceleration": 2.75,
-        "fundingPct": -0.0051,
-        "turnover24hUsd": 11455672,
-        "bitgetSpreadBps": 7.17,
-        "compressionRatio": 1.57,
-        "rangePosition": -0.43,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0027985,
-        "invalidationReference": 0.0028255
-      },
-      "reasons": [
-        "volume x2.7",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "GALAUSDT",
-      "price": 0.001404,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 49.2,
-      "scores": {
-        "ignition": 30.6,
-        "prebreakout": 63,
-        "momentum": 11,
-        "squeeze": 17.3,
-        "liquidity": 10.6,
-        "execution": 71.5
-      },
-      "metrics": {
-        "change24hPct": -13.87,
-        "okxChange24hPct": -13.87,
-        "ret15Pct": -0.11,
-        "ret60Pct": -0.18,
-        "volumeAcceleration": 0.42,
-        "fundingPct": 0.01,
-        "turnover24hUsd": 1756437,
-        "bitgetSpreadBps": 7.13,
-        "compressionRatio": 0.69,
-        "rangePosition": 0.11,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0014015,
-        "invalidationReference": 0.0014205
-      },
-      "reasons": [
-        "до границы ~0.14%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "POLUSDT",
-      "price": 0.0813,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 49,
-      "scores": {
-        "ignition": 28.8,
-        "prebreakout": 58.5,
-        "momentum": 14,
-        "squeeze": 15.7,
-        "liquidity": 11.7,
-        "execution": 90.2
-      },
-      "metrics": {
-        "change24hPct": 4.07,
-        "okxChange24hPct": 4.12,
-        "ret15Pct": 0.37,
-        "ret60Pct": -0.4,
-        "volumeAcceleration": 0.35,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 2078564,
-        "bitgetSpreadBps": 2.46,
-        "compressionRatio": 0.67,
-        "rangePosition": 0.73,
-        "candleSources": 1
-      },
-      "levels": {
-        "trigger": 0.08171,
-        "invalidationReference": 0.08017
-      },
-      "reasons": [
-        "до границы ~0.5%",
-        "compression",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    }
-  ],
-  "topIgnition": [
-    {
-      "symbol": "SENTUSDT",
-      "price": 0.01174,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 51.5,
-      "scores": {
-        "ignition": 68.3,
-        "prebreakout": 68.6,
-        "momentum": 36,
-        "squeeze": 11.6,
-        "liquidity": 1.6,
-        "execution": 65.9
-      },
-      "metrics": {
-        "change24hPct": -7.41,
-        "okxChange24hPct": -7.42,
-        "ret15Pct": -0.51,
-        "ret60Pct": -0.93,
-        "volumeAcceleration": 12.69,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 165995,
-        "bitgetSpreadBps": 8.52,
-        "compressionRatio": 0.76,
-        "rangePosition": -0.3,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.01177,
-        "invalidationReference": 0.011905
-      },
-      "reasons": [
-        "volume x12.7",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "ETHFIUSDT",
-      "price": 0.4849,
-      "type": "IGNITION",
-      "direction": "SHORT",
-      "overall": 54.3,
-      "scores": {
-        "ignition": 64.2,
-        "prebreakout": 47.7,
-        "momentum": 33.6,
-        "squeeze": 8,
-        "liquidity": 13.1,
-        "execution": 91.8
-      },
-      "metrics": {
-        "change24hPct": -3.77,
-        "okxChange24hPct": -3.65,
-        "ret15Pct": 0.23,
-        "ret60Pct": -0.47,
-        "volumeAcceleration": 16.88,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 2523566,
-        "bitgetSpreadBps": 2.06,
-        "compressionRatio": 1.74,
-        "rangePosition": 0.2,
-        "candleSources": 1
-      },
-      "levels": {
-        "trigger": 0.4835,
-        "invalidationReference": 0.4904
-      },
-      "reasons": [
-        "volume x16.9",
-        "до границы ~0.29%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "PUMPUSDT",
-      "price": 0.002786,
-      "type": "IGNITION",
-      "direction": "SHORT",
-      "overall": 49.8,
-      "scores": {
-        "ignition": 62,
-        "prebreakout": 52.6,
-        "momentum": 35.4,
-        "squeeze": 10.7,
-        "liquidity": 26.3,
-        "execution": 71.3
-      },
-      "metrics": {
-        "change24hPct": -4.78,
-        "okxChange24hPct": -4.72,
-        "ret15Pct": -1.14,
-        "ret60Pct": -0.96,
-        "volumeAcceleration": 2.75,
-        "fundingPct": -0.0051,
-        "turnover24hUsd": 11455672,
-        "bitgetSpreadBps": 7.17,
-        "compressionRatio": 1.57,
-        "rangePosition": -0.43,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0027985,
-        "invalidationReference": 0.0028255
-      },
-      "reasons": [
-        "volume x2.7",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "APRUSDT",
-      "price": 0.21889,
-      "type": "MOMENTUM",
-      "direction": "LONG",
-      "overall": 53.6,
-      "scores": {
-        "ignition": 61.7,
-        "prebreakout": 49.5,
-        "momentum": 70.3,
-        "squeeze": 9.8,
-        "liquidity": 22.1,
-        "execution": 59.8
-      },
-      "metrics": {
-        "change24hPct": 19.32,
-        "okxChange24hPct": 19.43,
-        "ret15Pct": 2.1,
-        "ret60Pct": 9.41,
-        "volumeAcceleration": 2.08,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 7348393,
-        "bitgetSpreadBps": 10.05,
-        "compressionRatio": 1.74,
-        "rangePosition": 1.07,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.21658,
-        "invalidationReference": 0.18453
-      },
-      "reasons": [
-        "volume x2.1",
-        "5m breakout up",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "CHIPUSDT",
-      "price": 0.02706,
-      "type": "IGNITION",
-      "direction": "SHORT",
-      "overall": 48.4,
-      "scores": {
-        "ignition": 61.4,
-        "prebreakout": 52.4,
-        "momentum": 45.8,
-        "squeeze": 9.1,
-        "liquidity": 18.7,
-        "execution": 70.4
-      },
-      "metrics": {
-        "change24hPct": -11.66,
-        "okxChange24hPct": -11.65,
-        "ret15Pct": -0.97,
-        "ret60Pct": -3.41,
-        "volumeAcceleration": 2.89,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 4995819,
-        "bitgetSpreadBps": 7.39,
-        "compressionRatio": 1.32,
-        "rangePosition": -0.17,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.027315,
-        "invalidationReference": 0.02874
-      },
-      "reasons": [
-        "volume x2.9",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "BTCUSDT",
-      "price": 64184.3,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 48.3,
-      "scores": {
-        "ignition": 47.8,
-        "prebreakout": 49.9,
-        "momentum": 26,
-        "squeeze": 20.2,
-        "liquidity": 77.9,
-        "execution": 99.9
-      },
-      "metrics": {
-        "change24hPct": 0.94,
-        "okxChange24hPct": 0.94,
-        "ret15Pct": 0.16,
-        "ret60Pct": -0.04,
-        "volumeAcceleration": 1.87,
-        "fundingPct": 0.0033,
-        "turnover24hUsd": 1754198592,
-        "bitgetSpreadBps": 0.02,
-        "compressionRatio": 2.78,
-        "rangePosition": 0.45,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 64378.45,
-        "invalidationReference": 64026.05
-      },
-      "reasons": [
-        "volume x1.9",
-        "до границы ~0.25%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "SOLUSDT",
-      "price": 76.133,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 45.2,
-      "scores": {
-        "ignition": 45.9,
-        "prebreakout": 49,
-        "momentum": 23,
-        "squeeze": 17.1,
-        "liquidity": 49.6,
-        "execution": 99.5
-      },
-      "metrics": {
-        "change24hPct": 0.75,
-        "okxChange24hPct": 0.75,
-        "ret15Pct": 0.1,
-        "ret60Pct": -0.21,
-        "volumeAcceleration": 1.96,
-        "fundingPct": 0.0087,
-        "turnover24hUsd": 115792616,
-        "bitgetSpreadBps": 0.13,
-        "compressionRatio": 1.69,
-        "rangePosition": 0.25,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 76.009,
-        "invalidationReference": 76.4915
-      },
-      "reasons": [
-        "volume x2",
-        "до границы ~0.16%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "IRYSUSDT",
-      "price": 0.01358,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 32.3,
-      "scores": {
-        "ignition": 42.1,
-        "prebreakout": 42.2,
-        "momentum": 18.7,
-        "squeeze": 5.9,
-        "liquidity": 2.7,
-        "execution": 70.6
-      },
-      "metrics": {
-        "change24hPct": -11.65,
-        "okxChange24hPct": -11.48,
-        "ret15Pct": 0.07,
-        "ret60Pct": -0.18,
-        "volumeAcceleration": 2.35,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 296046,
-        "bitgetSpreadBps": 7.36,
-        "compressionRatio": 1.16,
-        "rangePosition": 0.27,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.013525,
-        "invalidationReference": 0.01371
-      },
-      "reasons": [
-        "volume x2.3",
-        "до границы ~0.37%",
-        "OKX/Bitget 24h direction agree"
-      ]
-    }
-  ],
-  "topPreBreakout": [
-    {
-      "symbol": "2ZUSDT",
-      "price": 0.04679,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 61.1,
-      "scores": {
-        "ignition": 32.2,
-        "prebreakout": 78.4,
-        "momentum": 13.1,
-        "squeeze": 17.6,
-        "liquidity": 4.3,
-        "execution": 74.4
-      },
-      "metrics": {
-        "change24hPct": -6.35,
-        "okxChange24hPct": -6.38,
-        "ret15Pct": -0.21,
-        "ret60Pct": -0.66,
-        "volumeAcceleration": 0.32,
-        "fundingPct": 0.0037,
-        "turnover24hUsd": 508923,
-        "bitgetSpreadBps": 6.41,
-        "compressionRatio": 0.39,
-        "rangePosition": -0.09,
-        "candleSources": 1
-      },
-      "levels": {
-        "trigger": 0.04686,
-        "invalidationReference": 0.0476
-      },
-      "reasons": [
-        "5m breakout down",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "RVNUSDT",
-      "price": 0.002733,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 55.4,
-      "scores": {
-        "ignition": 27.5,
-        "prebreakout": 72.4,
-        "momentum": 9.6,
-        "squeeze": 50,
-        "liquidity": 1.7,
-        "execution": 70.7
-      },
-      "metrics": {
-        "change24hPct": -3.63,
-        "okxChange24hPct": -3.11,
-        "ret15Pct": -0.11,
-        "ret60Pct": 0.13,
-        "volumeAcceleration": 0.29,
-        "fundingPct": -0.0604,
-        "turnover24hUsd": 182122,
-        "bitgetSpreadBps": 7.31,
-        "compressionRatio": 0.49,
-        "rangePosition": 0.74,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0027475,
-        "invalidationReference": 0.002713
-      },
-      "reasons": [
-        "funding -0.06%",
-        "до границы ~0.33%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "SENTUSDT",
-      "price": 0.01174,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 51.5,
-      "scores": {
-        "ignition": 68.3,
-        "prebreakout": 68.6,
-        "momentum": 36,
-        "squeeze": 11.6,
-        "liquidity": 1.6,
-        "execution": 65.9
-      },
-      "metrics": {
-        "change24hPct": -7.41,
-        "okxChange24hPct": -7.42,
-        "ret15Pct": -0.51,
-        "ret60Pct": -0.93,
-        "volumeAcceleration": 12.69,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 165995,
-        "bitgetSpreadBps": 8.52,
-        "compressionRatio": 0.76,
-        "rangePosition": -0.3,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.01177,
-        "invalidationReference": 0.011905
-      },
-      "reasons": [
-        "volume x12.7",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "AVNTUSDT",
-      "price": 0.09126,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 54.6,
-      "scores": {
-        "ignition": 35.5,
-        "prebreakout": 68,
-        "momentum": 16.4,
-        "squeeze": 14.6,
-        "liquidity": 3.5,
-        "execution": 82.5
-      },
-      "metrics": {
-        "change24hPct": -7.01,
-        "okxChange24hPct": -6.93,
-        "ret15Pct": 0.04,
-        "ret60Pct": -0.83,
-        "volumeAcceleration": 1.55,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 396954,
-        "bitgetSpreadBps": 4.38,
-        "compressionRatio": 0.64,
-        "rangePosition": 0.11,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.09116,
-        "invalidationReference": 0.092395
-      },
-      "reasons": [
-        "до границы ~0.14%",
-        "compression",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "PIEVERSEUSDT",
-      "price": 0.92464,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 51,
-      "scores": {
-        "ignition": 30,
-        "prebreakout": 67.6,
-        "momentum": 12.2,
-        "squeeze": 17.9,
-        "liquidity": 15,
-        "execution": 60.9
-      },
-      "metrics": {
-        "change24hPct": 9.39,
-        "okxChange24hPct": 9.14,
-        "ret15Pct": 0.14,
-        "ret60Pct": 0.24,
-        "volumeAcceleration": 0.82,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 3198433,
-        "bitgetSpreadBps": 9.76,
-        "compressionRatio": 0.6,
-        "rangePosition": 0.89,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.925745,
-        "invalidationReference": 0.90338
-      },
-      "reasons": [
-        "до границы ~0.27%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "ARXUSDT",
-      "price": 0.11537,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 45.8,
-      "scores": {
-        "ignition": 29.6,
-        "prebreakout": 64.3,
-        "momentum": 14.3,
-        "squeeze": 14.2,
-        "liquidity": 5,
-        "execution": 51.5
-      },
-      "metrics": {
-        "change24hPct": 5.99,
-        "okxChange24hPct": 5.88,
-        "ret15Pct": 0.03,
-        "ret60Pct": -1.14,
-        "volumeAcceleration": 0.66,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 615731,
-        "bitgetSpreadBps": 12.12,
-        "compressionRatio": 0.68,
-        "rangePosition": 0.05,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.115205,
-        "invalidationReference": 0.11775
-      },
-      "reasons": [
-        "до границы ~0.11%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "HOMEUSDT",
-      "price": 0.006428,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 58.7,
-      "scores": {
-        "ignition": 23.4,
-        "prebreakout": 63.9,
-        "momentum": 12.8,
-        "squeeze": 70.9,
-        "liquidity": 10.3,
-        "execution": 87.6
-      },
-      "metrics": {
-        "change24hPct": -4.52,
-        "okxChange24hPct": -4.52,
-        "ret15Pct": -0.03,
-        "ret60Pct": 0.66,
-        "volumeAcceleration": 0.38,
-        "fundingPct": -0.1759,
-        "turnover24hUsd": 1695358,
-        "bitgetSpreadBps": 3.11,
-        "compressionRatio": 0.53,
-        "rangePosition": 0.33,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.006522,
-        "invalidationReference": 0.0063805
-      },
-      "reasons": [
-        "funding -0.176%",
-        "до границы ~0.73%",
-        "compression",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "LAUSDT",
-      "price": 0.05603,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 45.3,
-      "scores": {
-        "ignition": 30.4,
-        "prebreakout": 63.6,
-        "momentum": 25.7,
-        "squeeze": 16.5,
-        "liquidity": 8,
-        "execution": 50
-      },
-      "metrics": {
-        "change24hPct": 10.25,
-        "okxChange24hPct": 10.27,
-        "ret15Pct": 0.55,
-        "ret60Pct": 2.71,
-        "volumeAcceleration": 1,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 1147614,
-        "bitgetSpreadBps": 12.51,
-        "compressionRatio": 0.6,
-        "rangePosition": 0.91,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0563,
-        "invalidationReference": 0.05349
-      },
-      "reasons": [
-        "до границы ~0.46%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    }
-  ],
-  "topSqueeze": [
-    {
-      "symbol": "HOMEUSDT",
-      "price": 0.006428,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 58.7,
-      "scores": {
-        "ignition": 23.4,
-        "prebreakout": 63.9,
-        "momentum": 12.8,
-        "squeeze": 70.9,
-        "liquidity": 10.3,
-        "execution": 87.6
-      },
-      "metrics": {
-        "change24hPct": -4.52,
-        "okxChange24hPct": -4.52,
-        "ret15Pct": -0.03,
-        "ret60Pct": 0.66,
-        "volumeAcceleration": 0.38,
-        "fundingPct": -0.1759,
-        "turnover24hUsd": 1695358,
-        "bitgetSpreadBps": 3.11,
-        "compressionRatio": 0.53,
-        "rangePosition": 0.33,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.006522,
-        "invalidationReference": 0.0063805
-      },
-      "reasons": [
-        "funding -0.176%",
-        "до границы ~0.73%",
-        "compression",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "BICOUSDT",
-      "price": 0.01998,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 47.5,
-      "scores": {
-        "ignition": 18.7,
-        "prebreakout": 27.8,
-        "momentum": 10.9,
-        "squeeze": 63.2,
-        "liquidity": 14.7,
-        "execution": 60
-      },
-      "metrics": {
-        "change24hPct": -6.2,
-        "okxChange24hPct": -5.83,
-        "ret15Pct": 0.05,
-        "ret60Pct": -0.1,
-        "volumeAcceleration": 0.58,
-        "fundingPct": -0.4974,
-        "turnover24hUsd": 3094796,
-        "bitgetSpreadBps": 10.01,
-        "compressionRatio": 0.93,
-        "rangePosition": 0.53,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.020245,
-        "invalidationReference": 0.019725
-      },
-      "reasons": [
-        "funding -0.497%",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "RVNUSDT",
-      "price": 0.002733,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 55.4,
-      "scores": {
-        "ignition": 27.5,
-        "prebreakout": 72.4,
-        "momentum": 9.6,
-        "squeeze": 50,
-        "liquidity": 1.7,
-        "execution": 70.7
-      },
-      "metrics": {
-        "change24hPct": -3.63,
-        "okxChange24hPct": -3.11,
-        "ret15Pct": -0.11,
-        "ret60Pct": 0.13,
-        "volumeAcceleration": 0.29,
-        "fundingPct": -0.0604,
-        "turnover24hUsd": 182122,
-        "bitgetSpreadBps": 7.31,
-        "compressionRatio": 0.49,
-        "rangePosition": 0.74,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0027475,
-        "invalidationReference": 0.002713
-      },
-      "reasons": [
-        "funding -0.06%",
-        "до границы ~0.33%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "GPSUSDT",
-      "price": 0.018274,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 41.5,
-      "scores": {
-        "ignition": 15.2,
-        "prebreakout": 44.8,
-        "momentum": 15.2,
-        "squeeze": 47.2,
-        "liquidity": 44.7,
-        "execution": 86.9
-      },
-      "metrics": {
-        "change24hPct": 13.96,
-        "okxChange24hPct": 13.76,
-        "ret15Pct": 0.07,
-        "ret60Pct": -0.1,
-        "volumeAcceleration": 0.41,
-        "fundingPct": -0.0355,
-        "turnover24hUsd": 71834029,
-        "bitgetSpreadBps": 3.29,
-        "compressionRatio": 0.57,
-        "rangePosition": 0.69,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0186015,
-        "invalidationReference": 0.0174825
-      },
-      "reasons": [
-        "funding -0.036%",
-        "compression",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "PROVEUSDT",
-      "price": 0.1572,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 48.1,
-      "scores": {
-        "ignition": 35,
-        "prebreakout": 62,
-        "momentum": 21.6,
-        "squeeze": 40.8,
-        "liquidity": 1,
-        "execution": 74.6
-      },
-      "metrics": {
-        "change24hPct": 5.43,
-        "okxChange24hPct": 5.92,
-        "ret15Pct": 0.48,
-        "ret60Pct": 1.25,
-        "volumeAcceleration": 1.65,
-        "fundingPct": -0.0326,
-        "turnover24hUsd": 96601,
-        "bitgetSpreadBps": 6.36,
-        "compressionRatio": 0.62,
-        "rangePosition": 0.73,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.15825,
-        "invalidationReference": 0.1549
-      },
-      "reasons": [
-        "funding -0.033%",
-        "до границы ~0.57%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "ATOMUSDT",
-      "price": 1.3937,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 30.3,
-      "scores": {
-        "ignition": 29.6,
-        "prebreakout": 37.1,
-        "momentum": 15.1,
-        "squeeze": 37.9,
-        "liquidity": 11.8,
-        "execution": 77
-      },
-      "metrics": {
-        "change24hPct": -1.74,
-        "okxChange24hPct": -1.83,
-        "ret15Pct": 0.32,
-        "ret60Pct": 0.7,
-        "volumeAcceleration": 0.24,
-        "fundingPct": -0.0448,
-        "turnover24hUsd": 2116614,
-        "bitgetSpreadBps": 5.75,
-        "compressionRatio": 1.28,
-        "rangePosition": 0.64,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 1.3985,
-        "invalidationReference": 1.3827
-      },
-      "reasons": [
-        "funding -0.045%",
-        "до границы ~0.41%",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "KAITOUSDT",
-      "price": 0.3374,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 22.4,
-      "scores": {
-        "ignition": 23.6,
-        "prebreakout": 28.5,
-        "momentum": 14.3,
-        "squeeze": 29.1,
-        "liquidity": 18.2,
-        "execution": 64.4
-      },
-      "metrics": {
-        "change24hPct": -4.2,
-        "okxChange24hPct": -4.23,
-        "ret15Pct": -0.21,
-        "ret60Pct": 0.49,
-        "volumeAcceleration": 0.8,
-        "fundingPct": -0.0376,
-        "turnover24hUsd": 4718680,
-        "bitgetSpreadBps": 8.9,
-        "compressionRatio": 1.17,
-        "rangePosition": 0.69,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.34065,
-        "invalidationReference": 0.33055
-      },
-      "reasons": [
-        "funding -0.038%",
-        "до границы ~0.93%",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "HUSDT",
-      "price": 0.11188,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 33.5,
-      "scores": {
-        "ignition": 20.1,
-        "prebreakout": 43.2,
-        "momentum": 17.5,
-        "squeeze": 26.8,
-        "liquidity": 15.6,
-        "execution": 67.8
-      },
-      "metrics": {
-        "change24hPct": -9.33,
-        "okxChange24hPct": -9.51,
-        "ret15Pct": 0.16,
-        "ret60Pct": -1.33,
-        "volumeAcceleration": 0.42,
-        "fundingPct": 0.0293,
-        "turnover24hUsd": 3479063,
-        "bitgetSpreadBps": 8.04,
-        "compressionRatio": 0.72,
-        "rangePosition": 0.22,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.110455,
-        "invalidationReference": 0.11652
-      },
-      "reasons": [
-        "OKX/Bitget 24h direction agree"
-      ]
-    }
-  ],
-  "topMomentum": [
-    {
-      "symbol": "APRUSDT",
-      "price": 0.21889,
-      "type": "MOMENTUM",
-      "direction": "LONG",
-      "overall": 53.6,
-      "scores": {
-        "ignition": 61.7,
-        "prebreakout": 49.5,
-        "momentum": 70.3,
-        "squeeze": 9.8,
-        "liquidity": 22.1,
-        "execution": 59.8
-      },
-      "metrics": {
-        "change24hPct": 19.32,
-        "okxChange24hPct": 19.43,
-        "ret15Pct": 2.1,
-        "ret60Pct": 9.41,
-        "volumeAcceleration": 2.08,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 7348393,
-        "bitgetSpreadBps": 10.05,
-        "compressionRatio": 1.74,
-        "rangePosition": 1.07,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.21658,
-        "invalidationReference": 0.18453
-      },
-      "reasons": [
-        "volume x2.1",
-        "5m breakout up",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "CHIPUSDT",
-      "price": 0.02706,
-      "type": "IGNITION",
-      "direction": "SHORT",
-      "overall": 48.4,
-      "scores": {
-        "ignition": 61.4,
-        "prebreakout": 52.4,
-        "momentum": 45.8,
-        "squeeze": 9.1,
-        "liquidity": 18.7,
-        "execution": 70.4
-      },
-      "metrics": {
-        "change24hPct": -11.66,
-        "okxChange24hPct": -11.65,
-        "ret15Pct": -0.97,
-        "ret60Pct": -3.41,
-        "volumeAcceleration": 2.89,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 4995819,
-        "bitgetSpreadBps": 7.39,
-        "compressionRatio": 1.32,
-        "rangePosition": -0.17,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.027315,
-        "invalidationReference": 0.02874
-      },
-      "reasons": [
-        "volume x2.9",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "SENTUSDT",
-      "price": 0.01174,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 51.5,
-      "scores": {
-        "ignition": 68.3,
-        "prebreakout": 68.6,
-        "momentum": 36,
-        "squeeze": 11.6,
-        "liquidity": 1.6,
-        "execution": 65.9
-      },
-      "metrics": {
-        "change24hPct": -7.41,
-        "okxChange24hPct": -7.42,
-        "ret15Pct": -0.51,
-        "ret60Pct": -0.93,
-        "volumeAcceleration": 12.69,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 165995,
-        "bitgetSpreadBps": 8.52,
-        "compressionRatio": 0.76,
-        "rangePosition": -0.3,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.01177,
-        "invalidationReference": 0.011905
-      },
-      "reasons": [
-        "volume x12.7",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "PUMPUSDT",
-      "price": 0.002786,
-      "type": "IGNITION",
-      "direction": "SHORT",
-      "overall": 49.8,
-      "scores": {
-        "ignition": 62,
-        "prebreakout": 52.6,
-        "momentum": 35.4,
-        "squeeze": 10.7,
-        "liquidity": 26.3,
-        "execution": 71.3
-      },
-      "metrics": {
-        "change24hPct": -4.78,
-        "okxChange24hPct": -4.72,
-        "ret15Pct": -1.14,
-        "ret60Pct": -0.96,
-        "volumeAcceleration": 2.75,
-        "fundingPct": -0.0051,
-        "turnover24hUsd": 11455672,
-        "bitgetSpreadBps": 7.17,
-        "compressionRatio": 1.57,
-        "rangePosition": -0.43,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0027985,
-        "invalidationReference": 0.0028255
-      },
-      "reasons": [
-        "volume x2.7",
-        "5m breakout down",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "ETHFIUSDT",
-      "price": 0.4849,
-      "type": "IGNITION",
-      "direction": "SHORT",
-      "overall": 54.3,
-      "scores": {
-        "ignition": 64.2,
-        "prebreakout": 47.7,
-        "momentum": 33.6,
-        "squeeze": 8,
-        "liquidity": 13.1,
-        "execution": 91.8
-      },
-      "metrics": {
-        "change24hPct": -3.77,
-        "okxChange24hPct": -3.65,
-        "ret15Pct": 0.23,
-        "ret60Pct": -0.47,
-        "volumeAcceleration": 16.88,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 2523566,
-        "bitgetSpreadBps": 2.06,
-        "compressionRatio": 1.74,
-        "rangePosition": 0.2,
-        "candleSources": 1
-      },
-      "levels": {
-        "trigger": 0.4835,
-        "invalidationReference": 0.4904
-      },
-      "reasons": [
-        "volume x16.9",
-        "до границы ~0.29%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "UBUSDT",
-      "price": 0.12366,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 35.3,
+      "overall": 42.4,
       "scores": {
         "ignition": 39.2,
-        "prebreakout": 45.9,
-        "momentum": 29.9,
-        "squeeze": 6.8,
-        "liquidity": 4.3,
-        "execution": 70.9
-      },
-      "metrics": {
-        "change24hPct": 7.06,
-        "okxChange24hPct": 7.05,
-        "ret15Pct": 0.8,
-        "ret60Pct": 3.08,
-        "volumeAcceleration": 1.21,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 512556,
-        "bitgetSpreadBps": 7.28,
-        "compressionRatio": 0.98,
-        "rangePosition": 1.03,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.123485,
-        "invalidationReference": 0.11576
-      },
-      "reasons": [
-        "5m breakout up",
-        "OKX/Bitget 24h direction agree"
-      ]
-    },
-    {
-      "symbol": "BTCUSDT",
-      "price": 64184.3,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 48.3,
-      "scores": {
-        "ignition": 47.8,
-        "prebreakout": 49.9,
-        "momentum": 26,
-        "squeeze": 20.2,
-        "liquidity": 77.9,
-        "execution": 99.9
-      },
-      "metrics": {
-        "change24hPct": 0.94,
-        "okxChange24hPct": 0.94,
-        "ret15Pct": 0.16,
-        "ret60Pct": -0.04,
-        "volumeAcceleration": 1.87,
-        "fundingPct": 0.0033,
-        "turnover24hUsd": 1754198592,
-        "bitgetSpreadBps": 0.02,
-        "compressionRatio": 2.78,
-        "rangePosition": 0.45,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 64378.45,
-        "invalidationReference": 64026.05
-      },
-      "reasons": [
-        "volume x1.9",
-        "до границы ~0.25%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "LAUSDT",
-      "price": 0.05603,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 45.3,
-      "scores": {
-        "ignition": 30.4,
-        "prebreakout": 63.6,
-        "momentum": 25.7,
-        "squeeze": 16.5,
-        "liquidity": 8,
-        "execution": 50
-      },
-      "metrics": {
-        "change24hPct": 10.25,
-        "okxChange24hPct": 10.27,
-        "ret15Pct": 0.55,
-        "ret60Pct": 2.71,
-        "volumeAcceleration": 1,
-        "fundingPct": 0.005,
-        "turnover24hUsd": 1147614,
-        "bitgetSpreadBps": 12.51,
-        "compressionRatio": 0.6,
-        "rangePosition": 0.91,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 0.0563,
-        "invalidationReference": 0.05349
-      },
-      "reasons": [
-        "до границы ~0.46%",
-        "compression",
-        "OKX/Bitget 24h direction agree"
-      ]
-    }
-  ],
-  "topLiquidity": [
-    {
-      "symbol": "BTCUSDT",
-      "price": 64184.3,
-      "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 48.3,
-      "scores": {
-        "ignition": 47.8,
-        "prebreakout": 49.9,
-        "momentum": 26,
-        "squeeze": 20.2,
-        "liquidity": 77.9,
-        "execution": 99.9
-      },
-      "metrics": {
-        "change24hPct": 0.94,
-        "okxChange24hPct": 0.94,
-        "ret15Pct": 0.16,
-        "ret60Pct": -0.04,
-        "volumeAcceleration": 1.87,
-        "fundingPct": 0.0033,
-        "turnover24hUsd": 1754198592,
-        "bitgetSpreadBps": 0.02,
-        "compressionRatio": 2.78,
-        "rangePosition": 0.45,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 64378.45,
-        "invalidationReference": 64026.05
-      },
-      "reasons": [
-        "volume x1.9",
-        "до границы ~0.25%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "ETHUSDT",
-      "price": 1896.96,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 45.9,
-      "scores": {
-        "ignition": 40.9,
-        "prebreakout": 48,
-        "momentum": 21.3,
-        "squeeze": 17.5,
-        "liquidity": 70.2,
-        "execution": 99.8
-      },
-      "metrics": {
-        "change24hPct": -0.31,
-        "okxChange24hPct": -0.32,
-        "ret15Pct": 0.1,
-        "ret60Pct": -0.13,
-        "volumeAcceleration": 1.34,
-        "fundingPct": 0.001,
-        "turnover24hUsd": 837905399,
-        "bitgetSpreadBps": 0.05,
-        "compressionRatio": 2.43,
-        "rangePosition": 0.32,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 1893.29,
-        "invalidationReference": 1904.425
-      },
-      "reasons": [
-        "до границы ~0.19%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "SOLUSDT",
-      "price": 76.133,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 45.2,
-      "scores": {
-        "ignition": 45.9,
-        "prebreakout": 49,
-        "momentum": 23,
-        "squeeze": 17.1,
-        "liquidity": 49.6,
-        "execution": 99.5
-      },
-      "metrics": {
-        "change24hPct": 0.75,
-        "okxChange24hPct": 0.75,
-        "ret15Pct": 0.1,
-        "ret60Pct": -0.21,
-        "volumeAcceleration": 1.96,
-        "fundingPct": 0.0087,
-        "turnover24hUsd": 115792616,
-        "bitgetSpreadBps": 0.13,
-        "compressionRatio": 1.69,
-        "rangePosition": 0.25,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 76.009,
-        "invalidationReference": 76.4915
-      },
-      "reasons": [
-        "volume x2",
-        "до границы ~0.16%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "XRPUSDT",
-      "price": 0.9979,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 42,
-      "scores": {
-        "ignition": 41,
-        "prebreakout": 46.3,
-        "momentum": 19.3,
+        "prebreakout": 46.8,
+        "momentum": 18,
         "squeeze": 12.3,
-        "liquidity": 45.5,
+        "liquidity": 45.6,
         "execution": 96
       },
       "metrics": {
-        "change24hPct": -0.31,
-        "okxChange24hPct": -0.32,
-        "ret15Pct": 0.2,
-        "ret60Pct": -0.01,
-        "volumeAcceleration": 1.53,
+        "change24hPct": -0.37,
+        "okxChange24hPct": -0.36,
+        "ret15Pct": -0.12,
+        "ret60Pct": -0.08,
+        "volumeAcceleration": 1.37,
         "fundingPct": 0.0004,
-        "turnover24hUsd": 77994619,
+        "turnover24hUsd": 78801748,
         "bitgetSpreadBps": 1,
-        "compressionRatio": 2.01,
-        "rangePosition": 0.56,
+        "compressionRatio": 2.28,
+        "rangePosition": 0.29,
         "candleSources": 2
       },
       "levels": {
         "trigger": 0.99535,
-        "invalidationReference": 0.9997
+        "invalidationReference": 0.99965
       },
       "reasons": [
-        "до границы ~0.19%",
+        "до границы ~0.13%",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
       "symbol": "GPSUSDT",
-      "price": 0.018274,
-      "type": "SQUEEZE-WATCH",
-      "direction": "LONG",
-      "overall": 41.5,
+      "price": 0.01799,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 40.3,
       "scores": {
-        "ignition": 15.2,
-        "prebreakout": 44.8,
-        "momentum": 15.2,
-        "squeeze": 47.2,
-        "liquidity": 44.7,
-        "execution": 86.9
+        "ignition": 29,
+        "prebreakout": 45.6,
+        "momentum": 30.5,
+        "squeeze": 33.8,
+        "liquidity": 44.6,
+        "execution": 88.9
       },
       "metrics": {
-        "change24hPct": 13.96,
-        "okxChange24hPct": 13.76,
-        "ret15Pct": 0.07,
-        "ret60Pct": -0.1,
-        "volumeAcceleration": 0.41,
-        "fundingPct": -0.0355,
-        "turnover24hUsd": 71834029,
-        "bitgetSpreadBps": 3.29,
-        "compressionRatio": 0.57,
-        "rangePosition": 0.69,
+        "change24hPct": 12.01,
+        "okxChange24hPct": 12.09,
+        "ret15Pct": -1.46,
+        "ret60Pct": -1.37,
+        "volumeAcceleration": 0.62,
+        "fundingPct": -0.0327,
+        "turnover24hUsd": 71021675,
+        "bitgetSpreadBps": 2.78,
+        "compressionRatio": 0.62,
+        "rangePosition": 0.32,
         "candleSources": 2
       },
       "levels": {
-        "trigger": 0.0186015,
-        "invalidationReference": 0.0174825
+        "trigger": 0.017688,
+        "invalidationReference": 0.0186015
       },
       "reasons": [
-        "funding -0.036%",
+        "funding -0.033%",
         "compression",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
@@ -1860,66 +1852,66 @@
     },
     {
       "symbol": "HYPEUSDT",
-      "price": 59.399,
+      "price": 59.27,
       "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 35.9,
+      "direction": "SHORT",
+      "overall": 39.6,
       "scores": {
-        "ignition": 30.4,
-        "prebreakout": 39.3,
-        "momentum": 14.7,
-        "squeeze": 13.5,
-        "liquidity": 43.7,
+        "ignition": 33.9,
+        "prebreakout": 43.4,
+        "momentum": 15.6,
+        "squeeze": 13.9,
+        "liquidity": 43.9,
         "execution": 99.3
       },
       "metrics": {
-        "change24hPct": 0.31,
-        "okxChange24hPct": 0.3,
-        "ret15Pct": 0.03,
-        "ret60Pct": -0.07,
-        "volumeAcceleration": 0.52,
-        "fundingPct": 0.0037,
-        "turnover24hUsd": 65234074,
+        "change24hPct": 0.24,
+        "okxChange24hPct": 0.19,
+        "ret15Pct": -0.15,
+        "ret60Pct": -0.1,
+        "volumeAcceleration": 0.59,
+        "fundingPct": 0.0045,
+        "turnover24hUsd": 66358947,
         "bitgetSpreadBps": 0.17,
-        "compressionRatio": 1.32,
-        "rangePosition": 0.33,
+        "compressionRatio": 1.34,
+        "rangePosition": 0.17,
         "candleSources": 2
       },
       "levels": {
-        "trigger": 59.944,
-        "invalidationReference": 59.12
+        "trigger": 59.12,
+        "invalidationReference": 59.944
       },
       "reasons": [
-        "до границы ~0.46%",
+        "до границы ~0.23%",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
       "symbol": "BEATUSDT",
-      "price": 0.2464,
+      "price": 0.2432,
       "type": "MOMENTUM",
       "direction": "SHORT",
-      "overall": 17.5,
+      "overall": 20,
       "scores": {
-        "ignition": 13.2,
-        "prebreakout": 12,
-        "momentum": 21.6,
-        "squeeze": 13.3,
+        "ignition": 22.2,
+        "prebreakout": 22.4,
+        "momentum": 24.6,
+        "squeeze": 16.9,
         "liquidity": 39.6,
-        "execution": 67.6
+        "execution": 67.1
       },
       "metrics": {
-        "change24hPct": -14.33,
-        "okxChange24hPct": -14.14,
-        "ret15Pct": -0.06,
-        "ret60Pct": 1.61,
-        "volumeAcceleration": 0.79,
+        "change24hPct": -14.88,
+        "okxChange24hPct": -14.81,
+        "ret15Pct": -1.18,
+        "ret60Pct": 0.68,
+        "volumeAcceleration": 0.66,
         "fundingPct": 0.005,
-        "turnover24hUsd": 43774828,
-        "bitgetSpreadBps": 8.11,
-        "compressionRatio": 1.25,
-        "rangePosition": 0.46,
+        "turnover24hUsd": 43782630,
+        "bitgetSpreadBps": 8.23,
+        "compressionRatio": 0.85,
+        "rangePosition": 0.29,
         "candleSources": 2
       },
       "levels": {
@@ -1932,37 +1924,37 @@
     },
     {
       "symbol": "ZECUSDT",
-      "price": 504.18,
+      "price": 500.87,
       "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 39.8,
+      "overall": 44.6,
       "scores": {
-        "ignition": 33.1,
-        "prebreakout": 43.9,
-        "momentum": 13.8,
+        "ignition": 46.2,
+        "prebreakout": 49.2,
+        "momentum": 25,
         "squeeze": 15.7,
-        "liquidity": 39.3,
+        "liquidity": 39.4,
         "execution": 99.2
       },
       "metrics": {
-        "change24hPct": -1.59,
-        "okxChange24hPct": -1.58,
-        "ret15Pct": 0.04,
-        "ret60Pct": 0,
-        "volumeAcceleration": 0.72,
+        "change24hPct": -2.33,
+        "okxChange24hPct": -2.32,
+        "ret15Pct": -0.62,
+        "ret60Pct": -0.74,
+        "volumeAcceleration": 1.57,
         "fundingPct": 0.01,
-        "turnover24hUsd": 42471327,
+        "turnover24hUsd": 42781551,
         "bitgetSpreadBps": 0.2,
-        "compressionRatio": 1.62,
-        "rangePosition": 0.27,
+        "compressionRatio": 1.73,
+        "rangePosition": -0.86,
         "candleSources": 2
       },
       "levels": {
         "trigger": 503.325,
-        "invalidationReference": 506.555
+        "invalidationReference": 506.2
       },
       "reasons": [
-        "до границы ~0.17%",
+        "5m breakout down",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
@@ -1971,72 +1963,34 @@
   "topExecution": [
     {
       "symbol": "BTCUSDT",
-      "price": 64184.3,
+      "price": 64145.8,
       "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 48.3,
+      "direction": "SHORT",
+      "overall": 45.8,
       "scores": {
-        "ignition": 47.8,
-        "prebreakout": 49.9,
-        "momentum": 26,
-        "squeeze": 20.2,
+        "ignition": 37.6,
+        "prebreakout": 47.4,
+        "momentum": 19.6,
+        "squeeze": 20.1,
         "liquidity": 77.9,
         "execution": 99.9
       },
       "metrics": {
-        "change24hPct": 0.94,
-        "okxChange24hPct": 0.94,
-        "ret15Pct": 0.16,
-        "ret60Pct": -0.04,
-        "volumeAcceleration": 1.87,
-        "fundingPct": 0.0033,
-        "turnover24hUsd": 1754198592,
+        "change24hPct": 0.87,
+        "okxChange24hPct": 0.86,
+        "ret15Pct": -0.04,
+        "ret60Pct": -0.09,
+        "volumeAcceleration": 0.72,
+        "fundingPct": 0.0031,
+        "turnover24hUsd": 1754556892,
         "bitgetSpreadBps": 0.02,
-        "compressionRatio": 2.78,
-        "rangePosition": 0.45,
+        "compressionRatio": 3.27,
+        "rangePosition": 0.34,
         "candleSources": 2
       },
       "levels": {
-        "trigger": 64378.45,
-        "invalidationReference": 64026.05
-      },
-      "reasons": [
-        "volume x1.9",
-        "до границы ~0.25%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "ETHUSDT",
-      "price": 1896.96,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 45.9,
-      "scores": {
-        "ignition": 40.9,
-        "prebreakout": 48,
-        "momentum": 21.3,
-        "squeeze": 17.5,
-        "liquidity": 70.2,
-        "execution": 99.8
-      },
-      "metrics": {
-        "change24hPct": -0.31,
-        "okxChange24hPct": -0.32,
-        "ret15Pct": 0.1,
-        "ret60Pct": -0.13,
-        "volumeAcceleration": 1.34,
-        "fundingPct": 0.001,
-        "turnover24hUsd": 837905399,
-        "bitgetSpreadBps": 0.05,
-        "compressionRatio": 2.43,
-        "rangePosition": 0.32,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 1893.29,
-        "invalidationReference": 1904.425
+        "trigger": 64013.15,
+        "invalidationReference": 64378.45
       },
       "reasons": [
         "до границы ~0.19%",
@@ -2045,30 +1999,67 @@
       ]
     },
     {
-      "symbol": "SOLUSDT",
-      "price": 76.133,
+      "symbol": "ETHUSDT",
+      "price": 1895.49,
       "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 45.2,
+      "overall": 45.7,
       "scores": {
-        "ignition": 45.9,
-        "prebreakout": 49,
-        "momentum": 23,
+        "ignition": 37.4,
+        "prebreakout": 47.8,
+        "momentum": 18.9,
+        "squeeze": 17.5,
+        "liquidity": 70.2,
+        "execution": 99.8
+      },
+      "metrics": {
+        "change24hPct": -0.37,
+        "okxChange24hPct": -0.38,
+        "ret15Pct": -0.05,
+        "ret60Pct": -0.16,
+        "volumeAcceleration": 0.76,
+        "fundingPct": 0.001,
+        "turnover24hUsd": 840284349,
+        "bitgetSpreadBps": 0.05,
+        "compressionRatio": 2.99,
+        "rangePosition": 0.21,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 1893.05,
+        "invalidationReference": 1904.415
+      },
+      "reasons": [
+        "до границы ~0.13%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOLUSDT",
+      "price": 76.066,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 43.1,
+      "scores": {
+        "ignition": 35.5,
+        "prebreakout": 46.7,
+        "momentum": 16.1,
         "squeeze": 17.1,
         "liquidity": 49.6,
         "execution": 99.5
       },
       "metrics": {
-        "change24hPct": 0.75,
-        "okxChange24hPct": 0.75,
-        "ret15Pct": 0.1,
-        "ret60Pct": -0.21,
-        "volumeAcceleration": 1.96,
+        "change24hPct": 0.71,
+        "okxChange24hPct": 0.69,
+        "ret15Pct": -0.04,
+        "ret60Pct": -0.19,
+        "volumeAcceleration": 0.88,
         "fundingPct": 0.0087,
-        "turnover24hUsd": 115792616,
+        "turnover24hUsd": 116141204,
         "bitgetSpreadBps": 0.13,
-        "compressionRatio": 1.69,
-        "rangePosition": 0.25,
+        "compressionRatio": 1.8,
+        "rangePosition": 0.11,
         "candleSources": 2
       },
       "levels": {
@@ -2076,193 +2067,192 @@
         "invalidationReference": 76.4915
       },
       "reasons": [
-        "volume x2",
-        "до границы ~0.16%",
-        "OKX/Bitget 24h direction agree",
-        "tight Bitget spread"
-      ]
-    },
-    {
-      "symbol": "BNBUSDT",
-      "price": 600.59,
-      "type": "PRE-BREAKOUT",
-      "direction": "SHORT",
-      "overall": 37.5,
-      "scores": {
-        "ignition": 32,
-        "prebreakout": 42.5,
-        "momentum": 12.5,
-        "squeeze": 12.4,
-        "liquidity": 23.2,
-        "execution": 99.3
-      },
-      "metrics": {
-        "change24hPct": -0.82,
-        "okxChange24hPct": -0.89,
-        "ret15Pct": 0.12,
-        "ret60Pct": -0.08,
-        "volumeAcceleration": 0.41,
-        "fundingPct": 0.01,
-        "turnover24hUsd": 8260790,
-        "bitgetSpreadBps": 0.17,
-        "compressionRatio": 2.13,
-        "rangePosition": 0.35,
-        "candleSources": 2
-      },
-      "levels": {
-        "trigger": 599.475,
-        "invalidationReference": 602.255
-      },
-      "reasons": [
-        "до границы ~0.16%",
+        "до границы ~0.07%",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
       "symbol": "HYPEUSDT",
-      "price": 59.399,
+      "price": 59.27,
       "type": "PRE-BREAKOUT",
-      "direction": "LONG",
-      "overall": 35.9,
+      "direction": "SHORT",
+      "overall": 39.6,
       "scores": {
-        "ignition": 30.4,
-        "prebreakout": 39.3,
-        "momentum": 14.7,
-        "squeeze": 13.5,
-        "liquidity": 43.7,
+        "ignition": 33.9,
+        "prebreakout": 43.4,
+        "momentum": 15.6,
+        "squeeze": 13.9,
+        "liquidity": 43.9,
         "execution": 99.3
       },
       "metrics": {
-        "change24hPct": 0.31,
-        "okxChange24hPct": 0.3,
-        "ret15Pct": 0.03,
-        "ret60Pct": -0.07,
-        "volumeAcceleration": 0.52,
-        "fundingPct": 0.0037,
-        "turnover24hUsd": 65234074,
+        "change24hPct": 0.24,
+        "okxChange24hPct": 0.19,
+        "ret15Pct": -0.15,
+        "ret60Pct": -0.1,
+        "volumeAcceleration": 0.59,
+        "fundingPct": 0.0045,
+        "turnover24hUsd": 66358947,
         "bitgetSpreadBps": 0.17,
-        "compressionRatio": 1.32,
-        "rangePosition": 0.33,
+        "compressionRatio": 1.34,
+        "rangePosition": 0.17,
         "candleSources": 2
       },
       "levels": {
-        "trigger": 59.944,
-        "invalidationReference": 59.12
+        "trigger": 59.12,
+        "invalidationReference": 59.944
       },
       "reasons": [
-        "до границы ~0.46%",
+        "до границы ~0.23%",
+        "OKX/Bitget 24h direction agree",
+        "tight Bitget spread"
+      ]
+    },
+    {
+      "symbol": "BNBUSDT",
+      "price": 599.8,
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 39.4,
+      "scores": {
+        "ignition": 33.2,
+        "prebreakout": 44.6,
+        "momentum": 12.8,
+        "squeeze": 12.4,
+        "liquidity": 22.8,
+        "execution": 99.3
+      },
+      "metrics": {
+        "change24hPct": -0.99,
+        "okxChange24hPct": -1.04,
+        "ret15Pct": -0.11,
+        "ret60Pct": -0.18,
+        "volumeAcceleration": 0.23,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 7876315,
+        "bitgetSpreadBps": 0.17,
+        "compressionRatio": 1.89,
+        "rangePosition": 0.08,
+        "candleSources": 2
+      },
+      "levels": {
+        "trigger": 599.475,
+        "invalidationReference": 602.055
+      },
+      "reasons": [
+        "до границы ~0.04%",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
       "symbol": "ZECUSDT",
-      "price": 504.18,
+      "price": 500.87,
       "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 39.8,
+      "overall": 44.6,
       "scores": {
-        "ignition": 33.1,
-        "prebreakout": 43.9,
-        "momentum": 13.8,
+        "ignition": 46.2,
+        "prebreakout": 49.2,
+        "momentum": 25,
         "squeeze": 15.7,
-        "liquidity": 39.3,
+        "liquidity": 39.4,
         "execution": 99.2
       },
       "metrics": {
-        "change24hPct": -1.59,
-        "okxChange24hPct": -1.58,
-        "ret15Pct": 0.04,
-        "ret60Pct": 0,
-        "volumeAcceleration": 0.72,
+        "change24hPct": -2.33,
+        "okxChange24hPct": -2.32,
+        "ret15Pct": -0.62,
+        "ret60Pct": -0.74,
+        "volumeAcceleration": 1.57,
         "fundingPct": 0.01,
-        "turnover24hUsd": 42471327,
+        "turnover24hUsd": 42781551,
         "bitgetSpreadBps": 0.2,
-        "compressionRatio": 1.62,
-        "rangePosition": 0.27,
+        "compressionRatio": 1.73,
+        "rangePosition": -0.86,
         "candleSources": 2
       },
       "levels": {
         "trigger": 503.325,
-        "invalidationReference": 506.555
+        "invalidationReference": 506.2
       },
       "reasons": [
-        "до границы ~0.17%",
+        "5m breakout down",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
-      "symbol": "REUSDT",
-      "price": 0.39058,
+      "symbol": "TAOUSDT",
+      "price": 191.62,
       "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 29.2,
+      "overall": 37.9,
       "scores": {
-        "ignition": 28.8,
-        "prebreakout": 34.2,
-        "momentum": 12.4,
-        "squeeze": 13.2,
-        "liquidity": 4.7,
-        "execution": 99
+        "ignition": 31.9,
+        "prebreakout": 43.2,
+        "momentum": 12.8,
+        "squeeze": 9.8,
+        "liquidity": 21.9,
+        "execution": 97.9
       },
       "metrics": {
-        "change24hPct": -5.68,
-        "okxChange24hPct": -5.69,
-        "ret15Pct": -0.5,
-        "ret60Pct": 0.08,
-        "volumeAcceleration": 0.4,
-        "fundingPct": -0.0193,
-        "turnover24hUsd": 565174,
-        "bitgetSpreadBps": 0.26,
-        "compressionRatio": 1.06,
-        "rangePosition": 0.4,
-        "candleSources": 2
+        "change24hPct": -2.2,
+        "okxChange24hPct": -2.25,
+        "ret15Pct": -0.07,
+        "ret60Pct": -0.27,
+        "volumeAcceleration": 0.76,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 7166618,
+        "bitgetSpreadBps": 0.52,
+        "compressionRatio": 1.12,
+        "rangePosition": 0.11,
+        "candleSources": 1
       },
       "levels": {
-        "trigger": 0.388545,
-        "invalidationReference": 0.39369
+        "trigger": 191.4,
+        "invalidationReference": 193.45
       },
       "reasons": [
-        "до границы ~0.53%",
+        "до границы ~0.11%",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
     },
     {
       "symbol": "NEARUSDT",
-      "price": 1.6172,
+      "price": 1.6136,
       "type": "PRE-BREAKOUT",
       "direction": "SHORT",
-      "overall": 31.2,
+      "overall": 43.3,
       "scores": {
-        "ignition": 29.6,
-        "prebreakout": 35.5,
-        "momentum": 15,
-        "squeeze": 12.8,
+        "ignition": 29.5,
+        "prebreakout": 49.2,
+        "momentum": 13.2,
+        "squeeze": 16.5,
         "liquidity": 24.8,
         "execution": 97.5
       },
       "metrics": {
-        "change24hPct": -1.68,
-        "okxChange24hPct": -1.64,
-        "ret15Pct": 0.23,
-        "ret60Pct": -0.25,
-        "volumeAcceleration": 1.12,
+        "change24hPct": -2.09,
+        "okxChange24hPct": -2.12,
+        "ret15Pct": -0.12,
+        "ret60Pct": -0.18,
+        "volumeAcceleration": 0.2,
         "fundingPct": 0.01,
-        "turnover24hUsd": 9795740,
+        "turnover24hUsd": 9794640,
         "bitgetSpreadBps": 0.62,
-        "compressionRatio": 1.04,
-        "rangePosition": 0.43,
-        "candleSources": 1
+        "compressionRatio": 0.84,
+        "rangePosition": 0.29,
+        "candleSources": 2
       },
       "levels": {
-        "trigger": 1.6075,
-        "invalidationReference": 1.6299
+        "trigger": 1.60675,
+        "invalidationReference": 1.62945
       },
       "reasons": [
-        "до границы ~0.6%",
+        "до границы ~0.41%",
         "OKX/Bitget 24h direction agree",
         "tight Bitget spread"
       ]
