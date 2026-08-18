@@ -1,0 +1,49 @@
+name: Crypto Cross-Exchange Scan
+
+on:
+  push:
+    branches:
+      - codex/bitget-private-readonly-v1-2026-08-18
+    paths:
+      - scripts/crypto-cross-exchange-scan.mjs
+      - .github/workflows/crypto-cross-exchange-scan.yml
+      - scanner-trigger.txt
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crypto-cross-exchange-scan
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/bitget-private-readonly-v1-2026-08-18
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run public market scan
+        run: |
+          mkdir -p data
+          node scripts/crypto-cross-exchange-scan.mjs > data/crypto-scan-latest.json
+          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status); console.log(x.topOverall.slice(0,5).map(r=>[r.symbol,r.primaryType,r.direction,r.overallScore]));"
+
+      - name: Commit latest public snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/crypto-scan-latest.json
+          if git diff --cached --quiet; then
+            echo "No scan changes"
+            exit 0
+          fi
+          git commit -m "data: refresh crypto cross-exchange scan [skip ci]"
+          git push origin HEAD:codex/bitget-private-readonly-v1-2026-08-18
