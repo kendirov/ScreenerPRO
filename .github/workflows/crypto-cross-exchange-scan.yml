@@ -6,6 +6,7 @@ on:
       - codex/bitget-private-readonly-v1-2026-08-18
     paths:
       - scripts/crypto-cross-exchange-scan.mjs
+      - scripts/crypto-market-scan-v2.mjs
       - .github/workflows/crypto-cross-exchange-scan.yml
       - scanner-trigger.txt
   workflow_dispatch:
@@ -33,8 +34,8 @@ jobs:
       - name: Run public market scan
         run: |
           mkdir -p data
-          node scripts/crypto-cross-exchange-scan.mjs > data/crypto-scan-latest.json
-          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status); console.log(x.topOverall.slice(0,5).map(r=>[r.symbol,r.primaryType,r.direction,r.overallScore]));"
+          node scripts/crypto-market-scan-v2.mjs > data/crypto-scan-latest.json
+          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status, x.sources, x.errors); console.log(x.topOverall.slice(0,8).map(r=>[r.symbol,r.type,r.direction,r.overall]));"
 
       - name: Commit latest public snapshot
         run: |
