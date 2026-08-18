@@ -52,7 +52,9 @@ function requireSecrets() {
       passphraseLength: values.passphrase.length,
       apiKeyLooksBitget: values.apiKey.startsWith("bg_"),
       hadOuterWhitespace:
-        raw.apiKey !== values.apiKey || raw.apiSecret !== values.apiSecret || raw.passphrase !== values.passphrase,
+        raw.apiKey !== values.apiKey ||
+        raw.apiSecret !== values.apiSecret ||
+        raw.passphrase !== values.passphrase,
     },
   };
 }
@@ -99,7 +101,10 @@ async function safe<T>(label: string, action: () => Promise<T>): Promise<SafeRes
     return { ok: true as const, data: await action() };
   } catch (error) {
     if (error instanceof BitgetPrivateConfigError) throw error;
-    return { ok: false as const, error: `${label}: ${error instanceof Error ? error.message : "request failed"}` };
+    return {
+      ok: false as const,
+      error: `${label}: ${error instanceof Error ? error.message : "request failed"}`,
+    };
   }
 }
 
@@ -110,6 +115,12 @@ function productParams(productType: (typeof POSITION_CATEGORIES)[number]) {
 function numberFrom(value: unknown) {
   const parsed = typeof value === "number" ? value : Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function records(value: unknown): JsonRecord[] {
+  return Array.isArray(value)
+    ? value.filter((row): row is JsonRecord => Boolean(row) && typeof row === "object")
+    : [];
 }
 
 function accountBalanceSummary(result: SafeResult<JsonRecord[]>) {
@@ -139,35 +150,111 @@ function nonZeroAssets(result: SafeResult<JsonRecord[]>, valueKeys: string[]) {
   };
 }
 
-async function getUtaV3Snapshot() {
-  const [info, assets, fundingAssets, openOrders, ...positions] = await Promise.all([
-    safe("account info", () => privateGet<JsonRecord>("/api/v3/account/info")),
-    safe("account assets", () => privateGet<JsonRecord>("/api/v3/account/assets")),
-    safe("funding assets", () => privateGet<JsonRecord[]>("/api/v3/account/funding-assets")),
-    safe("open orders", () => privateGet<JsonRecord>("/api/v3/trade/unfilled-orders")),
-    ...POSITION_CATEGORIES.map((category) =>
-      safe(`${category} positions`, () =>
-        privateGet<JsonRecord>("/api/v3/position/current-position", new URLSearchParams({ category })),
+function utaAssetsSummary(result: SafeResult<JsonRecord>) {
+  if (!result.ok) return result;
+
+  const assetRows = records(result.data.assets);
+  const assets = assetRows
+    .filter((row) =>
+      ["equity", "usdValue", "balance", "available", "locked", "bonus", "debt"].some(
+        (key) => Math.abs(numberFrom(row[key])) > 0,
       ),
-    ),
-  ]);
+    )
+    .map((row) => ({
+      coin: String(row.coin ?? ""),
+      equity: numberFrom(row.equity),
+      usdValue: numberFrom(row.usdValue),
+      balance: numberFrom(row.balance),
+      available: numberFrom(row.available),
+      locked: numberFrom(row.locked),
+      bonus: numberFrom(row.bonus),
+      debt: numberFrom(row.debt),
+    }));
+
+  return {
+    ok: true as const,
+    data: {
+      accountEquityUsd: numberFrom(result.data.accountEquity),
+      usdtEquity: numberFrom(result.data.usdtEquity),
+      btcEquity: numberFrom(result.data.btcEquity),
+      unrealisedPnlUsd: numberFrom(result.data.unrealisedPnl),
+      usdtUnrealisedPnl: numberFrom(result.data.usdtUnrealisedPnl),
+      effectiveEquityUsd: numberFrom(result.data.effEquity),
+      maintenanceMarginUsd: numberFrom(result.data.mmr),
+      initialMarginUsd: numberFrom(result.data.imr),
+      marginRatio: numberFrom(result.data.mgnRatio),
+      positionMarginRatio: numberFrom(result.data.positionMgnRatio),
+      positionValueUsd: numberFrom(result.data.positionValue),
+      leverage: numberFrom(result.data.leverage),
+      assets,
+    },
+    rawAssetCount: assetRows.length,
+  };
+}
+
+function utaFundingSummary(result: SafeResult<JsonRecord[]>) {
+  return nonZeroAssets(result, ["balance", "available", "frozen"]);
+}
+
+function utaPageList(result: SafeResult<JsonRecord>, valueKey?: string) {
+  if (!result.ok) return result;
+  const list = records(result.data.list);
+  return {
+    ok: true as const,
+    data: valueKey
+      ? list.filter((row) => Math.abs(numberFrom(row[valueKey])) > 0)
+      : list,
+    rawCount: list.length,
+  };
+}
+
+async function getUtaV3Snapshot() {
+  const [info, settings, assetsRaw, fundingAssetsRaw, openOrdersRaw, ...positionResults] =
+    await Promise.all([
+      safe("UTA account info", () => privateGet<JsonRecord>("/api/v3/account/info")),
+      safe("UTA account settings", () => privateGet<JsonRecord>("/api/v3/account/settings")),
+      safe("UTA account assets", () => privateGet<JsonRecord>("/api/v3/account/assets")),
+      safe("UTA funding assets", () => privateGet<JsonRecord[]>("/api/v3/account/funding-assets")),
+      safe("UTA open orders", () => privateGet<JsonRecord>("/api/v3/trade/unfilled-orders")),
+      ...POSITION_CATEGORIES.map((category) =>
+        safe(`UTA ${category} positions`, () =>
+          privateGet<JsonRecord>(
+            "/api/v3/position/current-position",
+            new URLSearchParams({ category }),
+          ),
+        ),
+      ),
+    ]);
 
   return {
     info,
-    assets,
-    fundingAssets,
-    positions: Object.fromEntries(POSITION_CATEGORIES.map((category, index) => [category, positions[index]])),
-    openOrders,
+    settings,
+    assets: utaAssetsSummary(assetsRaw),
+    fundingAssets: utaFundingSummary(fundingAssetsRaw),
+    positions: Object.fromEntries(
+      POSITION_CATEGORIES.map((category, index) => [
+        category,
+        utaPageList(positionResults[index], "total"),
+      ]),
+    ),
+    openOrders: utaPageList(openOrdersRaw),
   };
 }
 
 async function getClassicV2Snapshot() {
   const [info, allAccountBalanceRaw, fundingAssetsRaw, spotAssetsRaw, ...rest] = await Promise.all([
     safe("classic account info", () => privateGet<JsonRecord>("/api/v2/spot/account/info")),
-    safe("classic all account balance", () => privateGet<JsonRecord[]>("/api/v2/account/all-account-balance")),
-    safe("classic funding assets", () => privateGet<JsonRecord[]>("/api/v2/account/funding-assets")),
+    safe("classic all account balance", () =>
+      privateGet<JsonRecord[]>("/api/v2/account/all-account-balance"),
+    ),
+    safe("classic funding assets", () =>
+      privateGet<JsonRecord[]>("/api/v2/account/funding-assets"),
+    ),
     safe("classic spot assets", () =>
-      privateGet<JsonRecord[]>("/api/v2/spot/account/assets", new URLSearchParams({ assetType: "all" })),
+      privateGet<JsonRecord[]>(
+        "/api/v2/spot/account/assets",
+        new URLSearchParams({ assetType: "all" }),
+      ),
     ),
     ...POSITION_CATEGORIES.flatMap((category) => [
       safe(`${category} classic accounts`, () =>
@@ -207,34 +294,53 @@ async function getClassicV2Snapshot() {
 
 export async function getBitgetPrivateBalanceSummary() {
   const startedAt = Date.now();
-  const [allAccountBalanceRaw, fundingAssetsRaw, spotAssetsRaw] = await Promise.all([
-    safe("classic all account balance", () => privateGet<JsonRecord[]>("/api/v2/account/all-account-balance")),
-    safe("classic funding assets", () => privateGet<JsonRecord[]>("/api/v2/account/funding-assets")),
-    safe("classic spot assets", () =>
-      privateGet<JsonRecord[]>("/api/v2/spot/account/assets", new URLSearchParams({ assetType: "hold_only" })),
-    ),
-  ]);
+  const utaV3 = await getUtaV3Snapshot();
 
+  if (utaV3.assets.ok) {
+    return {
+      mode: "read-only" as const,
+      accountMode: "UTA" as const,
+      source: "bitget-uta-v3" as const,
+      asOf: new Date().toISOString(),
+      latencyMs: Date.now() - startedAt,
+      utaV3,
+    };
+  }
+
+  const classicV2 = await getClassicV2Snapshot();
   return {
     mode: "read-only" as const,
-    source: "bitget-classic-balance-v1" as const,
+    accountMode: "CLASSIC_FALLBACK" as const,
+    source: "bitget-classic-v2-fallback" as const,
     asOf: new Date().toISOString(),
     latencyMs: Date.now() - startedAt,
-    allAccountBalance: accountBalanceSummary(allAccountBalanceRaw),
-    fundingAssets: nonZeroAssets(fundingAssetsRaw, ["available", "frozen", "usdtValue"]),
-    spotAssets: nonZeroAssets(spotAssetsRaw, ["available", "frozen", "locked", "limitAvailable"]),
+    utaError: utaV3.assets,
+    classicV2,
   };
 }
 
 export async function getBitgetPrivateReadOnlySnapshot() {
   const startedAt = Date.now();
   const secrets = requireSecrets();
+  const utaV3 = await getUtaV3Snapshot();
 
-  const [utaV3, classicV2] = await Promise.all([getUtaV3Snapshot(), getClassicV2Snapshot()]);
+  if (utaV3.assets.ok) {
+    return {
+      mode: "read-only" as const,
+      accountMode: "UTA" as const,
+      source: "bitget-private-uta-v3" as const,
+      asOf: new Date().toISOString(),
+      latencyMs: Date.now() - startedAt,
+      credentialShape: secrets.meta,
+      utaV3,
+    };
+  }
 
+  const classicV2 = await getClassicV2Snapshot();
   return {
     mode: "read-only" as const,
-    source: "bitget-private-auto-v3" as const,
+    accountMode: "CLASSIC_FALLBACK" as const,
+    source: "bitget-private-auto-fallback" as const,
     asOf: new Date().toISOString(),
     latencyMs: Date.now() - startedAt,
     credentialShape: secrets.meta,
