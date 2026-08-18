@@ -1,0 +1,1251 @@
+{
+  "asOf": "2026-08-18T13:46:14.064Z",
+  "methodologyVersion": "crypto-rebound-v1-okx-bitget",
+  "purpose": "Long rebound watch: oversold/support/volume dry-up/funding crowding with execution filter on Bitget",
+  "sources": [
+    "Bitget USDT futures instruments/tickers/candles",
+    "OKX USDT swap tickers/candles"
+  ],
+  "limitations": [
+    "Binance and Bybit are not in this snapshot because their public APIs are geo-blocked from the current runner.",
+    "Rebound score is a watchlist rank, not a buy instruction. A trigger and invalidation are required.",
+    "RSI is calculated from public 5m candles, with 15m/1h bars aggregated from the same series."
+  ],
+  "status": {
+    "bitgetCryptoUsdtFutures": 471,
+    "commonWithOkx": 258,
+    "candidatePool": 72,
+    "scored": 72,
+    "tradeable": 40
+  },
+  "doge": {
+    "symbol": "DOGEUSDT",
+    "price": 0.0698,
+    "stage": "WATCH",
+    "reboundScore": 25.5,
+    "metrics": {
+      "change24hPct": -0.53,
+      "okxChange24hPct": -0.53,
+      "ret15Pct": 0.05,
+      "ret60Pct": -0.04,
+      "ret240Pct": -0.04,
+      "rsi5m": 42.9,
+      "rsi15m": 44.1,
+      "rsi1h": 29.9,
+      "volumeAcceleration": 1.31,
+      "compressionRatio": 1.97,
+      "fundingPct": 0.01,
+      "turnover24hUsd": 18983260,
+      "bitgetSpreadBps": 1.43,
+      "distanceFrom24hLowPct": 0.35,
+      "rangePosition": 0.32,
+      "candleSources": 2,
+      "potentialToPriorHighPct": 0.29
+    },
+    "levels": {
+      "trigger": 0.069885,
+      "invalidationReference": 0.06956,
+      "priorRangeHigh": 0.07,
+      "priorRangeLow": 0.06972
+    },
+    "reasons": [
+      "RSI1h 30",
+      "у 24h low +0.35%",
+      "spread 1.43 bps"
+    ]
+  },
+  "topTradeable": [
+    {
+      "symbol": "JTOUSDT",
+      "price": 0.5588,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 44.9,
+      "metrics": {
+        "change24hPct": -6.62,
+        "okxChange24hPct": -6.57,
+        "ret15Pct": -0.15,
+        "ret60Pct": -0.83,
+        "ret240Pct": -2.39,
+        "rsi5m": 27.9,
+        "rsi15m": 8.2,
+        "rsi1h": 30.7,
+        "volumeAcceleration": 0.47,
+        "compressionRatio": 1.26,
+        "fundingPct": 0.0011,
+        "turnover24hUsd": 1609353,
+        "bitgetSpreadBps": 3.58,
+        "distanceFrom24hLowPct": 0.14,
+        "rangePosition": 0.04,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 2.89
+      },
+      "levels": {
+        "trigger": 0.5649,
+        "invalidationReference": 0.558,
+        "priorRangeHigh": 0.57495,
+        "priorRangeLow": 0.55825
+      },
+      "reasons": [
+        "24h -6.6%",
+        "RSI15 8",
+        "RSI1h 31",
+        "у 24h low +0.14%",
+        "volume dry x0.47",
+        "spread 3.58 bps"
+      ]
+    },
+    {
+      "symbol": "FILUSDT",
+      "price": 0.6217,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 43.9,
+      "metrics": {
+        "change24hPct": -7.28,
+        "okxChange24hPct": -7.28,
+        "ret15Pct": -0.01,
+        "ret60Pct": -0.51,
+        "ret240Pct": -0.59,
+        "rsi5m": 33.7,
+        "rsi15m": 34.9,
+        "rsi1h": 16.1,
+        "volumeAcceleration": 0.38,
+        "compressionRatio": 0.8,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 11888676,
+        "bitgetSpreadBps": 1.61,
+        "distanceFrom24hLowPct": 2.37,
+        "rangePosition": 0.45,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.79
+      },
+      "levels": {
+        "trigger": 0.62495,
+        "invalidationReference": 0.6073,
+        "priorRangeHigh": 0.6266,
+        "priorRangeLow": 0.6176
+      },
+      "reasons": [
+        "24h -7.3%",
+        "RSI15 35",
+        "RSI1h 16",
+        "volume dry x0.38",
+        "spread 1.61 bps"
+      ]
+    },
+    {
+      "symbol": "CRVUSDT",
+      "price": 0.2396,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 41.9,
+      "metrics": {
+        "change24hPct": -2.36,
+        "okxChange24hPct": -2.32,
+        "ret15Pct": -0.1,
+        "ret60Pct": -0.54,
+        "ret240Pct": -2.3,
+        "rsi5m": 32.2,
+        "rsi15m": 14.2,
+        "rsi1h": 44.5,
+        "volumeAcceleration": 0.3,
+        "compressionRatio": 0.69,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1938567,
+        "bitgetSpreadBps": 4.17,
+        "distanceFrom24hLowPct": 0.25,
+        "rangePosition": 0.09,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 2.9
+      },
+      "levels": {
+        "trigger": 0.24105,
+        "invalidationReference": 0.23895,
+        "priorRangeHigh": 0.24655,
+        "priorRangeLow": 0.23895
+      },
+      "reasons": [
+        "RSI15 14",
+        "у 24h low +0.25%",
+        "volume dry x0.3",
+        "spread 4.17 bps"
+      ]
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "price": 0.006428,
+      "stage": "SQUEEZE-WATCH",
+      "reboundScore": 41,
+      "metrics": {
+        "change24hPct": -4.52,
+        "okxChange24hPct": -4.52,
+        "ret15Pct": -0.03,
+        "ret60Pct": 0.66,
+        "ret240Pct": 2.32,
+        "rsi5m": 55.5,
+        "rsi15m": 60.6,
+        "rsi1h": 40.6,
+        "volumeAcceleration": 0.27,
+        "compressionRatio": 0.57,
+        "fundingPct": -0.1759,
+        "turnover24hUsd": 1695358,
+        "bitgetSpreadBps": 3.11,
+        "distanceFrom24hLowPct": 3.39,
+        "rangePosition": 0.54,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 2.12
+      },
+      "levels": {
+        "trigger": 0.0064995,
+        "invalidationReference": 0.006217,
+        "priorRangeHigh": 0.0065645,
+        "priorRangeLow": 0.006267
+      },
+      "reasons": [
+        "volume dry x0.27",
+        "funding -0.176%",
+        "spread 3.11 bps"
+      ]
+    },
+    {
+      "symbol": "XLMUSDT",
+      "price": 0.15364,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 39.9,
+      "metrics": {
+        "change24hPct": -2.48,
+        "okxChange24hPct": -2.46,
+        "ret15Pct": 0.07,
+        "ret60Pct": 0.62,
+        "ret240Pct": 0.07,
+        "rsi5m": 71.2,
+        "rsi15m": 59.5,
+        "rsi1h": 23.8,
+        "volumeAcceleration": 0.22,
+        "compressionRatio": 0.85,
+        "fundingPct": -0.0112,
+        "turnover24hUsd": 3456071,
+        "bitgetSpreadBps": 0.65,
+        "distanceFrom24hLowPct": 0.89,
+        "rangePosition": 0.87,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.17
+      },
+      "levels": {
+        "trigger": 0.15389,
+        "invalidationReference": 0.15228,
+        "priorRangeHigh": 0.153905,
+        "priorRangeLow": 0.1523
+      },
+      "reasons": [
+        "RSI1h 24",
+        "у 24h low +0.89%",
+        "volume dry x0.22",
+        "spread 0.65 bps"
+      ]
+    },
+    {
+      "symbol": "GALAUSDT",
+      "price": 0.001404,
+      "stage": "WATCH",
+      "reboundScore": 38.5,
+      "metrics": {
+        "change24hPct": -13.87,
+        "okxChange24hPct": -13.87,
+        "ret15Pct": -0.11,
+        "ret60Pct": -0.18,
+        "ret240Pct": -0.71,
+        "rsi5m": 42.9,
+        "rsi15m": 39.9,
+        "rsi1h": 16,
+        "volumeAcceleration": 0.43,
+        "compressionRatio": 0.78,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1756437,
+        "bitgetSpreadBps": 7.13,
+        "distanceFrom24hLowPct": 3.62,
+        "rangePosition": 0.12,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 1.28
+      },
+      "levels": {
+        "trigger": 0.0014115,
+        "invalidationReference": 0.001355,
+        "priorRangeHigh": 0.001422,
+        "priorRangeLow": 0.001401
+      },
+      "reasons": [
+        "24h -13.9%",
+        "RSI1h 16",
+        "volume dry x0.43"
+      ]
+    },
+    {
+      "symbol": "ETCUSDT",
+      "price": 6.048,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 37.8,
+      "metrics": {
+        "change24hPct": -2.14,
+        "okxChange24hPct": -2.12,
+        "ret15Pct": -0.07,
+        "ret60Pct": -0.1,
+        "ret240Pct": -0.24,
+        "rsi5m": 42.7,
+        "rsi15m": 34.5,
+        "rsi1h": 23.5,
+        "volumeAcceleration": 0.31,
+        "compressionRatio": 1.09,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1038815,
+        "bitgetSpreadBps": 1.65,
+        "distanceFrom24hLowPct": 0.55,
+        "rangePosition": 0.27,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.57
+      },
+      "levels": {
+        "trigger": 6.0575,
+        "invalidationReference": 6.015,
+        "priorRangeHigh": 6.0825,
+        "priorRangeLow": 6.034
+      },
+      "reasons": [
+        "RSI15 35",
+        "RSI1h 24",
+        "у 24h low +0.55%",
+        "volume dry x0.31",
+        "spread 1.65 bps"
+      ]
+    },
+    {
+      "symbol": "WLDUSDT",
+      "price": 0.325,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 36.1,
+      "metrics": {
+        "change24hPct": -9.01,
+        "okxChange24hPct": -9.02,
+        "ret15Pct": -0.29,
+        "ret60Pct": -0.17,
+        "ret240Pct": 0.49,
+        "rsi5m": 46.4,
+        "rsi15m": 57.2,
+        "rsi1h": 24.6,
+        "volumeAcceleration": 0.56,
+        "compressionRatio": 1.19,
+        "fundingPct": -0.0134,
+        "turnover24hUsd": 17251900,
+        "bitgetSpreadBps": 3.08,
+        "distanceFrom24hLowPct": 2.39,
+        "rangePosition": 0.55,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.74
+      },
+      "levels": {
+        "trigger": 0.32735,
+        "invalidationReference": 0.3174,
+        "priorRangeHigh": 0.3274,
+        "priorRangeLow": 0.32195
+      },
+      "reasons": [
+        "24h -9%",
+        "RSI1h 25",
+        "volume dry x0.56",
+        "spread 3.08 bps"
+      ]
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "price": 1.3937,
+      "stage": "BOUNCE-STARTING",
+      "reboundScore": 34.9,
+      "metrics": {
+        "change24hPct": -1.74,
+        "okxChange24hPct": -1.83,
+        "ret15Pct": 0.32,
+        "ret60Pct": 0.7,
+        "ret240Pct": 0.85,
+        "rsi5m": 60,
+        "rsi15m": 54.7,
+        "rsi1h": 39.9,
+        "volumeAcceleration": 0.27,
+        "compressionRatio": 1.4,
+        "fundingPct": -0.0448,
+        "turnover24hUsd": 2116614,
+        "bitgetSpreadBps": 5.75,
+        "distanceFrom24hLowPct": 1.26,
+        "rangePosition": 0.72,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.4
+      },
+      "levels": {
+        "trigger": 1.39585,
+        "invalidationReference": 1.3763,
+        "priorRangeHigh": 1.39925,
+        "priorRangeLow": 1.37625
+      },
+      "reasons": [
+        "у 24h low +1.26%",
+        "volume dry x0.27",
+        "funding -0.045%",
+        "15m +0.32%"
+      ]
+    },
+    {
+      "symbol": "BNBUSDT",
+      "price": 600.58,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 33.5,
+      "metrics": {
+        "change24hPct": -0.82,
+        "okxChange24hPct": -0.89,
+        "ret15Pct": 0.12,
+        "ret60Pct": -0.08,
+        "ret240Pct": -0.13,
+        "rsi5m": 39.6,
+        "rsi15m": 45.3,
+        "rsi1h": 27.1,
+        "volumeAcceleration": 0.67,
+        "compressionRatio": 2.13,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 8260796,
+        "bitgetSpreadBps": 0.17,
+        "distanceFrom24hLowPct": 0.16,
+        "rangePosition": 0.35,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.28
+      },
+      "levels": {
+        "trigger": 601.025,
+        "invalidationReference": 599.475,
+        "priorRangeHigh": 602.255,
+        "priorRangeLow": 599.475
+      },
+      "reasons": [
+        "RSI1h 27",
+        "у 24h low +0.16%",
+        "volume dry x0.67",
+        "spread 0.17 bps"
+      ]
+    },
+    {
+      "symbol": "TRXUSDT",
+      "price": 0.33217,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 33,
+      "metrics": {
+        "change24hPct": 0.13,
+        "okxChange24hPct": 0.17,
+        "ret15Pct": 0.07,
+        "ret60Pct": -0.03,
+        "ret240Pct": -0.17,
+        "rsi5m": 47.9,
+        "rsi15m": 34.8,
+        "rsi1h": 61,
+        "volumeAcceleration": 0.41,
+        "compressionRatio": 0.58,
+        "fundingPct": 0.0009,
+        "turnover24hUsd": 1520676,
+        "bitgetSpreadBps": 0.3,
+        "distanceFrom24hLowPct": 1.25,
+        "rangePosition": 0.23,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.3
+      },
+      "levels": {
+        "trigger": 0.332575,
+        "invalidationReference": 0.32806,
+        "priorRangeHigh": 0.33318,
+        "priorRangeLow": 0.33194
+      },
+      "reasons": [
+        "RSI15 35",
+        "у 24h low +1.25%",
+        "volume dry x0.41",
+        "spread 0.3 bps"
+      ]
+    },
+    {
+      "symbol": "ZECUSDT",
+      "price": 504.17,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 32.3,
+      "metrics": {
+        "change24hPct": -1.59,
+        "okxChange24hPct": -1.59,
+        "ret15Pct": 0.03,
+        "ret60Pct": -0.01,
+        "ret240Pct": -0.33,
+        "rsi5m": 49.7,
+        "rsi15m": 45.5,
+        "rsi1h": 23.8,
+        "volumeAcceleration": 0.78,
+        "compressionRatio": 1.52,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 42471341,
+        "bitgetSpreadBps": 0.2,
+        "distanceFrom24hLowPct": 0.22,
+        "rangePosition": 0.21,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.62
+      },
+      "levels": {
+        "trigger": 505.29,
+        "invalidationReference": 503.06,
+        "priorRangeHigh": 507.295,
+        "priorRangeLow": 503.325
+      },
+      "reasons": [
+        "RSI1h 24",
+        "у 24h low +0.22%",
+        "volume dry x0.78",
+        "spread 0.2 bps"
+      ]
+    }
+  ],
+  "topAll": [
+    {
+      "symbol": "2ZUSDT",
+      "price": 0.04679,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 46.4,
+      "metrics": {
+        "change24hPct": -6.35,
+        "okxChange24hPct": -6.38,
+        "ret15Pct": -0.21,
+        "ret60Pct": -0.56,
+        "ret240Pct": -0.82,
+        "rsi5m": 17.5,
+        "rsi15m": 33.1,
+        "rsi1h": 23,
+        "volumeAcceleration": 0.34,
+        "compressionRatio": 0.6,
+        "fundingPct": 0.0037,
+        "turnover24hUsd": 508923,
+        "bitgetSpreadBps": 6.41,
+        "distanceFrom24hLowPct": 0.93,
+        "rangePosition": -0.05,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 1.76
+      },
+      "levels": {
+        "trigger": 0.047075,
+        "invalidationReference": 0.04636,
+        "priorRangeHigh": 0.047615,
+        "priorRangeLow": 0.046845
+      },
+      "reasons": [
+        "24h -6.3%",
+        "RSI15 33",
+        "RSI1h 23",
+        "у 24h low +0.93%",
+        "volume dry x0.34"
+      ]
+    },
+    {
+      "symbol": "JTOUSDT",
+      "price": 0.5588,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 44.9,
+      "metrics": {
+        "change24hPct": -6.62,
+        "okxChange24hPct": -6.57,
+        "ret15Pct": -0.15,
+        "ret60Pct": -0.83,
+        "ret240Pct": -2.39,
+        "rsi5m": 27.9,
+        "rsi15m": 8.2,
+        "rsi1h": 30.7,
+        "volumeAcceleration": 0.47,
+        "compressionRatio": 1.26,
+        "fundingPct": 0.0011,
+        "turnover24hUsd": 1609353,
+        "bitgetSpreadBps": 3.58,
+        "distanceFrom24hLowPct": 0.14,
+        "rangePosition": 0.04,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 2.89
+      },
+      "levels": {
+        "trigger": 0.5649,
+        "invalidationReference": 0.558,
+        "priorRangeHigh": 0.57495,
+        "priorRangeLow": 0.55825
+      },
+      "reasons": [
+        "24h -6.6%",
+        "RSI15 8",
+        "RSI1h 31",
+        "у 24h low +0.14%",
+        "volume dry x0.47",
+        "spread 3.58 bps"
+      ]
+    },
+    {
+      "symbol": "FILUSDT",
+      "price": 0.6217,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 43.9,
+      "metrics": {
+        "change24hPct": -7.28,
+        "okxChange24hPct": -7.28,
+        "ret15Pct": -0.01,
+        "ret60Pct": -0.51,
+        "ret240Pct": -0.59,
+        "rsi5m": 33.7,
+        "rsi15m": 34.9,
+        "rsi1h": 16.1,
+        "volumeAcceleration": 0.38,
+        "compressionRatio": 0.8,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 11888676,
+        "bitgetSpreadBps": 1.61,
+        "distanceFrom24hLowPct": 2.37,
+        "rangePosition": 0.45,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.79
+      },
+      "levels": {
+        "trigger": 0.62495,
+        "invalidationReference": 0.6073,
+        "priorRangeHigh": 0.6266,
+        "priorRangeLow": 0.6176
+      },
+      "reasons": [
+        "24h -7.3%",
+        "RSI15 35",
+        "RSI1h 16",
+        "volume dry x0.38",
+        "spread 1.61 bps"
+      ]
+    },
+    {
+      "symbol": "HUSDT",
+      "price": 0.11188,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 43.1,
+      "metrics": {
+        "change24hPct": -9.33,
+        "okxChange24hPct": -9.45,
+        "ret15Pct": 0.11,
+        "ret60Pct": -1.37,
+        "ret240Pct": -4.38,
+        "rsi5m": 35.3,
+        "rsi15m": 32.8,
+        "rsi1h": 33.2,
+        "volumeAcceleration": 0.38,
+        "compressionRatio": 0.74,
+        "fundingPct": 0.0293,
+        "turnover24hUsd": 3479118,
+        "bitgetSpreadBps": 8.93,
+        "distanceFrom24hLowPct": 1.23,
+        "rangePosition": 0.15,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 6.2
+      },
+      "levels": {
+        "trigger": 0.113395,
+        "invalidationReference": 0.110455,
+        "priorRangeHigh": 0.118815,
+        "priorRangeLow": 0.110455
+      },
+      "reasons": [
+        "24h -9.3%",
+        "RSI15 33",
+        "RSI1h 33",
+        "у 24h low +1.23%",
+        "volume dry x0.38"
+      ]
+    },
+    {
+      "symbol": "CRVUSDT",
+      "price": 0.2396,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 41.9,
+      "metrics": {
+        "change24hPct": -2.36,
+        "okxChange24hPct": -2.32,
+        "ret15Pct": -0.1,
+        "ret60Pct": -0.54,
+        "ret240Pct": -2.3,
+        "rsi5m": 32.2,
+        "rsi15m": 14.2,
+        "rsi1h": 44.5,
+        "volumeAcceleration": 0.3,
+        "compressionRatio": 0.69,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1938567,
+        "bitgetSpreadBps": 4.17,
+        "distanceFrom24hLowPct": 0.25,
+        "rangePosition": 0.09,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 2.9
+      },
+      "levels": {
+        "trigger": 0.24105,
+        "invalidationReference": 0.23895,
+        "priorRangeHigh": 0.24655,
+        "priorRangeLow": 0.23895
+      },
+      "reasons": [
+        "RSI15 14",
+        "у 24h low +0.25%",
+        "volume dry x0.3",
+        "spread 4.17 bps"
+      ]
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "price": 0.006428,
+      "stage": "SQUEEZE-WATCH",
+      "reboundScore": 41,
+      "metrics": {
+        "change24hPct": -4.52,
+        "okxChange24hPct": -4.52,
+        "ret15Pct": -0.03,
+        "ret60Pct": 0.66,
+        "ret240Pct": 2.32,
+        "rsi5m": 55.5,
+        "rsi15m": 60.6,
+        "rsi1h": 40.6,
+        "volumeAcceleration": 0.27,
+        "compressionRatio": 0.57,
+        "fundingPct": -0.1759,
+        "turnover24hUsd": 1695358,
+        "bitgetSpreadBps": 3.11,
+        "distanceFrom24hLowPct": 3.39,
+        "rangePosition": 0.54,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 2.12
+      },
+      "levels": {
+        "trigger": 0.0064995,
+        "invalidationReference": 0.006217,
+        "priorRangeHigh": 0.0065645,
+        "priorRangeLow": 0.006267
+      },
+      "reasons": [
+        "volume dry x0.27",
+        "funding -0.176%",
+        "spread 3.11 bps"
+      ]
+    },
+    {
+      "symbol": "USELESSUSDT",
+      "price": 0.0376,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 40,
+      "metrics": {
+        "change24hPct": -8.52,
+        "okxChange24hPct": -8.55,
+        "ret15Pct": -0.09,
+        "ret60Pct": -0.73,
+        "ret240Pct": -2.19,
+        "rsi5m": 37.8,
+        "rsi15m": 34.5,
+        "rsi1h": 16.4,
+        "volumeAcceleration": 0.43,
+        "compressionRatio": 0.84,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 852138,
+        "bitgetSpreadBps": 13.31,
+        "distanceFrom24hLowPct": 0.51,
+        "rangePosition": 0.14,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 2.34
+      },
+      "levels": {
+        "trigger": 0.037925,
+        "invalidationReference": 0.03741,
+        "priorRangeHigh": 0.03848,
+        "priorRangeLow": 0.037425
+      },
+      "reasons": [
+        "24h -8.5%",
+        "RSI15 35",
+        "RSI1h 16",
+        "у 24h low +0.51%",
+        "volume dry x0.43"
+      ]
+    },
+    {
+      "symbol": "XLMUSDT",
+      "price": 0.15364,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 39.9,
+      "metrics": {
+        "change24hPct": -2.48,
+        "okxChange24hPct": -2.46,
+        "ret15Pct": 0.07,
+        "ret60Pct": 0.62,
+        "ret240Pct": 0.07,
+        "rsi5m": 71.2,
+        "rsi15m": 59.5,
+        "rsi1h": 23.8,
+        "volumeAcceleration": 0.22,
+        "compressionRatio": 0.85,
+        "fundingPct": -0.0112,
+        "turnover24hUsd": 3456071,
+        "bitgetSpreadBps": 0.65,
+        "distanceFrom24hLowPct": 0.89,
+        "rangePosition": 0.87,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.17
+      },
+      "levels": {
+        "trigger": 0.15389,
+        "invalidationReference": 0.15228,
+        "priorRangeHigh": 0.153905,
+        "priorRangeLow": 0.1523
+      },
+      "reasons": [
+        "RSI1h 24",
+        "у 24h low +0.89%",
+        "volume dry x0.22",
+        "spread 0.65 bps"
+      ]
+    },
+    {
+      "symbol": "GALAUSDT",
+      "price": 0.001404,
+      "stage": "WATCH",
+      "reboundScore": 38.5,
+      "metrics": {
+        "change24hPct": -13.87,
+        "okxChange24hPct": -13.87,
+        "ret15Pct": -0.11,
+        "ret60Pct": -0.18,
+        "ret240Pct": -0.71,
+        "rsi5m": 42.9,
+        "rsi15m": 39.9,
+        "rsi1h": 16,
+        "volumeAcceleration": 0.43,
+        "compressionRatio": 0.78,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1756437,
+        "bitgetSpreadBps": 7.13,
+        "distanceFrom24hLowPct": 3.62,
+        "rangePosition": 0.12,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 1.28
+      },
+      "levels": {
+        "trigger": 0.0014115,
+        "invalidationReference": 0.001355,
+        "priorRangeHigh": 0.001422,
+        "priorRangeLow": 0.001401
+      },
+      "reasons": [
+        "24h -13.9%",
+        "RSI1h 16",
+        "volume dry x0.43"
+      ]
+    },
+    {
+      "symbol": "ETCUSDT",
+      "price": 6.048,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 37.8,
+      "metrics": {
+        "change24hPct": -2.14,
+        "okxChange24hPct": -2.12,
+        "ret15Pct": -0.07,
+        "ret60Pct": -0.1,
+        "ret240Pct": -0.24,
+        "rsi5m": 42.7,
+        "rsi15m": 34.5,
+        "rsi1h": 23.5,
+        "volumeAcceleration": 0.31,
+        "compressionRatio": 1.09,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 1038815,
+        "bitgetSpreadBps": 1.65,
+        "distanceFrom24hLowPct": 0.55,
+        "rangePosition": 0.27,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.57
+      },
+      "levels": {
+        "trigger": 6.0575,
+        "invalidationReference": 6.015,
+        "priorRangeHigh": 6.0825,
+        "priorRangeLow": 6.034
+      },
+      "reasons": [
+        "RSI15 35",
+        "RSI1h 24",
+        "у 24h low +0.55%",
+        "volume dry x0.31",
+        "spread 1.65 bps"
+      ]
+    },
+    {
+      "symbol": "0GUSDT",
+      "price": 0.1454,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 37.7,
+      "metrics": {
+        "change24hPct": -7.86,
+        "okxChange24hPct": -7.99,
+        "ret15Pct": -0.1,
+        "ret60Pct": -0.65,
+        "ret240Pct": -0.82,
+        "rsi5m": 15.2,
+        "rsi15m": 36.3,
+        "rsi1h": 53.2,
+        "volumeAcceleration": 0.23,
+        "compressionRatio": 0.71,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 951955,
+        "bitgetSpreadBps": 6.88,
+        "distanceFrom24hLowPct": 2.76,
+        "rangePosition": 0.08,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 1.58
+      },
+      "levels": {
+        "trigger": 0.14645,
+        "invalidationReference": 0.1415,
+        "priorRangeHigh": 0.1477,
+        "priorRangeLow": 0.14505
+      },
+      "reasons": [
+        "24h -7.9%",
+        "volume dry x0.23"
+      ]
+    },
+    {
+      "symbol": "GRAMUSDT",
+      "price": 1.3088,
+      "stage": "BOUNCE-STARTING",
+      "reboundScore": 37.6,
+      "metrics": {
+        "change24hPct": -1.83,
+        "okxChange24hPct": -1.88,
+        "ret15Pct": 0.25,
+        "ret60Pct": 0.25,
+        "ret240Pct": -0.58,
+        "rsi5m": 57.6,
+        "rsi15m": 36.3,
+        "rsi1h": 27.9,
+        "volumeAcceleration": 0.44,
+        "compressionRatio": 0.57,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 671800,
+        "bitgetSpreadBps": 2.29,
+        "distanceFrom24hLowPct": 1.27,
+        "rangePosition": 0.58,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.68
+      },
+      "levels": {
+        "trigger": 1.30965,
+        "invalidationReference": 1.2924,
+        "priorRangeHigh": 1.3177,
+        "priorRangeLow": 1.2942
+      },
+      "reasons": [
+        "RSI1h 28",
+        "у 24h low +1.27%",
+        "volume dry x0.44",
+        "15m +0.25%",
+        "spread 2.29 bps"
+      ]
+    },
+    {
+      "symbol": "WLDUSDT",
+      "price": 0.325,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 36.1,
+      "metrics": {
+        "change24hPct": -9.01,
+        "okxChange24hPct": -9.02,
+        "ret15Pct": -0.29,
+        "ret60Pct": -0.17,
+        "ret240Pct": 0.49,
+        "rsi5m": 46.4,
+        "rsi15m": 57.2,
+        "rsi1h": 24.6,
+        "volumeAcceleration": 0.56,
+        "compressionRatio": 1.19,
+        "fundingPct": -0.0134,
+        "turnover24hUsd": 17251900,
+        "bitgetSpreadBps": 3.08,
+        "distanceFrom24hLowPct": 2.39,
+        "rangePosition": 0.55,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.74
+      },
+      "levels": {
+        "trigger": 0.32735,
+        "invalidationReference": 0.3174,
+        "priorRangeHigh": 0.3274,
+        "priorRangeLow": 0.32195
+      },
+      "reasons": [
+        "24h -9%",
+        "RSI1h 25",
+        "volume dry x0.56",
+        "spread 3.08 bps"
+      ]
+    },
+    {
+      "symbol": "REUSDT",
+      "price": 0.39058,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 35,
+      "metrics": {
+        "change24hPct": -5.68,
+        "okxChange24hPct": -5.69,
+        "ret15Pct": -0.5,
+        "ret60Pct": 0.08,
+        "ret240Pct": -0.44,
+        "rsi5m": 55.5,
+        "rsi15m": 49.2,
+        "rsi1h": 28.1,
+        "volumeAcceleration": 0.57,
+        "compressionRatio": 1.06,
+        "fundingPct": -0.0193,
+        "turnover24hUsd": 565174,
+        "bitgetSpreadBps": 0.26,
+        "distanceFrom24hLowPct": 0.89,
+        "rangePosition": 0.49,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.92
+      },
+      "levels": {
+        "trigger": 0.39369,
+        "invalidationReference": 0.38713,
+        "priorRangeHigh": 0.394175,
+        "priorRangeLow": 0.38714
+      },
+      "reasons": [
+        "24h -5.7%",
+        "RSI1h 28",
+        "у 24h low +0.89%",
+        "volume dry x0.57",
+        "spread 0.26 bps"
+      ]
+    },
+    {
+      "symbol": "ATOMUSDT",
+      "price": 1.3937,
+      "stage": "BOUNCE-STARTING",
+      "reboundScore": 34.9,
+      "metrics": {
+        "change24hPct": -1.74,
+        "okxChange24hPct": -1.83,
+        "ret15Pct": 0.32,
+        "ret60Pct": 0.7,
+        "ret240Pct": 0.85,
+        "rsi5m": 60,
+        "rsi15m": 54.7,
+        "rsi1h": 39.9,
+        "volumeAcceleration": 0.27,
+        "compressionRatio": 1.4,
+        "fundingPct": -0.0448,
+        "turnover24hUsd": 2116614,
+        "bitgetSpreadBps": 5.75,
+        "distanceFrom24hLowPct": 1.26,
+        "rangePosition": 0.72,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.4
+      },
+      "levels": {
+        "trigger": 1.39585,
+        "invalidationReference": 1.3763,
+        "priorRangeHigh": 1.39925,
+        "priorRangeLow": 1.37625
+      },
+      "reasons": [
+        "у 24h low +1.26%",
+        "volume dry x0.27",
+        "funding -0.045%",
+        "15m +0.32%"
+      ]
+    },
+    {
+      "symbol": "ZBTUSDT",
+      "price": 0.07526,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 34.6,
+      "metrics": {
+        "change24hPct": -4.31,
+        "okxChange24hPct": -4.37,
+        "ret15Pct": -0.06,
+        "ret60Pct": -0.59,
+        "ret240Pct": -1.5,
+        "rsi5m": 40.2,
+        "rsi15m": 29.7,
+        "rsi1h": 47,
+        "volumeAcceleration": 0.4,
+        "compressionRatio": 1.44,
+        "fundingPct": -0.0016,
+        "turnover24hUsd": 503243,
+        "bitgetSpreadBps": 3.98,
+        "distanceFrom24hLowPct": 0.52,
+        "rangePosition": 0.03,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 1.7
+      },
+      "levels": {
+        "trigger": 0.075995,
+        "invalidationReference": 0.07487,
+        "priorRangeHigh": 0.07654,
+        "priorRangeLow": 0.075255
+      },
+      "reasons": [
+        "RSI15 30",
+        "у 24h low +0.52%",
+        "volume dry x0.4",
+        "spread 3.98 bps"
+      ]
+    },
+    {
+      "symbol": "CHIPUSDT",
+      "price": 0.02706,
+      "stage": "CATCH-KNIFE-RISK",
+      "reboundScore": 33.5,
+      "metrics": {
+        "change24hPct": -11.66,
+        "okxChange24hPct": -11.65,
+        "ret15Pct": -0.97,
+        "ret60Pct": -3.41,
+        "ret240Pct": -6.07,
+        "rsi5m": 22.1,
+        "rsi15m": 17.2,
+        "rsi1h": 44.3,
+        "volumeAcceleration": 3.19,
+        "compressionRatio": 1.35,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 4995819,
+        "bitgetSpreadBps": 7.39,
+        "distanceFrom24hLowPct": 1.12,
+        "rangePosition": -0.14,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 7.26
+      },
+      "levels": {
+        "trigger": 0.028055,
+        "invalidationReference": 0.02675,
+        "priorRangeHigh": 0.029025,
+        "priorRangeLow": 0.027315
+      },
+      "reasons": [
+        "24h -11.7%",
+        "RSI15 17",
+        "у 24h low +1.12%"
+      ]
+    },
+    {
+      "symbol": "BNBUSDT",
+      "price": 600.58,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 33.5,
+      "metrics": {
+        "change24hPct": -0.82,
+        "okxChange24hPct": -0.89,
+        "ret15Pct": 0.12,
+        "ret60Pct": -0.08,
+        "ret240Pct": -0.13,
+        "rsi5m": 39.6,
+        "rsi15m": 45.3,
+        "rsi1h": 27.1,
+        "volumeAcceleration": 0.67,
+        "compressionRatio": 2.13,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 8260796,
+        "bitgetSpreadBps": 0.17,
+        "distanceFrom24hLowPct": 0.16,
+        "rangePosition": 0.35,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.28
+      },
+      "levels": {
+        "trigger": 601.025,
+        "invalidationReference": 599.475,
+        "priorRangeHigh": 602.255,
+        "priorRangeLow": 599.475
+      },
+      "reasons": [
+        "RSI1h 27",
+        "у 24h low +0.16%",
+        "volume dry x0.67",
+        "spread 0.17 bps"
+      ]
+    },
+    {
+      "symbol": "TRXUSDT",
+      "price": 0.33217,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 33,
+      "metrics": {
+        "change24hPct": 0.13,
+        "okxChange24hPct": 0.17,
+        "ret15Pct": 0.07,
+        "ret60Pct": -0.03,
+        "ret240Pct": -0.17,
+        "rsi5m": 47.9,
+        "rsi15m": 34.8,
+        "rsi1h": 61,
+        "volumeAcceleration": 0.41,
+        "compressionRatio": 0.58,
+        "fundingPct": 0.0009,
+        "turnover24hUsd": 1520676,
+        "bitgetSpreadBps": 0.3,
+        "distanceFrom24hLowPct": 1.25,
+        "rangePosition": 0.23,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.3
+      },
+      "levels": {
+        "trigger": 0.332575,
+        "invalidationReference": 0.32806,
+        "priorRangeHigh": 0.33318,
+        "priorRangeLow": 0.33194
+      },
+      "reasons": [
+        "RSI15 35",
+        "у 24h low +1.25%",
+        "volume dry x0.41",
+        "spread 0.3 bps"
+      ]
+    },
+    {
+      "symbol": "ZECUSDT",
+      "price": 504.17,
+      "stage": "DRY-SUPPORT",
+      "reboundScore": 32.3,
+      "metrics": {
+        "change24hPct": -1.59,
+        "okxChange24hPct": -1.59,
+        "ret15Pct": 0.03,
+        "ret60Pct": -0.01,
+        "ret240Pct": -0.33,
+        "rsi5m": 49.7,
+        "rsi15m": 45.5,
+        "rsi1h": 23.8,
+        "volumeAcceleration": 0.78,
+        "compressionRatio": 1.52,
+        "fundingPct": 0.01,
+        "turnover24hUsd": 42471341,
+        "bitgetSpreadBps": 0.2,
+        "distanceFrom24hLowPct": 0.22,
+        "rangePosition": 0.21,
+        "candleSources": 2,
+        "potentialToPriorHighPct": 0.62
+      },
+      "levels": {
+        "trigger": 505.29,
+        "invalidationReference": 503.06,
+        "priorRangeHigh": 507.295,
+        "priorRangeLow": 503.325
+      },
+      "reasons": [
+        "RSI1h 24",
+        "у 24h low +0.22%",
+        "volume dry x0.78",
+        "spread 0.2 bps"
+      ]
+    }
+  ]
+}
