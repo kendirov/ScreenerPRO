@@ -21,19 +21,36 @@ export class BitgetPrivateConfigError extends Error {
 }
 
 function requireSecrets() {
-  const values = {
+  const raw = {
     apiKey: process.env.BITGET_API_KEY,
     apiSecret: process.env.BITGET_API_SECRET,
     passphrase: process.env.BITGET_API_PASSPHRASE,
   };
   const missing = [
-    !values.apiKey ? "BITGET_API_KEY" : null,
-    !values.apiSecret ? "BITGET_API_SECRET" : null,
-    !values.passphrase ? "BITGET_API_PASSPHRASE" : null,
+    !raw.apiKey ? "BITGET_API_KEY" : null,
+    !raw.apiSecret ? "BITGET_API_SECRET" : null,
+    !raw.passphrase ? "BITGET_API_PASSPHRASE" : null,
   ].filter((value): value is string => Boolean(value));
 
   if (missing.length > 0) throw new BitgetPrivateConfigError(missing);
-  return values as { apiKey: string; apiSecret: string; passphrase: string };
+
+  const values = {
+    apiKey: raw.apiKey!.trim(),
+    apiSecret: raw.apiSecret!.trim(),
+    passphrase: raw.passphrase!.trim(),
+  };
+
+  return {
+    ...values,
+    meta: {
+      apiKeyLength: values.apiKey.length,
+      apiSecretLength: values.apiSecret.length,
+      passphraseLength: values.passphrase.length,
+      apiKeyLooksBitget: values.apiKey.startsWith("bg_"),
+      hadOuterWhitespace:
+        raw.apiKey !== values.apiKey || raw.apiSecret !== values.apiSecret || raw.passphrase !== values.passphrase,
+    },
+  };
 }
 
 function sign(timestamp: string, method: "GET", path: string, query: string, secret: string) {
@@ -109,7 +126,8 @@ async function getUtaV3Snapshot() {
 }
 
 async function getClassicV2Snapshot() {
-  const [spotAssets, ...rest] = await Promise.all([
+  const [info, spotAssets, ...rest] = await Promise.all([
+    safe("classic account info", () => privateGet<JsonRecord>("/api/v2/spot/account/info")),
     safe("classic spot assets", () =>
       privateGet<JsonRecord[]>("/api/v2/spot/account/assets", new URLSearchParams({ assetType: "all" })),
     ),
@@ -140,20 +158,21 @@ async function getClassicV2Snapshot() {
     }),
   );
 
-  return { spotAssets, futures };
+  return { info, spotAssets, futures };
 }
 
 export async function getBitgetPrivateReadOnlySnapshot() {
   const startedAt = Date.now();
-  requireSecrets();
+  const secrets = requireSecrets();
 
   const [utaV3, classicV2] = await Promise.all([getUtaV3Snapshot(), getClassicV2Snapshot()]);
 
   return {
     mode: "read-only" as const,
-    source: "bitget-private-auto" as const,
+    source: "bitget-private-auto-v2" as const,
     asOf: new Date().toISOString(),
     latencyMs: Date.now() - startedAt,
+    credentialShape: secrets.meta,
     utaV3,
     classicV2,
   };
