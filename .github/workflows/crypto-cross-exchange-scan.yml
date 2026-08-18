@@ -5,9 +5,7 @@ on:
     branches:
       - codex/bitget-private-readonly-v1-2026-08-18
     paths:
-      - scripts/crypto-cross-exchange-scan.mjs
-      - scripts/crypto-market-scan-v2.mjs
-      - scripts/filter-crypto-scan.mjs
+      - scripts/crypto-market-scan-v3.mjs
       - .github/workflows/crypto-cross-exchange-scan.yml
       - scanner-trigger.txt
   workflow_dispatch:
@@ -32,12 +30,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run public crypto market scan
+      - name: Run public crypto market scan v3
         run: |
           mkdir -p data
-          node scripts/crypto-market-scan-v2.mjs > data/crypto-scan-latest.json
-          node scripts/filter-crypto-scan.mjs
-          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status, x.sources, x.errors, x.cryptoFilter); console.log(x.topOverall.slice(0,8).map(r=>[r.symbol,r.type,r.direction,r.overall]));"
+          node scripts/crypto-market-scan-v3.mjs > data/crypto-scan-latest.json
+          node -e "const x=require('./data/crypto-scan-latest.json'); console.log(x.asOf, x.status); console.log(x.topOverall.slice(0,10).map(r=>[r.symbol,r.type,r.direction,r.overall,r.price]));"
 
       - name: Commit latest public snapshot
         run: |
@@ -48,5 +45,5 @@ jobs:
             echo "No scan changes"
             exit 0
           fi
-          git commit -m "data: refresh crypto cross-exchange scan [skip ci]"
+          git commit -m "data: refresh clean crypto market scan [skip ci]"
           git push origin HEAD:codex/bitget-private-readonly-v1-2026-08-18
