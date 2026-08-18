@@ -1,0 +1,1 @@
+Preview refresh trigger after environment update.
