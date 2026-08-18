@@ -7,6 +7,7 @@ on:
     paths:
       - scripts/crypto-market-scan-v3.mjs
       - scripts/crypto-rebound-scan-v1.mjs
+      - scripts/crypto-rebound-scan-v2.mjs
       - .github/workflows/crypto-cross-exchange-scan.yml
       - scanner-trigger.txt
   workflow_dispatch:
@@ -36,14 +37,15 @@ jobs:
           mkdir -p data
           node scripts/crypto-market-scan-v3.mjs > data/crypto-scan-latest.json
           node scripts/crypto-rebound-scan-v1.mjs > data/crypto-rebound-latest.json
+          node scripts/crypto-rebound-scan-v2.mjs > data/crypto-rebound-v2-latest.json
           node -e "const x=require('./data/crypto-scan-latest.json'); console.log('explosion', x.asOf, x.status); console.log(x.topOverall.slice(0,10).map(r=>[r.symbol,r.type,r.direction,r.overall,r.price]));"
-          node -e "const x=require('./data/crypto-rebound-latest.json'); console.log('rebound', x.asOf, x.status); console.log('DOGE', x.doge); console.log(x.topTradeable.slice(0,10).map(r=>[r.symbol,r.stage,r.reboundScore,r.price]));"
+          node -e "const x=require('./data/crypto-rebound-v2-latest.json'); console.log('rebound-v2', x.asOf, x.status); console.log('examples', x.examples); console.log('fast', x.topFastFlush.slice(0,10).map(r=>[r.symbol,r.setupType,r.scores.fastFlush,r.price])); console.log('global', x.topGlobalBase.slice(0,10).map(r=>[r.symbol,r.scores.globalBase,r.price])); console.log('avoid', x.avoidGrinding.slice(0,10).map(r=>[r.symbol,r.scores.grindingPenalty,r.price]));"
 
       - name: Commit latest public snapshots
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/crypto-scan-latest.json data/crypto-rebound-latest.json
+          git add data/crypto-scan-latest.json data/crypto-rebound-latest.json data/crypto-rebound-v2-latest.json
           if git diff --cached --quiet; then
             echo "No scan changes"
             exit 0
