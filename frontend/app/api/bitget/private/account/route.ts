@@ -7,6 +7,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (process.env.VERCEL_ENV === "production") {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "BITGET_PRIVATE_PREVIEW_ONLY",
+      },
+      { status: 403, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   try {
     const snapshot = await getBitgetPrivateReadOnlySnapshot();
     return NextResponse.json(snapshot, {
