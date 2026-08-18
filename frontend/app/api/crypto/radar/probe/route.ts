@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "edge";
 export const dynamic = "force-dynamic";
-export const preferredRegion = ["fra1"];
+export const preferredRegion = "fra1";
 
 const SOURCES = {
   binance: "https://fapi.binance.com/fapi/v1/ticker/24hr",
@@ -70,6 +71,7 @@ export async function GET() {
   return NextResponse.json(
     {
       asOf: new Date().toISOString(),
+      intendedRuntime: "edge",
       intendedRegion: "fra1",
       sources: Object.fromEntries(entries),
     },
