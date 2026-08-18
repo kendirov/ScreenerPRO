@@ -1,27 +1,2095 @@
 {
-  "asOf": "2026-08-18T13:08:57.667Z",
-  "source": "public APIs: Binance USD-M + Bybit linear + OKX USDT swaps; execution filter: Bitget USDT futures",
-  "methodologyVersion": "explosion-score-v0.2",
-  "status": {
-    "bulkErrors": [
-      "binance24h: 451 ",
-      "binancePremium: 451 ",
-      "binanceBook: 451 ",
-      "bybitTickers: 403 Forbidden"
-    ],
-    "universeCount": 793,
-    "eligibleOnBitgetAnd2PlusRadarExchanges": 0,
-    "detailedPoolSize": 0
+  "asOf": "2026-08-18T13:11:03.628Z",
+  "methodologyVersion": "explosion-score-v0.2-resilient",
+  "sources": {
+    "binance": null,
+    "bybit": null,
+    "okx": "https://www.okx.com/api/v5/market/tickers?instType=SWAP",
+    "bitget": "https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES"
   },
-  "topOverall": [],
-  "topIgnition": [],
-  "topPreBreakout": [],
-  "topSqueeze": [],
-  "topMomentum": [],
-  "topLiquidity": [],
+  "errors": [
+    "binance24h: https://fapi.binance.com/fapi/v1/ticker/24hr: 451  | https://fapi1.binance.com/fapi/v1/ticker/24hr: Unexpected end of JSON input | https://fapi2.binance.com/fapi/v1/ticker/24hr: Unexpected end of JSON input | https://fapi3.binance.com/fapi/v1/ticker/24hr: Unexpected end of JSON input",
+    "binancePremium: https://fapi.binance.com/fapi/v1/premiumIndex: 451  | https://fapi1.binance.com/fapi/v1/premiumIndex: Unexpected end of JSON input | https://fapi2.binance.com/fapi/v1/premiumIndex: Unexpected end of JSON input | https://fapi3.binance.com/fapi/v1/premiumIndex: Unexpected end of JSON input",
+    "bybit: https://api.bybit.com/v5/market/tickers?category=linear: 403 Forbidden | https://api.bytick.com/v5/market/tickers?category=linear: 403 Forbidden | https://api.bybit.nl/v5/market/tickers?category=linear: 403 Forbidden | https://api.bybit.kz/v5/market/tickers?category=linear: 403 Forbidden | https://api.bybit.ae/v5/market/tickers?category=linear: 403 Forbidden"
+  ],
+  "status": {
+    "universe": 793,
+    "eligible": 140,
+    "detailed": 32
+  },
+  "topOverall": [
+    {
+      "symbol": "SOXLUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 61.6,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 62.3,
+        "momentum": 27.9,
+        "squeeze": 29.1,
+        "liquidity": 53
+      },
+      "metrics": {
+        "change24hPct": -10.2,
+        "ret15Pct": -0.37,
+        "ret60Pct": -0.87,
+        "volumeAcceleration": 0.72,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0287,
+        "turnover24hUsd": 131061562,
+        "bitgetSpreadBps": 0.74,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.59,
+        "rangePosition": -0.03
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "HOMEUSDT",
+      "type": "SQUEEZE",
+      "direction": "LONG",
+      "overall": 60,
+      "scores": {
+        "ignition": 36,
+        "prebreakout": 43.3,
+        "momentum": 19,
+        "squeeze": 64.2,
+        "liquidity": 10.9
+      },
+      "metrics": {
+        "change24hPct": -5.72,
+        "ret15Pct": 0.83,
+        "ret60Pct": -0.77,
+        "volumeAcceleration": 0.31,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": -0.1831,
+        "turnover24hUsd": 1728794,
+        "bitgetSpreadBps": 4.64,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.6,
+        "rangePosition": 0.67
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "funding -0.183%",
+        "до границы ≈0.87%",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOXSUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 59,
+      "scores": {
+        "ignition": 43,
+        "prebreakout": 60.5,
+        "momentum": 24.3,
+        "squeeze": 13.1,
+        "liquidity": 35.1
+      },
+      "metrics": {
+        "change24hPct": 10.05,
+        "ret15Pct": 0.42,
+        "ret60Pct": 0.86,
+        "volumeAcceleration": 0.89,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 24276139,
+        "bitgetSpreadBps": 1.87,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.58,
+        "rangePosition": 1.09
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout up",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SKHYNIXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 57.8,
+      "scores": {
+        "ignition": 39.7,
+        "prebreakout": 58.2,
+        "momentum": 26.8,
+        "squeeze": 18.2,
+        "liquidity": 58.2
+      },
+      "metrics": {
+        "change24hPct": -5.05,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.34,
+        "volumeAcceleration": 0.76,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 212649082,
+        "bitgetSpreadBps": 0.52,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.05
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "MUUUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 56.3,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 58.6,
+        "momentum": 25.3,
+        "squeeze": 12.5,
+        "liquidity": 32.4
+      },
+      "metrics": {
+        "change24hPct": -7.61,
+        "ret15Pct": -0.43,
+        "ret60Pct": -1.26,
+        "volumeAcceleration": 0.35,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 18789769,
+        "bitgetSpreadBps": 2.85,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.6,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "DRAMUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 55.7,
+      "scores": {
+        "ignition": 40.5,
+        "prebreakout": 57.1,
+        "momentum": 24.8,
+        "squeeze": 15.5,
+        "liquidity": 46.1
+      },
+      "metrics": {
+        "change24hPct": -4.96,
+        "ret15Pct": -0.29,
+        "ret60Pct": -0.45,
+        "volumeAcceleration": 0.79,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 69014765,
+        "bitgetSpreadBps": 1.76,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.17
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SAMSUNGUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 54.2,
+      "scores": {
+        "ignition": 39.9,
+        "prebreakout": 54.6,
+        "momentum": 22.4,
+        "squeeze": 13.3,
+        "liquidity": 36.1
+      },
+      "metrics": {
+        "change24hPct": -6.13,
+        "ret15Pct": -0.27,
+        "ret60Pct": -0.36,
+        "volumeAcceleration": 0.62,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 26712072,
+        "bitgetSpreadBps": 0.54,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.68,
+        "rangePosition": -0.08
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "KIOXIAUSDT",
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 54,
+      "scores": {
+        "ignition": 57.1,
+        "prebreakout": 52,
+        "momentum": 37.3,
+        "squeeze": 8.6,
+        "liquidity": 14.4
+      },
+      "metrics": {
+        "change24hPct": -8.8,
+        "ret15Pct": -0.45,
+        "ret60Pct": -0.83,
+        "volumeAcceleration": 3.17,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 2782253,
+        "bitgetSpreadBps": 3.95,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.9,
+        "rangePosition": -0.44
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x3.2",
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SKHYUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.4,
+      "scores": {
+        "ignition": 42.7,
+        "prebreakout": 51.9,
+        "momentum": 31.9,
+        "squeeze": 17.1,
+        "liquidity": 53.1
+      },
+      "metrics": {
+        "change24hPct": -6.12,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.54,
+        "volumeAcceleration": 1.66,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 131541809,
+        "bitgetSpreadBps": 0.62,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.82,
+        "rangePosition": -0.07
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SNXXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.1,
+      "scores": {
+        "ignition": 41.7,
+        "prebreakout": 52.4,
+        "momentum": 31.1,
+        "squeeze": 21.3,
+        "liquidity": 54.8
+      },
+      "metrics": {
+        "change24hPct": -4.11,
+        "ret15Pct": -0.72,
+        "ret60Pct": -1.57,
+        "volumeAcceleration": 0.44,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0092,
+        "turnover24hUsd": 154519058,
+        "bitgetSpreadBps": 1.79,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.75,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "WLDUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 49.6,
+      "scores": {
+        "ignition": 37.5,
+        "prebreakout": 51.8,
+        "momentum": 21,
+        "squeeze": 18.1,
+        "liquidity": 31.6
+      },
+      "metrics": {
+        "change24hPct": -8.64,
+        "ret15Pct": -0.17,
+        "ret60Pct": -0.23,
+        "volumeAcceleration": 0.73,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": -0.0137,
+        "turnover24hUsd": 17347530,
+        "bitgetSpreadBps": 3.08,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.68,
+        "rangePosition": 0.15
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "до границы ≈0.15%",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "OUSDT",
+      "type": "IGNITION",
+      "direction": "LONG",
+      "overall": 49.3,
+      "scores": {
+        "ignition": 62.9,
+        "prebreakout": 48.1,
+        "momentum": 40,
+        "squeeze": 9.2,
+        "liquidity": 7.9
+      },
+      "metrics": {
+        "change24hPct": -9.92,
+        "ret15Pct": 0.65,
+        "ret60Pct": 0.16,
+        "volumeAcceleration": 39.41,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1063433,
+        "bitgetSpreadBps": 15.5,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 2.43,
+        "rangePosition": 0.84
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x39.4",
+        "до границы ≈0.12%",
+        "cross-exchange consensus"
+      ]
+    }
+  ],
+  "topIgnition": [
+    {
+      "symbol": "OUSDT",
+      "type": "IGNITION",
+      "direction": "LONG",
+      "overall": 49.3,
+      "scores": {
+        "ignition": 62.9,
+        "prebreakout": 48.1,
+        "momentum": 40,
+        "squeeze": 9.2,
+        "liquidity": 7.9
+      },
+      "metrics": {
+        "change24hPct": -9.92,
+        "ret15Pct": 0.65,
+        "ret60Pct": 0.16,
+        "volumeAcceleration": 39.41,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1063433,
+        "bitgetSpreadBps": 15.5,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 2.43,
+        "rangePosition": 0.84
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x39.4",
+        "до границы ≈0.12%",
+        "cross-exchange consensus"
+      ]
+    },
+    {
+      "symbol": "KIOXIAUSDT",
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 54,
+      "scores": {
+        "ignition": 57.1,
+        "prebreakout": 52,
+        "momentum": 37.3,
+        "squeeze": 8.6,
+        "liquidity": 14.4
+      },
+      "metrics": {
+        "change24hPct": -8.8,
+        "ret15Pct": -0.45,
+        "ret60Pct": -0.83,
+        "volumeAcceleration": 3.17,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 2782253,
+        "bitgetSpreadBps": 3.95,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.9,
+        "rangePosition": -0.44
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x3.2",
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOXSUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 59,
+      "scores": {
+        "ignition": 43,
+        "prebreakout": 60.5,
+        "momentum": 24.3,
+        "squeeze": 13.1,
+        "liquidity": 35.1
+      },
+      "metrics": {
+        "change24hPct": 10.05,
+        "ret15Pct": 0.42,
+        "ret60Pct": 0.86,
+        "volumeAcceleration": 0.89,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 24276139,
+        "bitgetSpreadBps": 1.87,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.58,
+        "rangePosition": 1.09
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout up",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SKHYUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.4,
+      "scores": {
+        "ignition": 42.7,
+        "prebreakout": 51.9,
+        "momentum": 31.9,
+        "squeeze": 17.1,
+        "liquidity": 53.1
+      },
+      "metrics": {
+        "change24hPct": -6.12,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.54,
+        "volumeAcceleration": 1.66,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 131541809,
+        "bitgetSpreadBps": 0.62,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.82,
+        "rangePosition": -0.07
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOXLUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 61.6,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 62.3,
+        "momentum": 27.9,
+        "squeeze": 29.1,
+        "liquidity": 53
+      },
+      "metrics": {
+        "change24hPct": -10.2,
+        "ret15Pct": -0.37,
+        "ret60Pct": -0.87,
+        "volumeAcceleration": 0.72,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0287,
+        "turnover24hUsd": 131061562,
+        "bitgetSpreadBps": 0.74,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.59,
+        "rangePosition": -0.03
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "MUUUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 56.3,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 58.6,
+        "momentum": 25.3,
+        "squeeze": 12.5,
+        "liquidity": 32.4
+      },
+      "metrics": {
+        "change24hPct": -7.61,
+        "ret15Pct": -0.43,
+        "ret60Pct": -1.26,
+        "volumeAcceleration": 0.35,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 18789769,
+        "bitgetSpreadBps": 2.85,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.6,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SNXXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.1,
+      "scores": {
+        "ignition": 41.7,
+        "prebreakout": 52.4,
+        "momentum": 31.1,
+        "squeeze": 21.3,
+        "liquidity": 54.8
+      },
+      "metrics": {
+        "change24hPct": -4.11,
+        "ret15Pct": -0.72,
+        "ret60Pct": -1.57,
+        "volumeAcceleration": 0.44,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0092,
+        "turnover24hUsd": 154519058,
+        "bitgetSpreadBps": 1.79,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.75,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "DRAMUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 55.7,
+      "scores": {
+        "ignition": 40.5,
+        "prebreakout": 57.1,
+        "momentum": 24.8,
+        "squeeze": 15.5,
+        "liquidity": 46.1
+      },
+      "metrics": {
+        "change24hPct": -4.96,
+        "ret15Pct": -0.29,
+        "ret60Pct": -0.45,
+        "volumeAcceleration": 0.79,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 69014765,
+        "bitgetSpreadBps": 1.76,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.17
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    }
+  ],
+  "topPreBreakout": [
+    {
+      "symbol": "SOXLUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 61.6,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 62.3,
+        "momentum": 27.9,
+        "squeeze": 29.1,
+        "liquidity": 53
+      },
+      "metrics": {
+        "change24hPct": -10.2,
+        "ret15Pct": -0.37,
+        "ret60Pct": -0.87,
+        "volumeAcceleration": 0.72,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0287,
+        "turnover24hUsd": 131061562,
+        "bitgetSpreadBps": 0.74,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.59,
+        "rangePosition": -0.03
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOXSUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "LONG",
+      "overall": 59,
+      "scores": {
+        "ignition": 43,
+        "prebreakout": 60.5,
+        "momentum": 24.3,
+        "squeeze": 13.1,
+        "liquidity": 35.1
+      },
+      "metrics": {
+        "change24hPct": 10.05,
+        "ret15Pct": 0.42,
+        "ret60Pct": 0.86,
+        "volumeAcceleration": 0.89,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 24276139,
+        "bitgetSpreadBps": 1.87,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.58,
+        "rangePosition": 1.09
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout up",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "MUUUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 56.3,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 58.6,
+        "momentum": 25.3,
+        "squeeze": 12.5,
+        "liquidity": 32.4
+      },
+      "metrics": {
+        "change24hPct": -7.61,
+        "ret15Pct": -0.43,
+        "ret60Pct": -1.26,
+        "volumeAcceleration": 0.35,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 18789769,
+        "bitgetSpreadBps": 2.85,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.6,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SKHYNIXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 57.8,
+      "scores": {
+        "ignition": 39.7,
+        "prebreakout": 58.2,
+        "momentum": 26.8,
+        "squeeze": 18.2,
+        "liquidity": 58.2
+      },
+      "metrics": {
+        "change24hPct": -5.05,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.34,
+        "volumeAcceleration": 0.76,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 212649082,
+        "bitgetSpreadBps": 0.52,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.05
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "DRAMUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 55.7,
+      "scores": {
+        "ignition": 40.5,
+        "prebreakout": 57.1,
+        "momentum": 24.8,
+        "squeeze": 15.5,
+        "liquidity": 46.1
+      },
+      "metrics": {
+        "change24hPct": -4.96,
+        "ret15Pct": -0.29,
+        "ret60Pct": -0.45,
+        "volumeAcceleration": 0.79,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 69014765,
+        "bitgetSpreadBps": 1.76,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.17
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SAMSUNGUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 54.2,
+      "scores": {
+        "ignition": 39.9,
+        "prebreakout": 54.6,
+        "momentum": 22.4,
+        "squeeze": 13.3,
+        "liquidity": 36.1
+      },
+      "metrics": {
+        "change24hPct": -6.13,
+        "ret15Pct": -0.27,
+        "ret60Pct": -0.36,
+        "volumeAcceleration": 0.62,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 26712072,
+        "bitgetSpreadBps": 0.54,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.68,
+        "rangePosition": -0.08
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SNXXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.1,
+      "scores": {
+        "ignition": 41.7,
+        "prebreakout": 52.4,
+        "momentum": 31.1,
+        "squeeze": 21.3,
+        "liquidity": 54.8
+      },
+      "metrics": {
+        "change24hPct": -4.11,
+        "ret15Pct": -0.72,
+        "ret60Pct": -1.57,
+        "volumeAcceleration": 0.44,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0092,
+        "turnover24hUsd": 154519058,
+        "bitgetSpreadBps": 1.79,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.75,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "KIOXIAUSDT",
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 54,
+      "scores": {
+        "ignition": 57.1,
+        "prebreakout": 52,
+        "momentum": 37.3,
+        "squeeze": 8.6,
+        "liquidity": 14.4
+      },
+      "metrics": {
+        "change24hPct": -8.8,
+        "ret15Pct": -0.45,
+        "ret60Pct": -0.83,
+        "volumeAcceleration": 3.17,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 2782253,
+        "bitgetSpreadBps": 3.95,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.9,
+        "rangePosition": -0.44
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x3.2",
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    }
+  ],
+  "topSqueeze": [
+    {
+      "symbol": "HOMEUSDT",
+      "type": "SQUEEZE",
+      "direction": "LONG",
+      "overall": 60,
+      "scores": {
+        "ignition": 36,
+        "prebreakout": 43.3,
+        "momentum": 19,
+        "squeeze": 64.2,
+        "liquidity": 10.9
+      },
+      "metrics": {
+        "change24hPct": -5.72,
+        "ret15Pct": 0.83,
+        "ret60Pct": -0.77,
+        "volumeAcceleration": 0.31,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": -0.1831,
+        "turnover24hUsd": 1728794,
+        "bitgetSpreadBps": 4.64,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.6,
+        "rangePosition": 0.67
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "funding -0.183%",
+        "до границы ≈0.87%",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "BICOUSDT",
+      "type": "SQUEEZE",
+      "direction": "LONG",
+      "overall": 45.7,
+      "scores": {
+        "ignition": 22.6,
+        "prebreakout": 17.1,
+        "momentum": 18.2,
+        "squeeze": 53.1,
+        "liquidity": 15.2
+      },
+      "metrics": {
+        "change24hPct": -7.04,
+        "ret15Pct": -0.25,
+        "ret60Pct": -0.05,
+        "volumeAcceleration": 1.15,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": -0.4816,
+        "turnover24hUsd": 3043552,
+        "bitgetSpreadBps": 10.06,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 1.01,
+        "rangePosition": 0.37
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "funding -0.482%",
+        "cross-exchange consensus"
+      ]
+    },
+    {
+      "symbol": "GLWUSDT",
+      "type": "SQUEEZE",
+      "direction": "LONG",
+      "overall": 45.4,
+      "scores": {
+        "ignition": 36.7,
+        "prebreakout": 33.6,
+        "momentum": 23,
+        "squeeze": 49.2,
+        "liquidity": 22
+      },
+      "metrics": {
+        "change24hPct": -4.32,
+        "ret15Pct": -0.71,
+        "ret60Pct": -1.19,
+        "volumeAcceleration": 0.53,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": -0.1953,
+        "turnover24hUsd": 6609165,
+        "bitgetSpreadBps": 5.56,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 1.02,
+        "rangePosition": -0.17
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "funding -0.195%",
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "GPSUSDT",
+      "type": "SQUEEZE",
+      "direction": "LONG",
+      "overall": 33.7,
+      "scores": {
+        "ignition": 19.8,
+        "prebreakout": 27.7,
+        "momentum": 26.4,
+        "squeeze": 34,
+        "liquidity": 47.5
+      },
+      "metrics": {
+        "change24hPct": 17.77,
+        "ret15Pct": -0.45,
+        "ret60Pct": 0.77,
+        "volumeAcceleration": 0.66,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": -0.0433,
+        "turnover24hUsd": 78393881,
+        "bitgetSpreadBps": 0.55,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.65,
+        "rangePosition": 0.67
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "funding -0.043%",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOXLUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 61.6,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 62.3,
+        "momentum": 27.9,
+        "squeeze": 29.1,
+        "liquidity": 53
+      },
+      "metrics": {
+        "change24hPct": -10.2,
+        "ret15Pct": -0.37,
+        "ret60Pct": -0.87,
+        "volumeAcceleration": 0.72,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0287,
+        "turnover24hUsd": 131061562,
+        "bitgetSpreadBps": 0.74,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.59,
+        "rangePosition": -0.03
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "KORUUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 46.9,
+      "scores": {
+        "ignition": 37.8,
+        "prebreakout": 47.6,
+        "momentum": 26.5,
+        "squeeze": 24.7,
+        "liquidity": 57.7
+      },
+      "metrics": {
+        "change24hPct": -13.43,
+        "ret15Pct": -0.49,
+        "ret60Pct": -0.3,
+        "volumeAcceleration": 0.54,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0158,
+        "turnover24hUsd": 203104610,
+        "bitgetSpreadBps": 1,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.82,
+        "rangePosition": 0.06
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "до границы ≈0.09%",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SNXXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.1,
+      "scores": {
+        "ignition": 41.7,
+        "prebreakout": 52.4,
+        "momentum": 31.1,
+        "squeeze": 21.3,
+        "liquidity": 54.8
+      },
+      "metrics": {
+        "change24hPct": -4.11,
+        "ret15Pct": -0.72,
+        "ret60Pct": -1.57,
+        "volumeAcceleration": 0.44,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0092,
+        "turnover24hUsd": 154519058,
+        "bitgetSpreadBps": 1.79,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.75,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SKHYNIXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 57.8,
+      "scores": {
+        "ignition": 39.7,
+        "prebreakout": 58.2,
+        "momentum": 26.8,
+        "squeeze": 18.2,
+        "liquidity": 58.2
+      },
+      "metrics": {
+        "change24hPct": -5.05,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.34,
+        "volumeAcceleration": 0.76,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 212649082,
+        "bitgetSpreadBps": 0.52,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.05
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    }
+  ],
+  "topMomentum": [
+    {
+      "symbol": "OUSDT",
+      "type": "IGNITION",
+      "direction": "LONG",
+      "overall": 49.3,
+      "scores": {
+        "ignition": 62.9,
+        "prebreakout": 48.1,
+        "momentum": 40,
+        "squeeze": 9.2,
+        "liquidity": 7.9
+      },
+      "metrics": {
+        "change24hPct": -9.92,
+        "ret15Pct": 0.65,
+        "ret60Pct": 0.16,
+        "volumeAcceleration": 39.41,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 1063433,
+        "bitgetSpreadBps": 15.5,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 2.43,
+        "rangePosition": 0.84
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x39.4",
+        "до границы ≈0.12%",
+        "cross-exchange consensus"
+      ]
+    },
+    {
+      "symbol": "BEATUSDT",
+      "type": "MOMENTUM",
+      "direction": "LONG",
+      "overall": 35.3,
+      "scores": {
+        "ignition": 39.3,
+        "prebreakout": 19.6,
+        "momentum": 39.8,
+        "squeeze": 16.6,
+        "liquidity": 41.3
+      },
+      "metrics": {
+        "change24hPct": -13.59,
+        "ret15Pct": 2.09,
+        "ret60Pct": 2.6,
+        "volumeAcceleration": 1.92,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 43787210,
+        "bitgetSpreadBps": 8.11,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 1.12,
+        "rangePosition": 0.79
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x1.9",
+        "cross-exchange consensus"
+      ]
+    },
+    {
+      "symbol": "OPNUSDT",
+      "type": "IGNITION",
+      "direction": "LONG",
+      "overall": 36.5,
+      "scores": {
+        "ignition": 38.2,
+        "prebreakout": 32.6,
+        "momentum": 37.9,
+        "squeeze": 10.5,
+        "liquidity": 13.5
+      },
+      "metrics": {
+        "change24hPct": 17.27,
+        "ret15Pct": 1.63,
+        "ret60Pct": 5.35,
+        "volumeAcceleration": 0.43,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 2455968,
+        "bitgetSpreadBps": 3.3,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.78,
+        "rangePosition": 0.89
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "до границы ≈0.87%",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "KIOXIAUSDT",
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 54,
+      "scores": {
+        "ignition": 57.1,
+        "prebreakout": 52,
+        "momentum": 37.3,
+        "squeeze": 8.6,
+        "liquidity": 14.4
+      },
+      "metrics": {
+        "change24hPct": -8.8,
+        "ret15Pct": -0.45,
+        "ret60Pct": -0.83,
+        "volumeAcceleration": 3.17,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 2782253,
+        "bitgetSpreadBps": 3.95,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.9,
+        "rangePosition": -0.44
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x3.2",
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "APRUSDT",
+      "type": "MOMENTUM",
+      "direction": "LONG",
+      "overall": 30.7,
+      "scores": {
+        "ignition": 17.1,
+        "prebreakout": 7,
+        "momentum": 34.5,
+        "squeeze": 12.2,
+        "liquidity": 21.5
+      },
+      "metrics": {
+        "change24hPct": 11.66,
+        "ret15Pct": 0.7,
+        "ret60Pct": 4.11,
+        "volumeAcceleration": 0.43,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 6228514,
+        "bitgetSpreadBps": 7.98,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 1.01,
+        "rangePosition": 0.83
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SKHYUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.4,
+      "scores": {
+        "ignition": 42.7,
+        "prebreakout": 51.9,
+        "momentum": 31.9,
+        "squeeze": 17.1,
+        "liquidity": 53.1
+      },
+      "metrics": {
+        "change24hPct": -6.12,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.54,
+        "volumeAcceleration": 1.66,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 131541809,
+        "bitgetSpreadBps": 0.62,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.82,
+        "rangePosition": -0.07
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SNXXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.1,
+      "scores": {
+        "ignition": 41.7,
+        "prebreakout": 52.4,
+        "momentum": 31.1,
+        "squeeze": 21.3,
+        "liquidity": 54.8
+      },
+      "metrics": {
+        "change24hPct": -4.11,
+        "ret15Pct": -0.72,
+        "ret60Pct": -1.57,
+        "volumeAcceleration": 0.44,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0092,
+        "turnover24hUsd": 154519058,
+        "bitgetSpreadBps": 1.79,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.75,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "FILUSDT",
+      "type": "IGNITION",
+      "direction": "SHORT",
+      "overall": 35.2,
+      "scores": {
+        "ignition": 36,
+        "prebreakout": 33.8,
+        "momentum": 28.7,
+        "squeeze": 15.1,
+        "liquidity": 27.7
+      },
+      "metrics": {
+        "change24hPct": -7.27,
+        "ret15Pct": -0.12,
+        "ret60Pct": -0.73,
+        "volumeAcceleration": 1.8,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0086,
+        "turnover24hUsd": 11875203,
+        "bitgetSpreadBps": 1.61,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 1.75,
+        "rangePosition": 0.24
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x1.8",
+        "до границы ≈0.35%",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    }
+  ],
+  "topLiquidity": [
+    {
+      "symbol": "SKHYNIXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 57.8,
+      "scores": {
+        "ignition": 39.7,
+        "prebreakout": 58.2,
+        "momentum": 26.8,
+        "squeeze": 18.2,
+        "liquidity": 58.2
+      },
+      "metrics": {
+        "change24hPct": -5.05,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.34,
+        "volumeAcceleration": 0.76,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 212649082,
+        "bitgetSpreadBps": 0.52,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.05
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "KORUUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 46.9,
+      "scores": {
+        "ignition": 37.8,
+        "prebreakout": 47.6,
+        "momentum": 26.5,
+        "squeeze": 24.7,
+        "liquidity": 57.7
+      },
+      "metrics": {
+        "change24hPct": -13.43,
+        "ret15Pct": -0.49,
+        "ret60Pct": -0.3,
+        "volumeAcceleration": 0.54,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0158,
+        "turnover24hUsd": 203104610,
+        "bitgetSpreadBps": 1,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.82,
+        "rangePosition": 0.06
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "до границы ≈0.09%",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SNXXUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.1,
+      "scores": {
+        "ignition": 41.7,
+        "prebreakout": 52.4,
+        "momentum": 31.1,
+        "squeeze": 21.3,
+        "liquidity": 54.8
+      },
+      "metrics": {
+        "change24hPct": -4.11,
+        "ret15Pct": -0.72,
+        "ret60Pct": -1.57,
+        "volumeAcceleration": 0.44,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0092,
+        "turnover24hUsd": 154519058,
+        "bitgetSpreadBps": 1.79,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.75,
+        "rangePosition": -0.01
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SKHYUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 51.4,
+      "scores": {
+        "ignition": 42.7,
+        "prebreakout": 51.9,
+        "momentum": 31.9,
+        "squeeze": 17.1,
+        "liquidity": 53.1
+      },
+      "metrics": {
+        "change24hPct": -6.12,
+        "ret15Pct": -0.2,
+        "ret60Pct": -0.54,
+        "volumeAcceleration": 1.66,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 131541809,
+        "bitgetSpreadBps": 0.62,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.82,
+        "rangePosition": -0.07
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "SOXLUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 61.6,
+      "scores": {
+        "ignition": 42.5,
+        "prebreakout": 62.3,
+        "momentum": 27.9,
+        "squeeze": 29.1,
+        "liquidity": 53
+      },
+      "metrics": {
+        "change24hPct": -10.2,
+        "ret15Pct": -0.37,
+        "ret60Pct": -0.87,
+        "volumeAcceleration": 0.72,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.0287,
+        "turnover24hUsd": 131061562,
+        "bitgetSpreadBps": 0.74,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.59,
+        "rangePosition": -0.03
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "GPSUSDT",
+      "type": "SQUEEZE",
+      "direction": "LONG",
+      "overall": 33.7,
+      "scores": {
+        "ignition": 19.8,
+        "prebreakout": 27.7,
+        "momentum": 26.4,
+        "squeeze": 34,
+        "liquidity": 47.5
+      },
+      "metrics": {
+        "change24hPct": 17.77,
+        "ret15Pct": -0.45,
+        "ret60Pct": 0.77,
+        "volumeAcceleration": 0.66,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": -0.0433,
+        "turnover24hUsd": 78393881,
+        "bitgetSpreadBps": 0.55,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.65,
+        "rangePosition": 0.67
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "funding -0.043%",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "DRAMUSDT",
+      "type": "PRE-BREAKOUT",
+      "direction": "SHORT",
+      "overall": 55.7,
+      "scores": {
+        "ignition": 40.5,
+        "prebreakout": 57.1,
+        "momentum": 24.8,
+        "squeeze": 15.5,
+        "liquidity": 46.1
+      },
+      "metrics": {
+        "change24hPct": -4.96,
+        "ret15Pct": -0.29,
+        "ret60Pct": -0.45,
+        "volumeAcceleration": 0.79,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0,
+        "turnover24hUsd": 69014765,
+        "bitgetSpreadBps": 1.76,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 0.66,
+        "rangePosition": -0.17
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "5m breakout down",
+        "сжатие диапазона",
+        "cross-exchange consensus",
+        "узкий Bitget spread"
+      ]
+    },
+    {
+      "symbol": "BEATUSDT",
+      "type": "MOMENTUM",
+      "direction": "LONG",
+      "overall": 35.3,
+      "scores": {
+        "ignition": 39.3,
+        "prebreakout": 19.6,
+        "momentum": 39.8,
+        "squeeze": 16.6,
+        "liquidity": 41.3
+      },
+      "metrics": {
+        "change24hPct": -13.59,
+        "ret15Pct": 2.09,
+        "ret60Pct": 2.6,
+        "volumeAcceleration": 1.92,
+        "oiChangeApprox1hPct": null,
+        "fundingPct": 0.005,
+        "turnover24hUsd": 43787210,
+        "bitgetSpreadBps": 8.11,
+        "radarCount": 1,
+        "consensus24": 1,
+        "detailSources": 2,
+        "compressionRatio": 1.12,
+        "rangePosition": 0.79
+      },
+      "exchanges": {
+        "binance": false,
+        "bybit": false,
+        "okx": true,
+        "bitget": true
+      },
+      "reasons": [
+        "volume x1.9",
+        "cross-exchange consensus"
+      ]
+    }
+  ],
   "notes": [
-    "OI trend uses Binance/Bybit 5m history where available; current OKX and Bitget data are used for cross-exchange confirmation/execution filtering.",
-    "Scores rank attention, not certainty. Entry still requires a trigger and invalidation level.",
-    "Funding is a crowding signal, not a directional forecast by itself."
+    "Radar uses every accessible public exchange endpoint; Bitget presence and spread are mandatory execution filters.",
+    "If Binance/Bybit are region-blocked from the runner, OKX+Bitget still produce the short-term scan; missing sources are shown explicitly.",
+    "Score is attention ranking, not a trade signal. Entry requires trigger and invalidation."
   ]
 }
