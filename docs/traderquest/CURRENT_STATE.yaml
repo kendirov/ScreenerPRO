@@ -2,8 +2,12 @@ task_id: TQ-001
 date: "2026-09-09"
 repository: kendirov/ScreenerPRO
 base_branch: codex/bitget-private-readonly-v1-2026-08-18
+audited_source_branch: codex/bitget-private-readonly-v1-2026-08-18
+audited_source_commit: ebceeb89c0ea4d81e36a226bea13226127a2ce85
 working_branch: codex/traderquest-tq001-foundation-2026-09-09
-working_commit: ebceeb89c0ea4d81e36a226bea13226127a2ce85
+working_branch_head:
+  resolution: git
+  note: "Resolve the current branch HEAD from Git at the start of each session; do not hardcode a self-referential commit hash in this state file."
 known_branch_heads:
   main: 1cc078b7aa15e9924e6403d0fd4566138e79a586
   codex/trading-os-shell-v1: f0f2a3ed6027253786fa14fc67983acd0f9b3f69
