@@ -1,0 +1,89 @@
+task_id: TQ-001
+date: "2026-09-09"
+repository: kendirov/ScreenerPRO
+base_branch: codex/bitget-private-readonly-v1-2026-08-18
+working_branch: codex/traderquest-tq001-foundation-2026-09-09
+working_commit: ebceeb89c0ea4d81e36a226bea13226127a2ce85
+known_branch_heads:
+  main: 1cc078b7aa15e9924e6403d0fd4566138e79a586
+  codex/trading-os-shell-v1: f0f2a3ed6027253786fa14fc67983acd0f9b3f69
+  codex/trading-stocks-v2-2026-08-15: 6031c8c2a7d3a4f6124d5e499321685ff4fa6f30
+  codex/bitget-briefing-screener-v1-2026-08-13: 13d329b25da4d813997aace92979093a9c315134
+  codex/bitget-private-readonly-v1-2026-08-18: ebceeb89c0ea4d81e36a226bea13226127a2ce85
+  feature/bitget-global-screener-v1: dfd84d99e1e6fcdc8f8cb588871cf071278dec4b
+  feature/bitget-screener-mvp: cbf0c5d615cd8186d4418a127aac39e079c63af3
+  debug/bitget-map-isolation: 3f7e06420e6842cace4d9487d6c924ada8d6e787
+  debug/bitget-terminal-isolation: a54623bd0b777109af6b1f01a52e92292cac88af3
+  codex/screeneros-source-of-truth-audit-2026-08-13: df5abb62ffe56430081cecf583eec4204d83ead8
+  rescue/screener-good-state: c03c31ebc95379ead22a2f802c4c1b9ae2e40d4c
+vercel:
+  project: screenerpro
+  project_id: prj_i7YloA0a6EId4Sfc4Wuy8QWuRsfh
+  latest_ready:
+    deployment_id: dpl_DRTjb6jDNDsHn813xi7RtTYQbzP9
+    url: https://screenerpro-jx8uqgb80-artem-kendirovs-projects.vercel.app
+    state: READY
+    target: null
+    branch: codex/bitget-private-readonly-v1-2026-08-18
+    commit: ebceeb89c0ea4d81e36a226bea13226127a2ce85
+    status_note: preview_or_non-production; Vercel target is null, not production evidence
+  observed_deployments:
+    - deployment_id: dpl_DRTjb6jDNDsHn813xi7RtTYQbzP9
+      state: READY
+      branch: codex/bitget-private-readonly-v1-2026-08-18
+      commit: ebceeb89c0ea4d81e36a226bea13226127a2ce85
+      url: https://screenerpro-jx8uqgb80-artem-kendirovs-projects.vercel.app
+    - deployment_id: dpl_7f1dz2ErQwT8PWDJ7rUNr9U2jrxS
+      state: READY
+      branch: codex/bitget-private-readonly-v1-2026-08-18
+      commit: 3a1afc6771fc3bb41f4661c94c500026ed9aef54
+      url: https://screenerpro-7z5nsgur1-artem-kendirovs-projects.vercel.app
+    - deployment_id: dpl_8EmeF9gBAsPuqTEL4ofJye973Xqw
+      state: READY
+      branch: codex/bitget-private-readonly-v1-2026-08-18
+      commit: 902c1818a073627424ada56ba8c914f3c34cc820
+      url: https://screenerpro-cy9uoxuij-artem-kendirovs-projects.vercel.app
+    - deployment_id: dpl_6rZfZHaz86Cm4cE7PyekkVuFq9gR
+      state: READY
+      branch: codex/bitget-private-readonly-v1-2026-08-18
+      commit: ce84a168aea9c74f90e4b957bdad7a56fd6bfb5d
+      url: https://screenerpro-cemfshb7k-artem-kendirovs-projects.vercel.app
+drive:
+  workspace: "Трейдинг/Платформа/Trading Workspace"
+  canon_folder_id: 1M4jxpl8R8VsPnC318r4dFmvmqRIyTvb7
+  traderquest_folder: "Трейдинг/Платформа/Trading Workspace/20_EXPERIMENTS/TraderQuest Crypto"
+  traderquest_folder_id: 1mqz-kwbXLdRDm3F1NDR6NR5oi7iOVLk4
+  work_log_folder: "TraderQuest Crypto/WORK_LOG"
+  work_log_folder_id: 1Y_ffXXWkVIcYqZA1IP9nAq8kM5ltJNQw
+existing_crypto_state:
+  public_uta_adapter: KEEP
+  bitget_terminal_and_map: KEEP
+  briefing_engine: KEEP
+  private_read_only_bridge: KEEP
+  crypto_ci_scanners: KEEP
+  cross_exchange_scanner: REFACTOR
+  tradingview_workspace: KEEP
+  account_routes: preview_only_no_trading
+conflicts:
+  - "Drive canon requires factual/no-fake data and Preview-before-Production; existing Bitget docs describe a 24h proxy and explicitly mark baseline as MISSING. This is a limitation, not a silent promotion to verified historical evidence."
+  - "The new checkout contains three pre-existing CRLF/working-tree modifications in frontend/components/lab/market-map/flow-map-tooltip.tsx, frontend/components/lab/preparation/preparation-source-status.tsx, and frontend/components/screener/dashboard/session-pulse-card.tsx. They are excluded from TQ-001 commit."
+  - "Vercel latest READY deployment has target: null; it is not evidence of Production. Production domain exists, but deployment target must not be inferred."
+known_debt:
+  - "Briefing baseline/history, trades acceleration, OI history, liquidations, DOM and session memory are unavailable or explicitly missing."
+  - "Private read-only bridge is protected from Vercel production by a 403 guard and has no auth/security layer for a user-facing account surface."
+  - "Crypto CI scanners write snapshots back to the Bitget private-readonly branch; generated JSON is evidence snapshot, not operational truth."
+  - "No physical Windows/Mac dependency is acceptable for future production collector/execution."
+accepted_architecture:
+  source_architecture: modular_monorepo
+  runtimes: [tq-api, tq-market, tq-research, tq-execution]
+  backend_family: Python/FastAPI
+  operational_truth: Supabase/Postgres
+  hot_analytical_store: ClickHouse_provisional
+  archive: Parquet_plus_S3_compatible_object_storage
+  research: DuckDB/Polars
+  first_adapter: Bitget_UTA_v3
+  future_domains: [EventContext, AlertSpec/Alert_Engine, MarketCase, BriefingBlueprint]
+next_task:
+  id: TQ-002
+  title: "Define verified Bitget adapter contract and smoke-test matrix"
+  status: approved_not_started
