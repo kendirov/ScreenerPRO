@@ -1,10 +1,10 @@
-task_id: TQ-002
+task_id: TQ-003
 date: "2026-09-09"
 repository: kendirov/ScreenerPRO
 base_branch: codex/bitget-private-readonly-v1-2026-08-18
 audited_source_branch: codex/bitget-private-readonly-v1-2026-08-18
 audited_source_commit: ebceeb89c0ea4d81e36a226bea13226127a2ce85
-working_branch: codex/traderquest-tq002-bitget-contract-2026-09-09
+working_branch: codex/traderquest-tq003-market-contracts-2026-09-09
 working_branch_head:
   resolution: git
   note: "Resolve the current branch HEAD from Git at the start of each session; do not hardcode a self-referential commit hash in this state file."
@@ -92,8 +92,20 @@ accepted_architecture:
   research: DuckDB/Polars
   first_adapter: Bitget_UTA_v3
   future_domains: [EventContext, AlertSpec/Alert_Engine, MarketCase, BriefingBlueprint]
-latest_completed_task: TQ-002
+latest_completed_task: TQ-003
 task_status: PASS
+market_contracts:
+  status: IMPLEMENTED
+  location: traderquest/market
+  numeric_type: Decimal
+  rate_unit: ratio
+  timestamp_unit: epoch_ms_utc
+  missing_value: null
+provider_normalizer:
+  bitget: IMPLEMENTED_PURE
+network_adapter:
+  bitget: NOT_IMPLEMENTED
+persistent_collector: NOT_IMPLEMENTED
 bitget_uta_v3:
   capability_manifest: contracts/traderquest/bitget/uta-v3-capabilities.json
   official_docs_verified: true
@@ -107,6 +119,6 @@ bitget_uta_v3:
   private_runtime_smoke: DEFERRED
   execution: NOT_ENABLED
 next_task:
-  id: TQ-003
-  title: "Canonical Market Contracts + Bitget Public Adapter Boundary"
+  id: TQ-004
+  title: "Bitget Public REST Adapter + Canonical Snapshot Runtime"
   status: approved_not_started

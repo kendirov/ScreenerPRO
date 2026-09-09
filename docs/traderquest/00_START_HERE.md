@@ -1,4 +1,4 @@
-# TraderQuest Crypto — TQ-002 verified Bitget foundation
+# TraderQuest Crypto — TQ-003 canonical market foundation
 
 ## Что это
 
@@ -40,6 +40,10 @@ Existing Crypto/Bitget assets уже существуют и не равны pro
 5. [`BITGET_UTA_V3_CAPABILITIES.md`](./BITGET_UTA_V3_CAPABILITIES.md) — verified UTA contract и mapping existing code.
 6. [`BITGET_SMOKE_MATRIX.md`](./BITGET_SMOKE_MATRIX.md) — отдельные docs/code/runtime статусы.
 
+## TQ-003 core
+
+Canonical contracts and pure Bitget normalization: [`MARKET_CONTRACTS.md`](./MARKET_CONTRACTS.md), [`ADR-003-market-contracts.md`](./DECISIONS/ADR-003-market-contracts.md).
+
 ## Следующая задача
 
-`TQ-003` — Canonical Market Contracts + Bitget Public Adapter Boundary. Approved, not started.
+`TQ-004` — Bitget Public REST Adapter + Canonical Snapshot Runtime. Approved, not started.
