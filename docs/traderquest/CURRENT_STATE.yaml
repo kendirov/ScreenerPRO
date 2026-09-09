@@ -1,4 +1,4 @@
-task_id: TQ-001
+task_id: TQ-002
 date: "2026-09-09"
 repository: kendirov/ScreenerPRO
 base_branch: codex/bitget-private-readonly-v1-2026-08-18
@@ -73,10 +73,13 @@ conflicts:
   - "The new checkout contains three pre-existing CRLF/working-tree modifications in frontend/components/lab/market-map/flow-map-tooltip.tsx, frontend/components/lab/preparation/preparation-source-status.tsx, and frontend/components/screener/dashboard/session-pulse-card.tsx. They are excluded from TQ-001 commit."
   - "Vercel latest READY deployment has target: null; it is not evidence of Production. Production domain exists, but deployment target must not be inferred."
 known_debt:
-  - "Briefing baseline/history, trades acceleration, OI history, liquidations, DOM and session memory are unavailable or explicitly missing."
+  - "Briefing baseline/history, trades acceleration, OI history, DOM and session memory are unavailable or explicitly missing; liquidation capability is verified at Bitget but TraderQuest ingestion is not implemented."
   - "Private read-only bridge is protected from Vercel production by a 403 guard and has no auth/security layer for a user-facing account surface."
   - "Crypto CI scanners write snapshots back to the Bitget private-readonly branch; generated JSON is evidence snapshot, not operational truth."
   - "No physical Windows/Mac dependency is acceptable for future production collector/execution."
+verification_environment:
+  public_rest_smoke: "Direct Node 22 execution passed 9/9; pnpm wrapper was not runnable because checkout has no node_modules and dependency installation is out of scope."
+  briefing_and_build: "Blocked by missing node_modules: tsx and prisma are unavailable; no dependency installation performed."
 accepted_architecture:
   source_architecture: modular_monorepo
   runtimes: [tq-api, tq-market, tq-research, tq-execution]
@@ -87,7 +90,17 @@ accepted_architecture:
   research: DuckDB/Polars
   first_adapter: Bitget_UTA_v3
   future_domains: [EventContext, AlertSpec/Alert_Engine, MarketCase, BriefingBlueprint]
+latest_completed_task: TQ-002
+bitget_uta_v3:
+  capability_manifest: contracts/traderquest/bitget/uta-v3-capabilities.json
+  official_docs_verified: true
+  liquidation_api_capability: VERIFIED
+  liquidation_ws_capability: VERIFIED
+  traderquest_liquidation_implementation: NOT_IMPLEMENTED
+  public_rest_smoke: RUNTIME_VERIFIED
+  private_runtime_smoke: DEFERRED
+  execution: NOT_ENABLED
 next_task:
-  id: TQ-002
-  title: "Define verified Bitget adapter contract and smoke-test matrix"
+  id: TQ-003
+  title: "Canonical Market Contracts + Bitget Public Adapter Boundary"
   status: approved_not_started

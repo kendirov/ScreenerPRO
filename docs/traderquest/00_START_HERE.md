@@ -1,14 +1,14 @@
-# TraderQuest Crypto — TQ-001 foundation
+# TraderQuest Crypto — TQ-002 verified Bitget foundation
 
 ## Что это
 
-TraderQuest Crypto — будущий crypto/execution/research контур внутри существующего Trading Workspace. TQ-001 не создаёт новый frontend и не реализует trading: он фиксирует фактическую базу и запрещает вторую Bitget-реализацию.
+TraderQuest Crypto — будущий crypto/execution/research контур внутри существующего Trading Workspace. TQ-002 фиксирует проверенный UTA v3 capability contract и public smoke boundary; новый frontend и trading не создаются.
 
 ## Где живёт
 
 - Repository: `kendirov/ScreenerPRO`.
-- Working branch: `codex/traderquest-tq001-foundation-2026-09-09`.
-- Base: `codex/bitget-private-readonly-v1-2026-08-18`, commit `ebceeb89c0ea4d81e36a226bea13226127a2ce85`.
+- Accepted foundation: `codex/traderquest-tq001-foundation-2026-09-09` at `acb00fe…`.
+- Current TQ-002 branch: `codex/traderquest-tq002-bitget-contract-2026-09-09`.
 - Existing Next.js/React Trading Workspace остаётся оболочкой.
 
 ## Source of truth
@@ -25,11 +25,11 @@ Modular monorepo; runtimes `tq-api`, `tq-market`, `tq-research`, `tq-execution`;
 
 ## Нельзя менять случайно
 
-Не дублировать `/screener/bitget`, `/screener/bitget/map`, public UTA adapter, briefing engine, private read-only bridge или crypto scanners. Не добавлять trading POST, order operations, secrets, migrations, infra, MCP, AI, ClickHouse, dependencies, merge или deployment в TQ-001.
+Не дублировать `/screener/bitget`, `/screener/bitget/map`, public UTA adapter, briefing engine, private read-only bridge или crypto scanners. Не добавлять trading POST, order operations, secrets, migrations, infra, MCP, AI, ClickHouse, dependencies, merge или deployment без отдельной задачи. В TQ-002 public smoke read-only; private runtime и execution не вызываются.
 
 ## Текущее состояние
 
-Existing Crypto/Bitget assets уже существуют и не равны production execution. Public market UI — live/preview surface; private bridge — preview-only и намеренно блокируется на production; scanners — GitHub Actions snapshots. Подробности: [`CURRENT_STATE.yaml`](./CURRENT_STATE.yaml) и [`EXISTING_ASSET_INVENTORY.md`](./EXISTING_ASSET_INVENTORY.md).
+Existing Crypto/Bitget assets уже существуют и не равны production execution. Public market UI — live/preview surface; private bridge — preview-only и намеренно блокируется на production; scanners — GitHub Actions snapshots. Подробности: [`CURRENT_STATE.yaml`](./CURRENT_STATE.yaml), [`EXISTING_ASSET_INVENTORY.md`](./EXISTING_ASSET_INVENTORY.md), [`BITGET_UTA_V3_CAPABILITIES.md`](./BITGET_UTA_V3_CAPABILITIES.md), [`BITGET_SMOKE_MATRIX.md`](./BITGET_SMOKE_MATRIX.md) и [`uta-v3-capabilities.json`](../../contracts/traderquest/bitget/uta-v3-capabilities.json).
 
 ## Читать дальше
 
@@ -37,7 +37,9 @@ Existing Crypto/Bitget assets уже существуют и не равны pro
 2. [`EXISTING_ASSET_INVENTORY.md`](./EXISTING_ASSET_INVENTORY.md) — salvage inventory.
 3. [`ARCHITECTURE.md`](./ARCHITECTURE.md) — approved boundaries only.
 4. ADR-001 и ADR-002 — product boundary и runtime topology.
+5. [`BITGET_UTA_V3_CAPABILITIES.md`](./BITGET_UTA_V3_CAPABILITIES.md) — verified UTA contract и mapping existing code.
+6. [`BITGET_SMOKE_MATRIX.md`](./BITGET_SMOKE_MATRIX.md) — отдельные docs/code/runtime статусы.
 
 ## Следующая задача
 
-`TQ-002` — только после отдельного approval: превратить существующий Bitget market truth в проверяемый adapter contract и smoke-test matrix, без order execution и без нового UI. TQ-002 не начат.
+`TQ-003` — Canonical Market Contracts + Bitget Public Adapter Boundary. Approved, not started.
