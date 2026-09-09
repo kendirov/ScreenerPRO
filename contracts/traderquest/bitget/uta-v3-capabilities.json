@@ -368,13 +368,13 @@
       "method_or_topic": "subscribe",
       "path_or_topic": "fill",
       "product_types": ["UTA"],
-      "permission": "signed",
-      "documented_rate_limit": "Not stated on current official UTA private-channel mapping",
-      "official_source": "https://www.bitget.com/docs/classic/uta-api-upgrade-guide",
-      "official_status": "UNVERIFIED",
+      "permission": "private/signed authenticated WebSocket",
+      "documented_rate_limit": "Connection/subscription limits apply",
+      "official_source": "https://www.bitget.com/api-doc/uta/websocket/private/Fill-Channel",
+      "official_status": "VERIFIED",
       "existing_implementation": "NOT_IMPLEMENTED",
-      "tq_status": "DEFERRED",
-      "notes": "Current official mapping lists order, account and position private topics; fill is not confirmed as a separate UTA topic."
+      "tq_status": "IMPLEMENT_LATER",
+      "notes": "Real-time fill push for spot, leveraged and futures orders; no push on first subscription."
     },
     {
       "id": "execution.place_order",

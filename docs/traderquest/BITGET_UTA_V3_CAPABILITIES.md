@@ -40,7 +40,7 @@
 | Public WS ticker/trade/books | Официально VERIFIED | persistent WS нет | IMPLEMENT_LATER |
 | Account/settings/assets/funding/positions/open orders | Signed UTA read endpoints | `frontend/lib/server/services/bitget-private.ts` | KEEP; private runtime later |
 | Private WS order/account/position | Официально VERIFIED | нет | IMPLEMENT_LATER |
-| Private WS fill | В текущей официальной mapping-таблице отдельный topic не подтверждён | нет | DEFERRED |
+| Private WS fill | `instType: UTA`, `topic: fill`; real-time fill push, no first-subscription push | нет | IMPLEMENT_LATER |
 | Place/modify/cancel/batch | Официально VERIFIED, read-write | нет; no-order boundary | FORBIDDEN в TQ-002 |
 
 ## Проверенные ограничения существующего market service
@@ -53,6 +53,7 @@
 - [Market Data](https://www.bitget.com/docs/catalog/market/market-data) — instruments, tickers, orderbook, fills, current market fields.
 - [Liquidations History](https://www.bitget.com/api-doc/uta/public/Get-Liquidations) — liquidation REST, 3-day window, rate limit.
 - [Liquidation Channel](https://www.bitget.com/api-doc/uta/websocket/public/Liquidation-Channel) — liquidation WS semantics.
+- [Private Fill Channel](https://www.bitget.com/api-doc/uta/websocket/private/Fill-Channel) — authenticated UTA real-time fill push.
 - [Depth Channel](https://www.bitget.com/api-doc/uta/websocket/public/Order-Book-Channel) — books topics, snapshots, frequencies, `seq/pseq`.
 - [Best Practices](https://www.bitget.com/docs/uta/best-practices-guide) — WS behavior, order confirmation semantics, private channels.
 - [UTA upgrade guide](https://www.bitget.com/docs/classic/uta-api-upgrade-guide) — v2→v3 REST and public/private topic mapping.

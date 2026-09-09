@@ -4,7 +4,7 @@ repository: kendirov/ScreenerPRO
 base_branch: codex/bitget-private-readonly-v1-2026-08-18
 audited_source_branch: codex/bitget-private-readonly-v1-2026-08-18
 audited_source_commit: ebceeb89c0ea4d81e36a226bea13226127a2ce85
-working_branch: codex/traderquest-tq001-foundation-2026-09-09
+working_branch: codex/traderquest-tq002-bitget-contract-2026-09-09
 working_branch_head:
   resolution: git
   note: "Resolve the current branch HEAD from Git at the start of each session; do not hardcode a self-referential commit hash in this state file."
@@ -78,8 +78,10 @@ known_debt:
   - "Crypto CI scanners write snapshots back to the Bitget private-readonly branch; generated JSON is evidence snapshot, not operational truth."
   - "No physical Windows/Mac dependency is acceptable for future production collector/execution."
 verification_environment:
-  public_rest_smoke: "Direct Node 22 execution passed 9/9; pnpm wrapper was not runnable because checkout has no node_modules and dependency installation is out of scope."
-  briefing_and_build: "Blocked by missing node_modules: tsx and prisma are unavailable; no dependency installation performed."
+  dependency_install: PASS
+  verify_bitget_briefing: PASS
+  public_rest_smoke: PASS
+  build: PASS
 accepted_architecture:
   source_architecture: modular_monorepo
   runtimes: [tq-api, tq-market, tq-research, tq-execution]
@@ -91,9 +93,13 @@ accepted_architecture:
   first_adapter: Bitget_UTA_v3
   future_domains: [EventContext, AlertSpec/Alert_Engine, MarketCase, BriefingBlueprint]
 latest_completed_task: TQ-002
+task_status: PASS
 bitget_uta_v3:
   capability_manifest: contracts/traderquest/bitget/uta-v3-capabilities.json
   official_docs_verified: true
+  official_capabilities_verified: 30
+  official_capabilities_total: 30
+  private_ws_fill_capability: VERIFIED
   liquidation_api_capability: VERIFIED
   liquidation_ws_capability: VERIFIED
   traderquest_liquidation_implementation: NOT_IMPLEMENTED

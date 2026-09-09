@@ -115,15 +115,19 @@ const probes: Array<Promise<ProbeResult>> = [
   request("spot ticker", `/api/v3/market/tickers?category=SPOT&symbol=${SYMBOL}`, arrayProbe("SPOT", ["lastPrice", "price24hPcnt", "turnover24h"])),
 ];
 
-const results = await Promise.all(probes);
-let failures = 0;
-for (const result of results) {
-  if (!result.ok) failures += 1;
-  console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name} ${result.latencyMs}ms ${result.summary}${result.error ? ` — ${result.error}` : ""}`);
+async function main() {
+  const results = await Promise.all(probes);
+  let failures = 0;
+  for (const result of results) {
+    if (!result.ok) failures += 1;
+    console.log(`${result.ok ? "PASS" : "FAIL"} ${result.name} ${result.latencyMs}ms ${result.summary}${result.error ? ` — ${result.error}` : ""}`);
+  }
+  if (failures > 0) {
+    console.error(`Public Bitget smoke: FAIL (${failures}/${results.length})`);
+    process.exitCode = 1;
+  } else {
+    console.log(`Public Bitget smoke: PASS (${results.length}/${results.length})`);
+  }
 }
-if (failures > 0) {
-  console.error(`Public Bitget smoke: FAIL (${failures}/${results.length})`);
-  process.exitCode = 1;
-} else {
-  console.log(`Public Bitget smoke: PASS (${results.length}/${results.length})`);
-}
+
+void main();

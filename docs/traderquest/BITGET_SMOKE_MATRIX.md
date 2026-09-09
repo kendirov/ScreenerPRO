@@ -10,7 +10,7 @@
 | Public fills | DOC_VERIFIED | absent | CODE_VERIFIED: no current caller | `verify:tq-bitget-public` | RUNTIME_VERIFIED | tq-market later |
 | Open interest | DOC_VERIFIED | ticker snapshot only | CODE_VERIFIED: no history | `verify:tq-bitget-public` | RUNTIME_VERIFIED | persistent history later |
 | Current funding | DOC_VERIFIED | ticker field only | CODE_VERIFIED: no dedicated endpoint | `verify:tq-bitget-public` | RUNTIME_VERIFIED | normalize later |
-| Liquidation history | DOC_VERIFIED | absent | CODE_VERIFIED: not implemented | `verify:tq-bitget-public` | RUNTIME_VERIFIED or BLOCKED | tq-market later; zero rows is valid |
+| Liquidation history | DOC_VERIFIED | absent | CODE_VERIFIED: not implemented | `verify:tq-bitget-public` | RUNTIME_VERIFIED | tq-market later; zero rows is valid |
 | Spot instruments/ticker | DOC_VERIFIED | shared market adapter | CODE_VERIFIED | `verify:tq-bitget-public` | RUNTIME_VERIFIED | Keep |
 | WS ticker/publicTrade | DOC_VERIFIED | no persistent WS | CODE_VERIFIED: deferred | deferred in TQ-002 | DEFERRED | collector milestone |
 | WS books1/5/50 | DOC_VERIFIED | no persistent WS | CODE_VERIFIED: deferred | deferred in TQ-002 | DEFERRED | collector milestone |
@@ -18,7 +18,7 @@
 | WS liquidation | DOC_VERIFIED | absent | CODE_VERIFIED: not implemented | deferred in TQ-002 | DEFERRED | tq-market later |
 | Private account/read | DOC_VERIFIED | `bitget-private.ts` | CODE_VERIFIED | DEFERRED by policy | DEFERRED | explicit private smoke task |
 | Private WS order/account/position | DOC_VERIFIED | absent | CODE_VERIFIED: not implemented | DEFERRED by policy | DEFERRED | explicit private WS task |
-| Private WS fill | UNVERIFIED | absent | CODE_VERIFIED: no topic | DEFERRED | UNVERIFIED | recheck official docs later |
+| Private WS fill | DOC_VERIFIED | absent | CODE_VERIFIED: no implementation | DEFERRED by policy | DEFERRED | implement later; no TraderQuest ingestion yet |
 | Place/modify/cancel/batch | DOC_VERIFIED | absent; no-order boundary | CODE_VERIFIED: absent | NEVER RUN | FORBIDDEN_TQ002 | execution stage only |
 
 ## Runtime classification
