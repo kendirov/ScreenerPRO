@@ -18,7 +18,9 @@ class NormalizerTests(unittest.TestCase):
     def test_trade_and_liquidation(self):
         t=normalize_trade({"execId":"x","price":"100.5","size":"2","side":"buy","ts":"3"},"SPOT","BTCUSDT",4)
         self.assertEqual(t.payload.quantity,Decimal("2")); self.assertEqual(t.payload.side,Side.BUY)
+        coin=normalize_trade({"price":"100","size":"2","side":"sell"},"COIN-FUTURES","BTCUSD",4)
+        self.assertEqual(coin.payload.quantity_unit,QuantityUnit.QUOTE_ASSET)
         l=normalize_liquidation({"symbol":"BTCUSDT","price":"100","amount":"1","side":"sell","ts":"3"},"USDT-FUTURES",4)
-        self.assertEqual(l.payload.side,Side.SELL)
+        self.assertEqual(l.payload.side,Side.SELL); self.assertEqual(l.payload.quantity_unit,QuantityUnit.UNKNOWN)
 
 if __name__ == "__main__": unittest.main()

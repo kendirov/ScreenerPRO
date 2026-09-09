@@ -20,7 +20,8 @@ def timestamp_or_none(value: Any) -> int | None:
     if value is None or value == "": return None
     try: result = int(value)
     except (ValueError, TypeError) as e: raise ValueError(f"invalid timestamp: {value!r}") from e
-    if result <= 0: raise ValueError("timestamp must be > 0")
+    if result == 0: return None
+    if result < 0: raise ValueError("timestamp must be > 0")
     return result
 def text_or_none(value: Any) -> str | None: return None if value is None or value == "" else str(value)
 def _key(category, raw): return InstrumentKey(Provider.BITGET, market_type(category), str(raw.get("symbol", "")))
@@ -41,15 +42,17 @@ def normalize_order_book(raw: Mapping, category: str, symbol: str, observed_at_m
 def _side(value):
     try: return Side(str(value).lower())
     except ValueError as e: raise ValueError(f"invalid side: {value!r}") from e
+def trade_quantity_unit(category: str) -> QuantityUnit:
+    return QuantityUnit.QUOTE_ASSET if market_type(category) is MarketType.COIN_FUTURES else QuantityUnit.BASE_ASSET
 def normalize_trade(raw: Mapping, category: str, symbol: str, observed_at_ms: int):
-    key=InstrumentKey(Provider.BITGET,market_type(category),symbol); payload=Trade(text_or_none(raw.get("execId")),required_decimal(raw.get("price"),"price"),required_decimal(raw.get("size"),"size"),_side(raw.get("side")))
+    key=InstrumentKey(Provider.BITGET,market_type(category),symbol); payload=Trade(text_or_none(raw.get("execId")),required_decimal(raw.get("price"),"price"),required_decimal(raw.get("size"),"size"),_side(raw.get("side")),trade_quantity_unit(category))
     return _env(EventKind.TRADE,key,payload,observed_at_ms,timestamp_or_none(raw.get("ts")))
 def normalize_open_interest(raw: Mapping, category: str, observed_at_ms: int):
     key=_key(category,raw); return _env(EventKind.OPEN_INTEREST,key,OpenInterestSnapshot(decimal_or_none(raw.get("openInterest")),text_or_none(raw.get("unit"))),observed_at_ms,timestamp_or_none(raw.get("ts")))
 def normalize_funding(raw: Mapping, category: str, observed_at_ms: int):
     key=_key(category,raw); return _env(EventKind.FUNDING,key,FundingSnapshot(decimal_or_none(raw.get("fundingRate")),timestamp_or_none(raw.get("nextUpdate"))),observed_at_ms,timestamp_or_none(raw.get("ts")))
 def normalize_liquidation(raw: Mapping, category: str, observed_at_ms: int):
-    key=_key(category,raw); payload=Liquidation(required_decimal(raw.get("price"),"price"),required_decimal(raw.get("amount"),"amount"),_side(raw.get("side")))
+    key=_key(category,raw); payload=Liquidation(required_decimal(raw.get("price"),"price"),required_decimal(raw.get("amount"),"amount"),_side(raw.get("side")),QuantityUnit.UNKNOWN)
     return _env(EventKind.LIQUIDATION,key,payload,observed_at_ms,timestamp_or_none(raw.get("ts")))
 def normalize_open_interest_from_ticker(raw, category, observed_at_ms): return normalize_open_interest({**raw, "ts":raw.get("ts")}, category, observed_at_ms)
 def normalize_funding_from_ticker(raw, category, observed_at_ms): return normalize_funding({**raw, "ts":raw.get("ts")}, category, observed_at_ms)

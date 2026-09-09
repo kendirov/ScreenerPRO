@@ -1,9 +1,10 @@
 # TraderQuest Crypto architecture
 
-Статус: approved foundation; TQ-003 реализует canonical market contracts и pure normalization boundary. Это topology и boundaries, не collector specification.
+Статус: approved foundation; TQ-004 реализует public REST snapshot boundary. Это topology и boundaries, не persistent collector specification.
 
-Implemented TQ-003 core paths: `traderquest/market`, `traderquest/adapters/bitget`.
-Не реализованы: network collector, persistent WebSocket, storage и execution.
+Implemented TQ-003/TQ-004 paths: `traderquest/market`, `traderquest/adapters/bitget`, `traderquest/runtime/snapshot.py`.
+Canonical contracts, pure Bitget normalizer, public REST adapter и one-shot snapshot runtime реализованы.
+Не реализованы: persistent collector, WebSocket, storage, 24x7 service, execution, MCP и AI.
 
 ```text
 Trading Workspace / Next.js

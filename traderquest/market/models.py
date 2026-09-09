@@ -9,6 +9,10 @@ class MarketType(str, Enum):
     SPOT = "spot"; MARGIN = "margin"; USDT_FUTURES = "usdt-futures"; USDC_FUTURES = "usdc-futures"; COIN_FUTURES = "coin-futures"
 class Transport(str, Enum): REST = "rest"; WEBSOCKET = "websocket"
 class Side(str, Enum): BUY = "buy"; SELL = "sell"
+class QuantityUnit(str, Enum):
+    BASE_ASSET = "base_asset"
+    QUOTE_ASSET = "quote_asset"
+    UNKNOWN = "unknown"
 class EventKind(str, Enum):
     INSTRUMENT = "instrument"; TICKER = "ticker"; TRADE = "trade"; ORDER_BOOK = "order_book"; OPEN_INTEREST = "open_interest"; FUNDING = "funding"; LIQUIDATION = "liquidation"
 class BookAction(str, Enum): SNAPSHOT = "snapshot"; UPDATE = "update"
@@ -64,7 +68,7 @@ class TickerSnapshot:
 
 @dataclass(frozen=True)
 class Trade:
-    trade_id: str | None; price: Decimal; quantity: Decimal; side: Side
+    trade_id: str | None; price: Decimal; quantity: Decimal; side: Side; quantity_unit: QuantityUnit = QuantityUnit.UNKNOWN
     def __post_init__(self): _positive(self.price, "price"); _nonnegative(self.quantity, "quantity")
 
 @dataclass(frozen=True)
@@ -74,7 +78,7 @@ class BookLevel:
 
 @dataclass(frozen=True)
 class OrderBookUpdate:
-    action: BookAction; bids: tuple[BookLevel, ...]; asks: tuple[BookLevel, ...]
+    action: BookAction; bids: tuple[BookLevel, ...]; asks: tuple[BookLevel, ...]; quantity_unit: QuantityUnit = QuantityUnit.UNKNOWN
 
 @dataclass(frozen=True)
 class OpenInterestSnapshot: open_interest: Decimal | None; unit: str | None
@@ -82,7 +86,7 @@ class OpenInterestSnapshot: open_interest: Decimal | None; unit: str | None
 class FundingSnapshot: funding_rate: Decimal | None; next_funding_time_ms: int | None
 @dataclass(frozen=True)
 class Liquidation:
-    price: Decimal; quantity: Decimal; side: Side
+    price: Decimal; quantity: Decimal; side: Side; quantity_unit: QuantityUnit = QuantityUnit.UNKNOWN
     def __post_init__(self): _positive(self.price, "price"); _nonnegative(self.quantity, "quantity")
 
 T = TypeVar("T")

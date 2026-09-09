@@ -1,4 +1,4 @@
-# TraderQuest Crypto — TQ-003 canonical market foundation
+# TraderQuest Crypto — TQ-004 public REST snapshot foundation
 
 ## Что это
 
@@ -44,6 +44,8 @@ Existing Crypto/Bitget assets уже существуют и не равны pro
 
 Canonical contracts and pure Bitget normalization: [`MARKET_CONTRACTS.md`](./MARKET_CONTRACTS.md), [`ADR-003-market-contracts.md`](./DECISIONS/ADR-003-market-contracts.md).
 
+TQ-004 public REST adapter and one-shot snapshots: [`BITGET_PUBLIC_REST_ADAPTER.md`](./BITGET_PUBLIC_REST_ADAPTER.md), [`ADR-004-public-rest-adapter.md`](./DECISIONS/ADR-004-public-rest-adapter.md).
+
 ## Следующая задача
 
-`TQ-004` — Bitget Public REST Adapter + Canonical Snapshot Runtime. Approved, not started.
+`TQ-005` — Bitget Public WebSocket Capture Spike + Sequence Integrity. Approved, not started.
