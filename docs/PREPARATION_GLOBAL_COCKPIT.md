@@ -1,6 +1,8 @@
 # Подготовка Global Market Cockpit
 
-Статус: Preview candidate, 2026-09-13. Production не изменён.
+Статус: Preview READY, 2026-09-13. Production не изменён.
+
+Preview: https://screenerpro-rknwx7zqr-artem-kendirovs-projects.vercel.app/trading/preparation
 
 ## Архитектура
 
@@ -48,4 +50,4 @@
 
 ## QA
 
-Unit contract, TypeScript, targeted ESLint и production build проходят. Browser QA проверяет данные, навигацию, source badges, Freeze и responsive layouts. Full lint имеет исторический baseline и фиксируется отдельно от targeted gate.
+Unit contract, TypeScript, targeted ESLint и production build проходят. Локальный browser QA подтвердил реальные payloads, навигацию, source badges, Freeze, dark/light и 0 console errors. Vercel build завершён со статусом READY; защищённый Preview прошёл authenticated HTTP readback, но визуальный remote QA требует браузерную Vercel-сессию. Full lint: исторический baseline 73 errors и 141 warnings вне нового scope.

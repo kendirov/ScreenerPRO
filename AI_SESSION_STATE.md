@@ -13,6 +13,8 @@
 - Честные ограничения: macro/rates и calendar пока не подключены; weekend proxy отключён до отдельного instrument discovery
 - Документация: `docs/PREPARATION_GLOBAL_COCKPIT.md`
 - Production: не изменён
+- Preview READY: `https://screenerpro-rknwx7zqr-artem-kendirovs-projects.vercel.app/trading/preparation`
+- Commit: `e2cee09` + documentation follow-up
 
 ---
 
