@@ -14,6 +14,7 @@ type NavigationItem = {
 const primaryNavigation: readonly NavigationItem[] = [
   { href: "/trading/stocks", label: "Акции" },
   { href: "/trading/futures", label: "Фьючерсы" },
+  { href: "/trading/preparation", label: "Подготовка" },
   { href: "/trading/crypto", label: "Криптовалюта" },
 ];
 

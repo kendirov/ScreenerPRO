@@ -83,6 +83,7 @@ export type ExternalMarketResponse = {
   errors: string[];
   diagnostics: string[];
   assetDiagnostics: ExternalAssetDiagnostic[];
+  quotes: ExternalAssetQuote[];
 };
 
 export type PreparationEventImportance = "high" | "medium" | "low";

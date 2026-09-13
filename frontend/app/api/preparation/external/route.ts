@@ -24,6 +24,7 @@ export async function GET() {
         errors: [message],
         diagnostics: [],
         assetDiagnostics: [],
+        quotes: [],
       },
       { status: 500 },
     );

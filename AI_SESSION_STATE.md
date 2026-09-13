@@ -4,6 +4,20 @@
 
 ## Текущая задача
 
+**Trading Preparation v1 — Global Market Cockpit** (2026-09-13)
+
+- Branch: `codex/trading-preparation-v1-2026-09-13`
+- Route: `/trading/preparation`
+- Реальные источники: MOEX ISS и существующий Yahoo Finance chart adapter
+- Реализовано: fixed anchors, explainable anomalies, fullscreen, Freeze Snapshot, session ribbon, Full Market Map, search/show-all, futures current/next/roll/DTE, source/timestamp/quality states
+- Честные ограничения: macro/rates и calendar пока не подключены; weekend proxy отключён до отдельного instrument discovery
+- Документация: `docs/PREPARATION_GLOBAL_COCKPIT.md`
+- Production: не изменён
+
+---
+
+## Предыдущая задача
+
 **Strategy Scanner v0 — round-levels small universe** (2026-07-08)
 
 - Цель: первый batch scan `round-levels` по small universe 5–10 тикеров

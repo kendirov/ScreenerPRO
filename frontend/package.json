@@ -26,6 +26,7 @@
     "verify:stock-universe": "tsx scripts/verify-stock-universe-filter.ts",
     "verify:trading-workspace-stocks": "tsx scripts/verify-trading-workspace-stocks.ts",
     "verify:trading-workspace-futures": "tsx scripts/verify-trading-workspace-futures.ts",
+    "verify:trading-preparation": "tsx scripts/verify-trading-preparation.ts",
     "verify:round-levels": "tsx scripts/verify-round-levels-engine.ts",
     "verify:round-reactions": "tsx scripts/verify-round-level-reactions.ts",
     "verify:round-approaches": "tsx scripts/verify-round-level-approaches.ts",

@@ -218,6 +218,7 @@ export async function buildExternalMarketResponse(): Promise<ExternalMarketRespo
         error: a.disabledReason,
       })),
     ],
+    quotes: scored,
   };
 
   cache = { expiresAt: Date.now() + CACHE_TTL_MS, payload };
