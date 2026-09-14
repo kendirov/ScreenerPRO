@@ -1679,3 +1679,13 @@ body:has(.tr-root) {
     transition-duration: .01ms !important;
   }
 }
+
+/* Keep the chart inside the fixed cockpit viewport. */
+@media (min-width: 1201px) {
+  .tp-story-grid { min-height: 0; overflow: hidden; }
+  .tp-hero { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; min-height: 0; }
+  .tp-hero__chart { height: auto; min-height: 0; overflow: hidden; }
+  .tp-market-chart,
+  .tp-market-chart > div:first-child,
+  .tp-support { min-height: 0; }
+}
