@@ -14,12 +14,53 @@ type YahooChartResult = {
   timestamp?: number[];
   indicators?: {
     quote?: Array<{
+      open?: Array<number | null>;
       close?: Array<number | null>;
       high?: Array<number | null>;
       low?: Array<number | null>;
+      volume?: Array<number | null>;
     }>;
   };
 };
+
+export type ExternalHistoryCandle = { time: string; open: number; high: number; low: number; close: number; volume: number | null };
+
+export async function fetchExternalAssetHistory(asset: ExternalAssetDef, range: "1d" | "5d" | "1mo") {
+  const interval = range === "1d" ? "5m" : range === "5d" ? "15m" : "1d";
+  const symbols = [asset.symbol, ...(asset.fallbackSymbols ?? [])];
+  for (const symbol of symbols) {
+    const requests = range === "1d" ? [["1d", "5m"], ["5d", "5m"]] as const : [[range, interval]] as const;
+    for (const [requestRange, requestInterval] of requests) {
+    const url = `${YAHOO_CHART_BASE}/${encodeURIComponent(symbol)}?range=${requestRange}&interval=${requestInterval}`;
+    try {
+      const response = await fetch(url, { headers: { "User-Agent": USER_AGENT, Accept: "application/json" }, cache: "no-store" });
+      if (!response.ok) continue;
+      const json = (await response.json()) as { chart?: { result?: YahooChartResult[] } };
+      const result = json.chart?.result?.[0];
+      const quote = result?.indicators?.quote?.[0];
+      if (!result?.timestamp || !quote) continue;
+      const candles: ExternalHistoryCandle[] = [];
+      result.timestamp.forEach((timestamp, index) => {
+        const close = quote.close?.[index];
+        const open = quote.open?.[index] ?? close;
+        const high = quote.high?.[index] ?? close;
+        const low = quote.low?.[index] ?? close;
+        if ([open, high, low, close].every((value) => value != null && Number.isFinite(value))) candles.push({ time: new Date(timestamp * 1000).toISOString(), open: open!, high: high!, low: low!, close: close!, volume: quote.volume?.[index] ?? null });
+      });
+      if (candles.length) {
+        const sessions = new Map<string, ExternalHistoryCandle[]>();
+        for (const candle of candles) {
+          const key = candle.time.slice(0, 10);
+          sessions.set(key, [...(sessions.get(key) ?? []), candle]);
+        }
+        const latestComplete = [...sessions.values()].filter((items) => items.length >= 5).at(-1) ?? candles;
+        return { symbol, interval: requestInterval, candles: range === "1d" ? latestComplete : candles };
+      }
+    } catch { /* try the discovered fallback symbol */ }
+    }
+  }
+  return { symbol: asset.symbol, interval, candles: [] as ExternalHistoryCandle[] };
+}
 
 function formatDateFromUnix(ts: number): string {
   return new Date(ts * 1000).toISOString().slice(0, 10);
