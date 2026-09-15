@@ -13,7 +13,12 @@ function isDatabaseLockError(error: unknown): boolean {
   return message.includes("database is locked") || message.includes("socket timeout");
 }
 
-function toTradingStatus(value: string | null): "open" | "halted" | "auction" | "closed" | "unknown" { const status = moexTradingStatus(value); return status === "break" ? "unknown" : status; }
+function toTradingStatus(value: string | null): "open" | "halted" | "auction" | "closed" | "unknown" {
+  const status = moexTradingStatus(value);
+  if (status === "regular" || status === "opening") return "open";
+  if (status === "auction" || status === "closing") return "auction";
+  return status === "closed" ? "closed" : "unknown";
+}
 
 function metricSet(metric: {
   turnoverRatio: number | null;

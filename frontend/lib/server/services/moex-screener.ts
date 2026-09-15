@@ -79,7 +79,10 @@ function rowToObject(columns: string[], row: unknown[]): TableRow {
 
 function toTradingStatus(value: unknown): TradingStatus {
   const status = moexTradingStatus(value);
-  return status === "break" ? "unknown" : status;
+  if (status === "regular" || status === "opening") return "open";
+  if (status === "auction" || status === "closing") return "auction";
+  if (status === "closed") return "closed";
+  return "unknown";
 }
 
 function computePercentChange(lastPrice: number | null, previousClose: number | null, moexPercent: number | null): number | null {

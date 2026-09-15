@@ -42,6 +42,7 @@ type Q = {
   previousClose: number | null;
   high: number | null;
   low: number | null;
+  turnover?: number | null;
 };
 
 const GROUPS: Array<[string, string, string]> = [
@@ -435,10 +436,11 @@ export function TradingPreparation() {
           previousClose: row.previousClose,
           high: row.high,
           low: row.low,
+          turnover: row.turnover,
         } as Q;
       })
       .sort((a, b) => b.priority - a.priority)
-      .slice(0, 60);
+      ;
     const indices = (market.data?.benchmarks ?? []).map((row) => {
       const anomaly = explainAnomaly({
         change1dPct: row.percentChange,
@@ -534,7 +536,6 @@ export function TradingPreparation() {
     .filter(
       (item) =>
         item.price != null &&
-        item.points.length >= 5 &&
         item.quality !== "ERROR" &&
         item.reasons.length > 0 &&
         item.priority >= 2.5 &&
@@ -547,6 +548,9 @@ export function TradingPreparation() {
     ...russian.slice(0, 2),
   ].slice(0, 8);
   const stocks = shown.filter((item) => item.group === "stocks");
+  const totalTurnover = stocks.reduce((sum, item) => sum + (item.turnover ?? 0), 0);
+  const turnoverLeaders = [...stocks].sort((a, b) => (b.turnover ?? 0) - (a.turnover ?? 0)).slice(0, 3);
+  const top5Concentration = totalTurnover ? stocks.sort((a,b)=>(b.turnover ?? 0)-(a.turnover ?? 0)).slice(0,5).reduce((sum,item)=>sum+(item.turnover ?? 0),0) / totalTurnover * 100 : null;
   const rising = stocks.filter((item) => (item.change ?? 0) > 0).length,
     falling = stocks.filter((item) => (item.change ?? 0) < 0).length;
   const selected = shown.find((item) => item.id === detailId);
@@ -589,7 +593,7 @@ export function TradingPreparation() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!presenter) return;
-      if (event.key === "ArrowRight") setSlide((value) => Math.min(2, value + 1));
+      if (event.key === "ArrowRight") setSlide((value) => Math.min(3, value + 1));
       if (event.key === "ArrowLeft") setSlide((value) => Math.max(0, value - 1));
       if (["1", "2", "3"].includes(event.key)) setSlide(Number(event.key) - 1);
     };
@@ -618,31 +622,32 @@ export function TradingPreparation() {
   return (
     <div className={`tp-page ${presenter ? "tp-page--presenter" : ""}`} ref={root} data-testid="preparation-root">
       {presenter ? <section className="tp-presenter" data-testid="preparation-presenter">
-        <header><span>PREPARATION PRESENTER · {String(slide + 1).padStart(2, "0")} / 03</span><button onClick={() => setPresenter(false)}>Выйти</button></header>
+        <header><span>РЕЖИМ ЭФИРА · {String(slide + 1).padStart(2, "0")} / 04</span><button onClick={() => setPresenter(false)}>Выйти</button></header>
         <div className="tp-presenter__body">
-          {slide === 0 ? <><ComparisonPanel title="Market Overview" kicker="GLOBAL CONTEXT · NORMALIZED 5D" items={world} onOpen={open}/><section className="tp-presenter__rail"><h2>What matters now</h2>{focus.slice(0,4).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
-          {slide === 1 ? <><section className="tp-presenter__russia"><span className="tr-label">MOEX ISS · RUSSIA / MONEY</span><h1>{russian[0]?.symbol ?? "MOEX"}</h1><p>Ширина: ↑ {rising} / ↓ {falling}. Видимый оборот и активность — без утверждений о потоках капитала.</p><div className="tp-mini-grid">{russian.slice(0,4).map((q)=><MiniPanel key={q.id} q={q} onOpen={()=>open(q)}/>)}</div></section><section className="tp-presenter__rail"><h2>Где активность</h2>{stocks.slice(0,5).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
-          {slide === 2 ? <><section className="tp-presenter__russia"><span className="tr-label">MOEX ISS · FUTURES / ROLL</span><h1>Futures & Roll</h1><p>Текущий контракт, DTE и наблюдаемая миграция OI/объёма — только когда доступны в payload.</p><div className="tp-mini-grid">{shown.filter((q)=>q.group === "futures").slice(0,4).map((q)=><MiniPanel key={q.id} q={q} onOpen={()=>open(q)}/>)}</div></section><section className="tp-presenter__rail"><h2>Фактические сигналы</h2>{shown.filter((q)=>q.group === "futures").slice(0,5).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
-        </div><footer><button onClick={()=>setSlide(Math.max(0,slide-1))} aria-label="Предыдущий слайд"><ChevronLeft/></button><span>{[1,2,3].map((i)=><i key={i} className={slide === i-1 ? "is-active" : ""}/>)}</span><button onClick={()=>setSlide(Math.min(2,slide+1))} aria-label="Следующий слайд"><ChevronRight/></button></footer>
+          {slide === 0 ? <><ComparisonPanel title="Обзор рынка" kicker="МИРОВЫЕ РЫНКИ · НОРМАЛИЗОВАНО · 5Д" items={world} onOpen={open}/><section className="tp-presenter__rail"><h2>Аномалии сейчас</h2>{focus.slice(0,4).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
+          {slide === 1 ? <><section className="tp-presenter__russia"><span className="tr-label">MOEX ISS · РОССИЯ И ОБОРОТ</span><h1>{russian[0]?.symbol ?? "MOEX"}</h1><p>Ширина рынка: ↑ {rising} · ↓ {falling}</p><div className="tp-mini-grid">{russian.slice(0,4).map((q)=><MiniPanel key={q.id} q={q} onOpen={()=>open(q)}/>)}</div></section><section className="tp-presenter__rail"><h2>Акции в игре</h2>{stocks.slice(0,5).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
+          {slide === 2 ? <><ComparisonPanel title="Сырьё и валюты" kicker="ЭНЕРГИЯ · ВАЛЮТЫ" items={[...energy,...currencies].slice(0,5)} onOpen={open}/><section className="tp-presenter__rail"><h2>Рынки и сырьё</h2>{[...energy,...currencies].slice(0,5).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
+          {slide === 3 ? <><section className="tp-presenter__russia"><span className="tr-label">MOEX ISS · ФЬЮЧЕРСЫ И РОЛЛОВЕР</span><h1>Фьючерсы и ролловер</h1><div className="tp-mini-grid">{shown.filter((q)=>q.group === "futures").slice(0,4).map((q)=><MiniPanel key={q.id} q={q} onOpen={()=>open(q)}/>)}</div></section><section className="tp-presenter__rail"><h2>Фактические сигналы</h2>{shown.filter((q)=>q.group === "futures").slice(0,5).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
+        </div><footer><button onClick={()=>setSlide(Math.max(0,slide-1))} aria-label="Предыдущий слайд"><ChevronLeft/></button><span>{[1,2,3,4].map((i)=><i key={i} className={slide === i-1 ? "is-active" : ""}/>)}</span><button onClick={()=>setSlide(Math.min(3,slide+1))} aria-label="Следующий слайд"><ChevronRight/></button></footer>
       </section> : <>
       <section className="tp-stage" data-testid="briefing-deck">
         <header className="tp-stage__head">
           <div>
-            <span className="tr-label">GLOBAL MARKET COCKPIT</span>
+            <span className="tr-label">ОБЗОР РЫНКА</span>
             <h1>Подготовка к торгам</h1>
             <p>
               {external.data?.summary.line ?? "Собираем рыночный контекст…"}
             </p>
           </div>
           <div className="tp-actions">
-            <span className="tp-provider-state" data-testid="provider-state">{frozen ? `FROZEN · ${frozenAt} МСК` : `MOEX ${market.data?.status.isDemo ? "FALLBACK" : market.data?.status.marketStatus === "open" ? "LIVE" : "CLOSED"} · GLOBAL ${external.isLoading ? "LOADING" : external.isError ? "UNAVAILABLE" : "DELAYED"}`}</span>
-            <span>{frozen ? "снимок сохранён" : `${clock} МСК`}</span>
+            <span className="tp-provider-state" data-testid="provider-state">{frozen ? `СНИМОК · ${frozenAt} МСК` : `MOEX ISS · ${market.data?.status.marketStatus === "open" ? "основная сессия" : "торги завершены"} · ${external.isLoading ? "загрузка" : external.isError ? "нет данных" : "Внешние рынки · задержка"}`}</span>
+            <span>{frozen ? "" : `${clock} МСК`}</span>
             <button onClick={freeze}>
               {frozen ? <Play size={14} /> : <Pause size={14} />}{" "}
-              {frozen ? "Вернуть live" : "Зафиксировать"}
+              {frozen ? "Вернуться к рынку" : "Снимок"}
             </button>
             <button onClick={() => setPresenter(true)}>
-              <Expand size={14} /> В эфир
+              <Expand size={14} /> Режим эфира
             </button>
           </div>
         </header>
@@ -722,6 +727,11 @@ export function TradingPreparation() {
             </div>
           </section>
         </div>
+        <section className="tp-decision-strip" data-testid="decision-strip">
+          <div><span className="tr-label">РОССИЯ</span><b>Ширина рынка</b><p>↑ {rising} · ↓ {falling} · В игре: {stocks.filter((q)=>q.reasons.length > 0).length}</p></div>
+          <div><span className="tr-label">ГДЕ ОБОРОТ</span><b>{totalTurnover ? `${nf.format(totalTurnover / 1_000_000_000)} млрд ₽` : "нет данных"}</b><p>{top5Concentration == null ? "" : `Top-5: ${top5Concentration.toFixed(0)}%`} {turnoverLeaders.map((q)=>q.symbol).join(" · ")}</p></div>
+          <div><span className="tr-label">ФЬЮЧЕРСЫ И РОЛЛОВЕР</span><b>{shown.filter((q)=>q.group === "futures").length} семейств</b><p>{shown.filter((q)=>q.group === "futures").slice(0,3).map((q)=>q.symbol).join(" · ") || "нет данных"}</p></div>
+        </section>
         <footer className="tp-stage__footer" data-testid="briefing-footer">
           <span>
             <b>asOf / source</b> · MOEX ISS для России · Yahoo Finance для мировых рынков · частичный provider не маскируется

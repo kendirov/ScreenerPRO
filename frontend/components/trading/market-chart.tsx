@@ -216,19 +216,19 @@ export function MarketChart({
     <div className="tp-market-chart">
       <div ref={el} />
       <div className="tp-chart-tooltip">
-        <b>{clock.format(new Date(current.time))} MSK</b>
+        <b>{clock.format(new Date(current.time))} МСК</b>
         {mode === "candles" ? (
           <>
-            <span>O {current.open.toLocaleString("ru-RU")}</span>
-            <span>H {current.high.toLocaleString("ru-RU")}</span>
-            <span>L {current.low.toLocaleString("ru-RU")}</span>
-            <span>C {current.close.toLocaleString("ru-RU")}</span>
+            <span>Откр. {current.open.toLocaleString("ru-RU")}</span>
+            <span>Макс. {current.high.toLocaleString("ru-RU")}</span>
+            <span>Мин. {current.low.toLocaleString("ru-RU")}</span>
+            <span>Закр. {current.close.toLocaleString("ru-RU")}</span>
             {current.volume != null ? (
-              <span>V {current.volume.toLocaleString("ru-RU")}</span>
+              <span>Объём {current.volume.toLocaleString("ru-RU")}</span>
             ) : null}
           </>
         ) : (
-          <span>PRICE {current.close.toLocaleString("ru-RU")}</span>
+          <span>Цена {current.close.toLocaleString("ru-RU")}</span>
         )}
         <em className={Number(change) >= 0 ? "is-up" : "is-down"}>
           {change == null
