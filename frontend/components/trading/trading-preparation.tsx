@@ -1,8 +1,9 @@
 "use client";
 
 import { useQueries, useQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import dynamic from "next/dynamic";
-import { Expand, Pause, Play, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Expand, Pause, Play, Search, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MarketCandle } from "./market-chart";
 import type { ExternalMarketResponse } from "@/lib/preparation/preparation-types";
@@ -348,6 +349,7 @@ function ComparisonPanel({
 
 export function TradingPreparation() {
   const root = useRef<HTMLDivElement>(null);
+  const explorerScrollRef = useRef<HTMLDivElement>(null);
   const market = useScreenerQuery("all");
   const external = useQuery({
     queryKey: ["preparation-external"],
@@ -366,6 +368,8 @@ export function TradingPreparation() {
     [detailId, setDetailId] = useState<string>(),
     [tf, setTf] = useState<TF>("5D"),
     [mode, setMode] = useState<"line" | "candles">("candles"),
+    [presenter, setPresenter] = useState(false),
+    [slide, setSlide] = useState(0),
     [clock, setClock] = useState("");
   const live = useMemo(() => {
     const globals: Q[] = (external.data?.quotes ?? []).map((quote) => {
@@ -564,6 +568,12 @@ export function TradingPreparation() {
             ? Math.abs(b.q.change5 ?? 0) - Math.abs(a.q.change5 ?? 0)
             : b.q.priority - a.q.priority,
     );
+  const explorerVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => explorerScrollRef.current,
+    estimateSize: () => 44,
+    overscan: 10,
+  });
   useEffect(() => {
     const tick = () =>
       setClock(
@@ -576,6 +586,16 @@ export function TradingPreparation() {
     const id = setInterval(tick, 1_000);
     return () => clearInterval(id);
   }, []);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!presenter) return;
+      if (event.key === "ArrowRight") setSlide((value) => Math.min(2, value + 1));
+      if (event.key === "ArrowLeft") setSlide((value) => Math.max(0, value - 1));
+      if (["1", "2", "3"].includes(event.key)) setSlide(Number(event.key) - 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [presenter]);
   const freeze = useCallback(() => {
     if (frozen) {
       setFrozen(false);
@@ -596,8 +616,16 @@ export function TradingPreparation() {
     setTf("5D");
   };
   return (
-    <div className="tp-page" ref={root}>
-      <section className="tp-stage">
+    <div className={`tp-page ${presenter ? "tp-page--presenter" : ""}`} ref={root} data-testid="preparation-root">
+      {presenter ? <section className="tp-presenter" data-testid="preparation-presenter">
+        <header><span>PREPARATION PRESENTER · {String(slide + 1).padStart(2, "0")} / 03</span><button onClick={() => setPresenter(false)}>Выйти</button></header>
+        <div className="tp-presenter__body">
+          {slide === 0 ? <><ComparisonPanel title="Market Overview" kicker="GLOBAL CONTEXT · NORMALIZED 5D" items={world} onOpen={open}/><section className="tp-presenter__rail"><h2>What matters now</h2>{focus.slice(0,4).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
+          {slide === 1 ? <><section className="tp-presenter__russia"><span className="tr-label">MOEX ISS · RUSSIA / MONEY</span><h1>{russian[0]?.symbol ?? "MOEX"}</h1><p>Ширина: ↑ {rising} / ↓ {falling}. Видимый оборот и активность — без утверждений о потоках капитала.</p><div className="tp-mini-grid">{russian.slice(0,4).map((q)=><MiniPanel key={q.id} q={q} onOpen={()=>open(q)}/>)}</div></section><section className="tp-presenter__rail"><h2>Где активность</h2>{stocks.slice(0,5).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
+          {slide === 2 ? <><section className="tp-presenter__russia"><span className="tr-label">MOEX ISS · FUTURES / ROLL</span><h1>Futures & Roll</h1><p>Текущий контракт, DTE и наблюдаемая миграция OI/объёма — только когда доступны в payload.</p><div className="tp-mini-grid">{shown.filter((q)=>q.group === "futures").slice(0,4).map((q)=><MiniPanel key={q.id} q={q} onOpen={()=>open(q)}/>)}</div></section><section className="tp-presenter__rail"><h2>Фактические сигналы</h2>{shown.filter((q)=>q.group === "futures").slice(0,5).map((q)=><FocusRow key={q.id} q={q} onOpen={()=>open(q)}/>)}</section></> : null}
+        </div><footer><button onClick={()=>setSlide(Math.max(0,slide-1))} aria-label="Предыдущий слайд"><ChevronLeft/></button><span>{[1,2,3].map((i)=><i key={i} className={slide === i-1 ? "is-active" : ""}/>)}</span><button onClick={()=>setSlide(Math.min(2,slide+1))} aria-label="Следующий слайд"><ChevronRight/></button></footer>
+      </section> : <>
+      <section className="tp-stage" data-testid="briefing-deck">
         <header className="tp-stage__head">
           <div>
             <span className="tr-label">GLOBAL MARKET COCKPIT</span>
@@ -607,21 +635,13 @@ export function TradingPreparation() {
             </p>
           </div>
           <div className="tp-actions">
-            <Status
-              value={
-                frozen
-                  ? "STALE"
-                  : market.data?.status.isDemo
-                    ? "FALLBACK"
-                    : "LIVE"
-              }
-            />
-            <span>{frozen ? `Снимок · ${frozenAt} МСК` : `${clock} МСК`}</span>
+            <span className="tp-provider-state" data-testid="provider-state">{frozen ? `FROZEN · ${frozenAt} МСК` : `MOEX ${market.data?.status.isDemo ? "FALLBACK" : market.data?.status.marketStatus === "open" ? "LIVE" : "CLOSED"} · GLOBAL ${external.isLoading ? "LOADING" : external.isError ? "UNAVAILABLE" : "DELAYED"}`}</span>
+            <span>{frozen ? "снимок сохранён" : `${clock} МСК`}</span>
             <button onClick={freeze}>
               {frozen ? <Play size={14} /> : <Pause size={14} />}{" "}
               {frozen ? "Вернуть live" : "Зафиксировать"}
             </button>
-            <button onClick={() => root.current?.requestFullscreen()}>
+            <button onClick={() => setPresenter(true)}>
               <Expand size={14} /> В эфир
             </button>
           </div>
@@ -636,7 +656,7 @@ export function TradingPreparation() {
             <PulseQuote key={q.id} q={q} onOpen={() => open(q)} />
           ))}
         </div>
-        <div className="tp-cockpit-grid">
+        <div className="tp-cockpit-grid" data-testid="briefing-main">
           <ComparisonPanel
             title="Мировой рынок"
             kicker="США · ЕВРОПА · АЗИЯ"
@@ -702,17 +722,13 @@ export function TradingPreparation() {
             </div>
           </section>
         </div>
-        <footer className="tp-stage__footer">
+        <footer className="tp-stage__footer" data-testid="briefing-footer">
           <span>
-            <b>События</b> · календарь подключается из существующего data layer
-          </span>
-          <span>
-            <b>Источники</b> · MOEX ISS для России · Yahoo Finance для мировых
-            рынков
+            <b>asOf / source</b> · MOEX ISS для России · Yahoo Finance для мировых рынков · частичный provider не маскируется
           </span>
         </footer>
       </section>
-      <section className="tp-map">
+      <section className="tp-map" data-testid="market-explorer">
         <header>
           <div>
             <span className="tr-label">КАРТА РЫНКА</span>
@@ -764,37 +780,7 @@ export function TradingPreparation() {
             </button>
           ))}
         </nav>
-        {view === "cards" ? (
-          <div className="tp-market-cards">
-            {items.map(({ q, title }) => (
-              <button
-                className="tp-market-card"
-                onClick={() => open(q)}
-                key={q.id}
-              >
-                <header>
-                  <span>
-                    <b>{q.symbol}</b>
-                    <small>
-                      {q.name} · {title}
-                    </small>
-                  </span>
-                  <em className={(q.change ?? 0) >= 0 ? "is-up" : "is-down"}>
-                    {pct(q.change)}
-                  </em>
-                </header>
-                <Spark values={q.points} />
-                <footer>
-                  <strong>{q.price == null ? "—" : nf.format(q.price)}</strong>
-                  <span>5Д {pct(q.change5)}</span>
-                  <Status value={q.quality} />
-                </footer>
-                <i>{q.reasons[0] ?? "Без активного сигнала"}</i>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="tp-table-wrap">
+        <div className="tp-table-wrap" ref={explorerScrollRef} data-testid="market-explorer-viewport">
             <table className="tp-table">
               <thead>
                 <tr>
@@ -806,10 +792,10 @@ export function TradingPreparation() {
                   <th>Почему в фокусе</th>
                 </tr>
               </thead>
-              <tbody>
-                {items.map(({ q, title }) => (
-                  <tr
+              <tbody style={{height: explorerVirtualizer.getTotalSize(), position:"relative", display:"block"}}>
+                {explorerVirtualizer.getVirtualItems().map((virtualRow) => { const {q, title} = items[virtualRow.index]; return <tr
                     key={q.id}
+                    style={{position:"absolute", transform:`translateY(${virtualRow.start}px)`, width:"100%", display:"table", tableLayout:"fixed"}}
                     tabIndex={0}
                     onClick={() => open(q)}
                     onKeyDown={(event) => event.key === "Enter" && open(q)}
@@ -829,12 +815,10 @@ export function TradingPreparation() {
                       <Spark values={q.points} />
                     </td>
                     <td>{q.reasons[0] ?? "Без активного сигнала"}</td>
-                  </tr>
-                ))}
+                  </tr>})}
               </tbody>
             </table>
           </div>
-        )}
       </section>
       {selected ? (
         <div
@@ -921,7 +905,7 @@ export function TradingPreparation() {
             </footer>
           </aside>
         </div>
-      ) : null}
+      ) : null}</>}
     </div>
   );
 }
