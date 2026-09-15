@@ -32,6 +32,7 @@ import {
   shouldUseDemoFallbackAfterLiveFailure,
 } from "@/lib/server/screener-env";
 import { moscowTodayKey, normalizeRequestedDateKey } from "@/lib/domain/trading-calendar";
+import { moexTradingStatus } from "@/lib/domain/moex-trading-status";
 import { getHistoricalStockSnapshot, isHistoricalDateRequest } from "@/lib/server/services/moex-screener-history";
 import { fetchLiveMoexIndexBenchmarks } from "@/lib/server/services/moex-index-benchmark";
 
@@ -77,12 +78,8 @@ function rowToObject(columns: string[], row: unknown[]): TableRow {
 }
 
 function toTradingStatus(value: unknown): TradingStatus {
-  const normalized = asString(value)?.toLowerCase() ?? "";
-  if (normalized.includes("open") || normalized.includes("normal")) return "open";
-  if (normalized.includes("halt") || normalized.includes("stop")) return "halted";
-  if (normalized.includes("auction")) return "auction";
-  if (normalized.includes("close")) return "closed";
-  return "unknown";
+  const status = moexTradingStatus(value);
+  return status === "break" ? "unknown" : status;
 }
 
 function computePercentChange(lastPrice: number | null, previousClose: number | null, moexPercent: number | null): number | null {

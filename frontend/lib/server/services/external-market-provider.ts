@@ -168,7 +168,8 @@ function parseYahooResult(
     volatility5d: computeVolatility(values),
     series5d,
     source: "yahoo-finance",
-    updatedAt: new Date().toISOString(),
+    // Yahoo timestamps describe the market point; fetch time must not masquerade as quote time.
+    updatedAt: points[points.length - 1]!.date,
   };
 
   return {

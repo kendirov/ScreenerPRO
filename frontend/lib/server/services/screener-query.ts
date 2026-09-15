@@ -1,6 +1,7 @@
 import type { AssetClass, InstrumentDetail, InstrumentHistoryBar, ScreenerMetricSet, ScreenerRow } from "@screenerpro/shared";
 import { db } from "@/lib/server/db";
 import { classifyStockActivity, deriveStockActivityMetrics } from "@/lib/server/domain/stock-activity";
+import { moexTradingStatus } from "@/lib/domain/moex-trading-status";
 
 const screenerRowsCache: { rows: ScreenerRow[]; updatedAt: string | null } = {
   rows: [],
@@ -12,15 +13,7 @@ function isDatabaseLockError(error: unknown): boolean {
   return message.includes("database is locked") || message.includes("socket timeout");
 }
 
-function toTradingStatus(value: string | null): "open" | "halted" | "auction" | "closed" | "unknown" {
-  if (!value) return "unknown";
-  const normalized = value.toLowerCase();
-  if (normalized.includes("open")) return "open";
-  if (normalized.includes("halt")) return "halted";
-  if (normalized.includes("auction")) return "auction";
-  if (normalized.includes("close")) return "closed";
-  return "unknown";
-}
+function toTradingStatus(value: string | null): "open" | "halted" | "auction" | "closed" | "unknown" { const status = moexTradingStatus(value); return status === "break" ? "unknown" : status; }
 
 function metricSet(metric: {
   turnoverRatio: number | null;
