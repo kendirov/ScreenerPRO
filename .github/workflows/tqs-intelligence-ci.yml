@@ -101,6 +101,7 @@ jobs:
         run: |
           node --check src/tqs_intelligence/static/cockpit.js
           node --check src/tqs_intelligence/static/cockpit_metrics.js
+          node --check src/tqs_intelligence/static/cockpit_context.js
           node --check src/tqs_intelligence/static/v07.js
           node --check src/tqs_intelligence/static/app.js
       - name: Instrument-first cockpit HTML contract
@@ -110,12 +111,15 @@ jobs:
           grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.css' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.js' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_context.js' src/tqs_intelligence/static/index.html
           grep -q 'researchJobs' src/tqs_intelligence/static/index.html
           grep -q 'systemLogs' src/tqs_intelligence/static/index.html
           grep -q 'Публичные позиции' src/tqs_intelligence/static/cockpit.js
           grep -q 'Open Interest' src/tqs_intelligence/static/cockpit.js
           grep -q 'MOEX FUTOI' src/tqs_intelligence/static/cockpit_metrics.js
           grep -q 'basis' src/tqs_intelligence/static/cockpit_metrics.js
+          grep -q 'EXIT' src/tqs_intelligence/static/cockpit_context.js
+          grep -q 'metricLakePanel' src/tqs_intelligence/static/cockpit_context.js
           ! grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
           echo 'Instrument-first cockpit contract PASS'
       - name: Derivative metric contract
