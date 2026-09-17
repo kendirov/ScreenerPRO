@@ -42,14 +42,7 @@
 sudo bash tqs-intelligence/deploy/linux/install-server.sh
 ```
 
-Скрипт:
-- создаёт `.env` из шаблона, если его нет;
-- строит и запускает контейнер;
-- включает `restart: unless-stopped`;
-- включает systemd timer автообновления каждые 30 минут;
-- updater обновляет текущую Git-ветку только fast-forward;
-- после rebuild ждёт Docker healthcheck;
-- при неуспехе откатывает Git на предыдущий commit и возвращает предыдущую рабочую версию.
+Скрипт создаёт `.env`, строит контейнер, включает `restart: unless-stopped` и systemd timer проверки обновлений каждые 30 минут. Updater обновляет текущую ветку только fast-forward, отказывается работать при локальных незакоммиченных изменениях, после rebuild ждёт healthcheck, а при неудачной версии возвращает предыдущий commit.
 
 Проверка:
 
@@ -57,7 +50,7 @@ sudo bash tqs-intelligence/deploy/linux/install-server.sh
 bash tqs-intelligence/deploy/linux/status-server.sh
 ```
 
-По умолчанию сервер слушает только `127.0.0.1:8787`. Для доступа извне лучше SSH tunnel или reverse proxy с авторизацией. `TQS_SERVER_BIND=0.0.0.0` открывает порт наружу и должен использоваться осознанно.
+По умолчанию сервер слушает только `127.0.0.1:8787`. Для доступа извне лучше VPN/Tailscale, SSH tunnel или reverse proxy с авторизацией. `TQS_SERVER_BIND=0.0.0.0` открывает порт наружу и должен использоваться осознанно.
 
 ## Основные настройки `.env`
 
@@ -70,20 +63,21 @@ bash tqs-intelligence/deploy/linux/status-server.sh
 - `TQS_TWELVE_DATA_API_KEY=`
 - `TQS_TWELVE_DATA_SYMBOLS=AAPL,MSFT,NVDA,SPY,QQQ`
 - `TQS_RSS_URLS=`
+- `TQS_SERVER_BIND=127.0.0.1`
 
 ## UI
 
 - Сейчас
-- Мосбиржа
 - История аномалий
-- Аномалии
+- Мосбиржа
+- Скринер аномалий
 - Новости
 - Исследования
-- Возможности
 - Источники
 - Логи
+- Возможности
 
-Во вкладке «История аномалий» можно искать `SMLT`, `SBER`, `BTC` и т.д., открывать активные/закрытые случаи, менять окно графика ±6ч/±24ч/±3д и переходить между похожими случаями.
+Во вкладке «История аномалий» можно искать `SMLT`, `SBER`, `BTC` и т.д., фильтровать активные/закрытые случаи, открыть эпизод и увидеть 24 часа контекста до/после, зону жизни аномалии, score, последующую доходность и похожие сохранённые случаи.
 
 ## API v0.3
 
@@ -104,6 +98,8 @@ bash tqs-intelligence/deploy/linux/status-server.sh
 - `GET /api/system`
 - OpenAPI: `/docs`
 
-## Следующие тяжёлые слои
+## Граница v0.3
 
-v0.3 сохраняет минутные snapshots в DuckDB. Для многолетней истории и L2 следующий scale-up слой: partitioned Parquet + DuckDB/Polars research views, затем ClickHouse при реальной необходимости. Дальше: WebSocket sequence/gap recovery, historical universe replay, conditional relationship mining, event-study/OOS/walk-forward/bootstrap, macro/exchange/token events, BriefingSnapshot и дешёвый LLM-router только поверх shortlist.
+Свечи до события подгружаются для контекста, но v0.3 не притворяется, что уже реконструировала аномалии за несколько прошлых лет: библиотека полноценных episode/outcome начинает формироваться с момента работы сервиса. Следующий тяжёлый слой — historical universe replay с историческими features/OI/funding/volume, partitioned Parquet + DuckDB/Polars, затем ClickHouse при реальной необходимости. После него можно будет автоматически искать старые эпизоды ещё до запуска сервиса.
+
+Дальше: WebSocket sequence/gap recovery, L2, conditional relationship mining, event-study/OOS/walk-forward/bootstrap, macro/exchange/token events, BriefingSnapshot и дешёвый LLM-router только поверх shortlist.
