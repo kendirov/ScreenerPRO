@@ -156,6 +156,26 @@ class ResearchFinding(BaseModel):
     status: str
     summary_ru: str
 
+    @computed_field
+    @property
+    def median_forward_1h_pct(self) -> float | None:
+        return self.median_continuation_1h_pct
+
+    @computed_field
+    @property
+    def median_forward_4h_pct(self) -> float | None:
+        return self.median_continuation_4h_pct
+
+    @computed_field
+    @property
+    def continuation_rate_1h(self) -> float | None:
+        return self.win_rate_1h
+
+    @computed_field
+    @property
+    def continuation_rate_4h(self) -> float | None:
+        return self.win_rate_4h
+
 
 class NewsItem(BaseModel):
     source: str
