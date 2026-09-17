@@ -5,16 +5,69 @@ from typing import Any
 
 
 class InstrumentLab:
-    """Universal trader-facing drill-down for one canonical instrument.
-
-    It deliberately reads compact, already-normalized state. Heavy history lives in DataLake;
-    live context lives in DuckStore. The UI can request backfill through the existing job API.
-    """
+    """Universal trader-facing drill-down for one canonical instrument."""
 
     def __init__(self, store: Any, lake: Any, lab: Any) -> None:
         self.store = store
         self.lake = lake
         self.lab = lab
+
+    def search(self, query: str, snapshot: Any, limit: int = 40) -> list[dict[str, Any]]:
+        needle = query.strip().lower()
+        if not needle:
+            return []
+        out: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for q in (snapshot.quotes if snapshot else []):
+            hay = f"{q.symbol} {q.display_symbol or ''} {q.canonical_id} {q.venue}".lower()
+            if needle in hay and q.canonical_id not in seen:
+                item = q.model_dump(mode='json')
+                item['origin'] = 'live'
+                out.append(item); seen.add(q.canonical_id)
+                if len(out) >= limit:
+                    return out
+        like = f"%{needle}%"
+        with self.store._lock:
+            rows = self.store._con.execute(
+                """select payload_json from (
+                       select canonical_id,payload_json,
+                              row_number() over(partition by canonical_id order by observed_at_ms desc) rn
+                       from quote_snapshots
+                       where lower(symbol) like ? or lower(canonical_id) like ?
+                   ) where rn=1 limit ?""",
+                [like, like, limit * 3],
+            ).fetchall()
+        for (payload,) in rows:
+            try:
+                item = json.loads(payload or '{}')
+            except Exception:
+                continue
+            cid = str(item.get('canonical_id') or '')
+            if not cid:
+                provider = str(item.get('provider') or '')
+                market_type = str(item.get('market_type') or '')
+                symbol = str(item.get('symbol') or '')
+                cid = f"{provider}:{market_type}:{symbol}" if provider and symbol else ''
+                item['canonical_id'] = cid
+            if cid and cid not in seen:
+                item['origin'] = 'history'
+                out.append(item); seen.add(cid)
+            if len(out) >= limit:
+                break
+        return out
+
+    def _latest_quote(self, canonical_id: str) -> dict[str, Any] | None:
+        with self.store._lock:
+            row = self.store._con.execute(
+                "select payload_json from quote_snapshots where canonical_id=? order by observed_at_ms desc limit 1",
+                [canonical_id],
+            ).fetchone()
+        if not row:
+            return None
+        try:
+            return json.loads(row[0] or '{}')
+        except Exception:
+            return None
 
     def _live_series(self, canonical_id: str, limit: int = 4000) -> list[dict[str, Any]]:
         with self.store._lock:
@@ -69,11 +122,12 @@ class InstrumentLab:
 
     def build(self, canonical_id: str, snapshot: Any) -> dict[str, Any]:
         quotes = snapshot.quotes if snapshot else []
-        quote = next((q for q in quotes if q.canonical_id == canonical_id), None)
+        quote_obj = next((q for q in quotes if q.canonical_id == canonical_id), None)
+        quote = quote_obj.model_dump(mode='json') if quote_obj is not None else self._latest_quote(canonical_id)
         live = self._live_series(canonical_id)
-        symbol = quote.symbol if quote is not None else (canonical_id.rsplit(':', 1)[-1] if ':' in canonical_id else canonical_id)
-        provider = quote.provider if quote is not None else (canonical_id.split(':', 1)[0] if ':' in canonical_id else '')
-        market_type = quote.market_type if quote is not None else (canonical_id.split(':', 2)[1] if canonical_id.count(':') >= 2 else '')
+        symbol = str((quote or {}).get('symbol') or (canonical_id.rsplit(':', 1)[-1] if ':' in canonical_id else canonical_id))
+        provider = str((quote or {}).get('provider') or (canonical_id.split(':', 1)[0] if ':' in canonical_id else ''))
+        market_type = str((quote or {}).get('market_type') or (canonical_id.split(':', 2)[1] if canonical_id.count(':') >= 2 else ''))
         interval = '10m' if provider == 'moex' else '5m'
         candles = self._history(canonical_id, interval)
         episodes = [x for x in self.store.list_episodes(limit=1000, q=symbol) if x.canonical_id == canonical_id][:200]
@@ -98,12 +152,12 @@ class InstrumentLab:
                 if len(runs) >= 50:
                     break
         related = []
-        if quote is not None:
-            prefix = ''.join(ch for ch in quote.symbol.upper() if ch.isalpha())[:3]
+        prefix = ''.join(ch for ch in symbol.upper() if ch.isalpha())[:3]
+        if prefix:
             for q in quotes:
                 if q.canonical_id == canonical_id:
                     continue
-                if prefix and q.symbol.upper().startswith(prefix):
+                if q.symbol.upper().startswith(prefix):
                     related.append(q.model_dump(mode='json'))
                 if len(related) >= 20:
                     break
@@ -123,7 +177,7 @@ class InstrumentLab:
             backfill = {'provider': provider, 'symbol': symbol, 'market_type': market_type or ('shares' if provider == 'moex' else 'usdt-futures'), 'interval': interval}
         return {
             'canonical_id': canonical_id,
-            'quote': quote.model_dump(mode='json') if quote is not None else None,
+            'quote': quote,
             'latest_live': latest,
             'coverage': coverage,
             'interval': interval,
