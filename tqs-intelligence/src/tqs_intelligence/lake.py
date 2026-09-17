@@ -89,9 +89,16 @@ class DataLake:
             except Exception as exc:
                 bad.append(f'{path}: {exc}')
         usage = shutil.disk_usage(self.root)
+        try:
+            from .metric_lake import MetricLake
+            metric_stats = MetricLake(self.root).stats()
+        except Exception as exc:
+            metric_stats = {'root': str((self.root/'metrics').resolve()), 'files': 0, 'rows': 0, 'metrics': {}, 'bad_files': [str(exc)]}
         return {
             'root': str(self.root.resolve()),
             'files': len(files), 'rows': rows, 'bad_files': bad[:20],
+            'metrics': metric_stats,
+            'all_rows': rows + int(metric_stats.get('rows') or 0),
             'free_gb': round(usage.free / (1024**3), 2),
             'total_gb': round(usage.total / (1024**3), 2),
         }
