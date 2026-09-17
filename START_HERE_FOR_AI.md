@@ -1,112 +1,48 @@
-# START_HERE_FOR_AI — ScreenerPRO
+# START_HERE_FOR_AI — ScreenerPRO / TQS
 
-Первая точка входа для ChatGPT, Cursor и других AI-ассистентов. Читай этот файл, затем углубляйся по ссылкам ниже.
+Это короткая точка входа для ChatGPT, Codex, Cursor и других исполнителей.
 
----
+## Новый default
 
-## Что читать первым
+**Обычный ChatGPT = основной разработчик и оркестратор.** Он сам читает нужную часть repo, принимает решение, создаёт/продолжает ветку, меняет файлы, использует GitHub Actions как deterministic execution layer, читает ошибки, чинит их, проверяет runtime/browser/DB доступными plugins и доводит работу до доказанного результата.
 
-1. **`PRODUCT_VISION.md`** — зачем существует продукт и какой UX/вау-эффект нужен.
-2. **`PROJECT_CONTEXT.md`** — техническая архитектура, маршруты, API, источники данных.
-3. **`AI_SESSION_STATE.md`** — текущее состояние последней итерации.
-4. **`docs/CHATGPT_PROMPT_GUIDE.md`** — **для ChatGPT**: как продумывать логику, чек-листы и готовые шаблоны промптов для Cursor (с учётом текущей итерации).
-5. **`docs/CURSOR_WORKFLOW.md`** — правила работы Cursor.
-6. **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** — **продуктовая доктрина** intraday decision terminal: North Star, сценарий трейдера, блоки (Market Pulse, In Play, Situation, Table, Inspector), UI direction, антипаттерны. **Обязательно** для продуктовых и UX-задач по скринеру.
-7. **`docs/UI_NUMBERS_MINIMALISM.md`** — стандарт «минимализм цифр» в UI (новые экраны и правки таблиц/карточек).
-8. **`docs/MARKET_RADAR_FORMULAS.md`** — **источник истины** по формулам Market Radar (Vol x, In Play, Active, Shots, baseline); читать перед правкой порогов и объяснением «В игре» ученикам.
+**Work / Codex / Cursor = отдельный контур эскалации.** Они подключаются только если оставшийся шаг требует capability, которого реально нет у ordinary Chat. Размер задачи сам по себе не является причиной эскалации.
 
----
+## Что читать
 
-## Роли
+1. `AGENTS.md`
+2. `docs/ai/CURRENT_STATE.md`
+3. `docs/ai/VERIFICATION.md`
+4. ближайший project-local `AGENTS.md`
+5. только relevant files/tests/docs
 
-| Участник | Роль |
-|----------|------|
-| **Пользователь** | Владелец продукта и трейдерская логика |
-| **ChatGPT** | Продуктовый, аналитический и UX-напарник; готовит промпты для Cursor |
-| **Cursor** | Исполнитель изменений в коде |
+Большой `PROJECT_CONTEXT.md` — справочник legacy/детального контекста, не обязательный стартовый файл.
 
----
+## Где истина
 
-## Главная идея продукта
+- Google Drive `РАЗРАБОТКА` — процесс разработки, product/research decisions и reusable lessons.
+- GitHub — code/branch/PR/CI/agent state.
+- Runtime/Vercel/Supabase/local TQS — фактическое рабочее состояние.
+- Сообщение AI не является доказательством PASS.
 
-**ScreenerPRO** — интерактивный трейдерский терминал и обучающая платформа по **MOEX**.
+## Основной цикл
 
-**Ядро** — скринер акций и фьючерсов: активность, ликвидность, спред, оборот, in-play, торговые ситуации.
+`идея → acceptance → relevant context → branch → code → FAST → repair → FULL → browser/runtime/security/live when relevant → PR → VERIFIED PASS`
 
-**Материалы** и **Академия** — интерактивные, визуальные и современные, **не** статичные статьи.
+FAST и FULL определены в `docs/ai/VERIFICATION.md` и реализованы в `.github/workflows/chat-first-verification.yml`.
 
-Данные сейчас в основном из **MOEX ISS** (бесплатно) + локальные расчёты; при сбое — fallback/mock. Платный MOEX API — в планах.
+## TQS
 
----
+Для TQS сначала читать `tqs-intelligence/AGENTS.md`, затем только те продуктовые документы, на которые он маршрутизирует конкретную задачу.
 
-## Перед любой задачей
+## Отчёт владельцу
 
-AI должен:
+Коротко:
 
-1. Прочитать **`AI_SESSION_STATE.md`**.
-2. При необходимости свериться с **`PROJECT_CONTEXT.md`**.
-3. Если задача продуктовая или UX — свериться с **`PRODUCT_VISION.md`** и **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** (для скринера и терминала).
-4. **Не менять код** без понимания, что именно хочет пользователь.
-5. После изменений **обновить `AI_SESSION_STATE.md`** (крупные итерации — по `docs/CURSOR_WORKFLOW.md`).
+- что реально появилось;
+- branch / PR / final SHA;
+- какие объективные проверки прошли;
+- ссылка/preview/runtime evidence, если есть;
+- реальный blocker, если PASS не достигнут.
 
----
-
-## Что важно не сломать
-
-- `/screener`
-- `/screener/stocks`
-- `/screener/futures`
-- `/materials/technical-characteristics`
-- MOEX ISS live/fallback
-- `ValueWithStatus` в технических характеристиках
-- sidebar/layout
-- build перед деплоем (`pnpm -C frontend build`)
-
----
-
-## Формат отчёта Cursor после задачи
-
-Cursor **всегда** пишет:
-
-- **что изменил** — простыми словами (что увидит пользователь);
-- **какие файлы** изменил;
-- **какие команды** запускал;
-- **прошёл ли build**;
-- **что проверить в браузере** (URL + действия);
-- **обновлён ли** `AI_SESSION_STATE.md`.
-
-Подробный шаблон — в **`docs/CURSOR_WORKFLOW.md`**.
-
----
-
-## Быстрый старт локально
-
-```bash
-pnpm install
-pnpm -C frontend dev
-```
-
-→ http://localhost:3000/screener  
-
-Полная настройка:
-- **Windows:** `run-dev-full.cmd`
-- **macOS / Linux:** `./run-dev-full.sh`
-- Подробности — `PROJECT_CONTEXT.md` §11.
-
-## Работа на двух машинах (Win + Mac)
-
-| Машина | Начало сессии | Конец сессии | Аварийная остановка |
-|--------|---------------|--------------|---------------------|
-| **Windows** | `sync.cmd pull` | `sync.cmd save` | `stop.cmd` |
-| **macOS** | `./sync.sh pull` | `./sync.sh save` | `./stop.sh` |
-
-Точки отката (любая машина):
-
-```
-./checkpoint.sh "label"   # запомнить
-./restore.sh              # показать список
-./restore.sh <tag|hash>   # откатить
-```
-
-- **Для не-программиста, как организовать день:** `docs/WORKFLOW.md` ← начинай отсюда.
-- **Глубокий разбор git-синхронизации:** `docs/CROSS_PLATFORM_SYNC.md`.
+Не выдавать промпт для другого агента вместо результата, если ordinary Chat может продолжить сам.

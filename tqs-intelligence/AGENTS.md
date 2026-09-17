@@ -2,7 +2,18 @@
 
 This directory is one product: **TQS Intelligence & Strategy Machine**. Do not fork it into another standalone screener/research app.
 
-Read, in order, only as needed:
+## Execution route
+
+Repository-wide execution rules come from `../AGENTS.md` and `../docs/ai/VERIFICATION.md`.
+
+Default executor = **ordinary ChatGPT + connected GitHub/CI/plugins**. Work/Codex/Cursor are capability-gap escalation only. A large task is not, by itself, an escalation reason.
+
+The preferred loop is:
+
+`idea → formalize acceptance → same TQS product → branch/patch → FAST → repair → FULL/browser → PR → VERIFIED PASS → safe update`
+
+## Read, in order, only as needed
+
 1. `AI_OPERATING_CONTEXT.md` — product meaning, research rules, current architecture.
 2. `PRODUCT_CHANGE_PROTOCOL.md` — how an Artem idea becomes a verified update in the same product.
 3. `DASHBOARD_NEXT_STAGE.md` — target future-cockpit owner UX.
@@ -14,7 +25,10 @@ Read, in order, only as needed:
 9. `README.md` — install/run/operator workflow.
 10. Current task + affected source/tests.
 
-Non-negotiable rules:
+Do not load all of these by default. Start from the task and open only the contracts that change the implementation or acceptance.
+
+## Non-negotiable product rules
+
 - Russian owner-facing UI and explanations.
 - Anomaly = a candidate **location/time of potential movement**, not automatically BUY/SELL.
 - Direction/entry/exit belong to Strategy Machine and require historical tests.
@@ -34,5 +48,11 @@ Non-negotiable rules:
 - Free/delayed and premium/realtime series must never be silently merged.
 - New user ideas should extend this product through reusable adapters/features/StrategySpecs/views, not create a parallel app.
 
+## Verification details
+
+TQS FAST/FULL are implemented by repository scripts in `../scripts/ci/` and orchestrated by `.github/workflows/chat-first-verification.yml`.
+
+For deterministic FULL browser checks, external market providers are disabled and runtime data is isolated under `.verification/`. Real provider health belongs to the separate scheduled/manual LIVE workflow.
+
 Owner workflow:
-`Артём говорит идею → Idea Inbox → формализовать → реализовать/research → verify → commit → кнопка Обновить → функция появляется в той же TQS машине.`
+`Артём говорит идею → ordinary Chat делает максимум сам → deterministic verification → при реальном capability gap compact escalation → verified commit/PR → кнопка Обновить → функция появляется в той же TQS машине.`

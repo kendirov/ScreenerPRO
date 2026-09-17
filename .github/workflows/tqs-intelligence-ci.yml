@@ -1,100 +1,29 @@
-name: TQS Intelligence CI
+name: TQS Intelligence CI (legacy manual compatibility)
 
 on:
-  push:
-    branches:
-      - codex/tqs-research-strategy-machine-v0-4-2026-09-17
-      - codex/tqs-intelligence-engine-v0-1-2026-09-17
-    paths:
-      - 'tqs-intelligence/**'
-      - '.github/workflows/tqs-intelligence-ci.yml'
-  pull_request:
-    paths:
-      - 'tqs-intelligence/**'
-      - '.github/workflows/tqs-intelligence-ci.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: tqs-intelligence
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: '3.12'
-          cache: 'pip'
-          cache-dependency-path: tqs-intelligence/pyproject.toml
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: '22'
-      - name: Install
-        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
-      - name: Windows updater PowerShell syntax
-        shell: pwsh
-        run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path './update-windows.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
-          }
-          Write-Host 'PowerShell updater syntax PASS'
-      - name: Python tests
-        id: pytest
-        shell: bash
-        run: |
-          set +e
-          python -m pytest -q 2>&1 | tee /tmp/tqs-pytest.log
-          code=${PIPESTATUS[0]}
-          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          exit 0
-      - name: Publish pytest failure to PR
-        if: github.event_name == 'pull_request' && steps.pytest.outputs.exit_code != '0'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const raw = fs.readFileSync('/tmp/tqs-pytest.log', 'utf8');
-            const body = `### TQS CI pytest failure\n\n\`\`\`text\n${raw.slice(-12000)}\n\`\`\``;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
-      - name: Enforce pytest result
-        if: steps.pytest.outputs.exit_code != '0'
-        run: exit 1
-      - name: Compile
-        run: python -m compileall -q src
-      - name: API import and trader surface contract
-        run: |
-          python - <<'PY'
-          from tqs_intelligence.api import app
-          assert app.version == '0.6.0'
-          paths = {route.path for route in app.routes}
-          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/strategies', '/api/research/findings', '/api/briefing'}
-          missing = required - paths
-          assert not missing, missing
-          print('API/trader surface PASS', app.version)
-          PY
-      - name: Dashboard JavaScript syntax
-        run: |
-          node --check src/tqs_intelligence/static/app.js
-          node --check src/tqs_intelligence/static/account-intelligence.js
-      - name: Trader cockpit HTML contract
-        run: |
-          grep -q 'UNIVERSAL INSTRUMENT LAB' src/tqs_intelligence/static/index.html
-          grep -q 'ПУЛЬС МАШИНЫ' src/tqs_intelligence/static/index.html
-          grep -q 'Strategy pulse' src/tqs_intelligence/static/index.html
-          grep -q 'Research pulse' src/tqs_intelligence/static/index.html
-          grep -q 'Обновить продукт' src/tqs_intelligence/static/index.html
+          package-manager-cache: false
+      - name: Force TQS scope
+        env:
+          VERIFY_TQS: '1'
+        run: python scripts/ci/changed_scopes.py
+      - name: FAST compatibility gate
+        run: bash scripts/ci/verify-fast.sh

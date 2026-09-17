@@ -1,0 +1,96 @@
+name: Chat-first Verification
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'chat/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chat-first-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  fast:
+    name: FAST deterministic checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Resolve affected scopes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python scripts/ci/changed_scopes.py
+      - name: FAST
+        id: verify
+        continue-on-error: true
+        run: bash scripts/ci/verify-fast.sh
+      - name: Write FAST evidence
+        if: always()
+        run: python scripts/ci/write_verification_summary.py fast ${{ steps.verify.outcome == 'success' && 'pass' || 'fail' }}
+      - name: Upload FAST evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: fast-evidence-${{ github.sha }}
+          path: .verification/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce FAST result
+        if: steps.verify.outcome != 'success'
+        run: exit 1
+
+  full:
+    name: FULL runtime and browser checks
+    needs: fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Resolve affected scopes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python scripts/ci/changed_scopes.py
+      - name: FULL
+        id: verify
+        continue-on-error: true
+        run: bash scripts/ci/verify-full.sh
+      - name: Write FULL evidence
+        if: always()
+        run: python scripts/ci/write_verification_summary.py full ${{ steps.verify.outcome == 'success' && 'pass' || 'fail' }}
+      - name: Upload FULL evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: full-evidence-${{ github.sha }}
+          path: .verification/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce FULL result
+        if: steps.verify.outcome != 'success'
+        run: exit 1
