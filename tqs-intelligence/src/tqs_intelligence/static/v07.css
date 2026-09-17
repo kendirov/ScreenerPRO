@@ -1,0 +1,20 @@
+/* v0.7 product layer: keeps the graphite TQS DNA, adds denser operator/trader surfaces. */
+.dashboard-row-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:14px 0}
+.account-metrics{grid-template-columns:repeat(6,minmax(0,1fr))}
+.account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line2)}
+.account-card{border:0;background:var(--panel);color:var(--text);padding:12px;text-align:left;min-height:92px}
+.account-card:hover{background:#161c20}.account-card b{display:block;font-size:13px;margin-bottom:5px}.account-card span{display:block;color:var(--muted);font-size:10px}
+.account-card .account-numbers{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.account-card .account-numbers em{font-style:normal;font-size:10px;color:var(--text)}
+.discovery-box{display:grid;gap:10px}.discovery-big{font-size:34px;font-weight:800;letter-spacing:-.03em}.discovery-note{color:var(--muted);font-size:11px;line-height:1.55}
+.secondary-details{margin-top:14px;border:1px solid var(--line);background:var(--panel);border-radius:7px}.secondary-details summary{cursor:pointer;padding:11px 13px;color:var(--muted)}.secondary-details[open] summary{border-bottom:1px solid var(--line2);color:var(--text)}
+.mini{padding:4px 7px;font-size:10px}.panel .empty-state{min-height:100px}
+.watch-why{display:flex;gap:4px;flex-wrap:wrap}.watch-why .tag{max-width:260px;white-space:normal}
+.instrument-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:12px}.instrument-head h2{margin:2px 0}.instrument-price{text-align:right}.instrument-price b{font-size:28px;display:block}
+.coverage-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.coverage-chips span{padding:6px 8px;border:1px solid var(--line);border-radius:5px;color:var(--muted)}.coverage-chips b{color:var(--text)}
+.search-hit{display:flex;width:100%;justify-content:space-between;gap:10px;padding:9px 11px;border:0;border-bottom:1px solid var(--line2);background:var(--panel);color:var(--text);text-align:left}.search-hit:hover{background:#161c20}.search-hit span{color:var(--muted)}
+.linkish,.related-hit{background:none;border:0;color:#d9c07d;padding:0;cursor:pointer}.related-hit{display:block;padding:6px 10px;border-bottom:1px solid var(--line2);width:100%;text-align:left}
+.stat span{display:block;color:var(--muted);font-size:10px}.stat b{font-size:20px}.finding{padding:10px 12px;border-bottom:1px solid var(--line2)}.finding span{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.news-card{padding:12px;border-bottom:1px solid var(--line2)}.news-card h3{margin:4px 0 8px;font-size:13px}
+.idea-card{padding:12px;border-bottom:1px solid var(--line2)}.idea-main{display:flex;justify-content:space-between;gap:12px}.idea-main h3{margin:3px 0}.idea-main p{margin:4px 0;color:var(--muted)}.idea-foot{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-top:7px}
+@media(max-width:1350px){.dashboard-row-4{grid-template-columns:repeat(2,1fr)}.account-metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.dashboard-row-4,.account-grid,.account-metrics{grid-template-columns:1fr}.instrument-head{display:block}.instrument-price{text-align:left;margin-top:8px}}
