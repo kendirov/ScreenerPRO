@@ -25,9 +25,30 @@ class Supervisor:
         self.url = f'http://{self.host}:{self.port}'
         self.last_auto_check = 0.0
         self.update_state_path = Path('./data/update-state.json')
+        self.heartbeat_path = Path('./data/supervisor-heartbeat.json')
+        self.started_at_ms = int(time.time() * 1000)
 
     def _say(self, message: str) -> None:
         print(f'[TQS SUPERVISOR {time.strftime("%H:%M:%S")}] {message}', flush=True)
+
+    def _write_heartbeat(self, state: str = 'running', **extra) -> None:
+        child_alive = bool(self.child is not None and self.child.poll() is None)
+        payload = {
+            'ts_ms': int(time.time() * 1000),
+            'started_at_ms': self.started_at_ms,
+            'state': state,
+            'supervisor_pid': os.getpid(),
+            'child_pid': self.child.pid if child_alive and self.child is not None else None,
+            'child_alive': child_alive,
+            **extra,
+        }
+        try:
+            self.heartbeat_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self.heartbeat_path.with_suffix('.tmp')
+            tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
+            tmp.replace(self.heartbeat_path)
+        except Exception:
+            pass
 
     def _write_update_state(self, **payload) -> None:
         state = {'updated_at_ms': int(time.time() * 1000), **payload}
@@ -39,6 +60,7 @@ class Supervisor:
 
     def start_child(self) -> None:
         if self.child is not None and self.child.poll() is None:
+            self._write_heartbeat('running')
             return
         env = dict(os.environ)
         env['PYTHONUNBUFFERED'] = '1'
@@ -48,10 +70,12 @@ class Supervisor:
             env=env,
         )
         self._say(f'uvicorn запущен PID={self.child.pid}')
+        self._write_heartbeat('starting')
 
     def stop_child(self) -> None:
         child = self.child
         if child is None:
+            self._write_heartbeat('stopped')
             return
         if child.poll() is None:
             child.terminate()
@@ -62,22 +86,27 @@ class Supervisor:
                 child.wait(timeout=5)
         self._say(f'uvicorn остановлен exit={child.returncode}')
         self.child = None
+        self._write_heartbeat('stopped')
 
     def healthy(self, timeout_s: int = 60) -> bool:
         if self.child is None:
             return False
         deadline = time.time() + timeout_s
         while time.time() < deadline:
+            self._write_heartbeat('healthcheck')
             if self.child.poll() is not None:
                 self._say(f'uvicorn завершился до healthcheck exit={self.child.returncode}')
+                self._write_heartbeat('child_exited', exit_code=self.child.returncode)
                 return False
             try:
                 with urllib.request.urlopen(self.url + '/api/health', timeout=2) as r:
                     if 200 <= r.status < 300:
+                        self._write_heartbeat('running')
                         return True
             except Exception:
                 pass
             time.sleep(1)
+        self._write_heartbeat('health_timeout')
         return False
 
     def _run(self, args: list[str], timeout: int = 180) -> subprocess.CompletedProcess:
@@ -171,6 +200,7 @@ class Supervisor:
             self.start_child()
             if self.healthy(60):
                 self._say(f'backend ONLINE (attempt {attempt})')
+                self._write_heartbeat('running')
                 return True
             self._say(f'initial healthcheck failed (attempt {attempt}/3)')
             self.stop_child()
@@ -178,8 +208,10 @@ class Supervisor:
         return False
 
     def run(self) -> int:
+        self._write_heartbeat('booting')
         if not self._ensure_initial_child():
             self._say('backend не поднялся после 3 попыток; внешний Launcher watchdog попробует снова')
+            self._write_heartbeat('failed_initial_start')
             return 2
         try:
             webbrowser.open(self.url)
@@ -189,6 +221,7 @@ class Supervisor:
         try:
             while True:
                 try:
+                    self._write_heartbeat('running')
                     if self.child is None or self.child.poll() is not None:
                         exit_code = None if self.child is None else self.child.returncode
                         self._say(f'backend child потерян exit={exit_code}; восстановление')
@@ -211,11 +244,13 @@ class Supervisor:
                     # One malformed update request/control read must never kill
                     # the supervisor and leave an overnight session dead.
                     self._say(f'loop error: {type(exc).__name__}: {exc}')
+                    self._write_heartbeat('loop_error', error=f'{type(exc).__name__}: {exc}'[:500])
                     time.sleep(3)
         except KeyboardInterrupt:
             return 0
         finally:
             self.stop_child()
+            self._write_heartbeat('stopped')
 
 
 def main() -> None:
