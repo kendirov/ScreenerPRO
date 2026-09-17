@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 from zoneinfo import ZoneInfo
 
+from .derivative_metrics import DerivativeMetricBackfiller
 from .http import JsonHttp
 from .lake import DataLake
+from .metric_lake import MetricLake
 from .models import Candle
 
 Progress = Callable[[float, str], Awaitable[None] | None]
@@ -27,10 +30,20 @@ async def _progress(cb: Progress | None, value: float, message: str) -> None:
     if asyncio.iscoroutine(result): await result
 
 
+def _moex_underlying(symbol: str) -> str:
+    compact = ''.join(ch for ch in str(symbol).upper() if ch.isalnum())
+    match = re.match(r'^([A-ZА-Я]{1,8})[FGHJKMNQUVXZ]\d{1,2}$', compact)
+    if match: return match.group(1)
+    match = re.match(r'^([A-ZА-Я]{1,8})\d', compact)
+    return match.group(1) if match else compact
+
+
 class HistoricalBackfiller:
     def __init__(self, http: JsonHttp, lake: DataLake) -> None:
         self.http = http
         self.lake = lake
+        self.metric_lake = MetricLake(lake.root)
+        self.derivative_metrics = DerivativeMetricBackfiller(http, self.metric_lake)
 
     async def backfill_binance(self, *, symbol: str, market_type: str, interval: str,
                                start_ms: int, end_ms: int, progress: Progress | None = None) -> dict[str, Any]:
@@ -112,15 +125,65 @@ class HistoricalBackfiller:
         return {'provider':'moex','canonical_id':canonical_id,'interval':interval,'rows':rows_total,'pages':pages,
                 'engine':engine,'market':market,'start_ms':start_ms,'end_ms':end_ms}
 
+    def _metric_start(self, canonical_id: str, metric: str, requested_start: int, *, overlap_ms: int = 0) -> int:
+        bounds = self.metric_lake.bounds(canonical_id, metric)
+        last = bounds.get('last_ms')
+        if last is None:
+            return requested_start
+        return max(requested_start, int(last) + 1 - max(0, overlap_ms))
+
+    async def _enrich_derivatives(self, payload: dict[str, Any], start_ms: int, end_ms: int,
+                                  progress: Progress | None = None) -> dict[str, Any] | None:
+        provider = str(payload.get('provider') or '').lower()
+        market_type = str(payload.get('market_type') or '')
+        symbol = str(payload.get('symbol') or '')
+        if provider == 'binance' and market_type != 'spot':
+            cid = f'binance:usdt-futures:{symbol}'
+            starts = [
+                self._metric_start(cid, 'funding_rate', start_ms, overlap_ms=8*3600_000),
+                self._metric_start(cid, 'open_interest', max(start_ms, end_ms-31*86_400_000), overlap_ms=300_000),
+                self._metric_start(cid, 'basis_rate', max(start_ms, end_ms-31*86_400_000), overlap_ms=300_000),
+            ]
+            metric_start = min(starts)
+            return await self.derivative_metrics.backfill_binance(symbol=symbol, start_ms=metric_start, end_ms=end_ms, progress=progress)
+        if provider == 'moex' and market_type == 'forts':
+            root = _moex_underlying(symbol)
+            cid = f'moex:futoi:{root}'
+            metric_start = self._metric_start(cid, 'futoi_fiz_long_contracts', start_ms, overlap_ms=300_000)
+            return await self.derivative_metrics.backfill_moex_futoi(symbol=root, start_ms=metric_start, end_ms=end_ms, progress=progress, authorized=False)
+        return None
+
     async def backfill(self, payload: dict[str, Any], progress: Progress | None = None) -> dict[str, Any]:
         provider = str(payload.get('provider','')).lower()
         start_ms = int(payload.get('start_ms') or int(datetime(2021,1,1,tzinfo=timezone.utc).timestamp()*1000))
         end_ms = int(payload.get('end_ms') or int(time.time()*1000))
+        market_type = str(payload.get('market_type',''))
+        enrich = (provider == 'binance' and market_type != 'spot') or (provider == 'moex' and market_type == 'forts')
+
+        async def candle_progress(value: float, message: str) -> None:
+            await _progress(progress, value * (0.72 if enrich else 1.0), message)
+
+        async def metric_progress(value: float, message: str) -> None:
+            await _progress(progress, 0.72 + value * 0.28, message)
+
         if provider == 'binance':
-            return await self.backfill_binance(symbol=str(payload['symbol']), market_type=str(payload.get('market_type','usdt-futures')),
-                                                interval=str(payload.get('interval','5m')), start_ms=start_ms, end_ms=end_ms, progress=progress)
-        if provider == 'moex':
-            return await self.backfill_moex(symbol=str(payload['symbol']), engine=str(payload.get('engine','stock')),
-                                            market=str(payload.get('market','shares')), market_type=str(payload.get('market_type','shares')),
-                                            interval=str(payload.get('interval','10m')), start_ms=start_ms, end_ms=end_ms, progress=progress)
-        raise ValueError(f'provider {provider} does not have bulk historical backfill yet')
+            result = await self.backfill_binance(symbol=str(payload['symbol']), market_type=str(payload.get('market_type','usdt-futures')),
+                                                 interval=str(payload.get('interval','5m')), start_ms=start_ms, end_ms=end_ms,
+                                                 progress=candle_progress)
+        elif provider == 'moex':
+            result = await self.backfill_moex(symbol=str(payload['symbol']), engine=str(payload.get('engine','stock')),
+                                              market=str(payload.get('market','shares')), market_type=str(payload.get('market_type','shares')),
+                                              interval=str(payload.get('interval','10m')), start_ms=start_ms, end_ms=end_ms,
+                                              progress=candle_progress)
+        else:
+            raise ValueError(f'provider {provider} does not have bulk historical backfill yet')
+
+        if enrich:
+            try:
+                result['derivative_metrics'] = await self._enrich_derivatives(payload, start_ms, end_ms, metric_progress)
+            except Exception as exc:
+                # Candles remain valuable and the research pipeline should continue.
+                # The metric failure is observable and retried on a future backfill.
+                result['derivative_metrics_warning'] = str(exc)[:1000]
+                await _progress(progress, 1.0, f"{provider.upper()} {payload.get('symbol')}: свечи готовы; metrics warning")
+        return result
