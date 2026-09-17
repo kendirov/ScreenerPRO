@@ -11,13 +11,19 @@ class JsonHttp:
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout_s),
             follow_redirects=True,
-            headers={"User-Agent": "TQS-Intelligence/0.1 (+market-research)"},
+            headers={"User-Agent": "TQS-Intelligence/0.5 (+market-research)"},
         )
         self._sem = asyncio.Semaphore(concurrency)
 
     async def get_json(self, url: str, params: dict[str, Any] | None = None) -> Any:
         async with self._sem:
             response = await self._client.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
+
+    async def post_json(self, url: str, payload: dict[str, Any] | None = None) -> Any:
+        async with self._sem:
+            response = await self._client.post(url, json=payload or {})
             response.raise_for_status()
             return response.json()
 
