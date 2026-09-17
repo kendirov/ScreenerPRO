@@ -10,6 +10,7 @@ import psutil
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -139,8 +140,9 @@ async def lifespan(_: FastAPI):
     await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
-app = FastAPI(title='TQS Intelligence & Strategy Machine', version='0.4.0', lifespan=lifespan)
 STATIC = Path(__file__).with_name('static')
+app = FastAPI(title='TQS Intelligence & Strategy Machine', version='0.4.0', lifespan=lifespan)
+app.mount('/static', StaticFiles(directory=str(STATIC)), name='static')
 
 
 def _snapshot(): return service.state.snapshot
