@@ -26,6 +26,9 @@ class Supervisor:
         self.last_auto_check = 0.0
         self.update_state_path = Path('./data/update-state.json')
 
+    def _say(self, message: str) -> None:
+        print(f'[TQS SUPERVISOR {time.strftime("%H:%M:%S")}] {message}', flush=True)
+
     def _write_update_state(self, **payload) -> None:
         state = {'updated_at_ms': int(time.time() * 1000), **payload}
         try:
@@ -35,25 +38,38 @@ class Supervisor:
             pass
 
     def start_child(self) -> None:
+        if self.child is not None and self.child.poll() is None:
+            return
+        env = dict(os.environ)
+        env['PYTHONUNBUFFERED'] = '1'
         self.child = subprocess.Popen(
             [sys.executable, '-m', 'uvicorn', 'tqs_intelligence.api:app', '--host', self.host, '--port', str(self.port)],
             cwd=self.root,
+            env=env,
         )
+        self._say(f'uvicorn запущен PID={self.child.pid}')
 
     def stop_child(self) -> None:
-        if self.child is None or self.child.poll() is not None:
+        child = self.child
+        if child is None:
             return
-        self.child.terminate()
-        try:
-            self.child.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            self.child.kill()
-            self.child.wait(timeout=5)
+        if child.poll() is None:
+            child.terminate()
+            try:
+                child.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait(timeout=5)
+        self._say(f'uvicorn остановлен exit={child.returncode}')
+        self.child = None
 
     def healthy(self, timeout_s: int = 60) -> bool:
+        if self.child is None:
+            return False
         deadline = time.time() + timeout_s
         while time.time() < deadline:
-            if self.child and self.child.poll() is not None:
+            if self.child.poll() is not None:
+                self._say(f'uvicorn завершился до healthcheck exit={self.child.returncode}')
                 return False
             try:
                 with urllib.request.urlopen(self.url + '/api/health', timeout=2) as r:
@@ -150,9 +166,20 @@ class Supervisor:
         )
         return False
 
+    def _ensure_initial_child(self) -> bool:
+        for attempt in range(1, 4):
+            self.start_child()
+            if self.healthy(60):
+                self._say(f'backend ONLINE (attempt {attempt})')
+                return True
+            self._say(f'initial healthcheck failed (attempt {attempt}/3)')
+            self.stop_child()
+            time.sleep(min(8, attempt * 2))
+        return False
+
     def run(self) -> int:
-        self.start_child()
-        if not self.healthy(60):
+        if not self._ensure_initial_child():
+            self._say('backend не поднялся после 3 попыток; внешний Launcher watchdog попробует снова')
             return 2
         try:
             webbrowser.open(self.url)
@@ -161,17 +188,30 @@ class Supervisor:
         self.last_auto_check = time.time()
         try:
             while True:
-                if self.child and self.child.poll() is not None:
-                    self.start_child()
-                    self.healthy(30)
-                request = self.updater.pop_request()
-                if request is not None:
-                    self.apply_update(bool(request.get('force')))
-                state = self.control.get()
-                if state.auto_update and time.time() - self.last_auto_check >= 1800:
-                    self.last_auto_check = time.time()
-                    self.apply_update(False)
-                time.sleep(2)
+                try:
+                    if self.child is None or self.child.poll() is not None:
+                        exit_code = None if self.child is None else self.child.returncode
+                        self._say(f'backend child потерян exit={exit_code}; восстановление')
+                        self.stop_child()
+                        self.start_child()
+                        if not self.healthy(30):
+                            self._say('restart healthcheck failed; повтор через 3 сек')
+                            self.stop_child()
+                            time.sleep(3)
+                            continue
+                    request = self.updater.pop_request()
+                    if request is not None:
+                        self.apply_update(bool(request.get('force')))
+                    state = self.control.get()
+                    if state.auto_update and time.time() - self.last_auto_check >= 1800:
+                        self.last_auto_check = time.time()
+                        self.apply_update(False)
+                    time.sleep(2)
+                except Exception as exc:
+                    # One malformed update request/control read must never kill
+                    # the supervisor and leave an overnight session dead.
+                    self._say(f'loop error: {type(exc).__name__}: {exc}')
+                    time.sleep(3)
         except KeyboardInterrupt:
             return 0
         finally:
