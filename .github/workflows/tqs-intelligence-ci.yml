@@ -80,21 +80,38 @@ jobs:
         run: |
           python - <<'PY'
           from tqs_intelligence.api import app
-          assert app.version == '0.6.0'
           paths = {route.path for route in app.routes}
-          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/strategies', '/api/research/findings', '/api/briefing'}
+          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing'}
           missing = required - paths
           assert not missing, missing
           print('API/trader surface PASS', app.version)
           PY
       - name: Dashboard JavaScript syntax
         run: |
+          node --check src/tqs_intelligence/static/v07.js
           node --check src/tqs_intelligence/static/app.js
-          node --check src/tqs_intelligence/static/account-intelligence.js
-      - name: Trader cockpit HTML contract
+      - name: Autonomous trader cockpit HTML contract
         run: |
+          grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
           grep -q 'UNIVERSAL INSTRUMENT LAB' src/tqs_intelligence/static/index.html
           grep -q 'ПУЛЬС МАШИНЫ' src/tqs_intelligence/static/index.html
-          grep -q 'Strategy pulse' src/tqs_intelligence/static/index.html
-          grep -q 'Research pulse' src/tqs_intelligence/static/index.html
+          grep -q 'Авторазведка публичных счетов' src/tqs_intelligence/static/index.html
+          grep -q 'Идеи, которые мы делаем через GPT' src/tqs_intelligence/static/index.html
           grep -q 'Обновить продукт' src/tqs_intelligence/static/index.html
+      - name: Account discovery contract
+        run: |
+          python - <<'PY'
+          from tqs_intelligence.account_discovery import score_leaderboard_row, HyperliquidLeaderboardDiscovery
+          assert 'hyperliquid.xyz' in HyperliquidLeaderboardDiscovery.URL
+          score, reasons, metrics = score_leaderboard_row({
+              'accountValue':'100000',
+              'windowPerformances':[
+                  ['day', {'pnl':'100','roi':'0.01','vlm':'10000'}],
+                  ['week', {'pnl':'1000','roi':'0.05','vlm':'100000'}],
+                  ['month', {'pnl':'5000','roi':'0.1','vlm':'500000'}],
+                  ['allTime', {'pnl':'10000','roi':'0.5','vlm':'1000000'}],
+              ],
+          })
+          assert score > 0 and reasons and metrics['equity'] == 100000
+          print('Account discovery contract PASS')
+          PY
