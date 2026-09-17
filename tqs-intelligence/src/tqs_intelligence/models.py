@@ -93,8 +93,68 @@ class Anomaly(BaseModel):
     score: float = Field(ge=0, le=100)
     severity: str
     reasons: list[str]
+    signals: list[str] = Field(default_factory=list)
     state: MarketState
     quote: Quote
+
+
+class Candle(BaseModel):
+    provider: str
+    canonical_id: str
+    interval: str
+    ts_ms: int
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float | None = None
+    turnover: float | None = None
+    source: str = "provider"
+
+
+class AnomalyEpisode(BaseModel):
+    id: str
+    canonical_id: str
+    provider: str
+    symbol: str
+    asset_class: AssetClass
+    market_type: str
+    opened_at_ms: int
+    last_seen_ms: int
+    closed_at_ms: int | None = None
+    status: str = "active"
+    first_score: float
+    peak_score: float
+    last_score: float
+    trigger_price: float | None = None
+    last_price: float | None = None
+    direction: str = "neutral"
+    pattern_key: str
+    signals: list[str] = Field(default_factory=list)
+    reasons: list[str] = Field(default_factory=list)
+    hits: int = 1
+
+
+class EpisodeOutcome(BaseModel):
+    episode_id: str
+    trigger_price: float | None = None
+    returns_pct: dict[str, float | None] = Field(default_factory=dict)
+    actual_ts_ms: dict[str, int | None] = Field(default_factory=dict)
+    mfe_pct: float | None = None
+    mae_pct: float | None = None
+    complete: bool = False
+
+
+class ResearchFinding(BaseModel):
+    pattern_key: str
+    updated_at_ms: int
+    sample_count: int
+    median_continuation_1h_pct: float | None = None
+    win_rate_1h: float | None = None
+    median_continuation_4h_pct: float | None = None
+    win_rate_4h: float | None = None
+    status: str
+    summary_ru: str
 
 
 class NewsItem(BaseModel):
