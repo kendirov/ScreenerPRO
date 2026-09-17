@@ -30,11 +30,7 @@ class MetricPoint(BaseModel):
 
 
 class MetricLake:
-    """Parquet storage for non-candle time series such as OI/funding/FUTOI.
-
-    The schema is intentionally generic so a new metric/source does not require
-    another database. Metric semantics and units remain explicit on every row.
-    """
+    """Parquet storage for non-candle time series such as OI/funding/FUTOI."""
 
     def __init__(self, data_root: str | Path) -> None:
         root = Path(data_root).expanduser()
@@ -52,6 +48,17 @@ class MetricLake:
             / "data.parquet"
         )
 
+    def _pattern(self, canonical_id: str, metric: str) -> str:
+        return str(
+            self.root
+            / "provider=*"
+            / f"instrument={_safe(canonical_id)}"
+            / f"metric={_safe(metric)}"
+            / "year=*"
+            / "month=*"
+            / "data.parquet"
+        )
+
     def write(self, points: Iterable[MetricPoint]) -> dict[str, int]:
         groups: dict[tuple[str, str, str, int, int], list[MetricPoint]] = defaultdict(list)
         for point in points:
@@ -61,21 +68,14 @@ class MetricLake:
         for (provider, canonical_id, metric, year, month), items in groups.items():
             path = self.path(provider, canonical_id, metric, year, month)
             path.parent.mkdir(parents=True, exist_ok=True)
-            frame = pl.DataFrame(
-                [
-                    {
-                        "provider": x.provider,
-                        "canonical_id": x.canonical_id,
-                        "metric": x.metric,
-                        "ts_ms": x.ts_ms,
-                        "value": x.value,
-                        "unit": x.unit,
-                        "source": x.source,
-                        "meta_json": json.dumps(x.meta, ensure_ascii=False, default=str),
-                    }
-                    for x in items
-                ]
-            )
+            frame = pl.DataFrame([
+                {
+                    "provider": x.provider, "canonical_id": x.canonical_id, "metric": x.metric,
+                    "ts_ms": x.ts_ms, "value": x.value, "unit": x.unit, "source": x.source,
+                    "meta_json": json.dumps(x.meta, ensure_ascii=False, default=str),
+                }
+                for x in items
+            ])
             if path.exists():
                 try:
                     frame = pl.concat([pl.read_parquet(path), frame], how="diagonal_relaxed")
@@ -98,17 +98,8 @@ class MetricLake:
         end_ms: int | None = None,
         max_points: int = 20_000,
     ) -> list[dict[str, Any]]:
-        pattern = str(
-            self.root
-            / "provider=*"
-            / f"instrument={_safe(canonical_id)}"
-            / f"metric={_safe(metric)}"
-            / "year=*"
-            / "month=*"
-            / "data.parquet"
-        )
         try:
-            lazy = pl.scan_parquet(pattern)
+            lazy = pl.scan_parquet(self._pattern(canonical_id, metric))
         except Exception:
             return []
         if start_ms is not None:
@@ -120,8 +111,6 @@ class MetricLake:
         except Exception:
             return []
         if frame.height > max_points:
-            # Deterministic thinning preserves the whole time span instead of
-            # silently returning only the most recent tail.
             step = max(1, frame.height // max_points)
             frame = frame[::step]
             if frame.height > max_points:
@@ -137,19 +126,23 @@ class MetricLake:
         return rows
 
     def count(self, canonical_id: str, metric: str) -> int:
-        pattern = str(
-            self.root
-            / "provider=*"
-            / f"instrument={_safe(canonical_id)}"
-            / f"metric={_safe(metric)}"
-            / "year=*"
-            / "month=*"
-            / "data.parquet"
-        )
         try:
-            return int(pl.scan_parquet(pattern).select(pl.len()).collect().item())
+            return int(pl.scan_parquet(self._pattern(canonical_id, metric)).select(pl.len()).collect().item())
         except Exception:
             return 0
+
+    def bounds(self, canonical_id: str, metric: str) -> dict[str, int | None]:
+        try:
+            row = pl.scan_parquet(self._pattern(canonical_id, metric)).select(
+                pl.col("ts_ms").min().alias("first_ms"),
+                pl.col("ts_ms").max().alias("last_ms"),
+                pl.len().alias("rows"),
+            ).collect().row(0, named=True)
+            return {"first_ms": int(row["first_ms"]) if row["first_ms"] is not None else None,
+                    "last_ms": int(row["last_ms"]) if row["last_ms"] is not None else None,
+                    "rows": int(row["rows"] or 0)}
+        except Exception:
+            return {"first_ms": None, "last_ms": None, "rows": 0}
 
     def stats(self) -> dict[str, Any]:
         files = list(self.root.glob("**/*.parquet"))
