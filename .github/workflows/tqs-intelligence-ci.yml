@@ -69,6 +69,14 @@ jobs:
         run: exit 1
       - name: Compile
         run: python -m compileall -q src
+      - name: Version contract
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          from tqs_intelligence import __version__
+          assert version('tqs-intelligence') == __version__ == '0.9.0', (version('tqs-intelligence'), __version__)
+          print('Version contract PASS', __version__)
+          PY
       - name: Launcher and watchdog contract
         run: |
           python -m py_compile src/tqs_intelligence/launcher.py src/tqs_intelligence/launcher_entry.py src/tqs_intelligence/watchdog_policy.py src/tqs_intelligence/supervisor.py
@@ -102,6 +110,7 @@ jobs:
           node --check src/tqs_intelligence/static/cockpit.js
           node --check src/tqs_intelligence/static/cockpit_metrics.js
           node --check src/tqs_intelligence/static/cockpit_context.js
+          node --check src/tqs_intelligence/static/cockpit_activity.js
           node --check src/tqs_intelligence/static/v07.js
           node --check src/tqs_intelligence/static/app.js
       - name: Instrument-first cockpit HTML contract
@@ -110,8 +119,10 @@ jobs:
           grep -q 'UNIVERSAL INSTRUMENT WORKSPACE' src/tqs_intelligence/static/index.html
           grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.css' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_activity.css' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.js' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_context.js' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_activity.js' src/tqs_intelligence/static/index.html
           grep -q 'researchJobs' src/tqs_intelligence/static/index.html
           grep -q 'systemLogs' src/tqs_intelligence/static/index.html
           grep -q 'Публичные позиции' src/tqs_intelligence/static/cockpit.js
@@ -120,15 +131,20 @@ jobs:
           grep -q 'basis' src/tqs_intelligence/static/cockpit_metrics.js
           grep -q 'EXIT' src/tqs_intelligence/static/cockpit_context.js
           grep -q 'metricLakePanel' src/tqs_intelligence/static/cockpit_context.js
+          grep -q 'Что машина сделала' src/tqs_intelligence/static/cockpit_activity.js
+          grep -q 'AUTO METRICS' src/tqs_intelligence/static/cockpit_activity.js
           ! grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
           echo 'Instrument-first cockpit contract PASS'
       - name: Derivative metric contract
         run: |
           python - <<'PY'
-          from tqs_intelligence.metric_lake import MetricLake, MetricPoint
-          from tqs_intelligence.derivative_metrics import parse_binance_funding, parse_moex_futoi
+          from tqs_intelligence.derivative_metrics import parse_binance_funding, parse_bybit_funding, parse_bybit_open_interest, parse_moex_futoi
           pts=parse_binance_funding([{'symbol':'BTCUSDT','fundingRate':'0.0001','fundingTime':1700000000000}], 'binance:usdt-futures:BTCUSDT')
           assert pts and pts[0].metric=='funding_rate'
+          b=parse_bybit_open_interest([{'symbol':'BTCUSDT','openInterest':'100','timestamp':'1700000000000','intervalTime':'5min'}], 'bybit:linear:BTCUSDT')
+          assert b and b[0].provider=='bybit' and b[0].metric=='open_interest'
+          f=parse_bybit_funding([{'symbol':'BTCUSDT','fundingRate':'0.0001','fundingRateTimestamp':'1700000000000'}], 'bybit:linear:BTCUSDT')
+          assert f and f[0].metric=='funding_rate'
           block={'columns':['ticker','clgroup','pos','pos_long','pos_short','pos_long_num','pos_short_num','tradedate','tradetime'],'data':[['BR','FIZ',10,20,-10,2,1,'2026-09-01','12:00:00']]}
           m=parse_moex_futoi(block,'moex:futoi:BR')
           assert any(x.metric=='futoi_fiz_short_contracts' and x.value==10 for x in m)
@@ -146,12 +162,14 @@ jobs:
           assert score > 0 and reasons and metrics['equity'] == 100000
           print('Account discovery contract PASS')
           PY
-      - name: History autopilot contract
+      - name: History and metric autopilot contract
         run: |
           python - <<'PY'
           from tqs_intelligence.history_autopilot import START_2021_MS, BUCKET_QUOTAS
+          from tqs_intelligence.metric_autopilot import BYBIT_LINEAR_QUOTA
           assert START_2021_MS == 1609459200000
           assert ('binance','usdt-futures') in BUCKET_QUOTAS
           assert ('moex','forts') in BUCKET_QUOTAS
-          print('History autopilot contract PASS')
+          assert BYBIT_LINEAR_QUOTA >= 20
+          print('Autopilot contract PASS')
           PY
