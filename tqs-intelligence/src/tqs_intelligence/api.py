@@ -19,6 +19,7 @@ from .briefing import BriefingBuilder
 from .control import ControlCenter
 from .historical import HistoricalBackfiller
 from .http import JsonHttp
+from .instrument_lab import InstrumentLab
 from .lab_store import LabStore
 from .lake import DataLake
 from .models import AssetClass, HypothesisCreate
@@ -140,6 +141,7 @@ service = IntelligenceService(
 )
 briefing_builder = BriefingBuilder(store)
 moex_lab = MoexLab(store)
+instrument_lab = InstrumentLab(store, lake, lab)
 exporter = SnapshotExporter(store, lab, control, lake, settings.db_path, account_store=account_store)
 updater = UpdateManager('./data/update-request.json')
 
@@ -156,8 +158,18 @@ async def lifespan(_: FastAPI):
 
 
 STATIC = Path(__file__).with_name('static')
-app = FastAPI(title='TQS Intelligence & Strategy Machine', version='0.5.0', lifespan=lifespan)
+app = FastAPI(title='TQS Intelligence & Strategy Machine', version='0.6.0', lifespan=lifespan)
 app.mount('/static', StaticFiles(directory=str(STATIC)), name='static')
+
+
+@app.middleware('http')
+async def disable_stale_ui_cache(request, call_next):
+    response = await call_next(request)
+    if request.url.path == '/' or request.url.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
 
 
 def _snapshot(): return service.state.snapshot
@@ -188,6 +200,9 @@ def _capabilities() -> list[dict[str, object]]:
         {'provider':'accounts','name':'Account / Position Intelligence','enabled':True,'markets':['Hyperliquid public accounts','MOEX participant aggregates later'],'asset_classes':[],
          'data_fields':['open positions','fills','PnL samples','long/short bias','instrument concentration','execution style'],'access':'Публичные данные / разрешённые feeds',
          'description':'Публичные счета анализируются описательно; мотив/стоп/логика не объявляются фактами без синхронизации с рыночными данными.'},
+        {'provider':'instrument-lab','name':'Universal Instrument Lab','enabled':True,'markets':['Все подключённые рынки'],'asset_classes':[],
+         'data_fields':['candles','live snapshots','anomaly overlay','OI','funding','episodes','news','strategy runs','related instruments'],'access':'Локальный terminal',
+         'description':'Один инструмент → максимум накопленного контекста и дозагрузка истории из того же интерфейса.'},
         {'provider':'lake','name':'Historical Parquet Data Lake','enabled':True,'markets':['MOEX','Crypto','Global later'],'asset_classes':[],
          'data_fields':['2021–2026+ history','partitioning','zstd','verification'],'access':control.get().data_lake_root,
          'description':'Тяжёлая история живёт на большом диске, а не в системном каталоге.'},
@@ -202,7 +217,7 @@ def _capabilities() -> list[dict[str, object]]:
 
 
 @app.get('/', include_in_schema=False)
-async def dashboard(): return FileResponse(STATIC / 'index.html')
+async def dashboard(): return FileResponse(STATIC / 'index.html', headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0'})
 
 
 @app.get('/api/health')
@@ -289,6 +304,11 @@ async def quotes(q:str='',provider:str='',market_type:str='',asset_class:AssetCl
     if needle: rows=[x for x in rows if needle in x.symbol.lower() or needle in (x.display_symbol or '').lower() or needle in x.venue.lower()]
     rows=sorted(rows,key=lambda x:(x.turnover_24h or 0,abs(x.change_24h_pct or 0)),reverse=True)
     return [x.model_dump(mode='json') for x in rows[:limit]]
+
+
+@app.get('/api/instrument/{canonical_id:path}')
+async def universal_instrument(canonical_id:str):
+    return instrument_lab.build(canonical_id, _snapshot())
 
 
 @app.get('/api/moex')
