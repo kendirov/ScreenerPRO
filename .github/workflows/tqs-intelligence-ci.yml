@@ -41,13 +41,9 @@ jobs:
         shell: pwsh
         run: |
           foreach ($file in @('./update-windows.ps1','./install-windows.ps1','./start-windows.ps1')) {
-            $tokens = $null
-            $errors = $null
+            $tokens = $null; $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
-            if ($errors.Count -gt 0) {
-              $errors | ForEach-Object { Write-Error "$file : $($_.Message)" }
-              exit 1
-            }
+            if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error "$file : $($_.Message)" }; exit 1 }
           }
           Write-Host 'PowerShell scripts syntax PASS'
       - name: Python tests
@@ -104,6 +100,7 @@ jobs:
       - name: Cockpit JavaScript syntax
         run: |
           node --check src/tqs_intelligence/static/cockpit.js
+          node --check src/tqs_intelligence/static/cockpit_metrics.js
           node --check src/tqs_intelligence/static/v07.js
           node --check src/tqs_intelligence/static/app.js
       - name: Instrument-first cockpit HTML contract
@@ -111,28 +108,37 @@ jobs:
           grep -q 'TQS Cockpit' src/tqs_intelligence/static/index.html
           grep -q 'UNIVERSAL INSTRUMENT WORKSPACE' src/tqs_intelligence/static/index.html
           grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_metrics.css' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_metrics.js' src/tqs_intelligence/static/index.html
           grep -q 'researchJobs' src/tqs_intelligence/static/index.html
           grep -q 'systemLogs' src/tqs_intelligence/static/index.html
-          grep -q '/static/cockpit.js' src/tqs_intelligence/static/index.html
           grep -q 'Публичные позиции' src/tqs_intelligence/static/cockpit.js
           grep -q 'Open Interest' src/tqs_intelligence/static/cockpit.js
-          grep -q 'Funding' src/tqs_intelligence/static/cockpit.js
+          grep -q 'MOEX FUTOI' src/tqs_intelligence/static/cockpit_metrics.js
+          grep -q 'basis' src/tqs_intelligence/static/cockpit_metrics.js
           ! grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
           echo 'Instrument-first cockpit contract PASS'
+      - name: Derivative metric contract
+        run: |
+          python - <<'PY'
+          from tqs_intelligence.metric_lake import MetricLake, MetricPoint
+          from tqs_intelligence.derivative_metrics import parse_binance_funding, parse_moex_futoi
+          pts=parse_binance_funding([{'symbol':'BTCUSDT','fundingRate':'0.0001','fundingTime':1700000000000}], 'binance:usdt-futures:BTCUSDT')
+          assert pts and pts[0].metric=='funding_rate'
+          block={'columns':['ticker','clgroup','pos','pos_long','pos_short','pos_long_num','pos_short_num','tradedate','tradetime'],'data':[['BR','FIZ',10,20,-10,2,1,'2026-09-01','12:00:00']]}
+          m=parse_moex_futoi(block,'moex:futoi:BR')
+          assert any(x.metric=='futoi_fiz_short_contracts' and x.value==10 for x in m)
+          print('Derivative metric contract PASS')
+          PY
       - name: Account discovery contract
         run: |
           python - <<'PY'
           from tqs_intelligence.account_discovery import score_leaderboard_row, HyperliquidLeaderboardDiscovery
           assert 'hyperliquid.xyz' in HyperliquidLeaderboardDiscovery.URL
           score, reasons, metrics = score_leaderboard_row({
-              'accountValue':'100000',
-              'windowPerformances':[
-                  ['day', {'pnl':'100','roi':'0.01','vlm':'10000'}],
-                  ['week', {'pnl':'1000','roi':'0.05','vlm':'100000'}],
-                  ['month', {'pnl':'5000','roi':'0.1','vlm':'500000'}],
-                  ['allTime', {'pnl':'10000','roi':'0.5','vlm':'1000000'}],
-              ],
-          })
+              'accountValue':'100000','windowPerformances':[
+                  ['day', {'pnl':'100','roi':'0.01','vlm':'10000'}],['week', {'pnl':'1000','roi':'0.05','vlm':'100000'}],
+                  ['month', {'pnl':'5000','roi':'0.1','vlm':'500000'}],['allTime', {'pnl':'10000','roi':'0.5','vlm':'1000000'}],]})
           assert score > 0 and reasons and metrics['equity'] == 100000
           print('Account discovery contract PASS')
           PY
