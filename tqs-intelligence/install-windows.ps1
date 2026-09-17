@@ -44,12 +44,32 @@ foreach ($candidate in $candidates) {
   $parent = Split-Path (Split-Path $candidate -Parent) -Parent
   if ($parent -and (Test-Path $parent)) { $driveExport = $candidate; break }
 }
+foreach ($candidate in $candidates) {
+  $parent = Split-Path (Split-Path $candidate -Parent) -Parent
+  if ($parent -and (Test-Path $parent)) { $driveExport = $candidate; break }
+}
 if ($driveExport) {
   New-Item -ItemType Directory -Path $driveExport -Force | Out-Null
   Set-EnvValue 'TQS_DRIVE_EXPORT_ROOT' $driveExport
 }
 
+# One-click owner entrypoint: desktop shortcut opens the launcher, not a console window.
+try {
+  $launcher = Join-Path $PSScriptRoot 'TQS-Launcher.cmd'
+  $desktop = [Environment]::GetFolderPath('Desktop')
+  if ($desktop -and (Test-Path $launcher)) {
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut((Join-Path $desktop 'TQS Launcher.lnk'))
+    $shortcut.TargetPath = $launcher
+    $shortcut.WorkingDirectory = $PSScriptRoot
+    $shortcut.Description = 'TQS Intelligence - launcher, updates, health and logs'
+    $shortcut.Save()
+  }
+} catch {
+  Write-Host "Desktop shortcut was not created: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
 Write-Host "TQS Intelligence installed." -ForegroundColor Green
 Write-Host "Data lake: $dataRoot" -ForegroundColor Cyan
 if ($driveExport) { Write-Host "Google Drive snapshots: $driveExport" -ForegroundColor Cyan }
-Write-Host "Run start-windows.cmd" -ForegroundColor Green
+Write-Host "Run TQS-Launcher.cmd or use the TQS Launcher desktop shortcut." -ForegroundColor Green
