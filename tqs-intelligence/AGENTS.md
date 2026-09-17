@@ -7,14 +7,16 @@ Read, in order, only as needed:
 2. `AUTONOMOUS_PRODUCT_CONTRACT.md` — automatic-first owner UX; GPT/chat is the primary product-development input.
 3. `PRODUCT_CHANGE_PROTOCOL.md` — how an Artem idea becomes a verified update in the same product.
 4. `MACHINE_ACTIVITY_CONTRACT.md` — runtime/activity truth; how the owner knows what is actually running and what useful result is being produced.
-5. `DASHBOARD_NEXT_STAGE.md` — target future-cockpit owner UX.
-6. `ARCHITECTURE.md` — technical boundaries.
-7. `MOEX_DATA_MATRIX.md` — mandatory contract for MOEX/data/selection/participant work.
-8. `POSITION_ACCOUNT_INTELLIGENCE.md` — public account vs aggregate participant evidence contract.
-9. `STRATEGY_MACHINE_V2.md` — parameter sweeps, controls and profit/loss diagnostics.
-10. `HOT_UPDATE_PROTOCOL.md` — safe one-click owner update contract.
-11. `README.md` — install/run/operator workflow.
-12. Current task + affected source/tests.
+5. `OVERNIGHT_RUNBOOK.md` — autonomous MAX behavior, watchdog/recovery semantics and morning acceptance.
+6. `METRIC_CATALOG.md` — canonical expandable data/metric families and provenance rules.
+7. `DASHBOARD_NEXT_STAGE.md` — target future-cockpit owner UX.
+8. `ARCHITECTURE.md` — technical boundaries.
+9. `MOEX_DATA_MATRIX.md` — mandatory contract for MOEX/data/selection/participant work.
+10. `POSITION_ACCOUNT_INTELLIGENCE.md` — public account vs aggregate participant evidence contract.
+11. `STRATEGY_MACHINE_V2.md` — parameter sweeps, controls and profit/loss diagnostics.
+12. `HOT_UPDATE_PROTOCOL.md` — safe one-click owner update contract.
+13. `README.md` — install/run/operator workflow.
+14. Current task + affected source/tests.
 
 Non-negotiable rules:
 - Russian owner-facing UI and explanations.
@@ -22,10 +24,13 @@ Non-negotiable rules:
 - GPT/chat is the primary input for new sources, detectors, strategies, research and product/UI changes. Manual UI controls are secondary escape hatches.
 - Every primary screen must answer `что происходит / почему показано / что машина делает дальше` in 5–20 seconds.
 - Every autonomous loop must expose heartbeat, last success, next due time, progress/output and errors according to `MACHINE_ACTIVITY_CONTRACT.md`.
+- **Never restart on one failed HTTP health probe.** Heavy history/research can delay API responses. Use process evidence + supervisor heartbeat + hysteresis. Destructive recovery is a last resort after a sustained outage.
+- Supervisor heartbeat and backend HTTP health are different signals: heartbeat proves supervisor/process liveness; HTTP health proves API responsiveness. Do not collapse them into one boolean.
 - Never call the machine `RUNNING` merely because CPU/RAM are non-zero, the browser is open, an old log exists, or cached data are visible. Backend heartbeat/runtime truth wins.
 - If backend is OFFLINE, Web must mark the visible market snapshot as stale/offline and must not imply that collection/research continues.
 - Empty primary sections must show collection/evidence state and next automatic action, not a blank form.
-- `Research queue = 0` means no research jobs are currently queued/running; market collection/anomaly tracking may still be active and must be described separately.
+- `Research queue = 0` means no explicit research jobs are currently queued/running; in MAX, History Autopilot may generate the next useful jobs automatically. Market collection/anomaly tracking are independent and must be described separately.
+- MAX is a work policy, not a cosmetic label: when safe capacity exists it should enrich data/research autonomously according to `OVERNIGHT_RUNBOOK.md`.
 - Anomaly = a candidate **location/time of potential movement**, not automatically BUY/SELL.
 - Direction/entry/exit belong to Strategy Machine and require historical tests.
 - No trading edge claim without controls, chronological OOS/holdout, walk-forward/stability and realistic costs.
@@ -35,6 +40,7 @@ Non-negotiable rules:
 - The deterministic research layer computes facts; AI proposes hypotheses/improvements and reads compact outputs.
 - Explain `ПОЧЕМУ ПОКАЗАНО`; do not expose an unexplained magic score as the main rationale.
 - Heavy history belongs in Parquet Data Lake, preferably on the largest non-system drive.
+- New metric/source work must follow `METRIC_CATALOG.md`: semantics/unit/provenance first, then collection/storage, then feature/research/UI use.
 - Existing Drive/GitHub/runtime truth boundaries remain in force.
 - UI changes require loading/empty/error/stale states and chart/drill-down usability.
 - Safe updates must preserve local data and roll back if healthcheck fails.
