@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#080a0c">
   <title>TQS Cockpit</title>
   <link rel="stylesheet" href="/static/cockpit.css">
+  <link rel="stylesheet" href="/static/cockpit_metrics.css">
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -44,7 +45,7 @@
         <div>
           <span class="eyebrow">UNIVERSAL INSTRUMENT WORKSPACE</span>
           <h2>Цена, позиции, события и исследования<br>на одной временной оси.</h2>
-          <p>Не отдельный скринер и не набор AI-карточек. Это рабочее место для конкретного инструмента: свечи и объём, OI, funding, аномалии, эпизоды, публичные позиции/fills, новости, связанные рынки и результаты Strategy Machine.</p>
+          <p>Не отдельный скринер и не набор AI-карточек. Это рабочее место для конкретного инструмента: свечи и объём, OI, funding, basis, аномалии, эпизоды, публичные позиции/fills, MOEX FUTOI, новости, связанные рынки и результаты Strategy Machine.</p>
         </div>
         <div>
           <div class="searchBar"><input id="instrumentSearch" placeholder="BTC, ETH, BR, SBER, Si…" autocomplete="off"><button id="instrumentFind" class="btn primary">Открыть</button></div>
@@ -97,5 +98,6 @@
 </div>
 <div id="toast" class="toast"></div>
 <script src="/static/cockpit.js"></script>
+<script src="/static/cockpit_metrics.js"></script>
 </body>
 </html>
