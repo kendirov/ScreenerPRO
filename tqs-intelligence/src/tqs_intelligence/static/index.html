@@ -7,6 +7,7 @@
   <title>TQS Cockpit</title>
   <link rel="stylesheet" href="/static/cockpit.css">
   <link rel="stylesheet" href="/static/cockpit_metrics.css">
+  <link rel="stylesheet" href="/static/cockpit_activity.css">
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -57,7 +58,7 @@
     </section>
 
     <section id="overview" class="view">
-      <div class="hero"><div><span class="eyebrow">TQS COCKPIT</span><h2>Рынок и машина сейчас.</h2><p>Сначала что реально происходит и что делает система. Ни один счётчик не должен маскировать offline/stale состояние.</p></div></div>
+      <div class="hero"><div><span class="eyebrow">TQS COCKPIT</span><h2>Рынок и машина сейчас.</h2><p>Сначала что реально происходит, что машина сделала за выбранное окно и что делает сейчас. Ни один счётчик не должен маскировать offline/stale состояние.</p></div></div>
       <div id="overviewMetrics" class="metrics"></div>
       <div class="overviewGrid">
         <div class="stack">
@@ -100,5 +101,6 @@
 <script src="/static/cockpit.js"></script>
 <script src="/static/cockpit_metrics.js"></script>
 <script src="/static/cockpit_context.js"></script>
+<script src="/static/cockpit_activity.js"></script>
 </body>
 </html>
