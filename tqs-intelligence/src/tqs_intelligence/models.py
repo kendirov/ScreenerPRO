@@ -13,6 +13,7 @@ class AssetClass(StrEnum):
     OPTION = "option"
     FX = "fx"
     INDEX = "index"
+    BOND = "bond"
     COMMODITY = "commodity"
     ETF = "etf"
     OTHER = "other"
@@ -23,6 +24,7 @@ class SourceStatus(StrEnum):
     DEGRADED = "degraded"
     ERROR = "error"
     DISABLED = "disabled"
+    PENDING = "pending"
 
 
 class Quote(BaseModel):
@@ -63,6 +65,7 @@ class Quote(BaseModel):
 
 
 class SourceHealth(BaseModel):
+    provider: str
     name: str
     status: SourceStatus
     instruments: int = 0
@@ -140,3 +143,11 @@ class Relationship(BaseModel):
     samples: int
     lag_buckets: int = 0
     confidence: str
+
+
+class RuntimeLog(BaseModel):
+    ts_ms: int
+    level: str
+    component: str
+    message: str
+    details: dict[str, Any] = Field(default_factory=dict)
