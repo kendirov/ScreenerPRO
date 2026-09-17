@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "platform": {
+    "id": "tqs",
+    "name": "TQS / Trading QS",
+    "repo_name_is_legacy": true,
+    "current_repository": "kendirov/ScreenerPRO",
+    "repository_visibility": "public",
+    "architecture_mode": "modular_monorepo",
+    "north_star": "verified useful market/research/product outcomes per unit of owner attention"
+  },
+  "ai_entrypoints": [
+    "START_HERE_FOR_AI.md",
+    "TQS_PLATFORM.md",
+    "AI_SESSION_STATE.md"
+  ],
+  "modules": [
+    {
+      "id": "platform-core",
+      "name": "TQS Platform / Core",
+      "role": "shared IDs, schemas, provenance, time semantics, routing and module contracts",
+      "repo_paths": ["TQS_PLATFORM.md", "TQS_MANIFEST.json"],
+      "upstream": ["external-primary-truth", "drive-product-truth"],
+      "downstream": ["intelligence", "screener-cockpit", "knowledge", "briefing-publishing"]
+    },
+    {
+      "id": "intelligence",
+      "name": "TQS Intelligence",
+      "role": "local collection, normalization, Data Lake, features, anomalies, episodes, account intelligence, research and strategy computation",
+      "repo_paths": ["tqs-intelligence/"],
+      "runtime": "Windows/local today; Linux/VPS compatible direction",
+      "upstream": ["connectors-data"],
+      "downstream": ["screener-cockpit", "knowledge", "briefing-publishing"]
+    },
+    {
+      "id": "launcher",
+      "name": "TQS Launcher",
+      "role": "local operations control plane: start/stop/update/rollback/mode/health/logs/support snapshot",
+      "repo_paths": ["tqs-intelligence/TQS-Launcher.cmd", "tqs-intelligence/src/tqs_intelligence/launcher.py", "tqs-intelligence/src/tqs_intelligence/launcher_entry.py", "tqs-intelligence/src/tqs_intelligence/supervisor.py"],
+      "upstream": ["intelligence", "git-technical-truth"],
+      "downstream": ["owner"]
+    },
+    {
+      "id": "screener-cockpit",
+      "name": "TQS Screener / Cockpit",
+      "role": "trader-facing visual and action layer; existing ScreenerPRO frontend evolves into this module",
+      "repo_paths": ["frontend/"],
+      "upstream": ["intelligence", "knowledge"],
+      "downstream": ["owner", "briefing-publishing"]
+    },
+    {
+      "id": "knowledge",
+      "name": "TQS Knowledge",
+      "role": "durable observations, cases, hypotheses, validated findings, negative results and educational/product knowledge",
+      "canonical_location": "Google Drive / Trading QS",
+      "upstream": ["owner", "intelligence", "research-strategy"],
+      "downstream": ["screener-cockpit", "briefing-publishing", "ai"]
+    },
+    {
+      "id": "research-strategy",
+      "name": "TQS Research / Strategy Lab",
+      "role": "reproducible hypotheses, event studies, controls, OOS, walk-forward, stability, costs and StrategySpec runs",
+      "repo_paths": ["tqs-intelligence/src/tqs_intelligence/research_runtime.py", "tqs-intelligence/src/tqs_intelligence/strategy_machine.py"],
+      "upstream": ["intelligence", "knowledge"],
+      "downstream": ["knowledge", "screener-cockpit", "briefing-publishing"]
+    },
+    {
+      "id": "briefing-publishing",
+      "name": "TQS Briefing / Publishing",
+      "role": "briefings, streams, course/materials and presentation outputs from canonical intelligence/knowledge",
+      "upstream": ["intelligence", "knowledge", "research-strategy"],
+      "downstream": ["owner", "audience"]
+    },
+    {
+      "id": "connectors-data",
+      "name": "TQS Connectors / Data",
+      "role": "exchange, MOEX, news/event, global data and account adapters plus canonical local storage",
+      "repo_paths": ["tqs-intelligence/src/tqs_intelligence/sources.py", "tqs-intelligence/src/tqs_intelligence/historical.py", "tqs-intelligence/src/tqs_intelligence/lake.py"],
+      "upstream": ["external-primary-truth"],
+      "downstream": ["intelligence"]
+    }
+  ],
+  "canonical_flow": [
+    "external sources",
+    "canonical instruments/events",
+    "raw/live/history storage",
+    "features",
+    "states/anomalies/episodes",
+    "research/strategy",
+    "knowledge/cases",
+    "screener/briefing/course/AI"
+  ],
+  "truth_layers": {
+    "drive-product-truth": "Google Drive: owner intent, decisions, observations, human-readable knowledge/cases/materials",
+    "git-technical-truth": "GitHub: public-safe code, schemas, technical contracts, tests, PRs and CI",
+    "data-operational-truth": "Local Data Lake/DB: market, history and research operational data",
+    "runtime-liveness-truth": "process/supervisor heartbeat/API/job state",
+    "external-primary-truth": "fresh primary provider/source"
+  },
+  "sync_policy": {
+    "mode": "contract_and_object_bridges_not_full_mirroring",
+    "drive_to_github": "public-safe product rules/contracts only; never private Drive content or secrets",
+    "github_to_runtime": "versioned code + update path + CI-verified contracts",
+    "runtime_to_ai": "SUPPORT_REDACTED diagnostic snapshot by default",
+    "runtime_to_drive": "durable human-useful findings/cases/briefings only; never raw market firehose"
+  },
+  "security": {
+    "public_repo": true,
+    "forbid_in_public_git": [
+      "API keys and secrets",
+      "private credentials",
+      "private Drive content or IDs used only for convenience",
+      "raw private account payloads",
+      "raw FULL_PRIVATE diagnostic snapshots"
+    ]
+  },
+  "development": {
+    "default_route": "Chat-first",
+    "flow": [
+      "owner goal",
+      "freshest state",
+      "module routing",
+      "observable acceptance",
+      "checkpoint implementation",
+      "CI/runtime/UI evidence",
+      "repair",
+      "durable delta"
+    ],
+    "escalate_only_for": "concrete capability gap not honestly executable/verifiable via ordinary Chat + connected tools + CI/runtime bridge"
+  },
+  "runtime_diagnostics": {
+    "contract": "tqs-intelligence/TQS_DIAGNOSTICS_CONTRACT.md",
+    "activity_contract": "tqs-intelligence/MACHINE_ACTIVITY_CONTRACT.md",
+    "default_snapshot": "TQS_SNAPSHOT_V3 / SUPPORT_REDACTED",
+    "private_snapshot": "TQS_SNAPSHOT_V3 / FULL_PRIVATE"
+  },
+  "owner_trigger_examples": [
+    "Продолжай TQS: <цель>",
+    "Нам нужен продукт: <цель>"
+  ]
+}
