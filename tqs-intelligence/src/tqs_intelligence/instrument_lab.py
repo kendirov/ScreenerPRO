@@ -25,12 +25,10 @@ def economic_key(symbol: str, provider: str = "", market_type: str = "") -> str:
     for quote in _STABLE_QUOTES:
         if compact.endswith(quote) and len(compact) > len(quote) + 1:
             return compact[:-len(quote)]
-    # MOEX futures commonly end with month-code + 1/2 digit year (BRU6, SiH7, RIU6).
     if provider == "moex" or "future" in str(market_type).lower() or market_type == "forts":
         m = re.match(r"^([A-ZА-Я]{1,8})([FGHJKMNQUVXZ])(\d{1,2})$", compact)
         if m and m.group(2) in _MOEX_MONTH:
             return m.group(1)
-        # Some feeds expose forms such as BR-9.26. Keep the alphabetic root.
         m = re.match(r"^([A-ZА-Я]{1,8})\d", compact)
         if m:
             return m.group(1)
@@ -40,10 +38,11 @@ def economic_key(symbol: str, provider: str = "", market_type: str = "") -> str:
 class InstrumentLab:
     """Universal trader-facing drill-down for one canonical instrument."""
 
-    def __init__(self, store: Any, lake: Any, lab: Any) -> None:
+    def __init__(self, store: Any, lake: Any, lab: Any, metric_lake: Any | None = None) -> None:
         self.store = store
         self.lake = lake
         self.lab = lab
+        self.metric_lake = metric_lake
 
     def search(self, query: str, snapshot: Any, limit: int = 40) -> list[dict[str, Any]]:
         needle = query.strip().lower()
@@ -182,6 +181,53 @@ class InstrumentLab:
         matches.sort(key=lambda x: (float(x.get("turnover_24h") or 0), abs(float(x.get("venue_deviation_bps") or 0))), reverse=True)
         return matches[:50]
 
+    def _metric_context(
+        self,
+        canonical_id: str,
+        quote: dict[str, Any] | None,
+        venue_context: list[dict[str, Any]],
+    ) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any], dict[str, Any] | None]:
+        if self.metric_lake is None:
+            return {}, {}, None
+        q = quote or {}
+        provider = str(q.get("provider") or "")
+        market_type = str(q.get("market_type") or "")
+        symbol = str(q.get("symbol") or "")
+        key = economic_key(symbol, provider, market_type)
+        metrics: dict[str, list[dict[str, Any]]] = {}
+        participant: dict[str, Any] = {}
+        backfill: dict[str, Any] | None = None
+
+        metric_cid = canonical_id
+        metric_provider = provider
+        if provider != "binance" or market_type != "usdt-futures":
+            binance = next((x for x in venue_context if x.get("provider") == "binance" and x.get("market_type") == "usdt-futures"), None)
+            if binance:
+                metric_cid = str(binance.get("canonical_id") or metric_cid)
+                metric_provider = "binance"
+        if metric_provider == "binance" and metric_cid.startswith("binance:usdt-futures:"):
+            for metric in ("funding_rate", "open_interest", "open_interest_value", "basis_rate", "basis", "annualized_basis_rate"):
+                rows = self.metric_lake.read(metric_cid, metric, max_points=20_000)
+                if rows:
+                    metrics[metric] = rows
+            metric_symbol = metric_cid.rsplit(":", 1)[-1]
+            backfill = {"provider": "binance", "symbol": metric_symbol, "start_ms": 1609459200000}
+
+        if provider == "moex" and (market_type == "forts" or "future" in market_type):
+            futoi_cid = f"moex:futoi:{key}"
+            names = (
+                "futoi_fiz_long_contracts", "futoi_fiz_short_contracts", "futoi_fiz_long_accounts", "futoi_fiz_short_accounts", "futoi_fiz_net_contracts",
+                "futoi_yur_long_contracts", "futoi_yur_short_contracts", "futoi_yur_long_accounts", "futoi_yur_short_accounts", "futoi_yur_net_contracts",
+            )
+            for metric in names:
+                rows = self.metric_lake.read(futoi_cid, metric, max_points=20_000)
+                if rows:
+                    metrics[metric] = rows
+                    participant[metric] = rows[-1]
+            backfill = {"provider": "moex", "symbol": key, "start_ms": 1609459200000, "authorized": False}
+
+        return metrics, participant, backfill
+
     def build(self, canonical_id: str, snapshot: Any) -> dict[str, Any]:
         quotes = snapshot.quotes if snapshot else []
         quote_obj = next((q for q in quotes if q.canonical_id == canonical_id), None)
@@ -190,6 +236,7 @@ class InstrumentLab:
         symbol = str((quote or {}).get("symbol") or (canonical_id.rsplit(":", 1)[-1] if ":" in canonical_id else canonical_id))
         provider = str((quote or {}).get("provider") or (canonical_id.split(":", 1)[0] if ":" in canonical_id else ""))
         market_type = str((quote or {}).get("market_type") or (canonical_id.split(":", 2)[1] if canonical_id.count(":") >= 2 else ""))
+        key = economic_key(symbol, provider, market_type)
         interval = "10m" if provider == "moex" else "5m"
         candles = self._history(canonical_id, interval)
         episodes = [x for x in self.store.list_episodes(limit=1000, q=symbol) if x.canonical_id == canonical_id][:200]
@@ -203,10 +250,9 @@ class InstrumentLab:
         scores = self._scores(canonical_id)
         news = []
         if snapshot:
-            needle = economic_key(symbol, provider, market_type)
             for item in snapshot.news:
                 symbols = {economic_key(x) for x in item.symbols}
-                if needle and needle in symbols:
+                if key and key in symbols:
                     news.append(item.model_dump(mode="json"))
         runs = []
         for run in self.lab.list_strategy_runs(limit=2000):
@@ -216,7 +262,11 @@ class InstrumentLab:
                     break
         venue_context = self._venue_context(quotes, quote)
         related = [x for x in venue_context if x.get("canonical_id") != canonical_id][:30]
+        metrics, participant_context, metrics_backfill = self._metric_context(canonical_id, quote, venue_context)
         latest = live[-1] if live else None
+        historical_oi = metrics.get("open_interest") or []
+        historical_funding = metrics.get("funding_rate") or []
+        participant_points = sum(len(v) for k, v in metrics.items() if k.startswith("futoi_"))
         coverage = {
             "live_snapshots": len(live),
             "historical_candles": len(candles),
@@ -227,8 +277,12 @@ class InstrumentLab:
             "news": len(news),
             "strategy_runs": len(runs),
             "venue_matches": len(venue_context),
-            "has_oi": any(x.get("open_interest") is not None for x in live[-1000:]),
-            "has_funding": any(x.get("funding_rate") is not None for x in live[-1000:]),
+            "historical_oi_points": len(historical_oi),
+            "historical_funding_points": len(historical_funding),
+            "participant_metric_points": participant_points,
+            "has_oi": bool(historical_oi) or any(x.get("open_interest") is not None for x in live[-1000:]),
+            "has_funding": bool(historical_funding) or any(x.get("funding_rate") is not None for x in live[-1000:]),
+            "has_futoi": participant_points > 0,
         }
         backfill = None
         if provider in {"moex", "binance"}:
@@ -240,13 +294,15 @@ class InstrumentLab:
             }
         return {
             "canonical_id": canonical_id,
-            "economic_key": economic_key(symbol, provider, market_type),
+            "economic_key": key,
             "quote": quote,
             "latest_live": latest,
             "coverage": coverage,
             "interval": interval,
             "candles": candles,
             "live": live,
+            "metrics": metrics,
+            "participant_context": participant_context,
             "scores": scores,
             "episodes": episode_rows,
             "news": news[:100],
@@ -254,4 +310,5 @@ class InstrumentLab:
             "venue_context": venue_context,
             "related": related,
             "suggested_backfill": backfill,
+            "suggested_metrics_backfill": metrics_backfill,
         }
