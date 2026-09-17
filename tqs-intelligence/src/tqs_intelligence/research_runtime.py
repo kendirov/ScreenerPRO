@@ -5,6 +5,7 @@ import time
 import traceback
 from typing import Any
 
+from .bybit_metrics import BybitLongHistoryBackfiller
 from .control import ControlCenter
 from .historical import HistoricalBackfiller
 from .history_autopilot import build_history_plan, history_title
@@ -22,6 +23,7 @@ class ResearchRuntime:
                  lake: DataLake, machine: StrategyMachine) -> None:
         self.control=control; self.lab=lab; self.backfiller=backfiller; self.lake=lake; self.machine=machine
         self.replay=HistoricalReplayEngine(lake)
+        self.bybit_metrics=BybitLongHistoryBackfiller(backfiller.http, backfiller.metric_lake)
         self._task: asyncio.Task|None=None; self._running=False; self.last_action='Ожидание'; self.last_error: str|None=None
         self._last_auto_plan_s=0.0
         self._auto_history: dict[str,Any] = {
@@ -32,10 +34,8 @@ class ResearchRuntime:
         self._auto_metrics: dict[str,Any] = {
             'enabled': True, 'target_total': 0, 'known_total': 0, 'done': 0,
             'queued_running': 0, 'failed': 0, 'remaining': 0,
-            'scope': 'Bybit derivative metric discovery ждёт MAX',
+            'scope': 'Binance/Bybit derivatives + MOEX FUTOI ждут MAX',
         }
-        # Same cheap public adapters as the live service. The planner runs only
-        # when the explicit research queue is idle in MAX mode.
         self._planner_sources = [BinanceSource(backfiller.http), MoexSource(backfiller.http), BybitSource(backfiller.http)]
         try:
             with self.lab._lock:
@@ -89,8 +89,17 @@ class ResearchRuntime:
                 result['next']='historical_replay queued'
             return result
         if job.kind=='derivative_metric_backfill':
-            await progress(.02,f"Derivative metrics: {job.payload.get('provider','?')} {job.payload.get('symbol','?')}")
-            result=await self.backfiller.derivative_metrics.backfill(dict(job.payload),progress)
+            payload=dict(job.payload); provider=str(payload.get('provider') or '').lower(); symbol=str(payload.get('symbol') or '')
+            await progress(.02,f"Derivative metrics: {provider or '?'} {symbol or '?'}")
+            if provider=='bybit':
+                result=await self.bybit_metrics.backfill(
+                    symbol=symbol,
+                    start_ms=int(payload.get('start_ms') or 1609459200000),
+                    end_ms=int(payload.get('end_ms') or int(time.time()*1000)),
+                    progress=progress,
+                )
+            else:
+                result=await self.backfiller.derivative_metrics.backfill(payload,progress)
             result['metric_lake']=self.backfiller.metric_lake.stats()
             return result
         if job.kind=='historical_replay':
@@ -152,10 +161,7 @@ class ResearchRuntime:
         self._auto_history=history_stats
         for payload in history_payloads: self.lab.enqueue_job('historical_backfill',history_title(payload),payload)
 
-        # Give candles/replay priority. Derivative-only jobs fill idle capacity in
-        # small batches so the machine does not spend the whole night on one venue.
-        metric_payloads=[]
-        metric_stats=self._auto_metrics
+        metric_payloads=[]; metric_stats=self._auto_metrics
         if len(history_payloads)<=2:
             metric_payloads,metric_stats=build_metric_plan(quotes,jobs,batch_size=2)
             metric_stats.update({'last_plan_at_ms':now_ms,'discovered_quotes':len(quotes),'source_errors':source_errors[:4]})
