@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -11,6 +12,7 @@ class UpdateManager:
     def __init__(self, request_path: str = './data/update-request.json') -> None:
         self.request_path = Path(request_path)
         self.request_path.parent.mkdir(parents=True, exist_ok=True)
+        self.update_state_path = self.request_path.parent / 'update-state.json'
         self.tqs_root = Path(__file__).resolve().parents[2]
         self.repo_root = Path(__file__).resolve().parents[3]
 
@@ -41,11 +43,20 @@ class UpdateManager:
         except Exception:
             return None, None
 
+    def execution_state(self) -> dict[str, Any] | None:
+        if not self.update_state_path.exists():
+            return None
+        try:
+            payload = json.loads(self.update_state_path.read_text(encoding='utf-8-sig'))
+            return payload if isinstance(payload, dict) else None
+        except Exception:
+            return None
+
     def status(self, fetch: bool = False) -> dict[str, Any]:
         try:
             inside = self._git('rev-parse', '--is-inside-work-tree') == 'true'
             if not inside:
-                return {'available': False, 'reason': 'not a git worktree'}
+                return {'available': False, 'reason': 'not a git worktree', 'execution': self.execution_state()}
 
             dirty = bool(self._git('status', '--porcelain'))
             branch = self._git('branch', '--show-current')
@@ -91,14 +102,57 @@ class UpdateManager:
                 'can_update': bool(branch and remote_ref and not dirty),
                 'reason': reason,
                 'requested': self.request_path.exists(),
+                'execution': self.execution_state(),
             }
         except Exception as exc:
-            return {'available': False, 'reason': str(exc)}
+            return {'available': False, 'reason': str(exc), 'execution': self.execution_state()}
+
+    def _launch_windows_updater(self) -> dict[str, Any] | None:
+        if os.name != 'nt':
+            return None
+        script = self.tqs_root / 'update-windows.ps1'
+        if not script.exists():
+            return None
+        flags = 0
+        flags |= int(getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0))
+        flags |= int(getattr(subprocess, 'DETACHED_PROCESS', 0))
+        subprocess.Popen(
+            [
+                'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                '-File', str(script), '-FromApp',
+            ],
+            cwd=str(self.tqs_root),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=flags,
+            close_fds=True,
+        )
+        return {
+            'ok': True,
+            'external': True,
+            'requested_at_ms': int(time.time() * 1000),
+            'message': 'Windows updater запущен отдельным процессом. TQS перезапустится автоматически.',
+        }
 
     def request(self, force: bool = False) -> dict[str, Any]:
+        try:
+            launched = self._launch_windows_updater()
+            if launched is not None:
+                return launched
+        except Exception as exc:
+            # Fall back to the supervisor request file. This keeps the old path available
+            # even if Windows blocks detached PowerShell for some reason.
+            launch_error = str(exc)
+        else:
+            launch_error = None
+
         payload = {'requested_at_ms': int(time.time() * 1000), 'force': bool(force)}
         self.request_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
-        return {'ok': True, **payload}
+        result: dict[str, Any] = {'ok': True, **payload, 'external': False}
+        if launch_error:
+            result['fallback_reason'] = launch_error
+        return result
 
     def pop_request(self) -> dict[str, Any] | None:
         if not self.request_path.exists():
