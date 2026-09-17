@@ -34,13 +34,52 @@ function Write-UpdateState {
     $payload | ConvertTo-Json -Depth 6 | Set-Content -Path $StatePath -Encoding UTF8
 }
 
+function Invoke-NativeSafe {
+    param(
+        [string]$FilePath,
+        [string[]]$Arguments,
+        [switch]$AllowFailure
+    )
+
+    $previousPreference = $ErrorActionPreference
+    $output = @()
+    $exitCode = 1
+    try {
+        # Windows PowerShell 5.1 can surface ordinary native stderr (for example
+        # `git fetch` lines beginning with "From ...") as ErrorRecord objects.
+        # Native stderr is diagnostic text, not a failure signal. Exit code is authoritative.
+        $ErrorActionPreference = "Continue"
+        $output = & $FilePath @Arguments 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+    }
+
+    $text = (($output | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine).Trim()
+    if ($exitCode -ne 0 -and -not $AllowFailure) {
+        throw "$FilePath $($Arguments -join ' ') failed with exit code $exitCode`n$text"
+    }
+    return [pscustomobject]@{ ExitCode = $exitCode; Text = $text }
+}
+
 function Invoke-Git {
     param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
-    $output = & git -C $RepoRoot @Args 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "git $($Args -join ' ') failed:`n$($output -join [Environment]::NewLine)"
+    $result = Invoke-NativeSafe -FilePath "git" -Arguments (@('-C', $RepoRoot) + $Args)
+    return $result.Text
+}
+
+function Test-GitAncestor {
+    param([string]$Base, [string]$Head)
+    $result = Invoke-NativeSafe -FilePath "git" -Arguments @('-C', $RepoRoot, 'merge-base', '--is-ancestor', $Base, $Head) -AllowFailure
+    return $result.ExitCode -eq 0
+}
+
+function Install-TqsDependencies {
+    $result = Invoke-NativeSafe -FilePath $Python -Arguments @('-m', 'pip', 'install', '-e', '.[dev,analytics]') -AllowFailure
+    if ($result.ExitCode -ne 0) {
+        throw "Dependency install failed with exit code $($result.ExitCode)`n$($result.Text)"
     }
-    return ($output -join [Environment]::NewLine).Trim()
 }
 
 function Stop-TqsProcesses {
@@ -121,8 +160,7 @@ try {
         exit 0
     }
 
-    & git -C $RepoRoot merge-base --is-ancestor HEAD $remoteRef 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    if (-not (Test-GitAncestor -Base 'HEAD' -Head $remoteRef)) {
         throw "Remote branch is not a fast-forward of the local branch. Manual review is required."
     }
 
@@ -134,8 +172,7 @@ try {
     Invoke-Git merge --ff-only $remoteRef | Out-Null
 
     Write-UpdateState -Status "running" -Step "install" -Message "Обновляю зависимости..." -OldHead $oldHead -NewHead $newHead
-    & $Python -m pip install -e ".[dev,analytics]"
-    if ($LASTEXITCODE -ne 0) { throw "Dependency install failed." }
+    Install-TqsDependencies
 
     Write-UpdateState -Status "running" -Step "start" -Message "Запускаю TQS..." -OldHead $oldHead -NewHead $newHead
     Start-Tqs
@@ -158,9 +195,9 @@ catch {
         if ($oldHead -and $newHead -and $oldHead -ne $newHead) {
             Write-UpdateState -Status "running" -Step "rollback" -Message "Новая версия не запустилась. Откатываю..." -OldHead $oldHead -NewHead $newHead -ErrorText $err
             Stop-TqsProcesses
-            & git -C $RepoRoot reset --hard $oldHead | Out-Null
-            if (Test-Path $Python) {
-                & $Python -m pip install -e ".[dev,analytics]" | Out-Null
+            $rollback = Invoke-NativeSafe -FilePath "git" -Arguments @('-C', $RepoRoot, 'reset', '--hard', $oldHead) -AllowFailure
+            if ($rollback.ExitCode -eq 0 -and (Test-Path $Python)) {
+                try { Install-TqsDependencies } catch {}
                 Start-Tqs
                 $rollbackHealthy = Wait-TqsHealthy -TimeoutSeconds 60
                 if ($rollbackHealthy) {
