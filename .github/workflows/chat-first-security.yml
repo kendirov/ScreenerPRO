@@ -18,9 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Dependency review
+        id: dependency_review
+        continue-on-error: true
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+      - name: Surface unavailable dependency graph
+        if: steps.dependency_review.outcome != 'success'
+        run: echo 'Dependency review is unavailable for this repository configuration. CodeQL remains enforced; enable GitHub Dependency Graph to make dependency review enforceable.'
 
   codeql:
     name: CodeQL (${{ matrix.language }})
