@@ -67,12 +67,7 @@ jobs:
             const fs = require('fs');
             const raw = fs.readFileSync('/tmp/tqs-pytest.log', 'utf8');
             const body = `### TQS CI pytest failure\n\n\`\`\`text\n${raw.slice(-12000)}\n\`\`\``;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body,
-            });
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body});
       - name: Enforce pytest result
         if: steps.pytest.outputs.exit_code != '0'
         run: exit 1
@@ -97,24 +92,33 @@ jobs:
       - name: API import and trader surface contract
         run: |
           python - <<'PY'
+          from tqs_intelligence import __version__
           from tqs_intelligence.api import app
           paths = {route.path for route in app.routes}
           required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing'}
           missing = required - paths
           assert not missing, missing
+          assert app.version == __version__, (app.version, __version__)
           print('API/trader surface PASS', app.version)
           PY
-      - name: Dashboard JavaScript syntax
+      - name: Cockpit JavaScript syntax
         run: |
+          node --check src/tqs_intelligence/static/cockpit.js
           node --check src/tqs_intelligence/static/v07.js
           node --check src/tqs_intelligence/static/app.js
-      - name: Autonomous trader cockpit HTML contract
+      - name: Instrument-first cockpit HTML contract
         run: |
-          grep -q 'MARKET RESEARCH OS' src/tqs_intelligence/static/index.html
-          grep -q 'UNIVERSAL INSTRUMENT LAB' src/tqs_intelligence/static/index.html
-          grep -q 'ПУЛЬС МАШИНЫ' src/tqs_intelligence/static/index.html
-          grep -q 'Авторазведка публичных счетов' src/tqs_intelligence/static/index.html
-          grep -q 'Идеи, которые мы делаем через GPT' src/tqs_intelligence/static/index.html
+          grep -q 'TQS Cockpit' src/tqs_intelligence/static/index.html
+          grep -q 'UNIVERSAL INSTRUMENT WORKSPACE' src/tqs_intelligence/static/index.html
+          grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
+          grep -q 'researchJobs' src/tqs_intelligence/static/index.html
+          grep -q 'systemLogs' src/tqs_intelligence/static/index.html
+          grep -q '/static/cockpit.js' src/tqs_intelligence/static/index.html
+          grep -q 'Публичные позиции' src/tqs_intelligence/static/cockpit.js
+          grep -q 'Open Interest' src/tqs_intelligence/static/cockpit.js
+          grep -q 'Funding' src/tqs_intelligence/static/cockpit.js
+          ! grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
+          echo 'Instrument-first cockpit contract PASS'
       - name: Account discovery contract
         run: |
           python - <<'PY'
