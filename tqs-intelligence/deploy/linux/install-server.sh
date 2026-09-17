@@ -5,10 +5,13 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 2
 fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$ROOT/.." && pwd)"
 for cmd in git docker systemctl; do
   command -v "$cmd" >/dev/null || { echo "$cmd is required" >&2; exit 3; }
 done
 docker compose version >/dev/null
+git config --global --add safe.directory "$REPO_ROOT" || true
+git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null
 cd "$ROOT"
 if [ ! -f .env ]; then cp .env.example .env; fi
 chmod +x deploy/linux/*.sh
