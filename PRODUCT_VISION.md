@@ -1,126 +1,121 @@
-# PRODUCT_VISION — ScreenerPRO
+# PRODUCT VISION — TQS / TRADING QS
 
-Документ для владельца продукта, ChatGPT и Cursor. Описывает **зачем** существует продукт и **каким** он должен стать. Технические детали — в `PROJECT_CONTEXT.md`.
+Status: ACTIVE PRODUCT VISION — 2026-09-17
 
----
+Technical module boundaries live in `TQS_PLATFORM.md`. This file describes the owner/user outcome.
 
-## Что это
+## What TQS is
 
-**ScreenerPRO** — личный **интерактивный трейдерский терминал** и **обучающая платформа** по рынку **MOEX** (акции и фьючерсы).
+**TQS is an AI-first market operating system and research machine.**
 
-Не «сайт со статьями», а **рабочее место трейдера**: быстро увидеть, где сейчас деньги, движение, ликвидность и удобные для сделки условия.
+It is designed to help Artem observe markets, find what is genuinely in play, understand why something deserves attention, accumulate evidence, test ideas, prepare briefings/materials and progressively improve the trading/research workflow.
 
----
+TQS is not one screener page, one database, one bot or one AI chat. The product is the connected loop between data, research, knowledge and trader-facing decisions.
 
-## Главная задача продукта
+## North Star
 
-**Скринер акций и фьючерсов**, который помогает:
+The system should become more useful as time passes because it remembers and links:
+- what the market actually did;
+- which instruments/states were unusual;
+- what Artem noticed before the outcome;
+- what news/events/participants were observable at that time;
+- what later happened;
+- which hypotheses survived testing and which failed;
+- what should appear in future screeners, briefings, strategies, lessons and research.
 
-- находить **активные** инструменты (in-play, оборот, сделки относительно «нормы»);
-- видеть **торговые ситуации** — движение, диапазон, импульс;
-- сравнивать **ликвидность**, **спреды**, **объёмы**;
-- отличать «сейчас торгуется» от «просто есть в списке».
+The target owner experience is:
 
-Скринер — **ядро**. Остальные разделы усиливают решение и обучение, но не подменяют скринер.
+> I state an idea or look at the market. TQS collects, connects, tests, remembers and shows the useful result without making me operate the technical machinery.
 
----
+## Main product surfaces
 
-## Данные сейчас и в будущем
+### TQS Screener / Cockpit
+The everyday trader surface. In seconds it should answer:
+- where is unusual movement/activity/liquidity now;
+- why is the instrument shown;
+- is this fresh or stale;
+- what happened before/after;
+- what related markets/accounts/news matter;
+- what similar historical cases exist;
+- what research/strategy evidence exists;
+- what the machine is doing next.
 
-### Сейчас (в основном бесплатно)
+The existing ScreenerPRO web product evolves into this role. “ScreenerPRO” remains a legacy/product name, not the definition of the whole TQS system.
 
-| Источник | Для чего |
-|----------|----------|
-| **MOEX ISS** (публичный API) | Живые котировки, оборот, сделки, параметры инструментов |
-| **Локальные расчёты** | Спред, комиссии-оценки, in-play score, группировки в «Материалах» |
-| **Локальная база (SQLite)** | История после ingest, карточки инструментов через API |
-| **Fallback / mock** | Если MOEX недоступен или раздел ещё без живого источника (академия, часть pricing) |
+### Universal Instrument Lab
+One symbol should become one connected dossier: live state, candles, volume, OI/funding/basis where available, anomalies, episodes, news/events, related instruments, account/participant evidence, historical cases, strategy/research runs and data-quality limits.
 
-### В будущем
+### TQS Intelligence / Research Machine
+Runs continuously or on demand: collect → normalize → store → feature → detect → track → replay → test → preserve findings. It should perform cheap deterministic work first and use AI only where reasoning adds value.
 
-- Подключение **платного MOEX API** (более стабильные лимиты, расширенные поля — например гарантийное обеспечение по фьючерсам, углублённая история).
-- Auth, подписки, персональные списки — по мере готовности продукта.
+### TQS Knowledge
+A durable memory of observations, hypotheses, cases, failures, lessons and validated findings with provenance. Courses/briefings/presentations should be views over this knowledge, not independent copies.
 
----
+### TQS Briefing / Content
+A briefing is not a news dump. It should show:
+`что в игре → почему → насколько существенно → evidence → похожие случаи → что следить дальше`.
 
-## Раздел «Материалы»
+The same canonical intelligence should power live streams, web briefings, course cases, Telegram/materials and presentation outputs.
 
-**Не** статичные статьи и **не** PDF-учебник.
+## Markets and data direction
 
-**Интерактивные рабочие страницы**, где трейдер:
+TQS is multi-market by design:
+- Russian market / MOEX: shares, futures, FX, indices, commodities, options, participant aggregates and events;
+- crypto: spot, perpetuals/futures/options, OI, funding, basis, liquidations, microstructure, public account/on-chain context and events;
+- global equities/ETFs/futures/FX/commodities as sources and licensed/available feeds are added.
 
-- переключает сценарии и режимы («сектора», «ликвидность», «скальп» / «интрадей»);
-- видит **карты рынка**, группы, тепловые метрики;
-- в перспективе — **графики**, **схемы**, **симуляторы** (что будет, если спред ×2, оборот ÷2);
-- изучает **корреляции**, влияние **ЦБ / валюты / ставки / ликвидности** на сегменты MOEX.
+Not every metric is available from every provider. The UI must distinguish unavailable, delayed, estimated and live data rather than inventing values.
 
-Уже есть (рабочие инструменты):
+## Research standard
 
-- Технические характеристики (лот, шаг, спред, оборот, скоринги).
-- Карта акций (сектора, капитализация, индексы, поводыри).
-- Карта фьючерсов (базовые активы, цепочки).
-- Справка по логике скринера (activity / **«В игре»** vs **«Активные»** в Market Radar).
+The product must resist data-mining self-deception.
 
-Направление развития: больше **клика**, **сравнения**, **визуала**, меньше текста «простынёй».
+Interesting relationship → hypothesis, not truth.
+Promotion requires appropriate controls such as chronological holdout/OOS, walk-forward/stability, regime analysis, realistic fees/slippage, sample-size checks, bootstrap/uncertainty and cross-market/cross-exchange replication where relevant.
 
----
+Negative results remain searchable knowledge so TQS does not repeatedly test the same dead idea.
 
-## Раздел «Академия»
+## AI-native principle
 
-**Современное интерактивное обучение**, не классический учебник.
+Use neural models where they amplify human/product intelligence:
+- understand natural-language observations and goals;
+- search and synthesize external evidence;
+- propose hypotheses and counter-hypotheses;
+- link similar cases;
+- interpret compact research/event packages;
+- develop TQS itself through connected GitHub/Drive/CI tools;
+- produce evidence-grounded briefings and educational explanations.
 
-- Короткие сцены, анимации, наглядные примеры (диапазон дня, оборот vs цена лота).
-- Связь с тем, что пользователь видит в скринере («вот эта метрика — вот что она значит в сделке»).
-- Ощущение **профессионального продукта**, а не блога.
+Do not use an LLM as a substitute for deterministic market plumbing, timestamps, risk constraints, statistical tests, replay or continuous raw-tick processing.
 
-Сейчас часть контента на mock-данных — это нормально для этапа; цель — заменить на управляемый контент без потери интерактива.
+## UX principles
 
----
+- Russian owner-facing language by default.
+- Terminal/cockpit density without visual noise.
+- Matte graphite/black, warm light text, thin borders; green/red for direction and amber for anomaly/attention.
+- “Why now” and provenance are more important than unexplained magic scores.
+- Every empty state explains what is missing and what the machine will do next.
+- Every autonomous process exposes current action/progress/result/error.
+- Drill-down beats duplicated pages.
+- The owner should not need Git, terminal or source-code knowledge for normal operation.
 
-## Вау-эффект и UX-принципы
+## What success looks like
 
-| Принцип | Что это значит для пользователя |
-|---------|--------------------------------|
-| **Современный визуал** | Тёмная терминальная эстетика, читаемые цифры, аккуратная плотность таблиц |
-| **Кликабельность** | Клик по строке → инспектор / детали; пресеты колонок; фильтры в один клик |
-| **Трейдерская логика** | Подписи и метрики на языке сделки: оборот, спред, in-play, «лот в рублях» |
-| **Рабочее пространство** | Sidebar, статус источника данных (MOEX / fallback), время обновления |
-| **Честность данных** | Пустое поле = «—», не выдуманное число; пометка «оценка» для расчётных полей |
+TQS succeeds when it can increasingly answer questions such as:
+- Где сейчас действительно необычная активность и чем она отличается от нормы?
+- Где мы уже видели похожую структуру и чем это закончилось?
+- Что Артём говорил до движения, а не после него?
+- Какие сочетания признаков повторяются и проходят честную проверку?
+- Какие публичные участники/счета заметно изменили поведение и как это связано с состоянием рынка?
+- Какие идеи подтвердились, не подтвердились или зависят от режима?
+- Что произошло за ночь и что машина узнала нового?
+- Что сегодня стоит показать в брифинге/эфире/курсе?
+- Какой следующий источник, feature, test или product surface даст наибольший прирост полезности?
 
-Пользователь **не должен** разбираться в программировании. Любое изменение в Cursor должно сопровождаться **простым объяснением**: что изменилось в продукте, что нажать, что проверить.
+The long-term moat is not “more indicators”. It is the connected, provenance-aware history of market states + research + Artem's observations + validated outcomes, continuously converted into better tools and knowledge.
 
----
+## Product evolution rule
 
-## Роли: ChatGPT и Cursor
+A new idea should normally extend one of the existing TQS modules. Create a separate service/repository only when there is a real deployment, security, toolchain or scaling boundary.
 
-| Роль | Кто | Зона ответственности |
-|------|-----|---------------------|
-| **Продуктовый / аналитический напарник** | ChatGPT (и владелец) | Логика скринера, трейдерские правила, UX, структура разделов, тексты, креатив, промпты для Cursor |
-| **Исполнитель в коде** | Cursor | Правки в репозитории, build, типы, API, UI по согласованному ТЗ |
-
-**Поток работы:**
-
-1. Обсудить задачу с ChatGPT → сформулировать цель и критерии «готово».
-2. Передать Cursor чёткий промпт (можно со ссылкой на `PROJECT_CONTEXT.md`, `PRODUCT_VISION.md`, `AI_SESSION_STATE.md`).
-3. Cursor вносит изменения и обновляет `AI_SESSION_STATE.md` после крупных итераций.
-4. Владелец проверяет в браузере по чек-листу из ответа Cursor.
-
----
-
-## Что не является целью на ближайшем этапе
-
-- Стать «ещё одним финансовым СМИ» с лентой новостей без связи со скринером.
-- Перегрузить интерфейс индикаторами «как в терминале брокера» без трейдерского смысла.
-- Требовать от владельца знания git, TypeScript или настройки серверов.
-
----
-
-## Связанные файлы
-
-| Файл | Назначение |
-|------|------------|
-| `PROJECT_CONTEXT.md` | Технический конспект для AI |
-| `AI_SESSION_STATE.md` | Состояние последней итерации |
-| `docs/CURSOR_WORKFLOW.md` | Правила работы Cursor |
-
-При смене продуктовой концепции **сначала** обновить этот файл, затем — при необходимости — технический контекст.
+The product should get broader without becoming fragmented: **one platform, canonical contracts, many views and workers**.
