@@ -42,9 +42,10 @@
         ['Parquet files',(lake.files||0)+(ms.files||0),'history + metrics'],['Свободно',lake.free_gb,'GB'],['Ошибки файлов',bad,bad?'нужна проверка':'структура читается']
       ].map(([a,b,c])=>`<div class="metric"><span>${esc(a)}</span><b>${compact(b)}</b><small>${esc(c)}</small></div>`).join('');
       const metricRows=Object.entries(ms.metrics||{}).sort((a,b)=>b[1]-a[1]);
-      const metricBlock=metricRows.length?`<div class="panel" style="margin-bottom:10px"><div class="panelHead"><div><b>Metric Lake</b><small>временные ряды вне свечей</small></div></div><div class="tableWrap"><table class="table"><thead><tr><th>Метрика</th><th>Точек</th><th>Роль</th></tr></thead><tbody>${metricRows.map(([k,v])=>`<tr><td class="mono">${esc(k)}</td><td>${compact(v)}</td><td>${esc(metricRole(k))}</td></tr>`).join('')}</tbody></table></div></div>`:'';
+      const old=$('#metricLakePanel');if(old)old.remove();
+      const metricBlock=metricRows.length?`<div id="metricLakePanel" class="panel" style="margin-bottom:10px"><div class="panelHead"><div><b>Metric Lake</b><small>временные ряды вне свечей</small></div></div><div class="tableWrap"><table class="table"><thead><tr><th>Метрика</th><th>Точек</th><th>Роль</th></tr></thead><tbody>${metricRows.map(([k,v])=>`<tr><td class="mono">${esc(k)}</td><td>${compact(v)}</td><td>${esc(metricRole(k))}</td></tr>`).join('')}</tbody></table></div></div>`:'';
       const capBlock=caps.map(x=>`<div class="researchCard"><b>${esc(x.name)}</b><small>${x.enabled?'ВКЛ':'ЗАРЕЗЕРВИРОВАНО'} · ${esc((x.markets||[]).join(', '))}<br>${esc(x.description||'')}<br><span class="mono">${esc(x.access||'')}</span></small></div>`).join('');
-      $('#capabilities').parentElement.insertAdjacentHTML('beforebegin',metricBlock);
+      if(metricBlock)$('#capabilities').parentElement.insertAdjacentHTML('beforebegin',metricBlock);
       $('#capabilities').innerHTML=capBlock;
     }catch(e){toast('Data: '+esc(e.message))}
   };
