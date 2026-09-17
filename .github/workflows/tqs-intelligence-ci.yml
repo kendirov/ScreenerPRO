@@ -65,9 +65,25 @@ jobs:
         run: exit 1
       - name: Compile
         run: python -m compileall -q src
-      - name: API import
-        run: python -c "from tqs_intelligence.api import app; assert app.version == '0.5.0'; print('API import PASS', app.version)"
+      - name: API import and trader surface contract
+        run: |
+          python - <<'PY'
+          from tqs_intelligence.api import app
+          assert app.version == '0.6.0'
+          paths = {route.path for route in app.routes}
+          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/strategies', '/api/research/findings', '/api/briefing'}
+          missing = required - paths
+          assert not missing, missing
+          print('API/trader surface PASS', app.version)
+          PY
       - name: Dashboard JavaScript syntax
         run: |
           node --check src/tqs_intelligence/static/app.js
           node --check src/tqs_intelligence/static/account-intelligence.js
+      - name: Trader cockpit HTML contract
+        run: |
+          grep -q 'UNIVERSAL INSTRUMENT LAB' src/tqs_intelligence/static/index.html
+          grep -q 'ПУЛЬС МАШИНЫ' src/tqs_intelligence/static/index.html
+          grep -q 'Strategy pulse' src/tqs_intelligence/static/index.html
+          grep -q 'Research pulse' src/tqs_intelligence/static/index.html
+          grep -q 'Обновить продукт' src/tqs_intelligence/static/index.html
