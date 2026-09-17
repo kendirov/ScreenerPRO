@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "platform": {
     "id": "tqs",
     "name": "TQS / Trading QS",
@@ -28,7 +28,7 @@
       "name": "TQS Intelligence",
       "role": "local collection, normalization, Data Lake, features, anomalies, episodes, account intelligence, research and strategy computation",
       "repo_paths": ["tqs-intelligence/"],
-      "runtime": "Windows/local today; Linux/VPS compatible direction",
+      "runtime": "Windows local primary node today; Linux/VPS-compatible direction",
       "upstream": ["connectors-data"],
       "downstream": ["screener-cockpit", "knowledge", "briefing-publishing"]
     },
@@ -80,6 +80,71 @@
       "downstream": ["intelligence"]
     }
   ],
+  "runtime_nodes": [
+    {
+      "id": "windows-primary",
+      "name": "Windows TQS Runtime Node",
+      "role": "primary local compute/data node",
+      "runs": ["launcher", "supervisor", "intelligence API", "collectors", "Data Lake", "research workers", "strategy workers", "local cockpit"],
+      "truth": ["data-operational-truth", "runtime-liveness-truth"],
+      "notes": "Do not hardcode volatile hardware specs; inspect resource/storage telemetry from runtime diagnostics."
+    },
+    {
+      "id": "chatgpt-ai",
+      "name": "ChatGPT / AI Orchestrator",
+      "role": "reasoning, research, development, interpretation and orchestration",
+      "truth": [],
+      "notes": "Not an always-on runtime. Local PC state requires an explicit API/runtime/snapshot bridge."
+    },
+    {
+      "id": "github",
+      "name": "GitHub / CI",
+      "role": "public-safe code distribution, technical contracts and deterministic verification",
+      "truth": ["git-technical-truth"],
+      "notes": "CI success does not prove a specific Windows runtime is healthy."
+    },
+    {
+      "id": "google-drive",
+      "name": "Google Drive",
+      "role": "durable human-readable product/knowledge memory",
+      "truth": ["drive-product-truth"],
+      "notes": "Not a raw market database and not liveness evidence."
+    },
+    {
+      "id": "web-cockpit",
+      "name": "TQS Screener / Web Cockpit",
+      "role": "presentation/action client",
+      "truth": [],
+      "notes": "Consumes canonical Intelligence/Knowledge data; cached page content does not prove backend liveness."
+    }
+  ],
+  "integration_bridges": [
+    {
+      "id": "code-bridge",
+      "flow": "GitHub -> Launcher -> local install/update -> healthcheck -> rollback on failure",
+      "purpose": "safe code delivery"
+    },
+    {
+      "id": "runtime-support-bridge",
+      "flow": "Local TQS -> TQS_SNAPSHOT_V3 SUPPORT_REDACTED -> ChatGPT/support",
+      "purpose": "diagnosis without terminal courier work"
+    },
+    {
+      "id": "knowledge-bridge",
+      "flow": "validated research/runtime result -> TQS IDs + provenance -> Google Drive knowledge/case",
+      "purpose": "promote durable human-useful knowledge without raw data mirroring"
+    },
+    {
+      "id": "cockpit-bridge",
+      "flow": "TQS Intelligence canonical API/snapshots -> TQS Screener/Cockpit",
+      "purpose": "visualize and act on one canonical compute layer"
+    },
+    {
+      "id": "future-cloud-sync",
+      "flow": "authenticated outbound local publish/sync -> private cloud/control plane -> remote views",
+      "purpose": "multi-device access without exposing an unauthenticated local runtime"
+    }
+  ],
   "canonical_flow": [
     "external sources",
     "canonical instruments/events",
@@ -102,7 +167,8 @@
     "drive_to_github": "public-safe product rules/contracts only; never private Drive content or secrets",
     "github_to_runtime": "versioned code + update path + CI-verified contracts",
     "runtime_to_ai": "SUPPORT_REDACTED diagnostic snapshot by default",
-    "runtime_to_drive": "durable human-useful findings/cases/briefings only; never raw market firehose"
+    "runtime_to_drive": "durable human-useful findings/cases/briefings only; never raw market firehose",
+    "runtime_to_web": "canonical API or authenticated sync bridge with explicit freshness/provenance"
   },
   "security": {
     "public_repo": true,
@@ -112,7 +178,8 @@
       "private Drive content or IDs used only for convenience",
       "raw private account payloads",
       "raw FULL_PRIVATE diagnostic snapshots"
-    ]
+    ],
+    "forbid_public_runtime_pattern": "Do not expose the local TQS API/port unauthenticated to the public Internet."
   },
   "development": {
     "default_route": "Chat-first",
