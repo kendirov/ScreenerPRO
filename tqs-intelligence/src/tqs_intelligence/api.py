@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from . import __version__
 from .account_intelligence import AccountIntelStore, AccountIntelligenceService
 from .briefing import BriefingBuilder
 from .control import ControlCenter
@@ -144,6 +145,8 @@ moex_lab = MoexLab(store)
 instrument_lab = InstrumentLab(store, lake, lab)
 exporter = SnapshotExporter(store, lab, control, lake, settings.db_path, account_store=account_store)
 updater = UpdateManager('./data/update-request.json')
+RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
+RUNTIME_INSTANCE_ID = f'{RUNTIME_STARTED_AT_MS}-{os.getpid()}'
 
 
 @asynccontextmanager
@@ -158,7 +161,7 @@ async def lifespan(_: FastAPI):
 
 
 STATIC = Path(__file__).with_name('static')
-app = FastAPI(title='TQS Intelligence & Strategy Machine', version='0.6.0', lifespan=lifespan)
+app = FastAPI(title='TQS Intelligence & Strategy Machine', version=__version__, lifespan=lifespan)
 app.mount('/static', StaticFiles(directory=str(STATIC)), name='static')
 
 
@@ -173,6 +176,17 @@ async def disable_stale_ui_cache(request, call_next):
 
 
 def _snapshot(): return service.state.snapshot
+
+
+def _identity() -> dict[str, Any]:
+    return {
+        'platform': 'TQS',
+        'module': 'TQS Intelligence',
+        'version': app.version,
+        'runtime_instance_id': RUNTIME_INSTANCE_ID,
+        'pid': os.getpid(),
+        'started_at_ms': RUNTIME_STARTED_AT_MS,
+    }
 
 
 def _resources() -> dict[str, Any]:
@@ -223,7 +237,7 @@ async def dashboard(): return FileResponse(STATIC / 'index.html', headers={'Cach
 @app.get('/api/health')
 async def health():
     snapshot=_snapshot()
-    return {'ok':True,'initializing':snapshot is None,'version':app.version,'runtime':service.runtime_status(),
+    return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
             'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],'storage':store.stats(),'lab':lab.stats()}
@@ -253,7 +267,7 @@ async def overview():
     if snapshot:
         for quote in snapshot.quotes: classes[quote.asset_class.value]=classes.get(quote.asset_class.value,0)+1
     stats=store.stats()
-    return {'initializing':snapshot is None,'version':app.version,'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
+    return {'initializing':snapshot is None,'version':app.version,'identity':_identity(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'quote_count':len(snapshot.quotes) if snapshot else 0,'anomaly_count':len(snapshot.anomalies) if snapshot else 0,
             'active_episode_count':stats.get('active_episodes',0),'episode_count':stats.get('anomaly_episodes',0),
             'news_count':len(snapshot.news) if snapshot else 0,'asset_classes':classes,
@@ -265,7 +279,7 @@ async def overview():
 
 @app.get('/api/system')
 async def system():
-    return {'version':app.version,'runtime':service.runtime_status(),'research_runtime':research_runtime.status(),
+    return {'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),'research_runtime':research_runtime.status(),
             'account_intelligence':account_service.status(),'control':control.status(),'resources':_resources(),
             'storage':store.stats(),'lab':lab.stats(),'data_lake':lake.verify(),
             'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
