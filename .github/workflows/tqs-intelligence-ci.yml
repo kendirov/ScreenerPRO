@@ -78,9 +78,9 @@ jobs:
         run: exit 1
       - name: Compile
         run: python -m compileall -q src
-      - name: Launcher contract
+      - name: Launcher and watchdog contract
         run: |
-          python -m py_compile src/tqs_intelligence/launcher.py src/tqs_intelligence/launcher_entry.py
+          python -m py_compile src/tqs_intelligence/launcher.py src/tqs_intelligence/launcher_entry.py src/tqs_intelligence/watchdog_policy.py src/tqs_intelligence/supervisor.py
           grep -q 'TQS Launcher' TQS-Launcher.cmd
           grep -q 'launcher_entry' TQS-Launcher.cmd
           grep -q 'TQS-Launcher.cmd' start-windows.cmd
@@ -89,8 +89,11 @@ jobs:
           grep -q 'REMOTE BUILD' src/tqs_intelligence/launcher.py
           grep -q 'АКТУАЛЬНАЯ ВЕРСИЯ' src/tqs_intelligence/launcher.py
           grep -q 'SetThreadExecutionState' src/tqs_intelligence/launcher_entry.py
-          grep -q 'Backend OFFLINE — запускаю автоматически' src/tqs_intelligence/launcher_entry.py
-          echo 'Launcher contract PASS'
+          grep -q 'WatchdogPolicy' src/tqs_intelligence/launcher_entry.py
+          grep -q 'supervisor-heartbeat.json' src/tqs_intelligence/launcher_entry.py
+          grep -q 'hard_recover_after_s=180' src/tqs_intelligence/launcher_entry.py
+          grep -q 'supervisor-heartbeat.json' src/tqs_intelligence/supervisor.py
+          echo 'Launcher/watchdog contract PASS'
       - name: API import and trader surface contract
         run: |
           python - <<'PY'
@@ -107,7 +110,7 @@ jobs:
           node --check src/tqs_intelligence/static/app.js
       - name: Autonomous trader cockpit HTML contract
         run: |
-          grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
+          grep -q 'MARKET RESEARCH OS' src/tqs_intelligence/static/index.html
           grep -q 'UNIVERSAL INSTRUMENT LAB' src/tqs_intelligence/static/index.html
           grep -q 'ПУЛЬС МАШИНЫ' src/tqs_intelligence/static/index.html
           grep -q 'Авторазведка публичных счетов' src/tqs_intelligence/static/index.html
@@ -128,4 +131,13 @@ jobs:
           })
           assert score > 0 and reasons and metrics['equity'] == 100000
           print('Account discovery contract PASS')
+          PY
+      - name: History autopilot contract
+        run: |
+          python - <<'PY'
+          from tqs_intelligence.history_autopilot import START_2021_MS, BUCKET_QUOTAS
+          assert START_2021_MS == 1609459200000
+          assert ('binance','usdt-futures') in BUCKET_QUOTAS
+          assert ('moex','forts') in BUCKET_QUOTAS
+          print('History autopilot contract PASS')
           PY
