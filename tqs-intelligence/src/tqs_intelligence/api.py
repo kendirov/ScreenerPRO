@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .account_intelligence import AccountIntelStore, AccountIntelligenceService
 from .briefing import BriefingBuilder
 from .control import ControlCenter
 from .historical import HistoricalBackfiller
@@ -38,6 +39,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file='.env', env_prefix='TQS_', extra='ignore')
     db_path: str = './data/tqs-intelligence.duckdb'
     lab_db_path: str = './data/tqs-lab.sqlite3'
+    accounts_db_path: str = './data/tqs-accounts.sqlite3'
     control_path: str = './data/control.json'
     data_lake_root: str = './data-lake'
     drive_export_root: str = ''
@@ -60,6 +62,9 @@ class Settings(BaseSettings):
     research_every_refreshes: int = 15
     moex_premium_enabled: bool = False
     telegram_news_enabled: bool = False
+    account_refresh_seconds: int = 60
+    account_history_days: int = 30
+    hyperliquid_wallets: str = ''
 
 
 class ControlPatch(BaseModel):
@@ -97,6 +102,12 @@ class SnapshotExportRequest(BaseModel):
     full: bool = False
 
 
+class AccountTrackCreate(BaseModel):
+    source: Literal['hyperliquid'] = 'hyperliquid'
+    account_id: str
+    label: str = ''
+
+
 settings = Settings()
 control_path = Path(settings.control_path)
 control = ControlCenter(settings.control_path)
@@ -116,10 +127,12 @@ if settings.twelve_data_api_key: sources.append(twelve)
 news = NewsCollector(http, [x.strip() for x in settings.rss_urls.split(',') if x.strip()])
 store = DuckStore(settings.db_path)
 lab = LabStore(settings.lab_db_path)
+account_store = AccountIntelStore(settings.accounts_db_path)
 lake = DataLake(control.get().data_lake_root)
 backfiller = HistoricalBackfiller(http, lake)
 strategy_machine = StrategyMachine()
 research_runtime = ResearchRuntime(control, lab, backfiller, lake, strategy_machine)
+account_service = AccountIntelligenceService(control, account_store, http, settings.account_refresh_seconds, settings.account_history_days)
 service = IntelligenceService(
     sources, news, store, settings.refresh_seconds, settings.episode_threshold,
     settings.episode_close_grace_seconds, settings.history_backfill_max,
@@ -127,7 +140,7 @@ service = IntelligenceService(
 )
 briefing_builder = BriefingBuilder(store)
 moex_lab = MoexLab(store)
-exporter = SnapshotExporter(store, lab, control, lake, settings.db_path)
+exporter = SnapshotExporter(store, lab, control, lake, settings.db_path, account_store=account_store)
 updater = UpdateManager('./data/update-request.json')
 
 
@@ -135,13 +148,15 @@ updater = UpdateManager('./data/update-request.json')
 async def lifespan(_: FastAPI):
     if lab.get_strategy('TQS-STRAT-ROUND-BUFFER-001') is None:
         lab.save_strategy(default_round_buffer_spec())
-    service.start(); research_runtime.start()
+    for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
+        account_store.track('hyperliquid', wallet, 'env')
+    service.start(); research_runtime.start(); account_service.start()
     yield
-    await research_runtime.stop(); await service.stop(); await http.aclose()
+    await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
-app = FastAPI(title='TQS Intelligence & Strategy Machine', version='0.4.0', lifespan=lifespan)
+app = FastAPI(title='TQS Intelligence & Strategy Machine', version='0.5.0', lifespan=lifespan)
 app.mount('/static', StaticFiles(directory=str(STATIC)), name='static')
 
 
@@ -170,15 +185,18 @@ def _capabilities() -> list[dict[str, object]]:
         {'provider':'episodes','name':'Anomaly Episode Engine','enabled':True,'markets':['Все подключённые рынки'],'asset_classes':[],
          'data_fields':['жизненный цикл','график до/после','MFE/MAE','5м/15м/1ч/4ч/24ч','похожие случаи'],'access':'Локальный CPU',
          'description':'Аномалия хранится как воспроизводимый эпизод и рассматривается как кандидат места потенциального движения.'},
+        {'provider':'accounts','name':'Account / Position Intelligence','enabled':True,'markets':['Hyperliquid public accounts','MOEX participant aggregates later'],'asset_classes':[],
+         'data_fields':['open positions','fills','PnL samples','long/short bias','instrument concentration','execution style'],'access':'Публичные данные / разрешённые feeds',
+         'description':'Публичные счета анализируются описательно; мотив/стоп/логика не объявляются фактами без синхронизации с рыночными данными.'},
         {'provider':'lake','name':'Historical Parquet Data Lake','enabled':True,'markets':['MOEX','Crypto','Global later'],'asset_classes':[],
          'data_fields':['2021–2026+ history','partitioning','zstd','verification'],'access':control.get().data_lake_root,
          'description':'Тяжёлая история живёт на большом диске, а не в системном каталоге.'},
-        {'provider':'strategy','name':'Strategy Machine','enabled':True,'markets':['Все с историей'],'asset_classes':[],
-         'data_fields':['StrategySpec','controls','OOS','walk-forward','costs','robustness'],'access':'MAX mode',
-         'description':'Первая стратегия — round/buffer bounce; новые идеи добавляются модулями без переписывания ядра.'},
+        {'provider':'strategy','name':'Strategy Machine v2','enabled':True,'markets':['Все с историей'],'asset_classes':[],
+         'data_fields':['StrategySpec','parameter sweeps','controls','OOS','walk-forward','costs','profit/loss diagnostics'],'access':'MAX mode',
+         'description':'Round/buffer + buy-the-dip grids; новые идеи добавляются как воспроизводимые StrategySpec.'},
         {'provider':'moex-premium','name':'MOEX Premium / participant positions','enabled':settings.moex_premium_enabled,'markets':['MOEX derivatives'],'asset_classes':['future','option'],
-         'data_fields':['OI','физлица long/short','юрлица long/short','число участников','5m deltas'],'access':'Подписка/credentials позже',
-         'description':'Контракт уже заложен; credentials включат дополнительные признаки в общую машину.'},
+         'data_fields':['OI','физлица long/short','юрлица long/short','число участников','intraday deltas'],'access':'Подписка/credentials позже',
+         'description':'Агрегированные participant данные будут частью общей feature machine; не подменяются индивидуальными счетами.'},
     ])
     return rows
 
@@ -191,13 +209,13 @@ async def dashboard(): return FileResponse(STATIC / 'index.html')
 async def health():
     snapshot=_snapshot()
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.status(),'control':control.status(),'resources':_resources(),
-            'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
+            'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),
+            'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],'storage':store.stats(),'lab':lab.stats()}
 
 
 @app.get('/api/control')
-async def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'update':updater.status(False)}
+async def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False)}
 
 
 @app.post('/api/control')
@@ -225,19 +243,21 @@ async def overview():
             'active_episode_count':stats.get('active_episodes',0),'episode_count':stats.get('anomaly_episodes',0),
             'news_count':len(snapshot.news) if snapshot else 0,'asset_classes':classes,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.status(),'control':control.status(),'resources':_resources(),'storage':stats,'lab':lab.stats(),
+            'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),
+            'control':control.status(),'resources':_resources(),'storage':stats,'lab':lab.stats(),
             'top_anomalies':[x.model_dump(mode='json') for x in snapshot.anomalies[:30]] if snapshot else []}
 
 
 @app.get('/api/system')
 async def system():
     return {'version':app.version,'runtime':service.runtime_status(),'research_runtime':research_runtime.status(),
-            'control':control.status(),'resources':_resources(),'storage':store.stats(),'lab':lab.stats(),'data_lake':lake.verify(),
+            'account_intelligence':account_service.status(),'control':control.status(),'resources':_resources(),
+            'storage':store.stats(),'lab':lab.stats(),'data_lake':lake.verify(),
             'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
                       'twelve_data_enabled':bool(settings.twelve_data_api_key),'episode_threshold':settings.episode_threshold,
                       'moex_premium_enabled':settings.moex_premium_enabled,'telegram_news_enabled':settings.telegram_news_enabled},
-            'pipeline':['collect','normalize','persist','anomaly','episode lifecycle','historical lake','strategy/event study',
-                        'control/OOS/walk-forward/costs','relationship mining','briefing snapshot','portable AI snapshot']}
+            'pipeline':['collect','normalize','persist','anomaly','episode lifecycle','account/position intelligence','historical lake',
+                        'strategy/event study','control/OOS/walk-forward/costs','relationship mining','briefing snapshot','portable AI snapshot']}
 
 
 @app.get('/api/system/update')
@@ -344,6 +364,39 @@ async def create_idea(request:IdeaCreate): return lab.add_idea(request.title,req
 
 @app.get('/api/ideas')
 async def ideas(limit:int=Query(300,ge=1,le=2000),status:str=''): return lab.list_ideas(limit,status)
+
+
+@app.post('/api/accounts/track')
+async def track_account(request:AccountTrackCreate):
+    aid=request.account_id.strip()
+    if request.source=='hyperliquid' and (len(aid)!=42 or not aid.startswith('0x')):
+        raise HTTPException(400,'Hyperliquid address must be a 42-character 0x address')
+    tracked=account_store.track(request.source,aid,request.label)
+    try: sync=await account_service.sync_account(request.source,aid)
+    except Exception as exc: sync={'ok':False,'error':str(exc)}
+    return {'tracked':tracked.model_dump(mode='json'),'sync':sync}
+
+
+@app.get('/api/accounts')
+async def accounts(): return {'status':account_service.status(),'profiles':account_store.profiles()}
+
+
+@app.get('/api/accounts/positions')
+async def account_positions(source:str='',account_id:str='',limit:int=Query(500,ge=1,le=5000)):
+    return account_store.current_positions(source,account_id,limit)
+
+
+@app.get('/api/accounts/{source}/{account_id}/profile')
+async def account_profile(source:str,account_id:str):
+    profile=account_store.profile(source,account_id)
+    if profile is None: raise HTTPException(404,'tracked account not found')
+    return {'profile':profile,'positions':account_store.current_positions(source,account_id,500),'fills':account_store.recent_fills(source,account_id,500)}
+
+
+@app.post('/api/accounts/{source}/{account_id}/sync')
+async def sync_account(source:str,account_id:str):
+    try: return await account_service.sync_account(source,account_id)
+    except ValueError as exc: raise HTTPException(400,str(exc))
 
 
 @app.post('/api/backfill')
