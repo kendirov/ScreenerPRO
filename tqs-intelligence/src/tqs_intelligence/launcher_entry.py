@@ -6,6 +6,7 @@ import os
 import time
 
 from .launcher import TQSLauncher
+from .watchdog_policy import WatchdogPolicy
 
 ES_CONTINUOUS = 0x80000000
 ES_SYSTEM_REQUIRED = 0x00000001
@@ -24,7 +25,9 @@ def _set_system_awake(enabled: bool) -> None:
 def main() -> None:
     app = TQSLauncher()
     power_state = {"awake": False}
-    watchdog = {"last_restart": 0.0, "failures": 0}
+    policy = WatchdogPolicy(start_after_s=12, hard_recover_after_s=180, restart_cooldown_s=90)
+    watchdog = {"last_notice": 0.0, "recoveries": 0}
+    heartbeat_path = app.data_dir / "supervisor-heartbeat.json"
 
     def desired_mode() -> str:
         # When backend is temporarily offline we still need to know whether MAX
@@ -35,33 +38,59 @@ def main() -> None:
         except Exception:
             return "light"
 
-    def recover_backend() -> None:
-        # Recovery runs in Launcher's worker thread. Kill stale TQS processes
-        # first: a dead supervisor/uvicorn can keep DuckDB or :8787 locked and
-        # make every subsequent start fail.
-        app._event("WATCHDOG: очищаю зависшие TQS процессы")
+    def supervisor_heartbeat_fresh(max_age_s: float = 15.0) -> bool:
+        try:
+            raw = json.loads(heartbeat_path.read_text(encoding="utf-8"))
+            ts_ms = int(raw.get("ts_ms") or 0)
+            if ts_ms <= 0:
+                return False
+            return (time.time() * 1000 - ts_ms) <= max_age_s * 1000
+        except Exception:
+            return False
+
+    def hard_recover_backend() -> None:
+        # Destructive cleanup is a last resort only after a sustained outage.
+        # A single /api/health timeout must never kill heavy overnight work.
+        app._event("WATCHDOG: длительный outage — очищаю зависшие TQS процессы")
         app._stop_backend()
         time.sleep(1)
+        app._start_backend()
+
+    def start_missing_backend() -> None:
+        app._event("WATCHDOG: TQS процессов нет — запускаю supervisor")
         app._start_backend()
 
     def watchdog_tick() -> None:
         try:
             health = app.health()
             mode = str(((health or {}).get("control") or {}).get("mode") or desired_mode()).lower()
-            if health:
-                watchdog["failures"] = 0
-            elif mode != "stop" and not app._busy:
+            processes = app._matching_tqs_processes()
+            fresh_supervisor = supervisor_heartbeat_fresh()
+            decision = policy.observe(
+                now=time.time(),
+                healthy=health is not None,
+                mode=mode,
+                process_count=len(processes),
+                busy=app._busy,
+                supervisor_heartbeat_fresh=fresh_supervisor,
+            )
+
+            if decision.action == "start":
+                watchdog["recoveries"] += 1
+                app._thread(start_missing_backend)
+            elif decision.action == "hard_recover":
+                watchdog["recoveries"] += 1
+                app._thread(hard_recover_backend)
+            elif decision.action == "wait" and health is None:
+                # Do not spam the owner every five seconds. Show a diagnostic
+                # reminder at most once per minute while preserving the work.
                 now = time.time()
-                # Backoff protects against a hard startup error while still
-                # recovering quickly from ordinary process/network failures.
-                cooldown = min(120.0, 8.0 * (2 ** min(watchdog["failures"], 4)))
-                if now - watchdog["last_restart"] >= cooldown:
-                    watchdog["last_restart"] = now
-                    watchdog["failures"] += 1
+                if now - watchdog["last_notice"] >= 60:
+                    watchdog["last_notice"] = now
                     app._event(
-                        f"Backend OFFLINE — запускаю автоматически (watchdog #{watchdog['failures']})"
+                        f"WATCHDOG: health временно недоступен {decision.offline_for_s:.0f}с; "
+                        f"процессов {len(processes)}; {decision.reason}"
                     )
-                    app._thread(recover_backend)
         except Exception as exc:
             app._event(f"WATCHDOG: ошибка проверки — {str(exc)[:180]}")
         app.root.after(5_000, watchdog_tick)
