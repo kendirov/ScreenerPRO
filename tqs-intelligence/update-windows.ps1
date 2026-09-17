@@ -109,7 +109,14 @@ try {
     $remoteRef = "origin/$branch"
     $newHead = Invoke-Git rev-parse $remoteRef
     if ($newHead -eq $oldHead) {
-        Write-UpdateState -Status "noop" -Step "done" -Message "Свежая версия уже установлена." -OldHead $oldHead -NewHead $newHead
+        if (-not (Wait-TqsHealthy -TimeoutSeconds 3)) {
+            Write-UpdateState -Status "running" -Step "start" -Message "Версия свежая. Запускаю TQS..." -OldHead $oldHead -NewHead $newHead
+            Start-Tqs
+            if (-not (Wait-TqsHealthy -TimeoutSeconds 60)) {
+                throw "TQS is current but failed to start."
+            }
+        }
+        Write-UpdateState -Status "noop" -Step "done" -Message "Свежая версия уже установлена и TQS работает." -OldHead $oldHead -NewHead $newHead
         if (-not $NoBrowser) { Start-Process $AppUrl | Out-Null }
         exit 0
     }
