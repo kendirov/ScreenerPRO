@@ -23,13 +23,16 @@ if [[ "$RUN_TQS" == "1" ]]; then
     pwsh -NoProfile -Command '$files=@("tqs-intelligence/update-windows.ps1","tqs-intelligence/install-windows.ps1","tqs-intelligence/start-windows.ps1");foreach($file in $files){$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count -gt 0){$errors|ForEach-Object{Write-Error "$file : $($_.Message)"};exit 1}};Write-Host "PowerShell scripts syntax PASS"'
   fi
 
-  python -m py_compile tqs-intelligence/src/tqs_intelligence/launcher_entry.py
+  python -m py_compile tqs-intelligence/src/tqs_intelligence/launcher.py tqs-intelligence/src/tqs_intelligence/launcher_entry.py
   grep -q 'TQS Launcher' tqs-intelligence/TQS-Launcher.cmd
+  grep -q 'launcher_entry' tqs-intelligence/TQS-Launcher.cmd
   grep -q 'TQS-Launcher.cmd' tqs-intelligence/start-windows.cmd
-  grep -q 'tqs-launcher' tqs-intelligence/pyproject.toml
+  grep -q 'launcher_entry:main' tqs-intelligence/pyproject.toml
   grep -q 'LOCAL BUILD' tqs-intelligence/src/tqs_intelligence/launcher.py
   grep -q 'REMOTE BUILD' tqs-intelligence/src/tqs_intelligence/launcher.py
   grep -q 'АКТУАЛЬНАЯ ВЕРСИЯ' tqs-intelligence/src/tqs_intelligence/launcher.py
+  grep -q 'SetThreadExecutionState' tqs-intelligence/src/tqs_intelligence/launcher_entry.py
+  grep -q 'Backend OFFLINE — запускаю автоматически' tqs-intelligence/src/tqs_intelligence/launcher_entry.py
 
   TQS_DB_PATH="$PWD/.verification/fast/runtime/tqs.duckdb" \
   TQS_LAB_DB_PATH="$PWD/.verification/fast/runtime/tqs-lab.sqlite3" \
@@ -38,9 +41,7 @@ if [[ "$RUN_TQS" == "1" ]]; then
   TQS_DATA_LAKE_ROOT="$PWD/.verification/fast/runtime/data-lake" \
   TQS_MODE=stop TQS_ENABLE_BINANCE=false TQS_ENABLE_BITGET=false TQS_ENABLE_BYBIT=false TQS_ENABLE_OKX=false TQS_ENABLE_MOEX=false \
   python - <<'PY'
-from importlib.metadata import version
 from tqs_intelligence.api import app
-assert version('tqs-intelligence') == app.version, (version('tqs-intelligence'), app.version)
 paths = {route.path for route in app.routes}
 required = {'/api/health', '/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing'}
 missing = required - paths

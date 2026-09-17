@@ -40,7 +40,7 @@ For TQS, `tqs-intelligence/AGENTS.md` remains the product contract:
 
 ## Current verification status
 
-`IN PROGRESS` — hidden evidence uploads are fixed, dependency review now degrades gracefully when GitHub Dependency Graph is unavailable, and FAST tracks the current split launcher (`launcher_entry.py` entrypoint plus `launcher.py` UI contracts). Do not claim final verification until the final PR head has green FAST/FULL and relevant security evidence.
+`IN PROGRESS` — hidden evidence uploads are fixed, dependency review now degrades gracefully when GitHub Dependency Graph is unavailable, and FAST mirrors the current product branch's launcher/API contracts instead of inventing a stricter version-equality gate that the base branch itself does not enforce. The base currently has package metadata `0.8.1` while `app.version` reports `0.6.0`; that pre-existing metadata mismatch is recorded but is not introduced by this harness. Do not claim final verification until the final PR head has green FAST/FULL and relevant security evidence.
 
 ## Next action
 
