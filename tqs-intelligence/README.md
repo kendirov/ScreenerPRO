@@ -1,136 +1,109 @@
-# TQS Intelligence Engine v0.2
+# TQS Intelligence Engine v0.3
 
-Локальное ядро TraderQuest для непрерывного сбора рынков, унификации инструментов, поиска аномалий, новостей, связей и очереди исследовательских гипотез. Основной поток работает обычным кодом без постоянных расходов на LLM.
+Автономное локальное/серверное ядро TraderQuest: непрерывно собирает несколько рынков, сохраняет историю, выделяет аномалии, превращает их в устойчивые эпизоды, подгружает свечной контекст, отслеживает исход и периодически пересчитывает предварительную статистику повторяющихся паттернов.
 
-## Уже работает
+## Главный цикл
 
-- Bitget UTA v3: spot + USDT futures, без API-ключа.
-- Binance: spot + USDT-M futures, без API-ключа.
-- Bybit V5: spot + linear futures, без API-ключа.
-- OKX V5: spot + swaps + expiry futures, без API-ключа.
-- MOEX ISS: акции + FORTS + валютный рынок + индексы + облигации, без API-ключа.
-- Twelve Data: опциональный адаптер для глобальных акций/ETF при наличии ключа.
-- GDELT + произвольные RSS/Atom: новостной поток и первичная привязка к инструментам/темам.
-- Унифицированная Quote schema и canonical_id `provider:market:symbol`.
-- Cross-sectional anomaly engine: движение, оборот, OI, funding, spread.
-- Relationship Miner: корреляции и one-bucket lead/lag по накопленным snapshots с минимальным sample gate.
-- DuckDB: snapshots, anomalies, news, hypotheses и runtime logs.
-- Русский терминал: Сейчас / Мосбиржа / Аномалии / Новости / Исследования / Возможности / Источники / Логи.
-- Первый снимок собирается в фоне: UI открывается сразу, а медленный источник не блокирует интерфейс.
-- Частичный отказ сегмента одного провайдера помечается `DEGRADED`, а не обрушает весь источник.
+`рынки → normalize → snapshots → anomaly → episode → candle backfill → outcome → similar cases → autonomous research → briefing/API`
 
-## Windows — первый запуск
+Горячий контур работает обычным кодом без LLM. Модель в будущем получает только shortlisted cases и компактный MarketSnapshot.
 
-1. Открыть папку `tqs-intelligence`.
-2. Двойной клик `install-windows.cmd`.
-3. После завершения — двойной клик `start-windows.cmd`.
-4. Откроется `http://127.0.0.1:8787`.
+## Источники
 
-PowerShell-вариант:
+Без ключей: Bitget UTA v3, Binance, Bybit V5, OKX V5, MOEX ISS, GDELT. MOEX включает акции, FORTS, валютный рынок, индексы и облигации. Опционально: Twelve Data и произвольные RSS/Atom.
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\install-windows.ps1
-.\start-windows.ps1
+Для эпизодов крипты сервис автоматически запрашивает свечи Bitget/Binance/Bybit/OKX. Для MOEX использует ISS candles, когда известен board. Локальные snapshots продолжают график после события.
+
+## Что такое эпизод аномалии
+
+Строка anomaly не пишется как новый независимый объект каждую минуту. Когда score превышает `TQS_EPISODE_THRESHOLD`, создаётся episode. Пока событие живо, обновляются last/peak score, цена, причины, signals и hits. После grace period без сильного сигнала эпизод закрывается, но остаётся в DuckDB.
+
+Для эпизода доступны: график до/во время/после, 5m/15m/1h/4h/24h returns, MFE/MAE, похожие прошлые случаи, pattern key и причины.
+
+## Autonomous Research Loop
+
+Каждые `TQS_RESEARCH_EVERY_REFRESHES` циклов сервис пересматривает закрытые эпизоды. Похожие случаи группируются по типу рынка, направлению и machine-readable signals. Рассчитываются direction-normalized median continuation и win-rate для 1h/4h. Небольшая выборка остаётся `watch`; только после sample gate более устойчивый результат получает `candidate`. Это исследовательский кандидат, не торговый сигнал.
+
+## Windows
+
+Первый раз:
+
+1. `install-windows.cmd`
+2. `start-windows.cmd`
+3. открыть `http://127.0.0.1:8787`
+
+После обновления ветки достаточно остановить окно, сделать Pull origin и снова запустить `install-windows.cmd`, затем `start-windows.cmd`. DuckDB в `data/` сохраняется.
+
+## Linux VPS: запустить один раз и оставить работать
+
+Требуются Git + Docker Compose plugin. В клонированном репозитории на нужной ветке:
+
+```bash
+sudo bash tqs-intelligence/deploy/linux/install-server.sh
 ```
 
-## Как обновить уже установленную версию
+Скрипт:
+- создаёт `.env` из шаблона, если его нет;
+- строит и запускает контейнер;
+- включает `restart: unless-stopped`;
+- включает systemd timer автообновления каждые 30 минут;
+- updater обновляет текущую Git-ветку только fast-forward;
+- после rebuild ждёт Docker healthcheck;
+- при неуспехе откатывает Git на предыдущий commit и возвращает предыдущую рабочую версию.
 
-1. Остановить окно TQS Intelligence (`Ctrl+C` или закрыть консоль).
-2. В GitHub Desktop на ветке `codex/tqs-intelligence-engine-v0-1-2026-09-17` нажать `Fetch origin`, затем `Pull origin`.
-3. Снова запустить `install-windows.cmd` — это обновит Python package и зависимости, существующий `.env` и `data/tqs-intelligence.duckdb` сохранятся.
-4. Запустить `start-windows.cmd`.
-5. Проверить вкладки `Источники` и `Логи`.
+Проверка:
 
-## Мосбиржа
-
-Вкладка `Мосбиржа` показывает только фактически полученные данные MOEX ISS и отдельно считает:
-
-- акции (`stock / shares`);
-- срочный рынок FORTS (`future / forts`);
-- валютный рынок (`fx / selt`);
-- индексы (`index`);
-- облигации (`bond / bonds`).
-
-Можно искать по тикеру или названию и фильтровать класс инструмента. Для FORTS сохраняется доступный `OPENPOSITION`, для всех сегментов — торговый статус и provenance.
-
-## Возможности и источники
-
-Во вкладке `Возможности` видно, какие рынки и поля даёт каждый адаптер и нужен ли ключ. Во вкладке `Источники` видны `OK / DEGRADED / ERROR`, число инструментов, latency, время последнего успеха и текст ошибки.
-
-### Мировые акции / ETF
-
-В `.env`:
-
-```text
-TQS_TWELVE_DATA_API_KEY=ваш_ключ
-TQS_TWELVE_DATA_SYMBOLS=AAPL,MSFT,NVDA,SPY,QQQ
+```bash
+bash tqs-intelligence/deploy/linux/status-server.sh
 ```
 
-После изменения перезапустить `start-windows.cmd`.
+По умолчанию сервер слушает только `127.0.0.1:8787`. Для доступа извне лучше SSH tunnel или reverse proxy с авторизацией. `TQS_SERVER_BIND=0.0.0.0` открывает порт наружу и должен использоваться осознанно.
 
-### Дополнительные новости
+## Основные настройки `.env`
 
-В `.env` можно добавить RSS/Atom через запятую:
+- `TQS_REFRESH_SECONDS=60`
+- `TQS_EPISODE_THRESHOLD=70`
+- `TQS_EPISODE_CLOSE_GRACE_SECONDS=180`
+- `TQS_HISTORY_BACKFILL_MAX=8`
+- `TQS_HISTORY_REFRESH_EVERY=5`
+- `TQS_RESEARCH_EVERY_REFRESHES=15`
+- `TQS_TWELVE_DATA_API_KEY=`
+- `TQS_TWELVE_DATA_SYMBOLS=AAPL,MSFT,NVDA,SPY,QQQ`
+- `TQS_RSS_URLS=`
 
-```text
-TQS_RSS_URLS=https://example.com/feed.xml,https://example.org/rss
-```
+## UI
 
-GDELT работает и без этого.
+- Сейчас
+- Мосбиржа
+- История аномалий
+- Аномалии
+- Новости
+- Исследования
+- Возможности
+- Источники
+- Логи
 
-## Логи
+Во вкладке «История аномалий» можно искать `SMLT`, `SBER`, `BTC` и т.д., открывать активные/закрытые случаи, менять окно графика ±6ч/±24ч/±3д и переходить между похожими случаями.
 
-Вкладка `Логи` показывает:
-
-- старт/остановку сервиса;
-- каждый цикл сбора;
-- длительность цикла;
-- количество инструментов/аномалий/новостей;
-- деградацию или ошибку конкретного источника;
-- восстановление источника;
-- размеры накопленного DuckDB-хранилища.
-
-Логи также доступны через `GET /api/logs`.
-
-## API
+## API v0.3
 
 - `GET /api/health`
-- `GET /api/system`
-- `GET /api/capabilities`
-- `POST /api/refresh`
 - `GET /api/overview`
+- `POST /api/refresh`
+- `GET /api/anomalies`
+- `GET /api/episodes`
+- `GET /api/episodes/{id}`
+- `GET /api/research/findings`
+- `GET /api/relationships`
+- `GET /api/quotes`
 - `GET /api/moex`
-- `GET /api/anomalies?min_score=50&asset_class=crypto`
-- `GET /api/quotes?provider=moex&asset_class=future&q=Si`
-- `GET /api/news?symbol=BTC`
-- `GET /api/relationships?min_samples=20`
-- `GET /api/logs?limit=200`
-- `POST /api/hypotheses`
-- `GET /api/hypotheses`
+- `GET /api/news`
+- `GET /api/logs`
+- `GET/POST /api/hypotheses`
+- `GET /api/capabilities`
+- `GET /api/system`
 - OpenAPI: `/docs`
 
-## Архитектурный принцип
+## Следующие тяжёлые слои
 
-Raw market stream не отправляется в LLM. Постоянный код собирает, нормализует, хранит, фильтрует и ищет аномалии. Будущий AI-router получает только shortlisted MarketSnapshot/Anomaly/Research packets.
-
-## Следующие слои
-
-1. Historical candles/trades + partitioned Parquet lake.
-2. Persistent WebSocket для Tier-A crypto, sequence integrity и gap recovery.
-3. Historical baselines по самому инструменту, режиму и времени суток.
-4. Conditional relationships, correlation breaks и sequence mining.
-5. Research Engine: event study, OOS, walk-forward, bootstrap, multiple-testing control, fee/slippage stress.
-6. Exchange announcements, macro calendar, token unlocks, listings/delistings, filings.
-7. BriefingSnapshot для веба, эфира, Telegram, курса и презентаций.
-8. Optional LLM router только для лучших отобранных событий и итоговых research summaries.
-
-## Проверка
-
-После установки:
-
-```powershell
-.\verify.ps1
-```
-
-Затем запустить приложение и открыть `Источники` / `Логи`: это финальная live-проверка сетевой доступности именно с вашего Windows/VPN.
+v0.3 сохраняет минутные snapshots в DuckDB. Для многолетней истории и L2 следующий scale-up слой: partitioned Parquet + DuckDB/Polars research views, затем ClickHouse при реальной необходимости. Дальше: WebSocket sequence/gap recovery, historical universe replay, conditional relationship mining, event-study/OOS/walk-forward/bootstrap, macro/exchange/token events, BriefingSnapshot и дешёвый LLM-router только поверх shortlist.
