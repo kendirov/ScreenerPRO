@@ -8,7 +8,7 @@ Updated: 2026-09-17
 - Active TQS product PR: `#11` — `TQS Intelligence v0.5 — autonomous market, account and strategy research machine`
 - Product branch: `codex/tqs-intelligence-engine-v0-1-2026-09-17`
 - Product head incorporated by this harness merge: `fd66ae0f6095004b865b65683b5a0350b3cd026a`
-- Current TQS package version at that head: `0.9.0`.
+- Current TQS package version at that head: `0.8.1`.
 
 ## Active development-system task
 
@@ -40,7 +40,7 @@ For TQS, `tqs-intelligence/AGENTS.md` remains the product contract:
 
 ## Current verification status
 
-`IN PROGRESS` — the previous PR head's FAST verification logic passed its tests/contracts, but the job failed only when `upload-artifact` excluded the hidden `.verification/` directory. The rebuilt workflow explicitly uploads hidden evidence files and removes duplicate push+PR runs. Do not claim final verification until the final PR head has green FAST/FULL and relevant security evidence.
+`IN PROGRESS` — hidden evidence uploads are fixed, dependency review now degrades gracefully when GitHub Dependency Graph is unavailable, and FAST tracks the current split launcher (`launcher_entry.py` entrypoint plus `launcher.py` UI contracts). Do not claim final verification until the final PR head has green FAST/FULL and relevant security evidence.
 
 ## Next action
 

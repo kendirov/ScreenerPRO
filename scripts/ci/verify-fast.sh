@@ -27,9 +27,9 @@ if [[ "$RUN_TQS" == "1" ]]; then
   grep -q 'TQS Launcher' tqs-intelligence/TQS-Launcher.cmd
   grep -q 'TQS-Launcher.cmd' tqs-intelligence/start-windows.cmd
   grep -q 'tqs-launcher' tqs-intelligence/pyproject.toml
-  grep -q 'LOCAL BUILD' tqs-intelligence/src/tqs_intelligence/launcher_entry.py
-  grep -q 'REMOTE BUILD' tqs-intelligence/src/tqs_intelligence/launcher_entry.py
-  grep -q 'АКТУАЛЬНАЯ ВЕРСИЯ' tqs-intelligence/src/tqs_intelligence/launcher_entry.py
+  grep -q 'LOCAL BUILD' tqs-intelligence/src/tqs_intelligence/launcher.py
+  grep -q 'REMOTE BUILD' tqs-intelligence/src/tqs_intelligence/launcher.py
+  grep -q 'АКТУАЛЬНАЯ ВЕРСИЯ' tqs-intelligence/src/tqs_intelligence/launcher.py
 
   TQS_DB_PATH="$PWD/.verification/fast/runtime/tqs.duckdb" \
   TQS_LAB_DB_PATH="$PWD/.verification/fast/runtime/tqs-lab.sqlite3" \
