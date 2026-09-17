@@ -33,72 +33,175 @@ class Settings(BaseSettings):
     rss_urls: str = ""
 
 
-settings = Settings(); http = JsonHttp(); sources = []
+settings = Settings()
+http = JsonHttp()
+sources = []
 if settings.enable_bitget: sources.append(BitgetSource(http))
 if settings.enable_binance: sources.append(BinanceSource(http))
 if settings.enable_bybit: sources.append(BybitSource(http))
 if settings.enable_okx: sources.append(OkxSource(http))
 if settings.enable_moex: sources.append(MoexSource(http))
+twelve = TwelveDataSource(http, settings.twelve_data_api_key, [x.strip() for x in settings.twelve_data_symbols.split(",") if x.strip()])
 if settings.twelve_data_api_key:
-    sources.append(TwelveDataSource(http, settings.twelve_data_api_key, [x.strip() for x in settings.twelve_data_symbols.split(",") if x.strip()]))
+    sources.append(twelve)
 news = NewsCollector(http, [x.strip() for x in settings.rss_urls.split(",") if x.strip()])
-store = DuckStore(settings.db_path); service = IntelligenceService(sources, news, store, settings.refresh_seconds)
+store = DuckStore(settings.db_path)
+service = IntelligenceService(sources, news, store, settings.refresh_seconds)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    service.start(); yield; await service.stop(); await http.aclose()
+    service.start()
+    yield
+    await service.stop()
+    await http.aclose()
 
 
-app = FastAPI(title="TQS Intelligence Engine", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="TQS Intelligence Engine", version="0.2.0", lifespan=lifespan)
 STATIC = Path(__file__).with_name("static")
 
 
+def _snapshot():
+    return service.state.snapshot
+
+
+def _capabilities() -> list[dict[str, object]]:
+    enabled = {s.provider: s for s in sources}
+    rows = [s.capability(True) for s in sources]
+    if "twelvedata" not in enabled:
+        rows.append(twelve.capability(False))
+    rows.append({
+        "provider": "news",
+        "name": "Новости: GDELT + RSS",
+        "enabled": True,
+        "markets": ["Крипто", "Мосбиржа", "рубль", "нефть", "макро"],
+        "asset_classes": [],
+        "data_fields": ["заголовки", "ссылки", "время", "тикеры", "темы"],
+        "access": "GDELT без ключа; RSS настраивается в .env",
+        "description": "Новостной контекст хранится отдельно от рыночных фактов и связывается с тикерами/темами.",
+    })
+    return rows
+
+
 @app.get("/", include_in_schema=False)
-async def dashboard(): return FileResponse(STATIC / "index.html")
+async def dashboard():
+    return FileResponse(STATIC / "index.html")
 
 
 @app.get("/api/health")
 async def health():
-    snapshot = service.state.snapshot
-    return {"ok": True, "running": service.state.running, "generated_at_ms": snapshot.generated_at_ms if snapshot else None,
-            "sources": [x.model_dump() for x in snapshot.source_health] if snapshot else [], "storage": store.stats()}
+    snapshot = _snapshot()
+    return {
+        "ok": True,
+        "initializing": snapshot is None,
+        "runtime": service.runtime_status(),
+        "generated_at_ms": snapshot.generated_at_ms if snapshot else None,
+        "sources": [x.model_dump(mode="json") for x in service.current_health()],
+        "storage": store.stats(),
+    }
 
 
 @app.post("/api/refresh")
 async def refresh():
-    snapshot = await service.refresh(); return {"ok": True, "quotes": len(snapshot.quotes), "anomalies": len(snapshot.anomalies), "news": len(snapshot.news)}
+    accepted = service.request_refresh()
+    return {"ok": True, "accepted": accepted, "message": "Сбор запущен" if accepted else "Сбор уже выполняется"}
 
 
 @app.get("/api/overview")
 async def overview():
-    snapshot = service.state.snapshot or await service.refresh(); classes: dict[str, int] = {}
-    for quote in snapshot.quotes: classes[quote.asset_class.value] = classes.get(quote.asset_class.value, 0) + 1
-    return {"generated_at_ms": snapshot.generated_at_ms, "quote_count": len(snapshot.quotes), "anomaly_count": len(snapshot.anomalies),
-            "news_count": len(snapshot.news), "asset_classes": classes, "sources": [x.model_dump() for x in snapshot.source_health],
-            "top_anomalies": [x.model_dump(mode="json") for x in snapshot.anomalies[:20]]}
+    snapshot = _snapshot()
+    classes: dict[str, int] = {}
+    if snapshot:
+        for quote in snapshot.quotes:
+            classes[quote.asset_class.value] = classes.get(quote.asset_class.value, 0) + 1
+    return {
+        "initializing": snapshot is None,
+        "generated_at_ms": snapshot.generated_at_ms if snapshot else None,
+        "quote_count": len(snapshot.quotes) if snapshot else 0,
+        "anomaly_count": len(snapshot.anomalies) if snapshot else 0,
+        "news_count": len(snapshot.news) if snapshot else 0,
+        "asset_classes": classes,
+        "sources": [x.model_dump(mode="json") for x in service.current_health()],
+        "runtime": service.runtime_status(),
+        "storage": store.stats(),
+        "top_anomalies": [x.model_dump(mode="json") for x in snapshot.anomalies[:30]] if snapshot else [],
+    }
+
+
+@app.get("/api/system")
+async def system():
+    return {
+        "version": app.version,
+        "runtime": service.runtime_status(),
+        "storage": store.stats(),
+        "config": {
+            "refresh_seconds": settings.refresh_seconds,
+            "db_path": settings.db_path,
+            "rss_feeds": len(news.rss_urls),
+            "twelve_data_enabled": bool(settings.twelve_data_api_key),
+        },
+        "pipeline": ["collect", "normalize", "persist", "anomaly", "relationships", "research queue", "briefing-ready API"],
+    }
+
+
+@app.get("/api/capabilities")
+async def capabilities():
+    return _capabilities()
 
 
 @app.get("/api/anomalies")
 async def anomalies(limit: int = Query(100, ge=1, le=1000), asset_class: AssetClass | None = None,
                     provider: str | None = None, min_score: float = Query(50, ge=0, le=100)):
-    snapshot = service.state.snapshot or await service.refresh(); rows = snapshot.anomalies
-    if asset_class: rows = [x for x in rows if x.asset_class == asset_class]
-    if provider: rows = [x for x in rows if x.provider == provider]
+    snapshot = _snapshot()
+    rows = snapshot.anomalies if snapshot else []
+    if asset_class:
+        rows = [x for x in rows if x.asset_class == asset_class]
+    if provider:
+        rows = [x for x in rows if x.provider == provider]
     return [x.model_dump(mode="json") for x in rows if x.score >= min_score][:limit]
 
 
 @app.get("/api/quotes")
-async def quotes(q: str = "", limit: int = Query(200, ge=1, le=5000)):
-    snapshot = service.state.snapshot or await service.refresh(); needle = q.lower().strip(); rows = snapshot.quotes
-    if needle: rows = [x for x in rows if needle in x.symbol.lower() or needle in x.provider.lower() or needle in x.venue.lower()]
+async def quotes(q: str = "", provider: str = "", market_type: str = "", asset_class: AssetClass | None = None,
+                 limit: int = Query(500, ge=1, le=10000)):
+    snapshot = _snapshot()
+    rows = snapshot.quotes if snapshot else []
+    needle = q.lower().strip()
+    if provider:
+        rows = [x for x in rows if x.provider == provider]
+    if market_type:
+        rows = [x for x in rows if x.market_type == market_type]
+    if asset_class:
+        rows = [x for x in rows if x.asset_class == asset_class]
+    if needle:
+        rows = [x for x in rows if needle in x.symbol.lower() or needle in (x.display_symbol or "").lower() or needle in x.venue.lower()]
+    rows = sorted(rows, key=lambda x: (x.turnover_24h or 0, abs(x.change_24h_pct or 0)), reverse=True)
     return [x.model_dump(mode="json") for x in rows[:limit]]
 
 
+@app.get("/api/moex")
+async def moex():
+    snapshot = _snapshot()
+    rows = [x for x in (snapshot.quotes if snapshot else []) if x.provider == "moex"]
+    segments: dict[str, int] = {}
+    for quote in rows:
+        segments[quote.asset_class.value] = segments.get(quote.asset_class.value, 0) + 1
+    health = next((x for x in service.current_health() if x.provider == "moex"), None)
+    return {
+        "initializing": snapshot is None,
+        "count": len(rows),
+        "segments": segments,
+        "health": health.model_dump(mode="json") if health else None,
+        "top": [x.model_dump(mode="json") for x in sorted(rows, key=lambda q: q.turnover_24h or 0, reverse=True)[:30]],
+    }
+
+
 @app.get("/api/news")
-async def news_items(limit: int = Query(100, ge=1, le=200), symbol: str = ""):
-    snapshot = service.state.snapshot or await service.refresh(); rows = snapshot.news
-    if symbol: rows = [x for x in rows if symbol.upper() in {s.upper() for s in x.symbols}]
+async def news_items(limit: int = Query(100, ge=1, le=500), symbol: str = ""):
+    snapshot = _snapshot()
+    rows = snapshot.news if snapshot else []
+    if symbol:
+        rows = [x for x in rows if symbol.upper() in {s.upper() for s in x.symbols}]
     return [x.model_dump(mode="json") for x in rows[:limit]]
 
 
@@ -107,16 +210,24 @@ async def relationships(limit: int = Query(50, ge=1, le=500), min_samples: int =
     return [x.model_dump(mode="json") for x in mine_relationships(store.price_series(), min_samples=min_samples)[:limit]]
 
 
+@app.get("/api/logs")
+async def logs(limit: int = Query(200, ge=1, le=2000), level: str = "", component: str = ""):
+    return [x.model_dump(mode="json") for x in store.list_logs(limit, level, component)]
+
+
 @app.post("/api/hypotheses")
-async def create_hypothesis(request: HypothesisCreate): return store.create_hypothesis(request, int(time.time() * 1000)).model_dump(mode="json")
+async def create_hypothesis(request: HypothesisCreate):
+    return store.create_hypothesis(request, int(time.time() * 1000)).model_dump(mode="json")
 
 
 @app.get("/api/hypotheses")
-async def list_hypotheses(limit: int = Query(100, ge=1, le=500)): return [x.model_dump(mode="json") for x in store.list_hypotheses(limit)]
+async def list_hypotheses(limit: int = Query(100, ge=1, le=500)):
+    return [x.model_dump(mode="json") for x in store.list_hypotheses(limit)]
 
 
 def main() -> None:
     uvicorn.run("tqs_intelligence.api:app", host=os.getenv("TQS_HOST", "127.0.0.1"), port=int(os.getenv("TQS_PORT", "8787")), reload=False)
 
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
