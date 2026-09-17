@@ -66,6 +66,8 @@ jobs:
       - name: Compile
         run: python -m compileall -q src
       - name: API import
-        run: python -c "from tqs_intelligence.api import app; assert app.version == '0.4.0'; print('API import PASS', app.version)"
+        run: python -c "from tqs_intelligence.api import app; assert app.version == '0.5.0'; print('API import PASS', app.version)"
       - name: Dashboard JavaScript syntax
-        run: node --check src/tqs_intelligence/static/app.js
+        run: |
+          node --check src/tqs_intelligence/static/app.js
+          node --check src/tqs_intelligence/static/account-intelligence.js
