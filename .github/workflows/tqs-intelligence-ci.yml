@@ -111,6 +111,7 @@ jobs:
           node --check src/tqs_intelligence/static/cockpit_metrics.js
           node --check src/tqs_intelligence/static/cockpit_context.js
           node --check src/tqs_intelligence/static/cockpit_activity.js
+          node --check src/tqs_intelligence/static/cockpit_ai.js
           node --check src/tqs_intelligence/static/v07.js
           node --check src/tqs_intelligence/static/app.js
       - name: Instrument-first cockpit HTML contract
@@ -120,9 +121,11 @@ jobs:
           grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.css' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_activity.css' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_ai.css' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.js' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_context.js' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_activity.js' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_ai.js' src/tqs_intelligence/static/index.html
           grep -q 'researchJobs' src/tqs_intelligence/static/index.html
           grep -q 'systemLogs' src/tqs_intelligence/static/index.html
           grep -q 'Публичные позиции' src/tqs_intelligence/static/cockpit.js
@@ -133,15 +136,21 @@ jobs:
           grep -q 'metricLakePanel' src/tqs_intelligence/static/cockpit_context.js
           grep -q 'Что машина сделала' src/tqs_intelligence/static/cockpit_activity.js
           grep -q 'AUTO METRICS' src/tqs_intelligence/static/cockpit_activity.js
+          grep -q 'TQS_INSTRUMENT_AI_PACK_V1' src/tqs_intelligence/static/cockpit_ai.js
+          grep -q 'AI ПАКЕТ' src/tqs_intelligence/static/cockpit_ai.js
           ! grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
           echo 'Instrument-first cockpit contract PASS'
       - name: Derivative metric contract
         run: |
           python - <<'PY'
+          from tqs_intelligence.bybit_metrics import BybitLongHistoryBackfiller
           from tqs_intelligence.derivative_metrics import parse_binance_funding, parse_bybit_funding, parse_bybit_open_interest, parse_moex_futoi
+          assert BybitLongHistoryBackfiller.OI_INTERVAL == '1h'
+          assert 1 <= BybitLongHistoryBackfiller.MAX_OI_PAGES <= 500
+          assert 1 <= BybitLongHistoryBackfiller.MAX_FUNDING_PAGES <= 250
           pts=parse_binance_funding([{'symbol':'BTCUSDT','fundingRate':'0.0001','fundingTime':1700000000000}], 'binance:usdt-futures:BTCUSDT')
           assert pts and pts[0].metric=='funding_rate'
-          b=parse_bybit_open_interest([{'symbol':'BTCUSDT','openInterest':'100','timestamp':'1700000000000','intervalTime':'5min'}], 'bybit:linear:BTCUSDT')
+          b=parse_bybit_open_interest([{'symbol':'BTCUSDT','openInterest':'100','timestamp':'1700000000000','intervalTime':'1h'}], 'bybit:linear:BTCUSDT')
           assert b and b[0].provider=='bybit' and b[0].metric=='open_interest'
           f=parse_bybit_funding([{'symbol':'BTCUSDT','fundingRate':'0.0001','fundingRateTimestamp':'1700000000000'}], 'bybit:linear:BTCUSDT')
           assert f and f[0].metric=='funding_rate'
@@ -166,10 +175,12 @@ jobs:
         run: |
           python - <<'PY'
           from tqs_intelligence.history_autopilot import START_2021_MS, BUCKET_QUOTAS
-          from tqs_intelligence.metric_autopilot import BYBIT_LINEAR_QUOTA
+          from tqs_intelligence.metric_autopilot import METRIC_QUOTAS
           assert START_2021_MS == 1609459200000
           assert ('binance','usdt-futures') in BUCKET_QUOTAS
           assert ('moex','forts') in BUCKET_QUOTAS
-          assert BYBIT_LINEAR_QUOTA >= 20
+          assert METRIC_QUOTAS[('binance','usdt-futures')] >= 20
+          assert METRIC_QUOTAS[('bybit','linear')] >= 20
+          assert METRIC_QUOTAS[('moex','forts')] >= 1
           print('Autopilot contract PASS')
           PY
