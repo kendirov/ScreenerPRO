@@ -2,9 +2,6 @@ name: Chat-first Verification
 
 on:
   pull_request:
-  push:
-    branches:
-      - 'chat/**'
   workflow_dispatch:
 
 permissions:
@@ -51,6 +48,7 @@ jobs:
           name: fast-evidence-${{ github.sha }}
           path: .verification/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
       - name: Enforce FAST result
         if: steps.verify.outcome != 'success'
@@ -90,6 +88,7 @@ jobs:
           name: full-evidence-${{ github.sha }}
           path: .verification/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
       - name: Enforce FULL result
         if: steps.verify.outcome != 'success'

@@ -19,6 +19,18 @@ if [[ "$RUN_TQS" == "1" ]]; then
   python -m pytest -q tqs-intelligence/tests | tee .verification/fast/tqs-pytest.log
   python -m compileall -q tqs-intelligence/src
 
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -Command '$files=@("tqs-intelligence/update-windows.ps1","tqs-intelligence/install-windows.ps1","tqs-intelligence/start-windows.ps1");foreach($file in $files){$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file),[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count -gt 0){$errors|ForEach-Object{Write-Error "$file : $($_.Message)"};exit 1}};Write-Host "PowerShell scripts syntax PASS"'
+  fi
+
+  python -m py_compile tqs-intelligence/src/tqs_intelligence/launcher.py
+  grep -q 'TQS Launcher' tqs-intelligence/TQS-Launcher.cmd
+  grep -q 'TQS-Launcher.cmd' tqs-intelligence/start-windows.cmd
+  grep -q 'tqs-launcher' tqs-intelligence/pyproject.toml
+  grep -q 'LOCAL BUILD' tqs-intelligence/src/tqs_intelligence/launcher.py
+  grep -q 'REMOTE BUILD' tqs-intelligence/src/tqs_intelligence/launcher.py
+  grep -q 'АКТУАЛЬНАЯ ВЕРСИЯ' tqs-intelligence/src/tqs_intelligence/launcher.py
+
   TQS_DB_PATH="$PWD/.verification/fast/runtime/tqs.duckdb" \
   TQS_LAB_DB_PATH="$PWD/.verification/fast/runtime/tqs-lab.sqlite3" \
   TQS_ACCOUNTS_DB_PATH="$PWD/.verification/fast/runtime/tqs-accounts.sqlite3" \
@@ -30,20 +42,35 @@ from importlib.metadata import version
 from tqs_intelligence.api import app
 assert version('tqs-intelligence') == app.version, (version('tqs-intelligence'), app.version)
 paths = {route.path for route in app.routes}
-required = {'/api/health', '/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/strategies', '/api/research/findings', '/api/briefing'}
+required = {'/api/health', '/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing'}
 missing = required - paths
 assert not missing, missing
 print('TQS API contract PASS', app.version)
 PY
 
+  node --check tqs-intelligence/src/tqs_intelligence/static/v07.js
   node --check tqs-intelligence/src/tqs_intelligence/static/app.js
-  node --check tqs-intelligence/src/tqs_intelligence/static/account-intelligence.js
+  grep -q 'MARKET RESEARCH OS · v0.7' tqs-intelligence/src/tqs_intelligence/static/index.html
   grep -q 'UNIVERSAL INSTRUMENT LAB' tqs-intelligence/src/tqs_intelligence/static/index.html
   grep -q 'ПУЛЬС МАШИНЫ' tqs-intelligence/src/tqs_intelligence/static/index.html
-  grep -q 'Обновить продукт' tqs-intelligence/src/tqs_intelligence/static/index.html
-  if command -v pwsh >/dev/null 2>&1; then
-    pwsh -NoProfile -Command '$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "tqs-intelligence/update-windows.ps1"),[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count -gt 0){$errors|ForEach-Object{Write-Error $_.Message};exit 1}'
-  fi
+  grep -q 'Авторазведка публичных счетов' tqs-intelligence/src/tqs_intelligence/static/index.html
+  grep -q 'Идеи, которые мы делаем через GPT' tqs-intelligence/src/tqs_intelligence/static/index.html
+
+  python - <<'PY'
+from tqs_intelligence.account_discovery import score_leaderboard_row, HyperliquidLeaderboardDiscovery
+assert 'hyperliquid.xyz' in HyperliquidLeaderboardDiscovery.URL
+score, reasons, metrics = score_leaderboard_row({
+    'accountValue':'100000',
+    'windowPerformances':[
+        ['day', {'pnl':'100','roi':'0.01','vlm':'10000'}],
+        ['week', {'pnl':'1000','roi':'0.05','vlm':'100000'}],
+        ['month', {'pnl':'5000','roi':'0.1','vlm':'500000'}],
+        ['allTime', {'pnl':'10000','roi':'0.5','vlm':'1000000'}],
+    ],
+})
+assert score > 0 and reasons and metrics['equity'] == 100000
+print('Account discovery contract PASS')
+PY
 fi
 
 if [[ "$RUN_FRONTEND" == "1" ]]; then

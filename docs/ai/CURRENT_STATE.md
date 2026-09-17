@@ -7,34 +7,41 @@ Updated: 2026-09-17
 - Repository: `kendirov/ScreenerPRO`
 - Active TQS product PR: `#11` — `TQS Intelligence v0.5 — autonomous market, account and strategy research machine`
 - Product branch: `codex/tqs-intelligence-engine-v0-1-2026-09-17`
-- Product head at harness start: `1370dc3e1b523f2ad7a8457b44c78e6a29a9e5df`
-- TQS package/runtime reports version `0.6.0`.
+- Product head incorporated by this harness merge: `0a1870aa07dbdd4ca145b904b360d0c3db936dc4`
+- Current TQS package version at that head: `0.8.0`.
 
 ## Active development-system task
 
-Build the Chat-first development harness on top of the current TQS head instead of stale `main`.
-
-Harness branch: `chat/chat-first-development-harness-2026-09-17`
+PR `#14`, branch `chat/chat-first-development-harness-2026-09-17`, installs the Chat-first development harness on the live TQS line.
 
 Acceptance:
 
-- ordinary Chat is the default execution route in repo guidance;
+- ordinary Chat is the default execution route;
 - Work/Codex/Cursor are capability-gap escalation only;
-- GitHub Actions provide FAST and FULL deterministic execution;
-- UI/runtime verification can produce browser screenshot/JSON evidence;
+- GitHub Actions provide FAST and FULL deterministic execution plus browser evidence;
 - security checks are separate and machine-run;
 - external/live-provider checks are separate from deterministic merge gates;
 - evidence is machine-readable and tied to the tested SHA;
-- old stale `AI_SESSION_STATE.md` becomes a compatibility pointer.
+- old append-only `AI_SESSION_STATE.md` is a compatibility pointer;
+- newest TQS automatic-first product rules remain authoritative.
 
-## Product context
+## Drift incorporated
 
-For TQS product semantics use `tqs-intelligence/AGENTS.md` and its progressive-disclosure links. Do not reconstruct TQS from the old root `PROJECT_CONTEXT.md` unless a task specifically needs legacy ScreenerPRO context.
+The harness merge incorporates the current TQS head instead of leaving branch drift for the owner to resolve. New product work on the base — including launcher/runtime changes and the latest anomaly-noise tests — stays in the tree. Harness FAST/FULL run the full TQS test suite, so current product tests are part of the verification target.
+
+## Automatic-first continuity
+
+For TQS, `tqs-intelligence/AGENTS.md` remains the product contract:
+
+- discover/derive automatically before asking for manual owner input;
+- GPT/chat is the primary product-development input; manual controls are escape hatches;
+- primary screens explain what is happening, why it is shown and what the machine does next;
+- preserve research, provenance and evidence boundaries.
 
 ## Current verification status
 
-`IN PROGRESS` — harness files are being installed. Do not claim VERIFIED PASS until the new branch's GitHub Actions evidence is green.
+`IN PROGRESS` — the previous PR head's FAST verification logic passed its tests/contracts, but the job failed only when `upload-artifact` excluded the hidden `.verification/` directory. The rebuilt workflow explicitly uploads hidden evidence files and removes duplicate push+PR runs. Do not claim `VERIFIED PASS` until the final PR head has green FAST/FULL and relevant security evidence.
 
 ## Next action
 
-Run the new Chat-first FAST/FULL/security gates on the harness PR, repair any failures, then update this file with the final verified SHA and evidence.
+Run the rebuilt PR checks, inspect the first meaningful failure if any, repair the root cause, and repeat until the final PR head satisfies `docs/ai/VERIFICATION.md`.

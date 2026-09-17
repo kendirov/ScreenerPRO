@@ -1,3 +1,2 @@
 @echo off
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0start-windows.ps1"
-pause
+call "%~dp0TQS-Launcher.cmd"
