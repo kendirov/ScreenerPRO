@@ -39,7 +39,7 @@ if [[ "$RUN_TQS" == "1" ]]; then
     --expect 'TQS Intelligence' --expect 'ПУЛЬС МАШИНЫ' --expect 'Обновить продукт' \
     --screenshot .verification/full/tqs-browser/desktop.png
   python scripts/ci/browser_smoke.py http://127.0.0.1:8765/ \
-    --expect 'TQS Intelligence' --expect 'Сейчас в игре' \
+    --expect 'TQS Intelligence' --expect 'Рынок сейчас' \
     --viewport-width 390 --viewport-height 844 \
     --screenshot .verification/full/tqs-browser/mobile.png
   python -m pip check | tee .verification/full/tqs-pip-check.txt
