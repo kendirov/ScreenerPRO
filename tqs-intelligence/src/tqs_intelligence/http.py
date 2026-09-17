@@ -5,13 +5,15 @@ from typing import Any
 
 import httpx
 
+from . import __version__
+
 
 class JsonHttp:
     def __init__(self, timeout_s: float = 10.0, concurrency: int = 8) -> None:
         self._client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout_s),
             follow_redirects=True,
-            headers={"User-Agent": "TQS-Intelligence/0.7 (+market-research)"},
+            headers={"User-Agent": f"TQS-Intelligence/{__version__} (+market-research)"},
         )
         self._sem = asyncio.Semaphore(concurrency)
 
