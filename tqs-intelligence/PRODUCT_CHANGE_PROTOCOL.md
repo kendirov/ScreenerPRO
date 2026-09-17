@@ -1,16 +1,18 @@
 # TQS PRODUCT CHANGE PROTOCOL
 
-Goal: make TQS one continuously improving product where Artem can describe an idea in ordinary Russian, AI implements/researches it, and the local terminal receives it through the Update button.
+Goal: make TQS one continuously improving product where Artem can describe an idea in ordinary Russian, ordinary ChatGPT performs the maximum feasible implementation directly through GitHub/CI/plugins, and the local terminal receives it through the Update button.
 
 ## Owner workflow
 
-`идея Артёма -> Idea Inbox -> classify -> design -> implement/research -> tests -> commit -> Update -> healthcheck -> available in same TQS`
+`идея Артёма -> resolve true outcome -> latest repo/runtime state -> implement/research in same product -> deterministic checks -> commit/checkpoint -> runtime/UI proof -> Update -> healthcheck -> available in same TQS`
 
-Artem should not need to decide repository paths, worker topology or model routing.
+Artem should not need to decide repository paths, worker topology, model routing, terminal commands or which plugin to use.
+
+Default execution route = ordinary ChatGPT. Work/Codex/Cursor are escalation only for a concrete capability gap that cannot be closed by GitHub Actions, connected plugins, deployment/runtime APIs or a small observable bridge.
 
 ## Idea classes
 
-Every idea must be classified into one or more of:
+Every idea must be classified internally into one or more of:
 
 - `anomaly` — new abnormal-state detector/feature;
 - `research` — hypothesis/event study/relationship;
@@ -20,22 +22,50 @@ Every idea must be classified into one or more of:
 - `briefing` — briefing/presentation/course transformation;
 - `system` — reliability/storage/performance/update/control.
 
-Preserve the original raw wording forever and link all derived tasks/results to it.
+The owner does not need to fill a form to classify an idea. Preserve the original wording only when it creates durable value and link derived tasks/results to it.
 
 ## Automatic AI design pass
 
 Before implementation AI should answer internally:
 
-1. What is the actual user outcome?
-2. Is it live intelligence, research, strategy, source, UI or several layers?
-3. What data is required and do we have it?
-4. What can be deterministic and what, if anything, needs an LLM?
-5. What can create lookahead/data-mining bias?
-6. How is success verified objectively?
-7. How does it appear in the existing Russian UI?
-8. What must be persisted for future AI/research?
-9. What is the cheapest robust implementation?
-10. Can existing components/data be reused?
+1. What is the actual owner outcome?
+2. What current product/repo/runtime state is freshest?
+3. Is it live intelligence, research, strategy, source, UI or several layers?
+4. What data is required and do we have it?
+5. What can be deterministic and what, if anything, needs an LLM?
+6. What can create lookahead/data-mining bias?
+7. How is success verified objectively end-to-end?
+8. How does it appear in the existing Russian UI?
+9. What must be persisted for future AI/research?
+10. What is the cheapest robust implementation?
+11. Can existing components/data be reused?
+12. What small runtime/CI bridge would avoid a Work/Codex escalation?
+
+## Checkpoint-first execution
+
+A long Chat turn is not persistence. GitHub is the recovery point.
+
+For substantial work:
+
+`logical slice -> commit/push -> FAST -> repair -> checkpoint -> next slice -> FULL -> runtime/UI proof`
+
+Prefer one observable product slice or 1–5 tightly related files before checkpointing. Avoid both extremes: one commit per trivial edit and dozens of unverified files held until the end.
+
+If the Chat/tool run stops, the next turn starts from latest branch/PR/HEAD/checks and affected files, not from a full rediscovery.
+
+## Product pass, not scaffold
+
+A primary feature is incomplete until the critical path exists:
+
+`source/input -> processing -> persisted state -> owner-facing result -> observable action/insight`
+
+The following are PARTIAL/scaffold, even with green CI:
+- empty owner screen with only a manual form when data can be auto-discovered;
+- API endpoint without visible useful result;
+- strategy definition that has never run;
+- Update button without a proven update/restart/health path;
+- dashboard counters without clear semantic stage/owner value;
+- background process without observable heartbeat/progress/output.
 
 ## Market-research gate
 
@@ -59,11 +89,14 @@ AI may suggest an edge but deterministic code decides statistics.
 Any owner-facing change must have:
 
 - Russian labels/explanations;
-- loading/empty/error/stale states;
+- loading/empty/error/stale/offline states;
 - source/quality visibility where relevant;
 - `ПОЧЕМУ ПОКАЗАНО` for promoted market items;
 - useful chart/drill-down when time series matter;
-- no new standalone product unless architecture explicitly requires it.
+- no new standalone product unless architecture explicitly requires it;
+- 5–20 second clarity: `что происходит / почему / что машина делает дальше`.
+
+Runtime/activity UI must obey `MACHINE_ACTIVITY_CONTRACT.md`. CPU/RAM, open browser page, cached data or old logs are never enough to claim that autonomous work is currently running.
 
 ## Data-source gate
 
@@ -90,23 +123,28 @@ Before a commit is considered update-ready:
 - update path remains fast-forward safe;
 - health endpoint remains healthy;
 - rollback path remains possible;
-- docs/AI context updated if product behavior changed.
+- docs/AI context updated if product behavior changed;
+- for local/Windows behavior, CI evidence is supplemented by Launcher/runtime evidence when applicable;
+- version + local commit + remote commit are observable.
 
 ## Update button contract
 
-The local UI Update button is the normal owner deployment mechanism.
+The Launcher/Update control is the normal owner deployment mechanism. The Web product may expose update status but should not be the only process capable of replacing/restarting itself.
 
 Supervisor behavior:
 
 1. check Git upstream;
-2. refuse update if worktree is dirty;
-3. defer while heavy research is running unless explicitly forced;
-4. fast-forward only;
-5. reinstall dependencies;
-6. restart TQS;
-7. healthcheck;
-8. rollback to old commit on failed healthcheck;
-9. never delete `data/`, configured Data Lake or exported snapshots.
+2. show local/remote commit and dirty-state reason;
+3. refuse/descope update if worktree has meaningful local changes;
+4. defer while heavy research is running unless explicitly forced;
+5. fast-forward only;
+6. reinstall dependencies when required;
+7. restart TQS;
+8. healthcheck the new runtime instance;
+9. rollback to old commit on failed healthcheck;
+10. never delete `data/`, configured Data Lake or exported snapshots.
+
+Windows-specific update/runtime behavior should be tested for CRLF/LF, quoting, locked files/process ownership, updater self-replacement and sleep/hibernation where relevant.
 
 ## Machine-origin ideas
 
@@ -134,16 +172,18 @@ Each machine idea should include:
 
 - system/version/config summary without secrets;
 - source health;
+- runtime identity/activity summary and latest meaningful activity ledger;
 - current Market Snapshot;
 - anomaly episodes and selected chart series;
 - research findings;
 - ideas/jobs;
 - StrategySpecs and run summaries;
 - relationships;
+- account intelligence summary;
 - briefing snapshot;
 - logs/errors;
 - Data Lake manifest/checksums/coverage;
-- AI_READ_ME pointing to `AI_OPERATING_CONTEXT.md`, `MOEX_DATA_MATRIX.md` and this protocol.
+- AI_READ_ME pointing to `AI_OPERATING_CONTEXT.md`, `MACHINE_ACTIVITY_CONTRACT.md`, `MOEX_DATA_MATRIX.md` and this protocol.
 
 This package may be copied to a configured Google Drive Desktop folder automatically.
 
@@ -155,4 +195,4 @@ The owner can say something like:
 
 and the product evolves without creating a separate workflow:
 
-`idea -> formal StrategySpec/research -> historical data -> event/control study -> results/charts -> saved knowledge -> optional detector/screener -> Update button -> same TQS terminal`.
+`idea -> formal StrategySpec/research -> historical data -> event/control study -> results/charts -> saved knowledge -> optional detector/screener -> Update -> runtime proof -> same TQS terminal`.
