@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tqs-intelligence"
-version = "0.1.0"
+version = "0.2.0"
 description = "TraderQuest Intelligence Engine: multi-market collection, anomaly discovery, research queue and Russian dashboard."
 requires-python = ">=3.12"
 dependencies = [
