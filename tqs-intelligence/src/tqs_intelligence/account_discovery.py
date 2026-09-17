@@ -188,7 +188,7 @@ class HyperliquidLeaderboardDiscovery:
     URL = 'https://stats-data.hyperliquid.xyz/Mainnet/leaderboard'; source = 'hyperliquid-leaderboard'
     def __init__(self, http: JsonHttp) -> None: self.http = http
     async def fetch(self) -> list[dict[str, Any]]:
-        payload = await self.http.get_json(self.URL)
+        payload = await self.http.get_json(self.URL, timeout_s=60)
         rows = (payload.get('leaderboardRows') or payload.get('rows') or payload.get('data') or []) if isinstance(payload, dict) else payload
         return [x for x in (rows or []) if isinstance(x, dict)]
 
