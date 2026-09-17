@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from .account_intelligence import AccountIntelStore
 from .control import ControlCenter
 from .lab_store import LabStore
 from .lake import DataLake
@@ -18,17 +19,19 @@ def _dump(path: Path, payload: Any) -> None:
 
 
 class SnapshotExporter:
-    def __init__(self, store: DuckStore, lab: LabStore, control: ControlCenter, lake: DataLake, db_path: str) -> None:
-        self.store=store; self.lab=lab; self.control=control; self.lake=lake; self.db_path=Path(db_path)
+    def __init__(self, store: DuckStore, lab: LabStore, control: ControlCenter, lake: DataLake, db_path: str,
+                 account_store: AccountIntelStore | None = None) -> None:
+        self.store=store; self.lab=lab; self.control=control; self.lake=lake; self.db_path=Path(db_path); self.account_store=account_store
 
     def export(self, *, runtime: dict[str,Any], research_runtime: dict[str,Any], snapshot: Any,
                relationships: list[Any], full: bool=False) -> dict[str,Any]:
         stamp=time.strftime('%Y%m%d-%H%M%S'); package=self.lake.exports_root/f'TQS-SNAPSHOT-{stamp}'
         package.mkdir(parents=True,exist_ok=False)
         manifest={
-            'format':'TQS_SNAPSHOT_V1','created_at_ms':int(time.time()*1000),'full':full,
+            'format':'TQS_SNAPSHOT_V2','created_at_ms':int(time.time()*1000),'full':full,
             'control':self.control.status(),'runtime':runtime,'research_runtime':research_runtime,
             'storage':self.store.stats(),'lab':self.lab.stats(),'data_lake':self.lake.verify(),
+            'account_intelligence':self.account_store.stats() if self.account_store else None,
             'purpose_ru':'Переносимый снимок TQS: резервная копия, анализ ChatGPT/Work и воспроизводимость решений.',
         }
         _dump(package/'manifest.json',manifest)
@@ -42,11 +45,20 @@ class SnapshotExporter:
         _dump(package/'strategy_runs.json',[x.model_dump(mode='json') for x in self.lab.list_strategy_runs(limit=5000)])
         _dump(package/'relationships.json',[x.model_dump(mode='json') if hasattr(x,'model_dump') else x for x in relationships])
         _dump(package/'runtime_logs.json',[x.model_dump(mode='json') for x in self.store.list_logs(limit=5000)])
+        if self.account_store:
+            _dump(package/'tracked_accounts.json',[x.model_dump(mode='json') for x in self.account_store.list_tracked()])
+            _dump(package/'account_profiles.json',self.account_store.profiles())
+            _dump(package/'open_positions.json',self.account_store.current_positions(limit=5000))
+            fills={}
+            for acct in self.account_store.list_tracked():
+                fills[f'{acct.source}:{acct.account_id}']=self.account_store.recent_fills(acct.source,acct.account_id,2000)
+            _dump(package/'account_recent_fills.json',fills)
         _dump(package/'AI_READ_ME.json',{
             'role_ru':'Ты — исследователь/архитектор Trading QS. Этот пакет содержит фактическое состояние локальной TQS-машины.',
             'rules_ru':[
                 'Отделяй FACT / AUTHOR OBSERVATION / AI HYPOTHESIS / PATTERN / RULE / UNKNOWN.',
                 'Не называй найденную корреляцию торговым edge без control, OOS, walk-forward, costs и достаточного N.',
+                'Не приписывай публичному счёту мотив или стоп как факт: сначала синхронизируй fills/positions с рыночной историей.',
                 'Предлагай улучшения программы, источников, аномалий, StrategySpec, графиков и briefing как проверяемые изменения.',
                 'Сначала ищи дефекты данных и альтернативные объяснения; отрицательный результат сохраняй как знание.',
             ],
@@ -54,6 +66,7 @@ class SnapshotExporter:
                 'Что система нашла действительно необычного?',
                 'Какие аномалии похожи на места потенциального начала движения?',
                 'Какие дополнительные признаки усиливают или ослабляют эти эффекты?',
+                'Какие публичные счета изменили позиции и как их действия совпадают с market state?',
                 'Какие стратегии/исследования поставить в очередь следующими?',
                 'Какие источники, признаки, графики и интерфейсные поверхности отсутствуют?',
                 'Что можно сделать дешевле, быстрее, надёжнее и автономнее?'
