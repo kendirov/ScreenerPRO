@@ -7,5 +7,5 @@ if not exist "%~dp0.venv\Scripts\pythonw.exe" (
   pause
   exit /b 1
 )
-start "TQS Launcher" "%~dp0.venv\Scripts\pythonw.exe" -m tqs_intelligence.launcher
+start "TQS Launcher" "%~dp0.venv\Scripts\pythonw.exe" -m tqs_intelligence.launcher_entry
 exit /b 0

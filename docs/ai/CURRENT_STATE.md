@@ -7,8 +7,8 @@ Updated: 2026-09-17
 - Repository: `kendirov/ScreenerPRO`
 - Active TQS product PR: `#11` — `TQS Intelligence v0.5 — autonomous market, account and strategy research machine`
 - Product branch: `codex/tqs-intelligence-engine-v0-1-2026-09-17`
-- Product head incorporated by this harness merge: `0a1870aa07dbdd4ca145b904b360d0c3db936dc4`
-- Current TQS package version at that head: `0.8.0`.
+- Product head incorporated by this harness merge: `fd66ae0f6095004b865b65683b5a0350b3cd026a`
+- Current TQS package version at that head: `0.9.0`.
 
 ## Active development-system task
 
@@ -27,7 +27,7 @@ Acceptance:
 
 ## Drift incorporated
 
-The harness merge incorporates the current TQS head instead of leaving branch drift for the owner to resolve. New product work on the base — including launcher/runtime changes and the latest anomaly-noise tests — stays in the tree. Harness FAST/FULL run the full TQS test suite, so current product tests are part of the verification target.
+The harness merge incorporates the current TQS head instead of leaving branch drift for the owner to resolve. New launcher-entry/runtime/product/research changes remain in the tree. Harness FAST/FULL run the full TQS test suite and current product contracts, so current product tests are part of the verification target.
 
 ## Automatic-first continuity
 
@@ -40,7 +40,7 @@ For TQS, `tqs-intelligence/AGENTS.md` remains the product contract:
 
 ## Current verification status
 
-`IN PROGRESS` — the previous PR head's FAST verification logic passed its tests/contracts, but the job failed only when `upload-artifact` excluded the hidden `.verification/` directory. The rebuilt workflow explicitly uploads hidden evidence files and removes duplicate push+PR runs. Do not claim `VERIFIED PASS` until the final PR head has green FAST/FULL and relevant security evidence.
+`IN PROGRESS` — the previous PR head's FAST verification logic passed its tests/contracts, but the job failed only when `upload-artifact` excluded the hidden `.verification/` directory. The rebuilt workflow explicitly uploads hidden evidence files and removes duplicate push+PR runs. Do not claim final verification until the final PR head has green FAST/FULL and relevant security evidence.
 
 ## Next action
 
