@@ -80,13 +80,16 @@ jobs:
         run: python -m compileall -q src
       - name: Launcher contract
         run: |
-          python -m py_compile src/tqs_intelligence/launcher.py
+          python -m py_compile src/tqs_intelligence/launcher.py src/tqs_intelligence/launcher_entry.py
           grep -q 'TQS Launcher' TQS-Launcher.cmd
+          grep -q 'launcher_entry' TQS-Launcher.cmd
           grep -q 'TQS-Launcher.cmd' start-windows.cmd
-          grep -q 'tqs-launcher' pyproject.toml
+          grep -q 'launcher_entry:main' pyproject.toml
           grep -q 'LOCAL BUILD' src/tqs_intelligence/launcher.py
           grep -q 'REMOTE BUILD' src/tqs_intelligence/launcher.py
           grep -q 'АКТУАЛЬНАЯ ВЕРСИЯ' src/tqs_intelligence/launcher.py
+          grep -q 'SetThreadExecutionState' src/tqs_intelligence/launcher_entry.py
+          grep -q 'Backend OFFLINE — запускаю автоматически' src/tqs_intelligence/launcher_entry.py
           echo 'Launcher contract PASS'
       - name: API import and trader surface contract
         run: |
