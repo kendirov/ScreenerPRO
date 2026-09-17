@@ -4,6 +4,8 @@ from tqs_intelligence.derivative_metrics import (
     parse_binance_basis,
     parse_binance_funding,
     parse_binance_open_interest,
+    parse_bybit_funding,
+    parse_bybit_open_interest,
     parse_moex_futoi,
 )
 from tqs_intelligence.metric_lake import MetricLake, MetricPoint
@@ -21,6 +23,10 @@ def test_metric_lake_round_trip(tmp_path: Path):
     assert len(result) == 2
     assert result[0]["value"] == 0.0001
     assert lake.count(cid, "funding_rate") == 2
+    bounds = lake.bounds(cid, "funding_rate")
+    assert bounds["rows"] == 2
+    assert bounds["first_ms"] == 1_700_000_000_000
+    assert bounds["last_ms"] == 1_700_028_800_000
 
 
 def test_binance_metric_parsers_keep_units_and_limits():
@@ -42,6 +48,27 @@ def test_binance_metric_parsers_keep_units_and_limits():
     ], cid)
     assert "basis_rate" in {x.metric for x in basis}
     assert "basis" in {x.metric for x in basis}
+
+
+def test_bybit_parsers_keep_provider_specific_provenance():
+    cid = "bybit:linear:BTCUSDT"
+    oi = parse_bybit_open_interest([
+        {"symbol": "BTCUSDT", "openInterest": "12345.67", "timestamp": "1700000000000", "intervalTime": "5min"}
+    ], cid)
+    assert len(oi) == 1
+    assert oi[0].provider == "bybit"
+    assert oi[0].metric == "open_interest"
+    assert oi[0].source == "bybit-v5-open-interest"
+    assert oi[0].meta["interval"] == "5min"
+
+    funding = parse_bybit_funding([
+        {"symbol": "BTCUSDT", "fundingRate": "0.00012", "fundingRateTimestamp": "1700000000000"}
+    ], cid)
+    assert len(funding) == 1
+    assert funding[0].provider == "bybit"
+    assert funding[0].metric == "funding_rate"
+    assert funding[0].unit == "ratio"
+    assert funding[0].source == "bybit-v5-funding-history"
 
 
 def test_moex_futoi_parser_preserves_raw_short_and_normalizes_display_magnitude():
