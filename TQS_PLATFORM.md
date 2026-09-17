@@ -173,3 +173,67 @@ Owner command can remain short:
 `Нам нужен продукт/изменение: <цель>.`
 
 The AI must infer the TQS module, continue the existing system, work Chat-first where tools allow, verify the result and leave a resumable checkpoint.
+
+## 12. Runtime topology — who runs what
+
+TQS is a distributed system even while most compute is local. The nodes have different roles and must not be treated as interchangeable copies.
+
+### Windows TQS Runtime Node — current primary compute/data node
+The current office Windows workstation is the primary always-on-ish local TQS node.
+It runs:
+- TQS Launcher and supervisor;
+- TQS Intelligence backend;
+- market/news/account collectors;
+- local DuckDB/SQLite control state;
+- Parquet Data Lake and heavy history;
+- research/replay/Strategy Machine workers;
+- local `127.0.0.1` cockpit during development.
+
+This node owns **local operational truth**. If it is off, ChatGPT or a web page cannot honestly claim local collection is continuing.
+
+Do not hardcode volatile hardware specs into platform contracts. Resource telemetry and storage paths come from runtime diagnostics because disks/RAM/machine roles can change.
+
+### ChatGPT / AI Orchestrator — reasoning and development node
+ChatGPT is an external reasoning/orchestration surface, not the always-on TQS process.
+It can read/write Drive/GitHub and use connected tools, design/research/implement changes and interpret compact TQS exports. It does not have implicit access to the Windows process or local disk. Runtime knowledge requires an explicit bridge such as API access, deployment connector or SUPPORT snapshot.
+
+### GitHub — code distribution and verification node
+GitHub stores public-safe code/contracts and provides CI. Launcher pulls verified versions from GitHub. GitHub Actions proves deterministic code contracts but cannot by itself prove that Artem's Windows runtime is healthy right now.
+
+### Google Drive — human/knowledge node
+Drive stores durable human-readable goals, decisions, observations, cases and content. It is not the raw Data Lake and does not prove runtime health.
+
+### TQS Screener / Web node
+The web/Cockpit layer is a presentation/action client. During local development it may call local TQS APIs. A future cloud web surface must consume an authenticated safe bridge/sync layer; do not expose an unauthenticated local `8787` port to the public Internet.
+
+### Optional Mac / other operator devices
+Other devices can be AI/research/monitoring clients through Drive/GitHub/web. They are not canonical compute nodes unless explicitly promoted and given a runtime identity.
+
+## 13. Integration bridges
+
+Use named, observable bridges so a failure is diagnosable.
+
+### CODE BRIDGE
+`GitHub → Launcher → local install/update → healthcheck → rollback on failure`
+
+### RUNTIME SUPPORT BRIDGE
+`Local TQS → TQS_SNAPSHOT_V3 SUPPORT_REDACTED → ChatGPT/support`
+
+### KNOWLEDGE BRIDGE
+`validated runtime/research result → compact knowledge object/case with TQS IDs + provenance → Google Drive`
+
+This bridge must be selective: raw candles/ticks/log spam do not go to Drive.
+
+### COCKPIT BRIDGE
+`TQS Intelligence canonical API/snapshots → TQS Screener/Cockpit`
+
+The Cockpit consumes results; it must not create a parallel definition of anomalies, instruments or research statistics.
+
+### FUTURE CLOUD/SYNC BRIDGE
+Prefer an authenticated outbound sync/publish mechanism from the local node to a private control/data plane rather than opening the local workstation for inbound public access. Sync only the data needed for remote views/actions, with explicit freshness and provenance.
+
+## 14. Failure-domain rule
+
+Each bridge/module reports its own health. A green GitHub CI does not mean Windows is online; an online Launcher does not mean all market sources are fresh; a loaded web page does not mean research is running; a Drive document does not mean code was deployed.
+
+The owner-facing system should eventually show one unified status assembled from these distinct truths rather than collapsing them into one green/red dot.
