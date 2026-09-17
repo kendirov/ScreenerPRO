@@ -1,86 +1,152 @@
-# AI_SESSION_STATE — Лаборатория рынка
+# AI_SESSION_STATE — TQS PLATFORM
 
----
+Status: ACTIVE RESUME STATE — 2026-09-17
 
-## Текущая задача
+> Do not treat a hardcoded SHA in a state file as fresher than Git itself. On every new session verify the current branch/PR/CI/runtime first.
 
-**Bitget private read-only bridge v1** (2026-08-18)
+## 1. Current product
 
-Цель: добавить к существующему Bitget public terminal безопасный server-only доступ к личному UTA аккаунту без торговых POST-запросов.
+TQS (Trading QS) is the umbrella platform. The GitHub repository is still named `kendirov/ScreenerPRO` for historical reasons and currently acts as the TQS monorepo.
 
-Ветка: `codex/bitget-private-readonly-v1-2026-08-18`.
+Canonical module map: `TQS_PLATFORM.md`.
+AI front door: `START_HERE_FOR_AI.md`.
+Product vision: `PRODUCT_VISION.md`.
 
-Сделано:
+## 2. Active TQS development line
 
-- `frontend/lib/server/services/bitget-private.ts` — HMAC-SHA256/Base64 signing по UTA v3;
-- `GET /api/bitget/private/account` — preview-only read snapshot;
-- читаются account info, account assets, funding assets, open orders и текущие позиции USDT/USDC/COIN futures;
-- секреты берутся только из server env: `BITGET_API_KEY`, `BITGET_API_SECRET`, `BITGET_API_PASSPHRASE`;
-- значения секретов не записываются в GitHub;
-- production route намеренно возвращает 403 до отдельного auth/security слоя;
-- никаких place/cancel/modify order endpoints в этом срезе нет.
+Branch: `codex/tqs-intelligence-engine-v0-1-2026-09-17`
+PR: `#11 — TQS Intelligence Engine v0.1 — multi-market anomaly and research core`
 
-Ограничение текущего инструментария ChatGPT/Vercel: доступный Vercel connector умеет читать проекты/деплои/логи, но не умеет создавать или изменять Environment Variables. Поэтому код и preview можно собрать автоматически, а server env нужно добавить через Vercel Settings либо другим secret-capable deployment channel.
+The PR is intentionally stacked on the older TraderQuest TQ-004 branch rather than current `main`; integration to `main` must be deliberate. Do not assume a blind merge is safe.
 
----
+Package/product version after the current normalization slice: **v0.8.4**.
 
-## Bitget Global Screener + Interactive Market Map
+## 3. What exists now
 
-Реализовано в ветке `feature/bitget-global-screener-v1`:
+### TQS Intelligence / local machine
+Under `tqs-intelligence/`:
+- FastAPI local API and Russian cockpit;
+- Windows TQS Launcher + supervisor;
+- STOP / LIGHT / MAX control;
+- version/Git/update/rollback path;
+- process + supervisor heartbeat watchdog with hysteresis;
+- Bitget, Binance, Bybit, OKX and MOEX public market sources;
+- optional Twelve Data adapter;
+- GDELT/RSS news layer;
+- DuckDB operational store;
+- Parquet Data Lake;
+- live anomalies and anomaly episodes;
+- history backfill (Binance + MOEX priority universe from 2021);
+- Historical Replay;
+- Research Runtime / auto-history planner;
+- Strategy Machine and StrategySpec runs;
+- Universal Instrument Lab;
+- Hyperliquid public account discovery/intelligence;
+- Briefing builder;
+- relationships miner;
+- portable TQS diagnostic/support snapshot.
 
-- `/screener/bitget` — Terminal v3;
-- `/screener/bitget/map` — интерактивная карта рынков;
-- public UTA v3 adapter;
-- cached 7d enrichment;
-- TradingView inline workspace;
-- docs/BITGET_GLOBAL_SCREENER.md.
+### TQS Launcher
+Operator/control surface, not the trading UI:
+- start/stop/restart;
+- MAX/LIGHT/STOP;
+- product version + local/remote Git state;
+- one-click update with rollback path;
+- runtime log;
+- resource telemetry;
+- Windows keep-awake in MAX;
+- watchdog that must not kill healthy heavy work after one HTTP timeout.
 
-### Terminal v3
+### TQS Screener / Cockpit
+Existing web/frontend/ScreenerPRO surfaces are the future trader-facing TQS Screener/Cockpit module. They are not the canonical market compute engine. New integration should consume TQS Intelligence/Knowledge contracts rather than duplicate collection/research.
 
-- весь подключённый public universe;
-- crypto spot/futures, margin, rToken, stock perps, commodity perps;
-- единый page scroll;
-- briefing strip;
-- 24h + cached 7d;
-- turnover, spread, funding;
-- ticker copy;
-- inline TradingView chart;
-- favorite + notes;
-- local persistence.
+### TQS Knowledge / Drive
+Google Drive `Trading QS` is human-readable canon for owner decisions, observations, cases, research/product knowledge and content. It is not a raw market database.
 
-### Следующие adapters
+## 4. Current reliability lessons already converted to code/contracts
 
-1. Stock+ securities/quotes.
-2. U.S. options: underlyings → expiries → option chains.
-3. TradFi / CFD.
-4. Historical feature cache: RSI/ATR/relative volume/momentum.
-5. Private account UI поверх read-only bridge.
-6. Cloud user workspace.
+- One failed `/api/health` probe must not trigger destructive restart.
+- Supervisor heartbeat + process evidence + hysteresis are separate from HTTP responsiveness.
+- MAX should generate useful background work when explicit research queue is empty.
+- Cached browser data/CPU/RAM do not prove the backend is alive.
+- Every autonomous loop should expose action/progress/last success/next due/error.
+- Repeated owner terminal intervention is a defect signal for the harness.
 
----
+See:
+- `tqs-intelligence/MACHINE_ACTIVITY_CONTRACT.md`
+- `tqs-intelligence/OVERNIGHT_RUNBOOK.md`
+- `tqs-intelligence/TQS_DIAGNOSTICS_CONTRACT.md`
+- `tqs-intelligence/METRIC_CATALOG.md`
 
-## Что нельзя сломать
+## 5. Diagnostic snapshot v3
 
-| Маршрут | Статус |
-|---------|--------|
-| `/screener` | стабилен |
-| `/screener/stocks` | стабилен |
-| `/screener/futures` | стабилен |
-| `/screener/strategies` | Strategy Scanner v0 demo-ready |
-| `/screener/bitget` | Bitget Terminal v3 |
-| `/screener/bitget/map` | Interactive Bitget Market Map |
+Default `Сохранить TQS` / `POST /api/export/snapshot` with `full=false` is intended as **SUPPORT_REDACTED**:
+- product/runtime/Git identity;
+- market/research/source/Data Lake state;
+- jobs/results/logs;
+- deterministic `diagnosis.json`;
+- redacted account profile summary;
+- AI_READ_ME.
 
----
+`full=true` is **FULL_PRIVATE** and may include raw account data/database copy. Never commit snapshot exports into public GitHub.
 
-## Dev commands
+## 6. Version identity
 
-```bash
-pnpm -C frontend dev:live
-pnpm -C frontend build
-```
+`pyproject.toml`, package `__version__` and FastAPI `app.version` should be the same semantic version. API `/api/health`, `/api/overview` and `/api/system` expose runtime identity including module/version/runtime instance/PID/start time.
 
-**Bitget terminal:** `/screener/bitget`
+Launcher also shows local/remote Git state; runtime and Git identity are related but not interchangeable.
 
-**Bitget map:** `/screener/bitget/map`
+## 7. Current architecture decision
 
-**Bitget private preview API:** `/api/bitget/private/account`
+**Conceptual separation now, physical split later only if justified.**
+
+TQS modules:
+1. Platform/Core
+2. Intelligence
+3. Launcher
+4. Screener/Cockpit
+5. Knowledge
+6. Research/Strategy Lab
+7. Briefing/Publishing
+8. Connectors/Data
+9. optional future Cloud/Sync
+
+Keep modular monorepo while contracts evolve rapidly. A separate repo/service requires a concrete deployment/security/toolchain/scale boundary.
+
+## 8. Truth boundaries
+
+- Drive = human/product/knowledge truth.
+- GitHub = public-safe technical truth.
+- Data Lake/DB = market/research operational truth.
+- Runtime heartbeat/process/API/job state = liveness truth.
+- Primary external provider = current external truth.
+
+The repository is public: secrets/private Drive contents/private account payloads/raw private support snapshots must not be committed.
+
+## 9. Next product focus
+
+After local v0.8.4 is updated and overnight stability is proven, highest-value next work is:
+1. owner-facing Activity Ledger + “что сделано за ночь” summary;
+2. visual redesign of TQS Screener/Cockpit and Universal Instrument Lab;
+3. richer historical feature layer (OI/funding/basis/liquidations/microstructure as source availability permits);
+4. Research visualization: event studies/distributions/regimes/OOS/counterexamples;
+5. explicit integration bridge from local TQS Intelligence API/snapshots to web TQS Screener;
+6. structured Knowledge indexing only when retrieval/use cases justify it.
+
+Do not add 20 sources before observability, semantics and research usefulness of existing sources are clear.
+
+## 10. New-session algorithm
+
+1. Read `START_HERE_FOR_AI.md`.
+2. Read `TQS_PLATFORM.md`.
+3. Read this file.
+4. Fetch current branch/PR/CI and determine latest HEAD.
+5. If local runtime evidence is needed, ask for/use TQS SUPPORT snapshot rather than generic terminal screenshots.
+6. Read only affected module `AGENTS.md` + relevant files/contracts.
+7. Continue existing product Chat-first.
+8. Checkpoint after each stable logical slice.
+9. Finish only with objective evidence or a precise real blocker.
+
+Owner can simply say:
+
+`Продолжай TQS: <цель>.`
