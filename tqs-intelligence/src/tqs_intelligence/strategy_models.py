@@ -36,11 +36,12 @@ class StrategyRunResult(BaseModel):
     generated_at_ms: int
     status: str
     events: int
-    round_events: int
-    control_events: int
-    metrics: dict[str, Any]
-    splits: dict[str, Any]
-    robustness: dict[str, Any]
+    round_events: int = 0
+    control_events: int = 0
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    splits: dict[str, Any] = Field(default_factory=dict)
+    robustness: dict[str, Any] = Field(default_factory=dict)
+    diagnostics: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
 
 
