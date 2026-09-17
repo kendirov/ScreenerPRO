@@ -4,9 +4,11 @@ This directory is one product: **TQS Intelligence & Strategy Machine**. Do not f
 
 Read, in order, only as needed:
 1. `AI_OPERATING_CONTEXT.md` — product meaning, research rules, current architecture.
-2. `ARCHITECTURE.md` — technical boundaries.
-3. `README.md` — install/run/operator workflow.
-4. Current task + affected source/tests.
+2. `PRODUCT_CHANGE_PROTOCOL.md` — how an Artem idea becomes a verified update in the same product.
+3. `ARCHITECTURE.md` — technical boundaries.
+4. `MOEX_DATA_MATRIX.md` — mandatory contract for MOEX/data/selection/participant work.
+5. `README.md` — install/run/operator workflow.
+6. Current task + affected source/tests.
 
 Non-negotiable rules:
 - Russian owner-facing UI and explanations.
@@ -21,6 +23,9 @@ Non-negotiable rules:
 - Existing Drive/GitHub/runtime truth boundaries remain in force.
 - UI changes require loading/empty/error/stale states and chart/drill-down usability.
 - Safe updates must preserve local data and roll back if healthcheck fails.
+- MOEX work must treat stock/futures/sector/index/OI/participants/news/anomalies as linkable objects, not independent flat tables.
+- Free/delayed and premium/realtime series must never be silently merged.
+- New user ideas should extend this product through reusable adapters/features/StrategySpecs/views, not create a parallel app.
 
 Owner workflow:
-`Артём говорит идею → формализовать → реализовать/research → verify → commit → кнопка Обновить → функция появляется в той же TQS машине.`
+`Артём говорит идею → Idea Inbox → формализовать → реализовать/research → verify → commit → кнопка Обновить → функция появляется в той же TQS машине.`
