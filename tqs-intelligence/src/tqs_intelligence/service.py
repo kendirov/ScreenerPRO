@@ -4,6 +4,7 @@ import asyncio
 import time
 from dataclasses import dataclass
 
+from .control import ControlCenter
 from .engine import IntelligenceEngine
 from .models import AnomalyEpisode, Quote, RuntimeLog, Snapshot, SourceHealth, SourceStatus
 from .news import NewsCollector
@@ -33,7 +34,7 @@ class IntelligenceService:
     def __init__(self, sources: list[MarketSource], news: NewsCollector, store: DuckStore, interval_s: int = 60,
                  episode_threshold: float = 70.0, episode_close_grace_s: int = 180,
                  history_backfill_max: int = 8, history_refresh_every: int = 5,
-                 research_every_refreshes: int = 15) -> None:
+                 research_every_refreshes: int = 15, control: ControlCenter | None = None) -> None:
         self.sources, self.news, self.store = sources, news, store
         self.interval_s = max(15, interval_s)
         self.episode_threshold = episode_threshold
@@ -41,9 +42,13 @@ class IntelligenceService:
         self.history_backfill_max = max(0, history_backfill_max)
         self.history_refresh_every = max(1, history_refresh_every)
         self.research_every_refreshes = max(1, research_every_refreshes)
+        self.control = control
         self.engine = IntelligenceEngine(); self.state = RuntimeState(); self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock(); self._manual_tasks: set[asyncio.Task] = set(); self._source_status: dict[str, str] = {}
         self._sources_by_provider = {source.provider: source for source in sources}
+
+    def mode(self) -> str:
+        return self.control.get().mode if self.control else 'max'
 
     def log(self, level: str, component: str, message: str, **details: object) -> None:
         item = RuntimeLog(ts_ms=_now_ms(), level=level, component=component, message=message, details=dict(details))
@@ -55,11 +60,13 @@ class IntelligenceService:
         return [SourceHealth(provider=s.provider, name=s.name, status=SourceStatus.PENDING) for s in self.sources]
 
     def runtime_status(self) -> dict[str, object]:
+        mode=self.mode()
         return {"running":self.state.running,"refreshing":self.state.refreshing,"started_at_ms":self.state.started_at_ms,
                 "last_refresh_started_ms":self.state.last_refresh_started_ms,"last_refresh_finished_ms":self.state.last_refresh_finished_ms,
                 "last_refresh_duration_ms":self.state.last_refresh_duration_ms,"refresh_count":self.state.refresh_count,
                 "last_error":self.state.last_error,"refresh_seconds":self.interval_s,"last_research_ms":self.state.last_research_ms,
-                "episode_threshold":self.episode_threshold}
+                "episode_threshold":self.episode_threshold,"mode":mode,
+                "effective_refresh_seconds":None if mode=='stop' else (max(15,self.interval_s//2) if mode=='max' else max(30,self.interval_s))}
 
     async def _fetch_history(self, episode: AnomalyEpisode, quote: Quote) -> int:
         source = self._sources_by_provider.get(episode.provider)
@@ -74,9 +81,10 @@ class IntelligenceService:
             self.log("warning","history",f"Не удалось подгрузить историю {episode.symbol}",episode_id=episode.id,provider=episode.provider,error=str(exc)[:500])
             return 0
 
-    async def _backfill_created(self, created: list[AnomalyEpisode], quotes: list[Quote]) -> None:
-        if not created or self.history_backfill_max <= 0: return
-        by_id = {q.canonical_id:q for q in quotes}; selected = sorted(created,key=lambda x:x.peak_score,reverse=True)[:self.history_backfill_max]
+    async def _backfill_created(self, created: list[AnomalyEpisode], quotes: list[Quote], max_items: int | None = None) -> None:
+        limit=self.history_backfill_max if max_items is None else max(0,max_items)
+        if not created or limit <= 0: return
+        by_id = {q.canonical_id:q for q in quotes}; selected = sorted(created,key=lambda x:x.peak_score,reverse=True)[:limit]
         tasks = [self._fetch_history(ep,by_id[ep.canonical_id]) for ep in selected if ep.canonical_id in by_id]
         if tasks: await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -99,10 +107,12 @@ class IntelligenceService:
         self.store.persist_findings(findings); self.state.last_research_ms=_now_ms()
         self.log("info","research","Автоисследование эпизодов завершено",closed_episodes=len(closed),findings=len(findings),candidates=sum(1 for x in findings if x.status=="candidate"))
 
-    async def refresh(self) -> Snapshot:
+    async def refresh(self, force: bool = False) -> Snapshot | None:
+        if not force and self.mode()=='stop':
+            return self.state.snapshot
         async with self._lock:
             started=_now_ms(); self.state.refreshing=True; self.state.last_refresh_started_ms=started; self.state.last_error=None
-            self.log("info","refresh","Сбор рынка запущен",refresh_no=self.state.refresh_count+1)
+            self.log("info","refresh","Сбор рынка запущен",refresh_no=self.state.refresh_count+1,mode=self.mode())
             try:
                 collected=await asyncio.gather(*(source.collect() for source in self.sources)); quotes=[q for rows,_ in collected for q in rows]; health=[item for _,item in collected]
                 for item in health:
@@ -114,15 +124,16 @@ class IntelligenceService:
                 news=await self.news.collect(); anomalies=self.engine.analyze(quotes); now=_now_ms(); snapshot=Snapshot(generated_at_ms=now,quotes=quotes,anomalies=anomalies,source_health=health,news=news)
                 self.store.persist_snapshot(quotes,anomalies,news)
                 created=self.store.update_episodes(anomalies,now,self.episode_threshold,self.episode_close_grace_ms)
+                mode=self.mode(); heavy=mode=='max'
                 if created:
                     self.log("info","episodes","Открыты новые эпизоды аномалий",count=len(created),ids=[x.id for x in created[:20]])
-                    await self._backfill_created(created,quotes)
+                    await self._backfill_created(created,quotes,None if heavy else 1)
                 next_count=self.state.refresh_count+1
-                if next_count % self.history_refresh_every == 0: await self._refresh_active_history(quotes)
-                if next_count % self.research_every_refreshes == 0: self._run_research()
+                if heavy and next_count % self.history_refresh_every == 0: await self._refresh_active_history(quotes)
+                if heavy and next_count % self.research_every_refreshes == 0: self._run_research()
                 self.state.snapshot=snapshot; self.state.refresh_count=next_count; duration=_now_ms()-started; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=duration
                 online=sum(1 for x in health if x.status in (SourceStatus.OK,SourceStatus.DEGRADED))
-                self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),new_episodes=len(created),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration)
+                self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),new_episodes=len(created),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode)
                 return snapshot
             except Exception as exc:
                 self.state.last_error=str(exc)[:1000]; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=_now_ms()-started
@@ -131,15 +142,22 @@ class IntelligenceService:
 
     def request_refresh(self) -> bool:
         if self.state.refreshing: return False
-        task=asyncio.create_task(self.refresh(),name="tqs-intelligence-manual-refresh"); self._manual_tasks.add(task); task.add_done_callback(self._manual_tasks.discard); return True
+        task=asyncio.create_task(self.refresh(force=True),name="tqs-intelligence-manual-refresh"); self._manual_tasks.add(task); task.add_done_callback(self._manual_tasks.discard); return True
 
     async def _loop(self) -> None:
-        self.state.running=True; self.state.started_at_ms=_now_ms(); self.log("info","service","TQS Intelligence запущен",refresh_seconds=self.interval_s)
+        self.state.running=True; self.state.started_at_ms=_now_ms(); self.log("info","service","TQS Intelligence запущен",refresh_seconds=self.interval_s,mode=self.mode())
+        last_mode=None
         try:
             while True:
+                mode=self.mode()
+                if mode!=last_mode:
+                    self.log('info','control',f'Режим изменён: {mode.upper()}'); last_mode=mode
+                if mode=='stop':
+                    await asyncio.sleep(2); continue
                 try: await self.refresh()
                 except Exception: pass
-                await asyncio.sleep(self.interval_s)
+                delay=max(15,self.interval_s//2) if mode=='max' else max(30,self.interval_s)
+                await asyncio.sleep(delay)
         finally:
             self.state.running=False; self.log("info","service","TQS Intelligence остановлен")
 
