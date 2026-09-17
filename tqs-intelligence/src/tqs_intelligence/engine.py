@@ -31,7 +31,7 @@ def _severity(score: float) -> str:
 
 
 class IntelligenceEngine:
-    """Cross-sectional first-pass detector. Historical baselines can be layered from DuckDB snapshots."""
+    """Cross-sectional detector. Episode persistence and historical validation live outside this hot path."""
 
     def analyze(self, quotes: list[Quote]) -> list[Anomaly]:
         groups: dict[tuple[str, str], list[Quote]] = defaultdict(list)
@@ -55,20 +55,28 @@ class IntelligenceEngine:
                     components.append(funding_ranks[idx])
                 score = 100 * (0.58 * max(components) + 0.42 * (sum(components) / len(components)))
                 reasons: list[str] = []
+                signals: list[str] = []
                 change = quote.change_24h_pct
                 if change is not None and change_ranks[idx] >= 0.90:
                     reasons.append(f"движение {change:+.2f}% входит в верхние 10% своей группы")
+                    signals.append("price_move")
                 if quote.turnover_24h is not None and turnover_ranks[idx] >= 0.90:
                     reasons.append("оборот входит в верхние 10% своей группы")
+                    signals.append("turnover")
                 if quote.open_interest is not None and oi_ranks[idx] >= 0.90:
                     reasons.append("открытый интерес необычно велик относительно группы")
+                    signals.append("open_interest")
                 if quote.funding_rate is not None and funding_ranks[idx] >= 0.90:
                     reasons.append("ставка фондирования находится в экстремальной зоне группы")
+                    signals.append("funding")
                 if quote.spread_bps is not None and spread_ranks[idx] >= 0.95:
                     reasons.append(f"спред расширен: {quote.spread_bps:.1f} б.п.")
+                    signals.append("spread")
                     score = min(100.0, score + 4)
                 if not reasons and score < 50:
                     continue
+                if not signals:
+                    signals.append("composite")
 
                 direction = "neutral"
                 if change is not None:
@@ -78,13 +86,25 @@ class IntelligenceEngine:
                 liquidity = "thin" if quote.spread_bps is not None and quote.spread_bps > 30 else "normal"
                 state_reasons = reasons.copy() or ["комбинация признаков выделяется относительно текущего рынка"]
                 state = MarketState(
-                    canonical_id=quote.canonical_id, regime=regime, direction=direction,
-                    activity=activity, liquidity=liquidity, score=round(score, 2), reasons=state_reasons,
+                    canonical_id=quote.canonical_id,
+                    regime=regime,
+                    direction=direction,
+                    activity=activity,
+                    liquidity=liquidity,
+                    score=round(score, 2),
+                    reasons=state_reasons,
                 )
                 anomalies.append(Anomaly(
-                    canonical_id=quote.canonical_id, provider=quote.provider, symbol=quote.symbol,
-                    asset_class=quote.asset_class, market_type=quote.market_type,
-                    score=round(score, 2), severity=_severity(score), reasons=state_reasons,
-                    state=state, quote=quote,
+                    canonical_id=quote.canonical_id,
+                    provider=quote.provider,
+                    symbol=quote.symbol,
+                    asset_class=quote.asset_class,
+                    market_type=quote.market_type,
+                    score=round(score, 2),
+                    severity=_severity(score),
+                    reasons=state_reasons,
+                    signals=signals,
+                    state=state,
+                    quote=quote,
                 ))
         return sorted(anomalies, key=lambda item: item.score, reverse=True)
