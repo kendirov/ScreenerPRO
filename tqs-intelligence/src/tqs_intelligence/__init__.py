@@ -1,3 +1,11 @@
-"""TraderQuest Intelligence Engine."""
+"""TraderQuest Intelligence & Strategy Machine."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
+
+# Keep the broad source module stable while transparently upgrading MOEX semantics.
+# This avoids corrupting live/history data when ISS CHANGE/LASTCHANGE represents
+# absolute index points rather than percentage change.
+from . import sources as _sources
+from .moex_source import MoexSourceV04
+
+_sources.MoexSource = MoexSourceV04
