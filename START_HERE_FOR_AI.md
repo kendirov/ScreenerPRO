@@ -1,112 +1,112 @@
-# START_HERE_FOR_AI — ScreenerPRO
+# START_HERE_FOR_AI — TQS PLATFORM
 
-Первая точка входа для ChatGPT, Cursor и других AI-ассистентов. Читай этот файл, затем углубляйся по ссылкам ниже.
+Status: ACTIVE FRONT DOOR — 2026-09-17
 
----
+This repository is the current **TQS monorepo**. Its GitHub name `ScreenerPRO` is historical; do not infer that the whole system is only a screener or only MOEX.
 
-## Что читать первым
+## First principle
 
-1. **`PRODUCT_VISION.md`** — зачем существует продукт и какой UX/вау-эффект нужен.
-2. **`PROJECT_CONTEXT.md`** — техническая архитектура, маршруты, API, источники данных.
-3. **`AI_SESSION_STATE.md`** — текущее состояние последней итерации.
-4. **`docs/CHATGPT_PROMPT_GUIDE.md`** — **для ChatGPT**: как продумывать логику, чек-листы и готовые шаблоны промптов для Cursor (с учётом текущей итерации).
-5. **`docs/CURSOR_WORKFLOW.md`** — правила работы Cursor.
-6. **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** — **продуктовая доктрина** intraday decision terminal: North Star, сценарий трейдера, блоки (Market Pulse, In Play, Situation, Table, Inspector), UI direction, антипаттерны. **Обязательно** для продуктовых и UX-задач по скринеру.
-7. **`docs/UI_NUMBERS_MINIMALISM.md`** — стандарт «минимализм цифр» в UI (новые экраны и правки таблиц/карточек).
-8. **`docs/MARKET_RADAR_FORMULAS.md`** — **источник истины** по формулам Market Radar (Vol x, In Play, Active, Shots, baseline); читать перед правкой порогов и объяснением «В игре» ученикам.
+**TQS is one platform with several modules, not a collection of unrelated apps.**
 
----
+Current conceptual modules:
+- **TQS Intelligence** — local collection, Data Lake, features, anomalies/episodes, accounts, research and Strategy Machine;
+- **TQS Launcher** — Windows control/update/health/log/diagnostic surface for the local engine;
+- **TQS Screener / Cockpit** — trader-facing web/UI layer; existing ScreenerPRO frontend evolves into this role;
+- **TQS Knowledge** — human-readable Google Drive knowledge + future structured index/graph;
+- **TQS Research / Strategy Lab** — reproducible hypotheses, replay, validation and strategies;
+- **TQS Briefing / Publishing** — briefings, streams, course/material outputs over the same canonical intelligence;
+- **TQS Connectors / Data** — exchange/MOEX/news/account adapters and canonical storage.
 
-## Роли
+Read `TQS_PLATFORM.md` for the full system map and boundaries.
 
-| Участник | Роль |
-|----------|------|
-| **Пользователь** | Владелец продукта и трейдерская логика |
-| **ChatGPT** | Продуктовый, аналитический и UX-напарник; готовит промпты для Cursor |
-| **Cursor** | Исполнитель изменений в коде |
+## Minimal read order
 
----
+Do not read the whole repository or Drive by default.
 
-## Главная идея продукта
+1. `TQS_PLATFORM.md` — what TQS is, modules, data flow and truth boundaries.
+2. `AI_SESSION_STATE.md` — freshest verified state and exact next focus.
+3. Current branch / PR / CI status.
+4. The `AGENTS.md` belonging to the module you will change.
+5. Only affected source/tests/contracts.
+6. `PRODUCT_VISION.md` when a product/UX decision is involved.
+7. Deep legacy references (`PROJECT_CONTEXT.md`, older docs) only when a concrete decision needs them.
 
-**ScreenerPRO** — интерактивный трейдерский терминал и обучающая платформа по **MOEX**.
+For local engine work start at `tqs-intelligence/AGENTS.md`.
 
-**Ядро** — скринер акций и фьючерсов: активность, ликвидность, спред, оборот, in-play, торговые ситуации.
+## Sources of truth
 
-**Материалы** и **Академия** — интерактивные, визуальные и современные, **не** статичные статьи.
+- **Google Drive** = product intent, owner decisions, market/author knowledge, cases, materials and reusable development lessons.
+- **GitHub** = code, schemas, AGENTS/contracts, tests, PRs and CI.
+- **Runtime/Data Lake/DB** = operational market/research state.
+- **Heartbeat/process/API state** = whether the machine is alive now.
+- **Primary external sources** = current provider facts.
 
-Данные сейчас в основном из **MOEX ISS** (бесплатно) + локальные расчёты; при сбое — fallback/mock. Платный MOEX API — в планах.
+A browser page, CPU usage, old log, cached snapshot or AI statement alone does not prove the system is running.
 
----
+## Development mode
 
-## Перед любой задачей
+Default is **Chat-first**:
 
-AI должен:
+`ordinary ChatGPT → targeted context → GitHub change → deterministic CI/checks → repair → runtime/UI evidence → resumable checkpoint`
 
-1. Прочитать **`AI_SESSION_STATE.md`**.
-2. При необходимости свериться с **`PROJECT_CONTEXT.md`**.
-3. Если задача продуктовая или UX — свериться с **`PRODUCT_VISION.md`** и **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** (для скринера и терминала).
-4. **Не менять код** без понимания, что именно хочет пользователь.
-5. После изменений **обновить `AI_SESSION_STATE.md`** (крупные итерации — по `docs/CURSOR_WORKFLOW.md`).
+Work/Codex/Cursor are escalation tools only for a concrete capability gap such as a required local debugger/native toolchain/computer-use step that current Chat + GitHub Actions + connected tools cannot honestly execute or verify.
 
----
+Do not hand the owner a prompt to another executor when the available tools can perform the task directly.
 
-## Что важно не сломать
+## Before changing anything
 
-- `/screener`
-- `/screener/stocks`
-- `/screener/futures`
-- `/materials/technical-characteristics`
-- MOEX ISS live/fallback
-- `ValueWithStatus` в технических характеристиках
-- sidebar/layout
-- build перед деплоем (`pnpm -C frontend build`)
+1. Translate Artem's natural-language request into one observable owner outcome.
+2. Identify the existing TQS module that owns the capability.
+3. Check freshest state; do not trust stale `CURRENT_STATE` text over Git/CI/runtime.
+4. Reuse canonical upstream objects instead of recollecting/redefining data downstream.
+5. Define acceptance and failure states.
+6. Make a checkpoint-sized change.
+7. Run the cheapest relevant verification.
+8. Repair the root cause before expanding scope.
 
----
+## Non-negotiable architecture rules
 
-## Формат отчёта Cursor после задачи
+- Do not create another standalone screener/research app for a feature that belongs in TQS.
+- TQS Screener/Cockpit consumes Intelligence/Knowledge contracts; it should not become a second data/research engine.
+- New sources enter through adapters and explicit semantics/unit/provenance.
+- Raw high-frequency data belongs in Data Lake, not Google Drive.
+- Durable human knowledge belongs in Drive with provenance/stable IDs, not in chat history.
+- AI reasons over compact state/events/results; deterministic code owns reproducible calculations.
+- Negative research results are preserved.
+- Never call an anomaly a BUY/SELL signal without strategy validation.
+- UI work needs loading/empty/error/stale states and browser/screenshot proof before a final visual PASS.
+- Local runtime work needs heartbeat, activity/progress, logs and diagnostic snapshot.
 
-Cursor **всегда** пишет:
+## Privacy boundary
 
-- **что изменил** — простыми словами (что увидит пользователь);
-- **какие файлы** изменил;
-- **какие команды** запускал;
-- **прошёл ли build**;
-- **что проверить в браузере** (URL + действия);
-- **обновлён ли** `AI_SESSION_STATE.md`.
+The GitHub repository is public. Never commit:
+- API keys/secrets;
+- private credentials or personal account payloads;
+- private Drive content/IDs solely for convenience;
+- raw private diagnostic snapshots.
 
-Подробный шаблон — в **`docs/CURSOR_WORKFLOW.md`**.
+Drive and local runtime can contain private material that must remain outside public GitHub.
 
----
+## What to update after a substantial run
 
-## Быстрый старт локально
+Keep GitHub state concise:
+- final HEAD / PR;
+- outcome: PASS / PARTIAL / FAIL;
+- what changed for the owner;
+- exact verification evidence;
+- real blockers/limitations;
+- exact next action.
 
-```bash
-pnpm install
-pnpm -C frontend dev
-```
+Update durable contracts only when a reusable rule changed. Do not turn docs into a transcript of the chat.
 
-→ http://localhost:3000/screener  
+## Owner trigger
 
-Полная настройка:
-- **Windows:** `run-dev-full.cmd`
-- **macOS / Linux:** `./run-dev-full.sh`
-- Подробности — `PROJECT_CONTEXT.md` §11.
+These are sufficient commands:
 
-## Работа на двух машинах (Win + Mac)
+`Нам нужен продукт: <цель>.`
 
-| Машина | Начало сессии | Конец сессии | Аварийная остановка |
-|--------|---------------|--------------|---------------------|
-| **Windows** | `sync.cmd pull` | `sync.cmd save` | `stop.cmd` |
-| **macOS** | `./sync.sh pull` | `./sync.sh save` | `./stop.sh` |
+or
 
-Точки отката (любая машина):
+`Продолжай TQS: <идея/проблема>.`
 
-```
-./checkpoint.sh "label"   # запомнить
-./restore.sh              # показать список
-./restore.sh <tag|hash>   # откатить
-```
-
-- **Для не-программиста, как организовать день:** `docs/WORKFLOW.md` ← начинай отсюда.
-- **Глубокий разбор git-синхронизации:** `docs/CROSS_PLATFORM_SYNC.md`.
+The AI must route the request to the correct module, load only the needed context, continue the existing platform, execute as far as current tools allow, verify the result and leave a recovery point.
