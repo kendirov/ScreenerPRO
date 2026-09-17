@@ -1,10 +1,10 @@
 from types import SimpleNamespace
 
-from tqs_intelligence.metric_autopilot import build_metric_plan, metric_key
+from tqs_intelligence.metric_autopilot import METRIC_QUOTAS, build_metric_plan, metric_key
 from tqs_intelligence.models import AssetClass, Quote
 
 
-def quote(symbol: str, turnover: float) -> Quote:
+def bybit_quote(symbol: str, turnover: float) -> Quote:
     return Quote(
         provider="bybit", venue="Bybit", symbol=symbol,
         asset_class=AssetClass.FUTURE, market_type="linear",
@@ -14,7 +14,7 @@ def quote(symbol: str, turnover: float) -> Quote:
 
 
 def test_metric_plan_ranks_and_avoids_duplicate_jobs():
-    quotes = [quote("ETHUSDT", 200), quote("BTCUSDT", 500), quote("SOLUSDT", 100)]
+    quotes = [bybit_quote("ETHUSDT", 200), bybit_quote("BTCUSDT", 500), bybit_quote("SOLUSDT", 100)]
     existing_payload = {"provider": "bybit", "symbol": "BTCUSDT", "market_type": "linear", "start_ms": 1609459200000}
     jobs = [SimpleNamespace(kind="derivative_metric_backfill", payload=existing_payload, status="done")]
     payloads, stats = build_metric_plan(quotes, jobs, batch_size=2)
@@ -25,9 +25,21 @@ def test_metric_plan_ranks_and_avoids_duplicate_jobs():
     assert metric_key(payloads[0]) == ("bybit", "ETHUSDT", "linear")
 
 
-def test_metric_plan_ignores_spot_and_non_bybit():
-    spot = quote("BTCUSDT", 1000).model_copy(update={"market_type": "spot"})
-    binance = quote("BTCUSDT", 2000).model_copy(update={"provider": "binance", "venue": "Binance", "market_type": "usdt-futures"})
+def test_metric_plan_accepts_binance_and_ignores_spot():
+    spot = bybit_quote("BTCUSDT", 1000).model_copy(update={"market_type": "spot"})
+    binance = bybit_quote("BTCUSDT", 2000).model_copy(update={"provider": "binance", "venue": "Binance", "market_type": "usdt-futures"})
     payloads, stats = build_metric_plan([spot, binance], [], batch_size=2)
-    assert payloads == []
-    assert stats["target_total"] == 0
+    assert len(payloads) == 1
+    assert payloads[0]["provider"] == "binance"
+    assert stats["target_total"] == 1
+
+
+def test_metric_plan_deduplicates_moex_contracts_by_underlying():
+    first = bybit_quote("BRU6", 1000).model_copy(update={"provider":"moex","venue":"MOEX FORTS","market_type":"forts","asset_class":AssetClass.FUTURE})
+    second = bybit_quote("BRZ6", 500).model_copy(update={"provider":"moex","venue":"MOEX FORTS","market_type":"forts","asset_class":AssetClass.FUTURE})
+    payloads, stats = build_metric_plan([first, second], [], batch_size=5)
+    assert len(payloads) == 1
+    assert payloads[0]["provider"] == "moex"
+    assert payloads[0]["symbol"] == "BR"
+    assert stats["buckets"]["moex:forts"]["target"] == 1
+    assert METRIC_QUOTAS[("moex","forts")] >= 1
