@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import time
 import traceback
 from typing import Any
 
 from .control import ControlCenter
 from .historical import HistoricalBackfiller
+from .history_autopilot import build_history_plan, history_title
 from .lab_store import LabStore
 from .lake import DataLake
 from .replay import HistoricalReplayEngine
+from .sources import BinanceSource, MoexSource
 from .strategy_extensions import default_buy_dip_bps_spec, default_buy_dip_points_spec, run_buy_dip_grid
 from .strategy_machine import StrategyMachine, default_round_buffer_spec
 
@@ -19,6 +22,16 @@ class ResearchRuntime:
         self.control=control; self.lab=lab; self.backfiller=backfiller; self.lake=lake; self.machine=machine
         self.replay=HistoricalReplayEngine(lake)
         self._task: asyncio.Task|None=None; self._running=False; self.last_action='Ожидание'; self.last_error: str|None=None
+        self._last_auto_plan_s=0.0
+        self._auto_history: dict[str,Any] = {
+            'enabled': True, 'target_total': 0, 'known_total': 0, 'done': 0,
+            'queued_running': 0, 'failed': 0, 'remaining': 0,
+            'scope': 'ожидаем первый MAX discovery',
+        }
+        # Planner uses the same cheap public market adapters as the live service.
+        # It only runs while MAX is idle, so it does not compete continuously with
+        # the live collector.
+        self._planner_sources = [BinanceSource(backfiller.http), MoexSource(backfiller.http)]
         try:
             with self.lab._lock:
                 self.lab._con.execute("update research_jobs set status='queued',progress=0,error=coalesce(error,'')||' [recovered after restart]' where status='running'")
@@ -50,7 +63,12 @@ class ResearchRuntime:
                 pass
 
     def status(self) -> dict[str,Any]:
-        return {'running':self._running,'mode':self.control.get().mode,'last_action':self.last_action,'last_error':self.last_error,**self.lab.stats()}
+        return {
+            'running':self._running,'mode':self.control.get().mode,
+            'last_action':self.last_action,'last_error':self.last_error,
+            'auto_history':dict(self._auto_history),
+            **self.lab.stats(),
+        }
 
     def _enqueue_matching_strategies(self, canonical_id:str, interval:str) -> int:
         count=0
@@ -114,6 +132,42 @@ class ResearchRuntime:
             return result.model_dump(mode='json')
         raise ValueError(f'unknown research job kind: {job.kind}')
 
+    async def _autoplan_history(self) -> int:
+        now=time.time()
+        if now-self._last_auto_plan_s < 30:
+            return 0
+        self._last_auto_plan_s=now
+        self.last_action='MAX: ищу пробелы истории Binance/MOEX'
+        collected=await asyncio.gather(*(source.collect() for source in self._planner_sources),return_exceptions=True)
+        quotes=[]; source_errors=[]
+        for row in collected:
+            if isinstance(row,BaseException):
+                source_errors.append(str(row)[:300]); continue
+            chunk,health=row
+            quotes.extend(chunk)
+            if getattr(health,'error',None): source_errors.append(str(health.error)[:300])
+        jobs=self.lab.list_jobs(5000)
+        payloads,stats=build_history_plan(quotes,jobs,batch_size=4)
+        stats['last_plan_at_ms']=int(time.time()*1000)
+        stats['discovered_quotes']=len(quotes)
+        stats['source_errors']=source_errors[:4]
+        self._auto_history=stats
+        for payload in payloads:
+            self.lab.enqueue_job('historical_backfill',history_title(payload),payload)
+        if payloads:
+            self.last_action=(
+                f"Автоистория: +{len(payloads)} задач · покрытие {stats.get('done',0)}/{stats.get('target_total',0)} · "
+                f"осталось {stats.get('remaining',0)}"
+            )
+        elif stats.get('target_total',0):
+            self.last_action=(
+                f"Автоистория: приоритетное покрытие {stats.get('known_total',0)}/{stats.get('target_total',0)} · "
+                f"готово {stats.get('done',0)} · ошибок {stats.get('failed',0)}"
+            )
+        else:
+            self.last_action='MAX: автоистория ждёт доступный Binance/MOEX universe'
+        return len(payloads)
+
     async def _loop(self) -> None:
         self._running=True
         try:
@@ -123,7 +177,20 @@ class ResearchRuntime:
                     self.last_action='Тяжёлые расчёты на паузе — включи МАКС'; await asyncio.sleep(2); continue
                 job=self.lab.claim_next_job()
                 if job is None:
-                    self.last_action='MAX: очередь исследований пуста'; await asyncio.sleep(2); continue
+                    try:
+                        queued=await self._autoplan_history()
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as exc:
+                        self.last_error=f'auto-history planner: {exc}'
+                        self.last_action=f'Автоистория: ошибка планировщика — {str(exc)[:180]}'
+                        await asyncio.sleep(10)
+                        continue
+                    if queued:
+                        await asyncio.sleep(.2)
+                        continue
+                    await asyncio.sleep(2)
+                    continue
                 self.last_error=None; self.last_action=f'{job.title_ru} — запуск'
                 try:
                     result=await self._execute(job); self.lab.update_job(job.id,status='done',progress=1,result=result,error='')
