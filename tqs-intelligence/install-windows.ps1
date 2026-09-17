@@ -44,10 +44,6 @@ foreach ($candidate in $candidates) {
   $parent = Split-Path (Split-Path $candidate -Parent) -Parent
   if ($parent -and (Test-Path $parent)) { $driveExport = $candidate; break }
 }
-foreach ($candidate in $candidates) {
-  $parent = Split-Path (Split-Path $candidate -Parent) -Parent
-  if ($parent -and (Test-Path $parent)) { $driveExport = $candidate; break }
-}
 if ($driveExport) {
   New-Item -ItemType Directory -Path $driveExport -Force | Out-Null
   Set-EnvValue 'TQS_DRIVE_EXPORT_ROOT' $driveExport
