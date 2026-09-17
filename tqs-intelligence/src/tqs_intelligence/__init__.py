@@ -1,6 +1,6 @@
 """TraderQuest Intelligence & Strategy Machine."""
 
-__version__ = "0.4.0"
+__version__ = "0.8.2"
 
 # Keep the broad source module stable while transparently upgrading MOEX semantics.
 # This avoids corrupting live/history data when ISS CHANGE/LASTCHANGE represents
