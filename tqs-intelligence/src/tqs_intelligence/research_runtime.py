@@ -9,7 +9,7 @@ from .historical import HistoricalBackfiller
 from .lab_store import LabStore
 from .lake import DataLake
 from .replay import HistoricalReplayEngine
-from .strategy_machine import StrategyMachine
+from .strategy_machine import StrategyMachine, default_round_buffer_spec
 
 
 class ResearchRuntime:
@@ -18,6 +18,18 @@ class ResearchRuntime:
         self.control=control; self.lab=lab; self.backfiller=backfiller; self.lake=lake; self.machine=machine
         self.replay=HistoricalReplayEngine(lake)
         self._task: asyncio.Task|None=None; self._running=False; self.last_action='Ожидание'; self.last_error: str|None=None
+        # Interrupted heavy jobs are safe to retry because outputs are idempotent/deduplicated by time keys.
+        try:
+            with self.lab._lock:
+                self.lab._con.execute("update research_jobs set status='queued',progress=0,error=coalesce(error,'')||' [recovered after restart]' where status='running'")
+                self.lab._con.commit()
+        except Exception: pass
+        base=default_round_buffer_spec()
+        if self.lab.get_strategy(base.id) is None: self.lab.save_strategy(base)
+        crypto=base.model_copy(deep=True)
+        crypto.id='TQS-STRAT-ROUND-BUFFER-CRYPTO-001'; crypto.name_ru='Крипто: отскок от круглых / буферных зон'; crypto.interval='5m'; crypto.costs={'round_trip_bps':10.0}
+        crypto.notes=list(crypto.notes)+['Отдельная 5m версия для crypto perpetuals; репликация между биржами обязательна перед promotion.']
+        if self.lab.get_strategy(crypto.id) is None: self.lab.save_strategy(crypto)
 
     def start(self) -> None:
         if self._task is None or self._task.done(): self._task=asyncio.create_task(self._loop(),name='tqs-research-runtime')
@@ -61,10 +73,8 @@ class ResearchRuntime:
                     self.lab.add_idea(title,
                         f"Historical Replay нашёл повышенное абсолютное движение после anomaly episodes. N={result.get('events')}. Проверить направление, режимы, ликвидность, новости и execution-cost layer.",
                         origin='machine',kind='anomaly',priority=75,tags=['auto-discovery','movement-candidate',interval])
-            if int(result.get('events') or 0)>=40:
-                result['strategy_jobs_queued']=self._enqueue_matching_strategies(cid,interval)
-            await progress(1,f'Historical Replay завершён: {cid} / {result.get("status")}')
-            return result
+            if int(result.get('events') or 0)>=40: result['strategy_jobs_queued']=self._enqueue_matching_strategies(cid,interval)
+            await progress(1,f'Historical Replay завершён: {cid} / {result.get("status")}'); return result
         if job.kind=='verify_lake':
             await progress(.5,'Проверка Parquet Data Lake'); result=self.lake.verify(); await progress(1,'Data Lake проверен'); return result
         if job.kind=='strategy_run':
