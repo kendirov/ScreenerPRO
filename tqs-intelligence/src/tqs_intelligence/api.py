@@ -394,7 +394,7 @@ def overview():
 @app.get('/api/system')
 async def system():
     data_lake, storage_stats, lab_stats, research_status_full, account_status_full, remote_status_full = await asyncio.gather(
-        asyncio.to_thread(lake.verify),
+        asyncio.to_thread(lake.quick_stats),
         asyncio.to_thread(store.stats),
         asyncio.to_thread(lab.stats),
         asyncio.to_thread(research_runtime.status),
@@ -434,13 +434,32 @@ async def _build_audit_payload() -> dict[str, Any]:
         asyncio.to_thread(updater.status, False),
         asyncio.to_thread(store.list_logs, 300),
     )
-    resources_state = await asyncio.to_thread(
-        resource_monitor.snapshot,
-        control=control,
-        research_runtime=research_runtime,
-        service=service,
-        data_root=control.get().data_lake_root,
-    )
+    resource_base = _resources()
+    control_state = control.get()
+    research_state = research_runtime.quick_status()
+    resources_state = {
+        "system": {
+            "cpu_percent": resource_base.get("cpu_percent"),
+            "ram_percent": resource_base.get("memory_percent"),
+            "ram_used_gb": resource_base.get("memory_used_gb"),
+            "ram_total_gb": resource_base.get("memory_total_gb"),
+            "disk_free_gb": resource_base.get("data_disk_free_gb"),
+            "disk_total_gb": resource_base.get("data_disk_total_gb"),
+        },
+        "policy": {
+            "mode": control_state.mode,
+            "heavy_workers": control_state.heavy_workers,
+            "cpu_soft_limit_pct": control_state.cpu_soft_limit_pct,
+            "ram_soft_limit_pct": control_state.ram_soft_limit_pct,
+        },
+        "effective": {
+            "research_active_jobs": len(research_state.get("active_jobs") or []),
+            "research_throttled": bool((research_state.get("resource_snapshot") or {}).get("throttled")),
+            "research_throttle_reason": (research_state.get("resource_snapshot") or {}).get("reason") or "",
+        },
+        "tqs_processes": [],
+        "stats_mode": "quick",
+    }
     return await asyncio.to_thread(
         build_runtime_audit,
         version=app.version,

@@ -100,6 +100,46 @@ class DataLake:
         except Exception:
             return {'first_ms': None, 'last_ms': None, 'rows': 0}
 
+    def quick_stats(self) -> dict[str, object]:
+        """Cheap operational stats for frequent runtime health checks.
+
+        This deliberately avoids reading every Parquet footer/row group. Full
+        verification remains available through verify() for explicit deep
+        diagnostics. Runtime Audit runs every few minutes and must never scan
+        the entire historical lake just to prove that the node is alive.
+        """
+        history_files = list(self.history_root.glob('**/*.parquet'))
+        usage = shutil.disk_usage(self.root)
+        metric_root = self.root / 'metrics'
+        metric_files_list = list(metric_root.glob('**/*.parquet'))
+        metric_files: dict[str, int] = {}
+        for path in metric_files_list:
+            part = next((x for x in path.parts if x.startswith('metric=')), 'metric=unknown')
+            key = part.split('=', 1)[1]
+            metric_files[key] = metric_files.get(key, 0) + 1
+        metric_stats = {
+            'root': str(metric_root.resolve()),
+            'files': len(metric_files_list),
+            'rows': None,
+            'row_count_known': False,
+            'metrics': {},
+            'metric_files': metric_files,
+            'bad_files': [],
+            'stats_mode': 'quick',
+        }
+        return {
+            'root': str(self.root.resolve()),
+            'files': len(history_files),
+            'rows': None,
+            'row_count_known': False,
+            'bad_files': [],
+            'metrics': metric_stats,
+            'all_rows': None,
+            'free_gb': round(usage.free / (1024**3), 2),
+            'total_gb': round(usage.total / (1024**3), 2),
+            'stats_mode': 'quick',
+        }
+
     def verify(self) -> dict[str, object]:
         files = list(self.history_root.glob('**/*.parquet'))
         bad: list[str] = []
