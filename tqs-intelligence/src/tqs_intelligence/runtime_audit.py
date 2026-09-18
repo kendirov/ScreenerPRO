@@ -42,6 +42,7 @@ def build_runtime_audit(
     update: dict[str, Any],
     recent_logs: list[Any],
     ai_control: dict[str, Any] | None = None,
+    resources: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one compact, machine-readable truth packet for owner + AI.
 
@@ -276,6 +277,27 @@ def build_runtime_audit(
         evidence={"task": bridge_task, "state": bridge},
     )
 
+    resource_state = resources or {}
+    system_load = resource_state.get("system") or {}
+    policy_state = resource_state.get("policy") or {}
+    effective_state = resource_state.get("effective") or {}
+    load_warn = bool(
+        float(system_load.get("cpu_percent") or 0) >= float(policy_state.get("cpu_soft_limit_pct") or 100)
+        or float(system_load.get("ram_percent") or 0) >= float(policy_state.get("ram_soft_limit_pct") or 100)
+    )
+    add(
+        "resource_governor",
+        "Resource governor / process telemetry",
+        "warn" if load_warn else "ok" if resource_state else "fail",
+        (
+            f"CPU={system_load.get('cpu_percent','?')}%; RAM={system_load.get('ram_percent','?')}%; "
+            f"workers={effective_state.get('research_active_jobs',0)}/{policy_state.get('heavy_workers','?')}; "
+            f"throttled={bool(effective_state.get('research_throttled'))}; "
+            f"TQS processes={len(resource_state.get('tqs_processes') or [])}"
+        ),
+        evidence=resource_state,
+    )
+
     control_bridge = ai_control or {}
     add(
         "ai_control",
@@ -363,6 +385,7 @@ def build_runtime_audit(
         "research": lab,
         "participants": {"lchi": lchi, "pulse": pulse},
         "remote_node": remote,
+        "resources": resource_state,
         "ai_control": control_bridge,
         "update": {
             "available": update.get("available"),
