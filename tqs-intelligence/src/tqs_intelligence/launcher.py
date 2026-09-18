@@ -149,9 +149,49 @@ class TQSLauncher:
 
     def _render_activity(self) -> None:
         state = self._read_update_state(); lines = list(self._events)
+        hs = self.health_status()
+        health = hs.get("payload") or {}
+        if health:
+            rr = health.get("research_runtime") or {}
+            ai = health.get("account_intelligence") or {}
+            discovery = ai.get("discovery") or {}
+            runtime = health.get("runtime") or {}
+            control = health.get("control") or {}
+            mode = str(control.get("mode") or "—").upper()
+            if mode == "LIGHT":
+                mode_note = "live-сбор работает · тяжёлые исследования ждут MAX"
+            elif mode == "MAX":
+                mode_note = "live-сбор + история + исследования работают"
+            elif mode == "STOP":
+                mode_note = "сбор и тяжёлая работа на паузе"
+            else:
+                mode_note = ""
+            ah = rr.get("auto_history") or {}
+            am = rr.get("auto_metrics") or {}
+            summary = [
+                f"СЕЙЧАС: {rr.get('last_action') or runtime.get('last_action') or 'TQS работает'}",
+                f"РЕЖИМ: {mode} · {mode_note}",
+                f"РЫНОК: циклов этой сессии {runtime.get('refresh_count', 0)}",
+                f"АВТОИСТОРИЯ: готово {ah.get('done', 0)}/{ah.get('target_total', 0)} · осталось {ah.get('remaining', 0)}",
+                f"АВТОМЕТРИКИ: готово {am.get('done', 0)}/{am.get('target_total', 0)} · осталось {am.get('remaining', 0)}",
+                f"ПУБЛИЧНЫЕ СЧЕТА: найдено {discovery.get('discovered_accounts', 0)} · hot {ai.get('tracked_accounts', 0)} · позиций {ai.get('open_positions', 0)} · fills {ai.get('fills', 0)}",
+                "",
+            ]
+            lines = summary + lines
+        elif hs.get("processes_alive"):
+            age = hs.get("last_ok_age_s")
+            age_text = f"{age:.0f}с" if isinstance(age, (int, float)) else "—"
+            lines = [
+                "СЕЙЧАС: процессы TQS живы, но API занят и временно не ответил.",
+                f"Последний успешный health: {age_text} назад · процессов {hs.get('process_count', 0)}.",
+                "Работа не считается упавшей только из-за timeout; watchdog ждёт heartbeat supervisor.",
+                "",
+            ] + lines
+        else:
+            lines = ["СЕЙЧАС: TQS backend не запущен.", ""] + lines
         if state:
-            lines.insert(0, "UPDATE: " + " · ".join(str(state.get(k) or "") for k in ("status", "step", "message") if state.get(k)))
-            if state.get("error"): lines.insert(1, f"UPDATE ERROR: {state['error']}")
+            lines.insert(0, "ОБНОВЛЕНИЕ: " + " · ".join(str(state.get(k) or "") for k in ("status", "step", "message") if state.get(k)))
+            if state.get("error"): lines.insert(1, f"ОШИБКА ОБНОВЛЕНИЯ: {state['error']}")
         self.activity.configure(state="normal"); self.activity.delete("1.0", "end"); self.activity.insert("1.0", "\n".join(lines[:80]) or "Launcher готов. Запусти TQS или проверь обновление."); self.activity.configure(state="disabled")
 
     def _run_git(self, *args: str, timeout: int = 45, allow_fail: bool = False) -> tuple[int, str]:
