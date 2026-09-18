@@ -55,3 +55,31 @@ class ResearchJob(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
+
+
+class ResearchProject(BaseModel):
+    id: str
+    title: str
+    hypothesis: str
+    origin: str = 'artem'
+    status: Literal['idea','exploratory','validation','oos','confirmed','rejected','insufficient_data'] = 'exploratory'
+    market: str = 'multi'
+    instruments: list[str] = Field(default_factory=list)
+    data_requirements: list[str] = Field(default_factory=list)
+    event: dict[str, Any] = Field(default_factory=dict)
+    controls: list[str] = Field(default_factory=list)
+    regimes: list[str] = Field(default_factory=list)
+    horizons: list[str] = Field(default_factory=lambda: ['5m','1h','1d'])
+    metrics: list[str] = Field(default_factory=lambda: ['forward_return','mfe','mae','hit_rate'])
+    validation: dict[str, Any] = Field(default_factory=lambda: {
+        'multiple_testing': True,
+        'oos_required': True,
+        'walk_forward': True,
+        'min_events': 40,
+        'status_note': 'exploratory until independent OOS/replication',
+    })
+    linked_job_ids: list[str] = Field(default_factory=list)
+    linked_strategy_ids: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    created_at_ms: int
+    updated_at_ms: int

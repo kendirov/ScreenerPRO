@@ -18,6 +18,7 @@ from .replay import HistoricalReplayEngine
 from .sources import BinanceSource, BybitSource, MoexSource
 from .strategy_extensions import default_buy_dip_bps_spec, default_buy_dip_points_spec, run_buy_dip_grid
 from .strategy_machine import StrategyMachine, default_round_buffer_spec
+from .strategy_models import ResearchProject
 
 
 class ResearchPaused(RuntimeError):
@@ -63,6 +64,54 @@ class ResearchRuntime:
         if self.lab.get_strategy(crypto.id) is None: self.lab.save_strategy(crypto)
         for spec in (default_buy_dip_bps_spec(), default_buy_dip_points_spec()):
             if self.lab.get_strategy(spec.id) is None: self.lab.save_strategy(spec)
+        self._seed_research_projects()
+
+    def _seed_research_projects(self) -> None:
+        now=int(time.time()*1000)
+        seeds=[
+            ResearchProject(
+                id='TQS-RESEARCH-ROUND-LEVELS-001',
+                title='Круглые уровни: clustering / barrier / breakout',
+                hypothesis='Круглые цены меняют поведение рынка относительно matched pseudo-level controls; эффект зависит от first touch, acceptance, режима и ликвидности.',
+                origin='artem+drive',status='exploratory',market='multi',
+                data_requirements=['OHLCV','tick size','spread','volume','session','volatility','matched pseudo-level controls'],
+                event={'family':'round_level','states':['approach','touch','rejection','acceptance','breakout','retest']},
+                controls=['matched pseudo-level','same session','same volatility','same direction'],
+                regimes=['trend/range','high/low vol','session','liquidity','news/no-news'],
+                horizons=['1m','5m','15m','1h','1d'],
+                notes=['Drive evidence base exists; do not equate price clustering with tradable barrier effect.'],
+                created_at_ms=now,updated_at_ms=now,
+            ),
+            ResearchProject(
+                id='TQS-RESEARCH-PRICE-OI-DIVERGENCE-001',
+                title='Цена стоит, OI растёт',
+                hypothesis='Рост OI при слабом движении цены формирует состояния накопления/борьбы, после которых распределение будущего движения отличается от matched controls.',
+                origin='artem',status='exploratory',market='multi',
+                data_requirements=['price','open_interest','delta OI','volume','spread','FUTOI where available'],
+                event={'family':'price_oi_divergence','price_abs_return_max_bps':20,'oi_change_min_pct':1.0},
+                controls=['same volatility','same session','similar volume without OI shock'],
+                regimes=['trend/range','pre-expiry/normal','high/low vol','participant context'],
+                horizons=['5m','15m','1h','4h','1d'],
+                notes=['Never infer long/short direction from aggregate OI alone.'],
+                created_at_ms=now,updated_at_ms=now,
+            ),
+            ResearchProject(
+                id='TQS-RESEARCH-MOEX-EXPIRY-001',
+                title='MOEX квартальная экспирация и ролловер',
+                hypothesis='Вблизи квартальной экспирации меняются ликвидность, basis, OI split и intraday response; эффекты должны измеряться относительно non-expiry controls.',
+                origin='artem+drive',status='exploratory',market='MOEX',
+                data_requirements=['current/next futures','expiry metadata','OI','volume','basis','underlying/index','FUTOI when available'],
+                event={'family':'expiry','windows':['T-10','T-5','T-3','T-1','T0','T+1']},
+                controls=['same weekday non-expiry','same volatility','same contract age'],
+                regimes=['roll intensity','market trend','high/low vol','index/commodity/currency future'],
+                horizons=['30m','1h','session','1d','3d'],
+                notes=['Settlement/expiry time must come from versioned contract metadata, not hardcoded historical assumptions.'],
+                created_at_ms=now,updated_at_ms=now,
+            ),
+        ]
+        for project in seeds:
+            if self.lab.get_research_project(project.id) is None:
+                self.lab.save_research_project(project)
 
     def start(self) -> None:
         if self._task is None or self._task.done(): self._task=asyncio.create_task(self._loop(),name='tqs-research-runtime')

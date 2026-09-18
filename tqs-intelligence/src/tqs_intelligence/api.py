@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+from uuid import uuid4
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
@@ -43,7 +44,7 @@ from .snapshot_export import SnapshotExporter
 from .sources import BinanceSource, BitgetSource, BybitSource, MoexSource, OkxSource, TwelveDataSource
 from .storage import DuckStore
 from .strategy_machine import StrategyMachine, default_round_buffer_spec
-from .strategy_models import StrategySpec
+from .strategy_models import ResearchProject, StrategySpec
 from .update_manager import UpdateManager
 
 
@@ -109,6 +110,21 @@ class IdeaCreate(BaseModel):
     kind: str = 'research'
     priority: int = Field(default=50, ge=0, le=100)
     tags: list[str] = Field(default_factory=list)
+
+
+class ResearchProjectCreate(BaseModel):
+    title: str
+    hypothesis: str
+    origin: str = 'artem'
+    market: str = 'multi'
+    instruments: list[str] = Field(default_factory=list)
+    data_requirements: list[str] = Field(default_factory=list)
+    event: dict[str, Any] = Field(default_factory=dict)
+    controls: list[str] = Field(default_factory=list)
+    regimes: list[str] = Field(default_factory=list)
+    horizons: list[str] = Field(default_factory=lambda: ['5m','1h','1d'])
+    metrics: list[str] = Field(default_factory=lambda: ['forward_return','mfe','mae','hit_rate'])
+    notes: list[str] = Field(default_factory=list)
 
 
 class BackfillCreate(BaseModel):
@@ -638,6 +654,41 @@ def episode_detail(episode_id:str,before_hours:int=Query(24,ge=1,le=168),after_h
         except Exception: out=None
         similar.append({'episode':item.model_dump(mode='json'),'outcome':out})
     return {'episode':episode.model_dump(mode='json'),'outcome':outcome.model_dump(mode='json'),'series':series,'similar':similar}
+
+
+@app.get('/api/research/projects')
+def research_projects(limit:int=Query(200,ge=1,le=2000),status:str=''):
+    return [x.model_dump(mode='json') for x in lab.list_research_projects(limit,status)]
+
+
+@app.post('/api/research/projects')
+def create_research_project(request:ResearchProjectCreate):
+    now=int(time.time()*1000)
+    project=ResearchProject(
+        id=f"R-{uuid4().hex[:10].upper()}", created_at_ms=now, updated_at_ms=now,
+        **request.model_dump()
+    )
+    return lab.save_research_project(project).model_dump(mode='json')
+
+
+@app.post('/api/research/projects/{project_id}/queue')
+def queue_research_project(project_id:str):
+    project=lab.get_research_project(project_id)
+    if project is None: raise HTTPException(404,'research project not found')
+    queued=[]
+    existing=set(project.linked_job_ids)
+    for cid in project.instruments:
+        interval='10m' if cid.startswith('moex:') else '5m'
+        job=lab.enqueue_job('historical_replay',f"Research {project.id}: {cid}",{
+            'canonical_id':cid,'interval':interval,'threshold':70.0,'research_project_id':project.id,
+            'hypothesis':project.hypothesis,'horizons':project.horizons,'controls':project.controls,
+            'regimes':project.regimes,
+        })
+        queued.append(job.id); existing.add(job.id)
+    project.linked_job_ids=sorted(existing)
+    project.status='exploratory'
+    lab.save_research_project(project)
+    return {'project':project.model_dump(mode='json'),'queued_job_ids':queued}
 
 
 @app.get('/api/research/findings')

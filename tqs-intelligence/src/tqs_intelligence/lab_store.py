@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .strategy_models import ResearchJob, StrategyRunResult, StrategySpec
+from .strategy_models import ResearchJob, ResearchProject, StrategyRunResult, StrategySpec
 
 
 def _now_ms() -> int:
@@ -39,6 +39,10 @@ class LabStore:
                     id text primary key, created_at_ms integer, updated_at_ms integer,
                     origin text, title text, text text, kind text, status text, priority integer,
                     tags_json text, links_json text, result_json text
+                );
+                create table if not exists research_projects (
+                    id text primary key, created_at_ms integer, updated_at_ms integer,
+                    title text, status text, project_json text
                 );
                 create table if not exists research_jobs (
                     id text primary key, kind text, created_at_ms integer, updated_at_ms integer,
@@ -104,6 +108,38 @@ class LabStore:
             )
             self._con.commit()
         return current
+
+    def save_research_project(self, project: ResearchProject) -> ResearchProject:
+        project.updated_at_ms = _now_ms()
+        with self._lock:
+            row = self._con.execute('select id from research_projects where id=?', [project.id]).fetchone()
+            if row:
+                self._con.execute(
+                    'update research_projects set updated_at_ms=?,title=?,status=?,project_json=? where id=?',
+                    [project.updated_at_ms, project.title, project.status, project.model_dump_json(), project.id],
+                )
+            else:
+                self._con.execute(
+                    'insert into research_projects values (?, ?, ?, ?, ?, ?)',
+                    [project.id, project.created_at_ms, project.updated_at_ms, project.title, project.status, project.model_dump_json()],
+                )
+            self._con.commit()
+        return project
+
+    def list_research_projects(self, limit: int = 500, status: str = '') -> list[ResearchProject]:
+        sql = 'select project_json from research_projects'
+        params: list[Any] = []
+        if status:
+            sql += ' where status=?'; params.append(status)
+        sql += ' order by updated_at_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows = self._con.execute(sql, params).fetchall()
+        return [ResearchProject.model_validate_json(r[0]) for r in rows]
+
+    def get_research_project(self, project_id: str) -> ResearchProject | None:
+        with self._lock:
+            row = self._con.execute('select project_json from research_projects where id=?', [project_id]).fetchone()
+        return ResearchProject.model_validate_json(row[0]) if row else None
 
     def enqueue_job(self, kind: str, title_ru: str, payload: dict[str, Any]) -> ResearchJob:
         item = ResearchJob(id=f'J-{uuid4().hex[:10].upper()}', kind=kind, created_at_ms=_now_ms(), title_ru=title_ru, payload=payload)
@@ -209,6 +245,7 @@ class LabStore:
         with self._lock:
             return {
                 'ideas': self._con.execute('select count(*) from ideas').fetchone()[0],
+                'research_projects': self._con.execute('select count(*) from research_projects').fetchone()[0],
                 'queued_jobs': self._con.execute("select count(*) from research_jobs where status='queued'").fetchone()[0],
                 'running_jobs': self._con.execute("select count(*) from research_jobs where status='running'").fetchone()[0],
                 'strategies': self._con.execute('select count(*) from strategy_specs').fetchone()[0],
