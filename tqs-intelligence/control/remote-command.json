@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
-  "command_id": "chatgpt-20260918-1058-emergency-stop-1",
-  "issued_at_ms": 1789729080000,
-  "expires_at_ms": 1789732680000,
+  "command_id": "chatgpt-1789730737479-light-stable",
+  "issued_at_ms": 1789730737479,
+  "expires_at_ms": 1789733437479,
   "requested_by": "chatgpt",
   "action": "set_control",
   "params": {
-    "mode": "stop",
+    "mode": "light",
     "heavy_workers": 1,
     "history_batch_size": 1,
     "metric_batch_size": 1,
-    "refresh_seconds_override": 300,
+    "refresh_seconds_override": 120,
     "cpu_soft_limit_pct": 70,
     "ram_soft_limit_pct": 82
   },
-  "note": "Emergency stabilization: pause all collection/research while diagnosing Data Root regression and high RAM."
+  "note": "Resume stable live collection after v0.13.1 repair; keep heavy research paused under high RAM pressure."
 }
