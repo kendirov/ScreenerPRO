@@ -113,7 +113,9 @@ function Find-GoogleDriveTarget {
 function Publish-Audit {
     $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
     $state = [ordered]@{
-        last_publish_ms = $now
+        last_attempt_ms = $now
+        last_publish_ms = 0
+        last_drive_publish_ms = 0
         target_path = $null
         drive_connected = $false
         audit_overall = $null
@@ -135,29 +137,36 @@ function Publish-Audit {
         $localText = Join-Path $LocalDir "TQS_LIVE_AUDIT.txt"
         Write-JsonAtomic -Path $localJson -Value $audit
         Write-TextAtomic -Path $localText -Text $text
+        $state.last_publish_ms = $now
 
         $target = Find-GoogleDriveTarget
         if ($target) {
             $state.target_path = $target
-            $state.drive_connected = $true
-            Write-JsonAtomic -Path (Join-Path $target "TQS_LIVE_AUDIT.json") -Value $audit
-            Write-TextAtomic -Path (Join-Path $target "TQS_LIVE_AUDIT.txt") -Text $text
-
-            # One compact hourly history file makes regressions and overnight
-            # failures inspectable by another ChatGPT session without exposing
-            # raw private account databases.
-            $history = Join-Path $target "history"
-            New-Item -ItemType Directory -Force -Path $history | Out-Null
-            $hourName = "TQS-AUDIT-" + (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HH") + ".json"
-            $hourPath = Join-Path $history $hourName
-            if (-not (Test-Path $hourPath)) {
-                Write-JsonAtomic -Path $hourPath -Value $audit
-            }
             try {
-                Get-ChildItem -Path $history -Filter "TQS-AUDIT-*.json" -File |
-                    Where-Object { $_.LastWriteTimeUtc -lt (Get-Date).ToUniversalTime().AddDays(-7) } |
-                    Remove-Item -Force -ErrorAction SilentlyContinue
-            } catch {}
+                Write-JsonAtomic -Path (Join-Path $target "TQS_LIVE_AUDIT.json") -Value $audit
+                Write-TextAtomic -Path (Join-Path $target "TQS_LIVE_AUDIT.txt") -Text $text
+
+                # One compact hourly history file makes regressions and overnight
+                # failures inspectable by another ChatGPT session without exposing
+                # raw private account databases.
+                $history = Join-Path $target "history"
+                New-Item -ItemType Directory -Force -Path $history | Out-Null
+                $hourName = "TQS-AUDIT-" + (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HH") + ".json"
+                $hourPath = Join-Path $history $hourName
+                if (-not (Test-Path $hourPath)) {
+                    Write-JsonAtomic -Path $hourPath -Value $audit
+                }
+                try {
+                    Get-ChildItem -Path $history -Filter "TQS-AUDIT-*.json" -File |
+                        Where-Object { $_.LastWriteTimeUtc -lt (Get-Date).ToUniversalTime().AddDays(-7) } |
+                        Remove-Item -Force -ErrorAction SilentlyContinue
+                } catch {}
+                $state.drive_connected = $true
+                $state.last_drive_publish_ms = $now
+            } catch {
+                $state.drive_connected = $false
+                $state.last_error = "Google Drive publish failed: $($_.Exception.GetType().Name): $($_.Exception.Message)"
+            }
         } else {
             $state.last_error = "Google Drive target not detected; local audit is still being updated."
         }
