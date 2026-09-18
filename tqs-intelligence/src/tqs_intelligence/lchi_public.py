@@ -381,6 +381,34 @@ class LchiPublicStore:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def account(self, user_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            user = self._con.execute("select * from lchi_participants where user_id=?", [user_id]).fetchone()
+            if user is None:
+                return None
+            mx = self._con.execute(
+                "select max(observed_at_ms) from lchi_position_snapshots where user_id=?", [user_id]
+            ).fetchone()[0]
+            positions = []
+            if mx is not None:
+                positions = [
+                    dict(r) | {"evidence_level": "public_account"}
+                    for r in self._con.execute(
+                        "select * from lchi_position_snapshots where user_id=? and observed_at_ms=? order by abs(coalesce(estimated_value,0)) desc",
+                        [user_id, int(mx)],
+                    ).fetchall()
+                ]
+            events = [
+                dict(r)
+                for r in self._con.execute(
+                    "select * from lchi_position_events where user_id=? order by ts_ms desc limit 500", [user_id]
+                ).fetchall()
+            ]
+        participant = dict(user)
+        participant["assets"] = json.loads(participant.pop("assets_json") or "[]")
+        participant.pop("raw_json", None)
+        return {"participant": participant, "positions": positions, "events": events}
+
     def stats(self) -> dict[str, Any]:
         with self._lock:
             participants = int(self._con.execute("select count(*) from lchi_participants").fetchone()[0])
