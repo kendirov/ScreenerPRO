@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import time
 import traceback
+
+import psutil
 from typing import Any
 
 from .bybit_metrics import BybitLongHistoryBackfiller
@@ -30,6 +32,12 @@ class ResearchRuntime:
         self.bybit_metrics=BybitLongHistoryBackfiller(backfiller.http, backfiller.metric_lake)
         self._task: asyncio.Task|None=None; self._running=False; self.last_action='Ожидание'; self.last_error: str|None=None
         self._last_auto_plan_s=0.0
+        self._max_worker_slots=4
+        self._worker_tasks: list[asyncio.Task] = []
+        self._worker_states: dict[int,dict[str,Any]] = {}
+        self._active_jobs: dict[int,dict[str,Any]] = {}
+        self._planner_lock: asyncio.Lock | None = None
+        self._resource_snapshot: dict[str,Any] = {'cpu_percent':0.0,'ram_percent':0.0,'throttled':False}
         self._auto_history: dict[str,Any] = {
             'enabled': True, 'target_total': 0, 'known_total': 0, 'done': 0,
             'queued_running': 0, 'failed': 0, 'remaining': 0,
@@ -66,9 +74,20 @@ class ResearchRuntime:
             except asyncio.CancelledError: pass
 
     def quick_status(self) -> dict[str,Any]:
+        state=self.control.get()
         return {
-            'running':self._running,'mode':self.control.get().mode,
+            'running':self._running,'mode':state.mode,
             'last_action':self.last_action,'last_error':self.last_error,
+            'desired_workers':state.heavy_workers,'max_worker_slots':self._max_worker_slots,
+            'workers':[dict({'worker_id':i}, **self._worker_states.get(i, {'state':'starting'})) for i in range(self._max_worker_slots)],
+            'active_jobs':list(self._active_jobs.values()),
+            'resource_policy':{
+                'cpu_soft_limit_pct':state.cpu_soft_limit_pct,
+                'ram_soft_limit_pct':state.ram_soft_limit_pct,
+                'history_batch_size':state.history_batch_size,
+                'metric_batch_size':state.metric_batch_size,
+            },
+            'resource_snapshot':dict(self._resource_snapshot),
             'auto_history':dict(self._auto_history),'auto_metrics':dict(self._auto_metrics),
         }
 
@@ -169,14 +188,15 @@ class ResearchRuntime:
         self._last_auto_plan_s=now; self.last_action='MAX: ищу пробелы истории и derivative metrics'
         quotes,source_errors=await self._collect_planner_quotes(); jobs=self.lab.list_jobs(8000); now_ms=int(time.time()*1000)
 
-        history_payloads,history_stats=build_history_plan(quotes,jobs,batch_size=4)
+        policy=self.control.get()
+        history_payloads,history_stats=build_history_plan(quotes,jobs,batch_size=policy.history_batch_size)
         history_stats.update({'last_plan_at_ms':now_ms,'discovered_quotes':len(quotes),'source_errors':source_errors[:4]})
         self._auto_history=history_stats
         for payload in history_payloads: self.lab.enqueue_job('historical_backfill',history_title(payload),payload)
 
         metric_payloads=[]; metric_stats=self._auto_metrics
-        if len(history_payloads)<=2:
-            metric_payloads,metric_stats=build_metric_plan(quotes,jobs,batch_size=2)
+        if len(history_payloads)<=max(1,policy.history_batch_size//2):
+            metric_payloads,metric_stats=build_metric_plan(quotes,jobs,batch_size=policy.metric_batch_size)
             metric_stats.update({'last_plan_at_ms':now_ms,'discovered_quotes':len(quotes),'source_errors':source_errors[:4]})
             for payload in metric_payloads: self.lab.enqueue_job('derivative_metric_backfill',metric_title(payload),payload)
         else:
@@ -197,34 +217,118 @@ class ResearchRuntime:
             self.last_action='MAX: ждём доступный market universe для автоплана'
         return total
 
+    def _refresh_resource_snapshot(self) -> None:
+        state=self.control.get()
+        try:
+            cpu=float(psutil.cpu_percent(interval=None))
+            ram=float(psutil.virtual_memory().percent)
+        except Exception:
+            cpu=0.0; ram=0.0
+        reasons=[]
+        if cpu >= float(state.cpu_soft_limit_pct):
+            reasons.append(f'CPU {cpu:.0f}% ≥ {state.cpu_soft_limit_pct}%')
+        if ram >= float(state.ram_soft_limit_pct):
+            reasons.append(f'RAM {ram:.0f}% ≥ {state.ram_soft_limit_pct}%')
+        self._resource_snapshot={
+            'cpu_percent':round(cpu,1),
+            'ram_percent':round(ram,1),
+            'cpu_soft_limit_pct':state.cpu_soft_limit_pct,
+            'ram_soft_limit_pct':state.ram_soft_limit_pct,
+            'throttled':bool(reasons),
+            'reason':' · '.join(reasons),
+            'ts_ms':int(time.time()*1000),
+        }
+
+    async def _worker_loop(self, worker_id: int) -> None:
+        while True:
+            state=self.control.get()
+            desired=max(1,min(int(state.heavy_workers),self._max_worker_slots))
+            if not state.heavy_allowed:
+                self._worker_states[worker_id]={'state':'paused','reason':f'mode {state.mode.upper()}'}
+                if worker_id==0:
+                    self.last_action='Тяжёлые расчёты на паузе — включи МАКС'
+                await asyncio.sleep(1.5)
+                continue
+            if worker_id >= desired:
+                self._worker_states[worker_id]={'state':'standby','reason':f'workers={desired}'}
+                await asyncio.sleep(1.5)
+                continue
+            if bool(self._resource_snapshot.get('throttled')):
+                reason=str(self._resource_snapshot.get('reason') or 'resource soft limit')
+                self._worker_states[worker_id]={'state':'throttled','reason':reason}
+                if worker_id==0:
+                    self.last_action=f'Ресурсный governor: новые heavy jobs на паузе · {reason}'
+                await asyncio.sleep(2)
+                continue
+
+            job=self.lab.claim_next_job()
+            if job is None:
+                self._worker_states[worker_id]={'state':'idle','reason':'queue empty'}
+                if worker_id==0:
+                    try:
+                        assert self._planner_lock is not None
+                        async with self._planner_lock:
+                            queued=await self._autoplan_idle()
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as exc:
+                        self.last_error=f'auto planner: {exc}'
+                        self.last_action=f'Автопилот: ошибка планировщика — {str(exc)[:180]}'
+                        await asyncio.sleep(10)
+                        continue
+                    if queued:
+                        await asyncio.sleep(.2)
+                        continue
+                await asyncio.sleep(1)
+                continue
+
+            self.last_error=None
+            self._active_jobs[worker_id]={
+                'worker_id':worker_id,'job_id':job.id,'kind':job.kind,'title':job.title_ru,
+                'started_at_ms':int(time.time()*1000),
+            }
+            self._worker_states[worker_id]={'state':'running','job_id':job.id,'kind':job.kind,'title':job.title_ru}
+            self.last_action=f'W{worker_id+1}: {job.title_ru} — запуск'
+            try:
+                result=await self._execute(job)
+                self.lab.update_job(job.id,status='done',progress=1,result=result,error='')
+            except asyncio.CancelledError:
+                raise
+            except ResearchPaused:
+                mode=self.control.get().mode.upper()
+                self.last_error=None
+                self.last_action=f'W{worker_id+1}: {job.title_ru} — пауза {mode}; продолжится в МАКС'
+                self.lab.update_job(job.id,status='queued',progress=0,error='')
+            except Exception as exc:
+                self.last_error=str(exc)
+                self.lab.update_job(job.id,status='failed',error=f'{exc}\n{traceback.format_exc()[-3000:]}')
+            finally:
+                self._active_jobs.pop(worker_id,None)
+                self._worker_states[worker_id]={'state':'idle','reason':'job finished'}
+            await asyncio.sleep(.1)
+
     async def _loop(self) -> None:
         self._running=True
+        self._planner_lock=asyncio.Lock()
+        self._worker_tasks=[
+            asyncio.create_task(self._worker_loop(i),name=f'tqs-research-worker-{i+1}')
+            for i in range(self._max_worker_slots)
+        ]
         try:
             while True:
-                state=self.control.get()
-                if not state.heavy_allowed:
-                    self.last_action='Тяжёлые расчёты на паузе — включи МАКС'; await asyncio.sleep(2); continue
-                job=self.lab.claim_next_job()
-                if job is None:
-                    try: queued=await self._autoplan_idle()
-                    except asyncio.CancelledError: raise
-                    except Exception as exc:
-                        self.last_error=f'auto planner: {exc}'; self.last_action=f'Автопилот: ошибка планировщика — {str(exc)[:180]}'
-                        await asyncio.sleep(10); continue
-                    if queued: await asyncio.sleep(.2); continue
-                    await asyncio.sleep(2); continue
-                self.last_error=None; self.last_action=f'{job.title_ru} — запуск'
-                try:
-                    result=await self._execute(job); self.lab.update_job(job.id,status='done',progress=1,result=result,error='')
-                except asyncio.CancelledError: raise
-                except ResearchPaused:
-                    mode=self.control.get().mode.upper()
-                    self.last_error=None
-                    self.last_action=f'{job.title_ru} — пауза {mode}; продолжится в МАКС'
-                    self.lab.update_job(job.id,status='queued',progress=0,error='')
-                    await asyncio.sleep(1)
-                except Exception as exc:
-                    self.last_error=str(exc); self.lab.update_job(job.id,status='failed',error=f'{exc}\n{traceback.format_exc()[-3000:]}')
-                await asyncio.sleep(.2)
+                self._refresh_resource_snapshot()
+                await asyncio.sleep(2)
         finally:
+            for task in self._worker_tasks:
+                if not task.done():
+                    task.cancel()
+            for task in self._worker_tasks:
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
+            self._worker_tasks=[]
+            self._active_jobs.clear()
             self._running=False
