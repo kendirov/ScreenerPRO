@@ -17,6 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from . import __version__
 from .account_intelligence import AccountIntelStore, AccountIntelligenceService
+from .ai_control import AiControlBridge
 from .briefing import BriefingBuilder
 from .control import ControlCenter
 from .historical import HistoricalBackfiller
@@ -35,6 +36,7 @@ from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
 from .remote_node import remote_node_status, repair_server_contract
+from .resource_monitor import ResourceMonitor
 from .runtime_audit import build_runtime_audit, audit_text
 from .service import IntelligenceService
 from .snapshot_export import SnapshotExporter
@@ -57,6 +59,11 @@ class Settings(BaseSettings):
     drive_export_root: str = ''
     mode: str = 'light'
     heavy_workers: int = 2
+    history_batch_size: int = 4
+    metric_batch_size: int = 2
+    refresh_seconds_override: int = 0
+    cpu_soft_limit_pct: int = 90
+    ram_soft_limit_pct: int = 92
     auto_update: bool = True
     refresh_seconds: int = 60
     enable_binance: bool = True
@@ -79,6 +86,8 @@ class Settings(BaseSettings):
     hyperliquid_wallets: str = ''
     pulse_handles: str = ''
     pulse_refresh_seconds: int = 300
+    ai_control_url: str = 'https://raw.githubusercontent.com/kendirov/ScreenerPRO/tqs-control/tqs-intelligence/control/remote-command.json'
+    ai_control_poll_seconds: int = 30
 
 
 class ControlPatch(BaseModel):
@@ -86,7 +95,12 @@ class ControlPatch(BaseModel):
     data_lake_root: str | None = None
     drive_export_root: str | None = None
     auto_update: bool | None = None
-    heavy_workers: int | None = Field(default=None, ge=1, le=16)
+    heavy_workers: int | None = Field(default=None, ge=1, le=4)
+    history_batch_size: int | None = Field(default=None, ge=1, le=16)
+    metric_batch_size: int | None = Field(default=None, ge=1, le=8)
+    refresh_seconds_override: int | None = Field(default=None, ge=0, le=900)
+    cpu_soft_limit_pct: int | None = Field(default=None, ge=50, le=99)
+    ram_soft_limit_pct: int | None = Field(default=None, ge=50, le=99)
 
 
 class IdeaCreate(BaseModel):
@@ -126,9 +140,19 @@ settings = Settings()
 control_path = Path(settings.control_path)
 control = ControlCenter(settings.control_path)
 if not control_path.exists():
-    control.update(mode=settings.mode, data_lake_root=settings.data_lake_root,
-                   drive_export_root=settings.drive_export_root, auto_update=settings.auto_update,
-                   heavy_workers=settings.heavy_workers, changed_by='env')
+    control.update(
+        mode=settings.mode,
+        data_lake_root=settings.data_lake_root,
+        drive_export_root=settings.drive_export_root,
+        auto_update=settings.auto_update,
+        heavy_workers=settings.heavy_workers,
+        history_batch_size=settings.history_batch_size,
+        metric_batch_size=settings.metric_batch_size,
+        refresh_seconds_override=settings.refresh_seconds_override,
+        cpu_soft_limit_pct=settings.cpu_soft_limit_pct,
+        ram_soft_limit_pct=settings.ram_soft_limit_pct,
+        changed_by='env',
+    )
 
 http = JsonHttp(); sources = []
 if settings.enable_bitget: sources.append(BitgetSource(http))
@@ -156,6 +180,7 @@ metric_lake = MetricLake(lake.root)
 backfiller = HistoricalBackfiller(http, lake)
 strategy_machine = StrategyMachine()
 research_runtime = ResearchRuntime(control, lab, backfiller, lake, strategy_machine)
+resource_monitor = ResourceMonitor(Path(__file__).resolve().parents[2])
 account_service = AccountIntelligenceService(control, account_store, http, settings.account_refresh_seconds, settings.account_history_days)
 moex_feature_engine = MoexFeatureEngine(store, lchi_store=lchi_store, metric_lake=metric_lake)
 service = IntelligenceService(
@@ -169,6 +194,13 @@ moex_lab = MoexLab(store)
 instrument_lab = InstrumentLab(store, lake, lab, metric_lake=metric_lake)
 exporter = SnapshotExporter(store, lab, control, lake, settings.db_path, account_store=account_store)
 updater = UpdateManager('./data/update-request.json')
+ai_control = AiControlBridge(
+    url=settings.ai_control_url,
+    control=control,
+    updater=updater,
+    service=service,
+    poll_seconds=settings.ai_control_poll_seconds,
+)
 RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
 RUNTIME_INSTANCE_ID = f'{RUNTIME_STARTED_AT_MS}-{os.getpid()}'
 
@@ -179,7 +211,7 @@ async def lifespan(_: FastAPI):
         lab.save_strategy(default_round_buffer_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
-    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start()
+    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start(); ai_control.start()
 
     async def repair_remote_contract() -> None:
         try:
@@ -198,7 +230,7 @@ async def lifespan(_: FastAPI):
     yield
     if not repair_task.done():
         repair_task.cancel()
-    await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
+    await ai_control.stop(); await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
@@ -283,14 +315,24 @@ async def health():
     # Liveness must never wait for analytical COUNT(*) queries or Parquet work.
     snapshot=_snapshot()
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.status(),
+            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.status(),'ai_control':ai_control.status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],
             'storage':{'deferred':True},'lab':{'deferred':True}}
 
 
 @app.get('/api/control')
-def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False)}
+def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False),'ai_control':ai_control.status()}
+
+@app.get('/api/resources')
+def get_resources():
+    return resource_monitor.snapshot(
+        control=control,
+        research_runtime=research_runtime,
+        service=service,
+        data_root=control.get().data_lake_root,
+    )
+
 
 
 @app.post('/api/control')
@@ -348,6 +390,11 @@ def node_remote_status():
     return remote_node_status()
 
 
+@app.get('/api/ai-control')
+def ai_control_status():
+    return ai_control.status()
+
+
 async def _build_audit_payload() -> dict[str, Any]:
     runtime = service.runtime_status()
     snapshot = _snapshot()
@@ -360,6 +407,13 @@ async def _build_audit_payload() -> dict[str, Any]:
         asyncio.to_thread(remote_node_status),
         asyncio.to_thread(updater.status, False),
         asyncio.to_thread(store.list_logs, 300),
+    )
+    resources_state = await asyncio.to_thread(
+        resource_monitor.snapshot,
+        control=control,
+        research_runtime=research_runtime,
+        service=service,
+        data_root=control.get().data_lake_root,
     )
     return await asyncio.to_thread(
         build_runtime_audit,
@@ -374,6 +428,8 @@ async def _build_audit_payload() -> dict[str, Any]:
         remote=remote_state,
         update=update_state,
         recent_logs=logs,
+        ai_control=ai_control.status(),
+        resources=resources_state,
     )
 
 

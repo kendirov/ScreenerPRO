@@ -148,6 +148,66 @@ class Supervisor:
         except Exception:
             return False
 
+    def _quiesce_research_for_update(self, timeout_s: int = 45) -> str | None:
+        """Pause MAX cooperatively so updates cannot starve behind endless research.
+
+        Historical/metric jobs checkpoint through ResearchRuntime progress callbacks.
+        Switching MAX -> LIGHT makes the current job re-queue at the next checkpoint.
+        If a provider call is stuck past the timeout, the update still proceeds: the
+        child restart recovers any job left running, and DataLake writes are
+        tmp+replace atomic.
+        """
+        if not self._busy():
+            return None
+        state = self.control.get()
+        previous_mode = state.mode
+        if previous_mode == 'max':
+            self._write_update_state(
+                status='waiting',
+                step='quiesce',
+                message='Обновление ждёт safe checkpoint: MAX → LIGHT; текущая research-задача будет поставлена обратно в очередь',
+                previous_mode=previous_mode,
+            )
+            self.control.update(mode='light', changed_by='supervisor-update-quiesce')
+        else:
+            self._write_update_state(
+                status='waiting',
+                step='quiesce',
+                message=f'Жду завершения текущей research-задачи перед обновлением · mode={previous_mode.upper()}',
+                previous_mode=previous_mode,
+            )
+
+        deadline = time.time() + max(5, int(timeout_s))
+        while time.time() < deadline:
+            if not self._busy():
+                self._write_update_state(
+                    status='running',
+                    step='quiesce',
+                    message='Research safe checkpoint достигнут; начинаю обновление',
+                    previous_mode=previous_mode,
+                )
+                return previous_mode
+            time.sleep(1)
+
+        self._write_update_state(
+            status='running',
+            step='quiesce-timeout',
+            message='Safe checkpoint не ответил вовремя; backend будет перезапущен, research job восстановится из очереди',
+            previous_mode=previous_mode,
+        )
+        return previous_mode
+
+    def _restore_mode_after_update(self, previous_mode: str | None) -> None:
+        if not previous_mode:
+            return
+        try:
+            current = self.control.get().mode
+            if current != previous_mode:
+                self.control.update(mode=previous_mode, changed_by='supervisor-update-restore')
+                self._say(f'режим восстановлен после update: {previous_mode.upper()}')
+        except Exception as exc:
+            self._say(f'не удалось восстановить mode={previous_mode}: {exc}')
+
     def apply_update(self, force: bool = False) -> bool:
         status = self.updater.status(fetch=True)
         if not status.get('available'):
@@ -159,13 +219,15 @@ class Supervisor:
         if status.get('dirty'):
             self._write_update_state(status='blocked', step='preflight', error='Локальная ветка содержит незакоммиченные изменения')
             return False
-        if self._busy() and not force:
-            self._write_update_state(status='blocked', step='preflight', error='Идёт тяжёлая research-задача')
-            return False
+
+        # Continuous MAX autopilot can keep the queue busy indefinitely. Quiesce
+        # research cooperatively, apply the update, then restore the previous mode.
+        previous_mode = self._quiesce_research_for_update(timeout_s=45) if self._busy() else None
 
         old_head = str(status.get('head') or '')
         remote_ref = str(status.get('remote_ref') or status.get('upstream') or '')
         if not remote_ref:
+            self._restore_mode_after_update(previous_mode)
             self._write_update_state(status='failed', step='preflight', error='Не найден remote ref для обновления')
             return False
 
@@ -175,12 +237,14 @@ class Supervisor:
         fetch = self._run(['git', '-C', str(self.updater.repo_root), 'fetch', '--prune', 'origin'], 120)
         if fetch.returncode != 0:
             self.start_child()
+            self._restore_mode_after_update(previous_mode)
             self._write_update_state(status='failed', step='fetch', error=fetch.stderr[-4000:])
             return False
 
         merge = self._run(['git', '-C', str(self.updater.repo_root), 'merge', '--ff-only', remote_ref], 120)
         if merge.returncode != 0:
             self.start_child()
+            self._restore_mode_after_update(previous_mode)
             self._write_update_state(status='failed', step='fast-forward', error=(merge.stderr or merge.stdout)[-4000:])
             return False
 
@@ -200,7 +264,15 @@ class Supervisor:
         install = self._run([sys.executable, '-m', 'pip', 'install', '-e', '.[dev,analytics]'], 300)
         self.start_child()
         if install.returncode == 0 and self.healthy(75):
-            self._write_update_state(status='success', step='healthcheck', old_head=old_head, new_head=new_head)
+            self._restore_mode_after_update(previous_mode)
+            self._write_update_state(
+                status='success',
+                step='healthcheck',
+                message='Обновление установлено; research mode восстановлен',
+                old_head=old_head,
+                new_head=new_head,
+                restored_mode=previous_mode,
+            )
             return True
 
         self.stop_child()
@@ -216,6 +288,7 @@ class Supervisor:
             self._run([sys.executable, '-m', 'pip', 'install', '-e', '.[dev,analytics]'], 300)
         self.start_child()
         rolled_back = self.healthy(60)
+        self._restore_mode_after_update(previous_mode)
         self._write_update_state(
             status='rolled_back' if rolled_back else 'failed',
             step='rollback',

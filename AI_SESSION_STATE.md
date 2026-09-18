@@ -19,7 +19,7 @@ PR: `#11 — TQS Intelligence Engine v0.1 — multi-market anomaly and research 
 
 The PR is intentionally stacked on the older TraderQuest TQ-004 branch rather than current `main`; integration to `main` must be deliberate. Do not assume a blind merge is safe.
 
-Package/product version on the current integration candidate: **v0.12.0**. The owner's Windows runtime remains whatever version it last updated to until the local Supervisor/Launcher applies the merged Git state.
+Package/product version on the current integration candidate: **v0.13.0**. The owner's Windows runtime remains whatever version it last updated to until the local Supervisor/Launcher applies the merged Git state.
 
 ## 3. What exists now
 
@@ -173,3 +173,23 @@ Do not add another generic technical screen. Every new object must end in a visi
 Owner can simply say:
 
 `Продолжай TQS: <цель>.`
+
+
+## TQS Operations Control / AI Control Bridge — v0.13
+
+v0.13 adds the operator layer needed for the always-on office node:
+- update starvation fix: MAX research is cooperatively quiesced to LIGHT, active job is re-queued, update installs, then previous mode is restored;
+- 1..4 real heavy research worker slots;
+- dynamic history/metric planning batch sizes;
+- dynamic live refresh override;
+- CPU/RAM soft resource governor;
+- `GET /api/resources` process/CPU/RAM/disk/network/worker telemetry;
+- Cockpit System -> **Ресурсы и управление** with ТИХО / БАЛАНС / ТУРБО presets and live controls;
+- `AiControlBridge` polling the public `tqs-control` GitHub branch;
+- allow-listed AI actions only: set_control, refresh_market, request_update, noop;
+- no arbitrary shell, process kill or order placement;
+- AI-control status/results are returned through Runtime Audit / Google Drive.
+
+The owner screenshot showed v0.11 update blocked at preflight because a heavy research task was running continuously. v0.13 is specifically designed so that condition can no longer starve updates forever.
+
+After v0.13 is on the office node, a ChatGPT session can change TQS resource policy through GitHub and verify the applied result from the Drive Runtime Audit. This is the supported remote AI operations loop. It is intentionally narrower than direct shell access.

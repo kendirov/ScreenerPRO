@@ -114,3 +114,8 @@ or
 `Продолжай TQS: <идея/проблема>.`
 
 The AI must route the request to the correct module, load only the needed context, continue the existing platform, execute as far as current tools allow, verify the result and leave a recovery point.
+
+### TQS Operations Control — v0.13
+For owner/runtime tuning, read `tqs-intelligence/RELEASE_NOTES_v0.13.md`.
+The supported AI remote-control path is GitHub branch `tqs-control` -> allow-listed `remote-command.json` -> office TQS -> Runtime Audit -> Google Drive. It is not a remote shell.
+Before sending a command, read the latest Drive audit. After sending a command, verify the exact command id/result returns in a fresh audit.

@@ -62,14 +62,20 @@ class IntelligenceService:
         if self.state.snapshot: return self.state.snapshot.source_health
         return [SourceHealth(provider=s.provider, name=s.name, status=SourceStatus.PENDING) for s in self.sources]
 
+    def _base_refresh_seconds(self) -> int:
+        if self.control is None:
+            return self.interval_s
+        override = int(self.control.get().refresh_seconds_override or 0)
+        return max(15, override or self.interval_s)
+
     def runtime_status(self) -> dict[str, object]:
-        mode=self.mode()
+        mode=self.mode(); base=self._base_refresh_seconds()
         return {"running":self.state.running,"refreshing":self.state.refreshing,"started_at_ms":self.state.started_at_ms,
                 "last_refresh_started_ms":self.state.last_refresh_started_ms,"last_refresh_finished_ms":self.state.last_refresh_finished_ms,
                 "last_refresh_duration_ms":self.state.last_refresh_duration_ms,"refresh_count":self.state.refresh_count,
-                "last_error":self.state.last_error,"refresh_seconds":self.interval_s,"last_research_ms":self.state.last_research_ms,
+                "last_error":self.state.last_error,"refresh_seconds":self.interval_s,"configured_refresh_seconds":base,"last_research_ms":self.state.last_research_ms,
                 "episode_threshold":self.episode_threshold,"mode":mode,
-                "effective_refresh_seconds":None if mode=='stop' else (max(15,self.interval_s//2) if mode=='max' else max(30,self.interval_s))}
+                "effective_refresh_seconds":None if mode=='stop' else (max(15,base//2) if mode=='max' else max(30,base))}
 
     async def _fetch_history(self, episode: AnomalyEpisode, quote: Quote) -> int:
         source = self._sources_by_provider.get(episode.provider)
@@ -168,7 +174,8 @@ class IntelligenceService:
                     await asyncio.sleep(2); continue
                 try: await self.refresh()
                 except Exception: pass
-                delay=max(15,self.interval_s//2) if mode=='max' else max(30,self.interval_s)
+                base=self._base_refresh_seconds()
+                delay=max(15,base//2) if mode=='max' else max(30,base)
                 await asyncio.sleep(delay)
         finally:
             self.state.running=False; self.log("info","service","TQS Intelligence остановлен")
