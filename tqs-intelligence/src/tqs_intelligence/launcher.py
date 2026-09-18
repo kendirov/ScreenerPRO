@@ -129,18 +129,37 @@ class TQSLauncher:
         support = ttk.Frame(outer); support.pack(fill="x", pady=(0, 10))
         ttk.Label(support, text="Если что-то непонятно — нажми одну кнопку и вставь результат в ChatGPT.", style="Muted.TLabel").pack(side="left")
         ttk.Button(support, text="Скопировать для ChatGPT", style="Primary.TButton", command=self.copy_diagnostics).pack(side="right")
+        self.log_toggle_button = ttk.Button(support, text="Показать техлог", command=self.toggle_log)
+        self.log_toggle_button.pack(side="right", padx=(0, 8))
 
-        content = ttk.Frame(outer); content.pack(fill="both", expand=True); content.columnconfigure(0, weight=1); content.columnconfigure(1, weight=1); content.rowconfigure(0, weight=1)
-        lp = tk.Frame(content, bg=PANEL, highlightbackground=BORDER, highlightthickness=1); lp.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-        rp = tk.Frame(content, bg=PANEL, highlightbackground=BORDER, highlightthickness=1); rp.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        content = ttk.Frame(outer); content.pack(fill="both", expand=True); content.columnconfigure(0, weight=1); content.columnconfigure(1, weight=0); content.rowconfigure(0, weight=1)
+        self.content_frame = content
+        lp = tk.Frame(content, bg=PANEL, highlightbackground=BORDER, highlightthickness=1); lp.grid(row=0, column=0, sticky="nsew")
+        rp = tk.Frame(content, bg=PANEL, highlightbackground=BORDER, highlightthickness=1); rp.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+        self.log_panel = rp
+        self.log_visible = False
         tk.Label(lp, text="ЧТО ПРОИСХОДИТ / ПОСЛЕДНИЕ ДЕЙСТВИЯ", bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 9)).pack(anchor="w", padx=12, pady=(10, 4))
         self.activity = tk.Text(lp, bg="#0b0f12", fg="#cfd6dc", insertbackground=TEXT, relief="flat", font=("Cascadia Mono", 9), wrap="word"); self.activity.pack(fill="both", expand=True, padx=10, pady=(4, 10)); self.activity.configure(state="disabled")
         tk.Label(rp, text="ТЕХНИЧЕСКИЙ ЛОГ · ДЛЯ ДИАГНОСТИКИ", bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 9)).pack(anchor="w", padx=12, pady=(10, 4))
         self.log = tk.Text(rp, bg="#070a0c", fg="#9bc4a9", insertbackground=TEXT, relief="flat", font=("Cascadia Mono", 8), wrap="none"); self.log.pack(fill="both", expand=True, padx=10, pady=(4, 10)); self.log.configure(state="disabled")
+        self.log_panel.grid_remove()
 
         foot = ttk.Frame(outer); foot.pack(fill="x", pady=(10, 0))
         self.branch_label = ttk.Label(foot, text="branch: —", style="Muted.TLabel"); self.branch_label.pack(side="left")
         ttk.Label(foot, text=str(self.root_dir), style="Muted.TLabel").pack(side="right")
+
+    def toggle_log(self) -> None:
+        self.log_visible = not bool(self.log_visible)
+        if self.log_visible:
+            self.content_frame.columnconfigure(0, weight=2)
+            self.content_frame.columnconfigure(1, weight=1)
+            self.log_panel.grid()
+            self.log_toggle_button.configure(text="Скрыть техлог")
+        else:
+            self.log_panel.grid_remove()
+            self.content_frame.columnconfigure(0, weight=1)
+            self.content_frame.columnconfigure(1, weight=0)
+            self.log_toggle_button.configure(text="Показать техлог")
 
     def _thread(self, fn, *args) -> None:
         if self._busy: return
