@@ -447,6 +447,25 @@ class TQSLauncher:
         self._thread(work)
 
     def run_update(self) -> None: self._thread(self._run_update)
+
+    def _restart_launcher_process(self) -> None:
+        if not self.python.exists():
+            self._event("Launcher обновлён. Закрой и открой его вручную.")
+            return
+        flags = 0
+        if os.name == "nt":
+            flags = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) | int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        subprocess.Popen(
+            [str(self.python), "-m", "tqs_intelligence.launcher_entry"],
+            cwd=str(self.root_dir),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            creationflags=flags,
+            close_fds=True,
+        )
+        self.root.after(700, self.root.destroy)
+
     def _run_update(self) -> None:
         g = self.git_state(fetch=True); self._git_cache = g
         if g["dirty"]: raise RuntimeError("Есть незакоммиченные локальные изменения. Обновление остановлено для защиты файлов.")
@@ -465,7 +484,13 @@ class TQSLauncher:
             time.sleep(1)
         self.refresh_git(fetch=False); state = self._read_update_state() or {}
         if state.get("status") in {"failed", "rolled_back"}: raise RuntimeError(state.get("error") or state.get("message") or "update failed")
-        self._event("Обновление завершено. Версия перечитана из Git.")
+        build = str((self._git_cache or {}).get("head") or "")[:12]
+        try:
+            webbrowser.open(self.url + "/" + (f"?build={build}" if build else f"?t={int(time.time())}"))
+        except Exception:
+            pass
+        self._event("Обновление завершено. Открываю текущий build и перезапускаю Launcher…")
+        self.root.after(0, self._restart_launcher_process)
 
     def _write_control_mode_fallback(self, mode: str) -> None:
         path = self.data_dir / "control.json"
