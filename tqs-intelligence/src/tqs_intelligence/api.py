@@ -25,9 +25,13 @@ from .instrument_lab import InstrumentLab
 from .lab_store import LabStore
 from .lake import DataLake
 from .lchi_public import LchiPublicService, LchiPublicStore
+from .lchi_deals import LchiDealsCollector
 from .models import AssetClass, HypothesisCreate
 from .moex_lab import MoexLab
+from .moex_features import MoexFeatureEngine
+from .metric_lake import MetricLake
 from .news import NewsCollector
+from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
 from .service import IntelligenceService
@@ -45,6 +49,7 @@ class Settings(BaseSettings):
     lab_db_path: str = './data/tqs-lab.sqlite3'
     accounts_db_path: str = './data/tqs-accounts.sqlite3'
     lchi_db_path: str = './data/tqs-lchi.sqlite3'
+    pulse_db_path: str = './data/tqs-pulse.sqlite3'
     control_path: str = './data/control.json'
     data_lake_root: str = './data-lake'
     drive_export_root: str = ''
@@ -70,6 +75,8 @@ class Settings(BaseSettings):
     account_refresh_seconds: int = 60
     account_history_days: int = 30
     hyperliquid_wallets: str = ''
+    pulse_handles: str = ''
+    pulse_refresh_seconds: int = 300
 
 
 class ControlPatch(BaseModel):
@@ -134,20 +141,30 @@ store = DuckStore(settings.db_path)
 lab = LabStore(settings.lab_db_path)
 account_store = AccountIntelStore(settings.accounts_db_path)
 lchi_store = LchiPublicStore(settings.lchi_db_path)
-lchi_service = LchiPublicService(control, lchi_store, http)
+lchi_deals = LchiDealsCollector(lchi_store, http)
+lchi_service = LchiPublicService(control, lchi_store, http, deals_collector=lchi_deals)
+pulse_store = PulsePublicStore(settings.pulse_db_path)
+pulse_service = PulsePublicService(
+    control, pulse_store, http,
+    [x.strip() for x in settings.pulse_handles.split(',') if x.strip()],
+    settings.pulse_refresh_seconds,
+)
 lake = DataLake(control.get().data_lake_root)
+metric_lake = MetricLake(lake.root)
 backfiller = HistoricalBackfiller(http, lake)
 strategy_machine = StrategyMachine()
 research_runtime = ResearchRuntime(control, lab, backfiller, lake, strategy_machine)
 account_service = AccountIntelligenceService(control, account_store, http, settings.account_refresh_seconds, settings.account_history_days)
+moex_feature_engine = MoexFeatureEngine(store, lchi_store=lchi_store, metric_lake=metric_lake)
 service = IntelligenceService(
     sources, news, store, settings.refresh_seconds, settings.episode_threshold,
     settings.episode_close_grace_seconds, settings.history_backfill_max,
     settings.history_refresh_every, settings.research_every_refreshes, control=control,
+    moex_feature_engine=moex_feature_engine,
 )
 briefing_builder = BriefingBuilder(store)
 moex_lab = MoexLab(store)
-instrument_lab = InstrumentLab(store, lake, lab)
+instrument_lab = InstrumentLab(store, lake, lab, metric_lake=metric_lake)
 exporter = SnapshotExporter(store, lab, control, lake, settings.db_path, account_store=account_store)
 updater = UpdateManager('./data/update-request.json')
 RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
@@ -160,9 +177,9 @@ async def lifespan(_: FastAPI):
         lab.save_strategy(default_round_buffer_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
-    service.start(); research_runtime.start(); account_service.start(); lchi_service.start()
+    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start()
     yield
-    await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
+    await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
@@ -219,6 +236,9 @@ def _capabilities() -> list[dict[str, object]]:
         {'provider':'accounts','name':'Account / Position Intelligence','enabled':True,'markets':['Hyperliquid public accounts','MOEX participant aggregates later'],'asset_classes':[],
          'data_fields':['open positions','fills','PnL samples','long/short bias','instrument concentration','execution style'],'access':'Публичные данные / разрешённые feeds',
          'description':'Публичные счета анализируются описательно; мотив/стоп/логика не объявляются фактами без синхронизации с рыночными данными.'},
+        {'provider':'pulse-public','name':'T-Bank Pulse public profiles','enabled':True,'markets':['MOEX / Russian retail context'],'asset_classes':[],
+         'data_fields':['public profile','public trade markers when present in SSR','side/time/price','size_known=false'],'access':'Public profile pages; client-side/auth-only operations remain unavailable',
+         'description':'Public profile evidence only. Exact operation quantity is never estimated when hidden by Pulse.'},
         {'provider':'instrument-lab','name':'Universal Instrument Lab','enabled':True,'markets':['Все подключённые рынки'],'asset_classes':[],
          'data_fields':['candles','live snapshots','anomaly overlay','OI','funding','episodes','news','strategy runs','related instruments'],'access':'Локальный terminal',
          'description':'Один инструмент → максимум накопленного контекста и дозагрузка истории из того же интерфейса.'},
@@ -244,7 +264,7 @@ async def health():
     # Liveness must never wait for analytical COUNT(*) queries or Parquet work.
     snapshot=_snapshot()
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),
+            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],
             'storage':{'deferred':True},'lab':{'deferred':True}}
@@ -279,7 +299,7 @@ def overview():
             'active_episode_count':stats.get('active_episodes',0),'episode_count':stats.get('anomaly_episodes',0),
             'news_count':len(snapshot.news) if snapshot else 0,'asset_classes':classes,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),
+            'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'pulse_public':pulse_service.status(),
             'control':control.status(),'resources':_resources(),'storage':stats,'lab':lab.stats(),
             'top_anomalies':[x.model_dump(mode='json') for x in snapshot.anomalies[:30]] if snapshot else []}
 
@@ -344,13 +364,20 @@ async def universal_instrument(canonical_id:str):
 def moex():
     payload = moex_lab.overview(_snapshot())
     payload['lchi_public'] = lchi_service.status()
+    payload['pulse_public'] = pulse_service.status()
     return payload
+
+
+@app.get('/api/moex/intelligence')
+def moex_intelligence(limit:int=Query(200,ge=1,le=1000)):
+    return moex_feature_engine.snapshot(limit=limit)
 
 
 @app.get('/api/moex/lab')
 def moex_market_lab():
     payload = moex_lab.overview(_snapshot())
     payload['lchi_public'] = lchi_service.status()
+    payload['pulse_public'] = pulse_service.status()
     return payload
 
 
@@ -387,6 +414,46 @@ def lchi_positions(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
 @app.get('/api/moex/participants/lchi/events')
 def lchi_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
     return lchi_store.events(symbol=symbol, limit=limit)
+
+
+@app.get('/api/moex/participants/lchi/trades')
+def lchi_trades(symbol:str='', user_id:str='', limit:int=Query(1000,ge=1,le=10000)):
+    return lchi_deals.trades(symbol=symbol, user_id=user_id, limit=limit)
+
+
+@app.post('/api/moex/participants/lchi/account/{user_id}/trades/sync')
+async def lchi_trades_sync(user_id:str):
+    try:
+        return await lchi_deals.sync(user_id)
+    except Exception as exc:
+        raise HTTPException(502, f'LCHI public trade snapshot failed: {exc}')
+
+
+class PulseTrackCreate(BaseModel):
+    handle: str
+
+
+@app.get('/api/moex/participants/pulse/status')
+def pulse_status():
+    return pulse_service.status()
+
+
+@app.get('/api/moex/participants/pulse')
+def pulse_profiles(limit:int=Query(200,ge=1,le=2000)):
+    return pulse_store.profiles(limit=limit)
+
+
+@app.get('/api/moex/participants/pulse/events')
+def pulse_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
+    return pulse_store.events(symbol=symbol, limit=limit)
+
+
+@app.post('/api/moex/participants/pulse/track')
+async def pulse_track(request:PulseTrackCreate):
+    handle=request.handle.strip().lstrip('@')
+    if not handle:
+        raise HTTPException(400,'Pulse handle is required')
+    return await pulse_service.sync(handle)
 
 
 @app.get('/api/episodes')

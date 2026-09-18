@@ -428,10 +428,11 @@ class LchiPublicStore:
 class LchiPublicService:
     """Rate-limited automatic collector for the public LCHI 2026 surface."""
 
-    def __init__(self, control: ControlCenter, store: LchiPublicStore, http: JsonHttp) -> None:
+    def __init__(self, control: ControlCenter, store: LchiPublicStore, http: JsonHttp, deals_collector: Any | None = None) -> None:
         self.control = control
         self.store = store
         self.http = http
+        self.deals_collector = deals_collector
         self._task: asyncio.Task | None = None
         self.running = False
         self.last_action = "ЛЧИ: ожидание"
@@ -520,6 +521,8 @@ class LchiPublicService:
                     portfolio_limit = 10 if state.mode == "max" else 2
                     await self._catalog_batch(catalog_pages)
                     await self._portfolio_batch(portfolio_limit)
+                    if state.mode == "max" and self.deals_collector is not None:
+                        await self.deals_collector.sync_batch(1)
                     self._stats_cache = self.store.stats()
                     self.last_action = (
                         f"ЛЧИ: найдено {self._stats_cache['participants_discovered']:,} участников · "
@@ -536,6 +539,7 @@ class LchiPublicService:
 
     def quick_status(self) -> dict[str, Any]:
         total = self.catalog_pages_total * PAGE_SIZE if self.catalog_pages_total else None
+        deals = self.deals_collector.stats() if self.deals_collector is not None else {}
         return {
             "running": self.running,
             "last_action": self.last_action,
@@ -548,7 +552,8 @@ class LchiPublicService:
             **self._stats_cache,
             "evidence_level": "public_account",
             "source": "LCHI 2026 / Finuslugi public contest API",
-            "rate_policy": "LIGHT 1 page + 2 portfolios/cycle; MAX 5 pages + 10 portfolios/cycle",
+            "rate_policy": "LIGHT 1 page + 2 portfolios/cycle; MAX 5 pages + 10 portfolios/cycle + 1 public deals snapshot",
+            **deals,
         }
 
     def status(self) -> dict[str, Any]:

@@ -6,19 +6,23 @@
 
   async function loadParticipants(){
     try{
-      const [status,participants]=await Promise.all([
+      const [status,participants,pulseStatus,pulseProfiles]=await Promise.all([
         api('/api/moex/participants/lchi/status'),
-        api('/api/moex/participants/lchi?limit=200'+(participantQuery?'&q='+encodeURIComponent(participantQuery):''))
+        api('/api/moex/participants/lchi?limit=200'+(participantQuery?'&q='+encodeURIComponent(participantQuery):'')),
+        api('/api/moex/participants/pulse/status'),
+        api('/api/moex/participants/pulse?limit=200')
       ]);
       $('#participantMetrics').innerHTML=[
         pMetric('ЛЧИ найдено',compact(status.participants_discovered||0),'публичный каталог'),
         pMetric('Портфели прочитаны',compact(status.participants_with_portfolio||0),'публичные снимки'),
         pMetric('Изменений позиции',compact(status.position_events||0),'между наблюдениями TQS'),
+        pMetric('Точных сделок ЛЧИ',compact(status.public_trades||0),(status.participants_with_trades||0)+' участников · CSV public history'),
         pMetric('Каталог',status.catalog_pages_total?((status.catalog_page||0)+' / '+status.catalog_pages_total):'запуск','страницы по 20 участников'),
         pMetric('Сбор',status.running?'Работает':'Ожидает',status.last_action||''),
         pMetric('Качество','Публичный счёт','ЛЧИ ≠ FUTOI ≠ Пульс')
       ].join('');
       renderParticipantList(participants);
+      renderPulse(pulseStatus,pulseProfiles);
       if(symbolQuery)await loadSymbolPositions(symbolQuery);
     }catch(e){
       toast('Участники: '+esc(e.message),10000);
@@ -54,24 +58,51 @@
   async function openParticipant(userId){
     const box=$('#lchiAccountDetail');box.innerHTML='<div class="empty">Загружаю публичный профиль…</div>';
     try{
-      const d=await api('/api/moex/participants/lchi/account/'+encodeURIComponent(userId));
+      const [d,trades]=await Promise.all([
+        api('/api/moex/participants/lchi/account/'+encodeURIComponent(userId)),
+        api('/api/moex/participants/lchi/trades?user_id='+encodeURIComponent(userId)+'&limit=500')
+      ]);
       const p=d.participant||{},positions=d.positions||[],events=d.events||[];
       box.innerHTML='<div class="participantHeader"><div><span class="eyebrow">ПУБЛИЧНЫЙ СЧЁТ · ЛЧИ</span><h3>'+esc(p.login||p.user_id)+'</h3><small>'+esc(p.broker_code||'')+' · ранг '+(p.ranking??'—')+' · доходность '+num(p.total_yield,2)+'% · сделок '+compact(p.total_deals)+'</small></div><a class="btn small" target="_blank" rel="noopener" href="'+esc(p.source_url||'#')+'">Источник</a></div>'+
-        '<div class="participantCaution">Это публичное наблюдение конкурса. TQS не приписывает участнику мотивы. Время snapshot — время нашего наблюдения; реальное время сделки подтверждается только публичной историей сделок.</div>'+
+        '<div class="participantCaution">Это публичное наблюдение конкурса. TQS не приписывает участнику мотивы. Изменения портфеля имеют время наблюдения TQS; строки «Точные сделки» ниже используют публичный CSV конкурса и его время сделки.</div><div style="margin:8px 0"><button class="btn small lchiSyncTrades" data-user="'+esc(userId)+'">Обновить публичные сделки</button></div>'+
         '<h4>Текущие наблюдаемые позиции</h4>'+
         (positions.length?'<div class="positionRows">'+positions.map(x=>{const qty=Number(x.quantity||0);return '<div class="positionRow click participantPosition" data-symbol="'+esc(x.seccode)+'"><div class="acct"><b>'+esc(x.seccode)+'</b><small>'+esc(x.market||'')+' · '+ts(x.observed_at_ms,true)+'</small></div><b class="'+(qty>=0?'sideLong':'sideShort')+'">'+(qty>=0?'LONG':'SHORT')+'</b><span>'+num(Math.abs(qty),2)+' шт.</span><span>@ '+num(x.price,4)+'</span><span>'+compact(x.estimated_value)+'</span></div>'}).join('')+'</div>':'<div class="empty">Открытых позиций в последнем публичном snapshot нет.</div>')+
-        '<h4>Изменения, которые увидел TQS</h4>'+
+        '<h4>Точные публичные сделки</h4>'+
+        (trades.length?'<div class="participantEvents">'+trades.slice(0,150).map(t=>'<div><time>'+ts(t.ts_ms,true)+'</time><b>'+esc(t.seccode)+' · '+esc(String(t.side||'').toUpperCase())+'</b><span>'+num(t.quantity,2)+' @ '+num(t.price,4)+' · public CSV</span></div>').join('')+'</div>':'<div class="empty">Точные сделки ещё не скачаны. В режиме МАКС TQS постепенно делает это автоматически; кнопку выше можно использовать для этого участника сейчас.</div>')+
+        '<h4>Изменения портфеля, которые увидел TQS</h4>'+
         (events.length?'<div class="participantEvents">'+events.slice(0,100).map(e=>'<div><time>'+ts(e.ts_ms,true)+'</time><b>'+esc(e.seccode)+' · '+esc(e.event_type)+'</b><span>'+num(e.previous_qty,2)+' → '+num(e.current_qty,2)+' · Δ '+num(e.delta_qty,2)+'</span></div>').join('')+'</div>':'<div class="empty">Для истории изменений нужно минимум два наблюдения.</div>');
       $$('.participantPosition').forEach(r=>r.onclick=()=>{setView('instrument');$('#instrumentSearch').value=r.dataset.symbol;searchInstrument(r.dataset.symbol)});
+      $$('.lchiSyncTrades').forEach(b=>b.onclick=async()=>{try{toast('ЛЧИ: готовлю публичный CSV сделок…');await api('/api/moex/participants/lchi/account/'+encodeURIComponent(b.dataset.user)+'/trades/sync',{method:'POST'});toast('ЛЧИ: сделки обновлены');openParticipant(b.dataset.user)}catch(e){toast('ЛЧИ сделки: '+esc(e.message),10000)}});
     }catch(e){box.innerHTML='<div class="empty">Не удалось открыть участника: '+esc(e.message)+'</div>'}
   }
 
+
+  function renderPulse(status,rows){
+    const s=$('#pulseStatus'),box=$('#pulseProfiles');
+    if(s)s.innerHTML='<div class="participantInstrumentSummary"><span>Профилей <b>'+compact(status.profiles_tracked||0)+'</b></span><span>Синхронизировано <b>'+compact(status.profiles_synced||0)+'</b></span><span>Публичных операций <b>'+compact(status.events||0)+'</b></span><span>Сбор <b>'+(status.running?'работает':'ожидает')+'</b></span></div><div class="participantCaution">Пульс — более слабый уровень доказательности, чем ЛЧИ: если количество операции скрыто, TQS хранит только факт/направление/время/цену, которые реально доступны, и size_known=false.</div>';
+    if(!box)return;
+    box.innerHTML=(rows||[]).length?'<table class="table"><thead><tr><th>Профиль</th><th>Подписчики</th><th>Посты</th><th>Последняя синхронизация</th><th>Состояние</th></tr></thead><tbody>'+rows.map(p=>'<tr><td><b>'+esc(p.display_name||p.handle)+'</b><small>@'+esc(p.handle)+'</small></td><td>'+compact(p.followers)+'</td><td>'+compact(p.posts_count)+'</td><td>'+ts(p.last_sync_ms,true)+'</td><td>'+(p.last_error?'<span class="down">'+esc(String(p.last_error).slice(0,90))+'</span>':'публичный профиль')+'</td></tr>').join('')+'</tbody></table>':'<div class="empty"><b>Профили Пульса пока не добавлены.</b>Добавь публичный ник справа. Это вторичный ручной вход; позже discovery можно расширить отдельным публичным каталогом, если источник его даст.</div>';
+  }
+
+  async function trackPulse(){
+    const input=$('#pulseHandle'),handle=String(input?.value||'').trim().replace(/^@/,'');
+    if(!handle)return;
+    try{
+      const r=await api('/api/moex/participants/pulse/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle})});
+      toast(r.ok?'Пульс: профиль синхронизирован':'Пульс: профиль добавлен, но источник вернул ошибку',9000);
+      if(input)input.value='';
+      loadParticipants();
+    }catch(e){toast('Пульс: '+esc(e.message),10000)}
+  }
+
   function wireParticipants(){
-    const find=$('#participantFind'),input=$('#participantSearch'),sf=$('#participantSymbolFind'),si=$('#participantSymbol');
+    const find=$('#participantFind'),input=$('#participantSearch'),sf=$('#participantSymbolFind'),si=$('#participantSymbol'),pulse=$('#pulseTrack'),pulseInput=$('#pulseHandle');
     if(find)find.onclick=()=>{participantQuery=input.value.trim();loadParticipants()};
     if(input)input.addEventListener('keydown',e=>{if(e.key==='Enter'){participantQuery=input.value.trim();loadParticipants()}});
     if(sf)sf.onclick=()=>loadSymbolPositions(si.value);
     if(si)si.addEventListener('keydown',e=>{if(e.key==='Enter')loadSymbolPositions(si.value)});
+    if(pulse)pulse.onclick=trackPulse;
+    if(pulseInput)pulseInput.addEventListener('keydown',e=>{if(e.key==='Enter')trackPulse()});
   }
 
   window.loadParticipants=loadParticipants;

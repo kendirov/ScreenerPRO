@@ -29,9 +29,30 @@ class JsonHttp:
             response.raise_for_status()
             return response.json()
 
-    async def get_text(self, url: str, params: dict[str, Any] | None = None, timeout_s: float | None = None) -> str:
+    async def get_text(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+        timeout_s: float | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> str:
         async with self._sem:
-            response = await self._client.get(url, params=params, timeout=timeout_s)
+            response = await self._client.get(url, params=params, timeout=timeout_s, headers=headers)
+            response.raise_for_status()
+            return response.text
+
+    async def post_text(
+        self,
+        url: str,
+        payload: dict[str, Any] | None = None,
+        timeout_s: float | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> str:
+        async with self._sem:
+            kwargs: dict[str, Any] = {"timeout": timeout_s, "headers": headers}
+            if payload is not None:
+                kwargs["json"] = payload
+            response = await self._client.post(url, **kwargs)
             response.raise_for_status()
             return response.text
 

@@ -29,9 +29,10 @@
         api('/api/moex'),
         api('/api/quotes?provider=moex&limit=10000'),
         api('/api/jobs?limit=2000'),
-        api('/api/overview')
+        api('/api/overview'),
+        api('/api/moex/intelligence?limit=200')
       ]);
-      const m=result[0],quotes=result[1],jobs=result[2],o=result[3],lchi=m.lchi_public||{};
+      const m=result[0],quotes=result[1],jobs=result[2],o=result[3],intel=result[4]||{},lchi=m.lchi_public||{},pulse=m.pulse_public||{};
       const counts={shares:0,forts:0,index:0,selt:0,bonds:0};
       quotes.forEach(q=>{counts[q.market_type]=(counts[q.market_type]||0)+1});
       const src=(o.sources||[]).find(x=>x.provider==='moex');
@@ -61,7 +62,7 @@
         coverageRow('История фьючерсов',fuDone+' из '+(counts.forts||0),'готово '+fuDone+' · очередь/работа '+fuQ+' · ошибок '+fuF+' · цель: весь FORTS с 2021',fuF?'warn':fuDone?'good':''),
         coverageRow('FUTOI физлица / юрлица',fmDone?(fmDone+' корней'):'НЕТ ГОТОВЫХ','очередь/работа '+fmQ+' · ошибок '+fmF+' · задержка/лицензия сохраняются в provenance',fmF?'warn':fmDone?'good':''),
         coverageRow('ЛЧИ 2026 — публичные участники',lchi.running?'РАБОТАЕТ':'ОЖИДАЕТ','найдено '+compact(lchi.participants_discovered||0)+' · портфели '+compact(lchi.participants_with_portfolio||0)+' · события изменений '+compact(lchi.position_events||0)+' · '+(lchi.last_action||''),lchi.last_error?'warn':lchi.running?'good':'plan'),
-        coverageRow('Т‑Банк Пульс — публичные профили','ПЛАН','состав/сделки доступны частично; точный размер операции скрыт и не будет выдумываться','plan'),
+        coverageRow('Т‑Банк Пульс — публичные профили',pulse.profiles_tracked?('ПРОФИЛЕЙ '+compact(pulse.profiles_tracked)):'ГОТОВ К ПРОФИЛЯМ','синхронизировано '+compact(pulse.profiles_synced||0)+' · публичных операций '+compact(pulse.events||0)+' · точный размер скрытой операции не выдумывается',pulse.last_error?'warn':pulse.profiles_synced?'good':'plan'),
         coverageRow('Новости / события',(o.news_count||0)+' сейчас','официальные MOEX/эмитенты/ЦБ + выбранные новости будут отдельными источниками','plan')
       ].join('');
 
@@ -69,9 +70,21 @@
         ['БИРЖА','MOEX ISS','котировки, оборот, статус торгов, свечи, OI где доступно','good'],
         ['АГРЕГАТ','MOEX FUTOI','физлица/юрлица long/short и число участников; задержка/лицензия обязательны',fmDone?'good':'warn'],
         ['ПУБЛИЧНЫЙ СЧЁТ','ЛЧИ 2026','автокаталог '+compact(lchi.participants_discovered||0)+' участников · портфели '+compact(lchi.participants_with_portfolio||0)+' · количество/цена только из публичного источника',lchi.running?'good':'plan'],
-        ['ПУБЛИЧНЫЙ ПРОФИЛЬ','Пульс','состав и недавние сделки; размер операции скрыт','plan']
+        ['ПУБЛИЧНЫЙ ПРОФИЛЬ','Пульс','публичные профили '+compact(pulse.profiles_tracked||0)+' · видимые операции '+compact(pulse.events||0)+' · quantity всегда unknown, если скрыта',pulse.last_error?'warn':pulse.profiles_synced?'good':'plan']
       ];
       $('#moexParticipantSources').innerHTML=sourceRows.map(x=>'<div class="participantSource '+x[3]+'"><span>'+esc(x[0])+'</span><div><b>'+esc(x[1])+'</b><small>'+esc(x[2])+'</small></div></div>').join('');
+
+      const intelRows=(intel.rows||[]).filter(x=>Number(x.attention_score||0)>=20).slice(0,40);
+      if(intelRows.length){
+        $('#moexIntelligence').innerHTML='<table class="table"><thead><tr><th>Инструмент</th><th>Почему показан</th><th>15м</th><th>Оборот / норма</th><th>OI 15м</th><th>TQS</th></tr></thead><tbody>'+intelRows.map(x=>{
+          const reasons=(x.reasons||[]).slice(0,3).map(r=>'<small>'+esc(r)+'</small>').join('');
+          const tod=x.turnover_tod_ratio==null?'—':num(x.turnover_tod_ratio,1)+'x';
+          const oi=x.oi_15m_pct==null?'—':pct(x.oi_15m_pct,2);
+          return '<tr class="click moexIntelRow" data-cid="'+esc(x.canonical_id)+'"><td><b>'+esc(x.name||x.symbol)+'</b><small class="mono">'+esc(x.symbol||'')+'</small></td><td>'+reasons+'</td><td>'+pct(x.ret_15m_pct,2)+'</td><td>'+esc(tod)+'</td><td>'+oi+'</td><td><b>'+num(x.attention_score,0)+'</b><small>'+(x.baseline_days||0)+' дн. baseline</small></td></tr>';
+        }).join('')+'</tbody></table>';
+      }else{
+        $('#moexIntelligence').innerHTML='<div class="empty"><b>Сильных собственно-исторических аномалий сейчас нет.</b>TQS сравнивает текущий оборот/объём/сделки с нормой к этому времени дня и отслеживает 15-минутные price/OI/liquidity/LCHI-сдвиги.</div>';
+      }
 
       const mj=jobs.filter(j=>provider(j)==='moex'||/MOEX|FUTOI/i.test(j.title_ru||j.title||'')).slice(0,80);
       if(mj.length){
@@ -88,7 +101,8 @@
 
       $('#moexStocks').innerHTML=table(m.top_stocks||[],false);
       $('#moexFutures').innerHTML=table(m.top_futures||[],true);
-      $$('.moexInstrument').forEach(r=>r.onclick=()=>openInstrument(r.dataset.cid));
+      $('.moexInstrument').forEach(r=>r.onclick=()=>openInstrument(r.dataset.cid));
+      $('.moexIntelRow').forEach(r=>r.onclick=()=>openInstrument(r.dataset.cid));
       $$('[data-moex-symbol]').forEach(b=>b.onclick=()=>{setView('instrument');$('#instrumentSearch').value=b.dataset.moexSymbol;searchInstrument(b.dataset.moexSymbol)});
     }catch(e){
       toast('Мосбиржа: '+esc(e.message),10000);

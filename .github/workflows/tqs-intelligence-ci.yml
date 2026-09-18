@@ -74,7 +74,7 @@ jobs:
           python - <<'PY'
           from importlib.metadata import version
           from tqs_intelligence import __version__
-          assert version('tqs-intelligence') == __version__ == '0.9.2', (version('tqs-intelligence'), __version__)
+          assert version('tqs-intelligence') == __version__ == '0.10.0', (version('tqs-intelligence'), __version__)
           print('Version contract PASS', __version__)
           PY
       - name: Launcher and watchdog contract
@@ -107,7 +107,7 @@ jobs:
           from tqs_intelligence import __version__
           from tqs_intelligence.api import app
           routes = {route.path: route for route in app.routes}
-          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary', '/api/moex/participants/lchi/status', '/api/moex/participants/lchi/positions', '/api/moex/participants/lchi/events'}
+          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary', '/api/moex/intelligence', '/api/moex/participants/lchi/status', '/api/moex/participants/lchi/positions', '/api/moex/participants/lchi/events', '/api/moex/participants/lchi/trades', '/api/moex/participants/pulse/status', '/api/moex/participants/pulse/events'}
           missing = required - set(routes)
           assert not missing, missing
           assert app.version == __version__, (app.version, __version__)
@@ -137,6 +137,8 @@ jobs:
           grep -q 'ЛЧИ 2026' src/tqs_intelligence/static/cockpit_moex.js
           grep -q 'Пульс' src/tqs_intelligence/static/cockpit_moex.js
           grep -q 'ПУБЛИЧНЫЙ СЧЁТ · ЛЧИ' src/tqs_intelligence/static/cockpit_participants.js
+          grep -q 'Что необычно сейчас' src/tqs_intelligence/static/index.html
+          grep -q 'Точные публичные сделки' src/tqs_intelligence/static/cockpit_participants.js
           grep -q 'UNIVERSAL INSTRUMENT WORKSPACE' src/tqs_intelligence/static/index.html
           grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.css' src/tqs_intelligence/static/index.html
