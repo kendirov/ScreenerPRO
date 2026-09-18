@@ -249,6 +249,19 @@ def build_runtime_audit(
         evidence=remote,
     )
     update_ok = bool(update.get("available")) and not bool(update.get("dirty")) and not update.get("reason")
+    bridge = remote.get("ai_bridge") or {}
+    bridge_task = remote.get("ai_bridge_task") or {}
+    add(
+        "ai_bridge",
+        "ChatGPT runtime bridge -> Google Drive",
+        _status(
+            bool(bridge.get("fresh")) and bool(bridge.get("drive_connected")),
+            bool(bridge_task.get("installed")) or bool(bridge.get("configured")),
+        ),
+        f"task={bool(bridge_task.get('installed'))}; drive={bool(bridge.get('drive_connected'))}; fresh={bool(bridge.get('fresh'))}; age={bridge.get('age_s') if bridge.get('age_s') is not None else 'none'}s",
+        evidence={"task": bridge_task, "state": bridge},
+    )
+
     add(
         "updates",
         "Safe automatic Git update path",
