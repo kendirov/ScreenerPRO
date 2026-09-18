@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ctypes
 import json
 import os
 import subprocess
@@ -10,6 +11,7 @@ import webbrowser
 from pathlib import Path
 
 from .control import ControlCenter
+from .remote_node import auto_update_interval_seconds, server_mode_enabled, stop_marker_path
 from .update_manager import UpdateManager
 
 
@@ -27,9 +29,27 @@ class Supervisor:
         self.update_state_path = Path('./data/update-state.json')
         self.heartbeat_path = Path('./data/supervisor-heartbeat.json')
         self.started_at_ms = int(time.time() * 1000)
+        self.server_mode = server_mode_enabled(self.root)
+        self.auto_update_interval_s = auto_update_interval_seconds(self.root)
+        self.server_stop_marker = stop_marker_path(self.root)
 
     def _say(self, message: str) -> None:
         print(f'[TQS SUPERVISOR {time.strftime("%H:%M:%S")}] {message}', flush=True)
+
+
+    def _set_system_awake(self, enabled: bool) -> None:
+        if os.name != 'nt':
+            return
+        try:
+            es_continuous = 0x80000000
+            es_system_required = 0x00000001
+            flags = es_continuous | (es_system_required if enabled else 0)
+            ctypes.windll.kernel32.SetThreadExecutionState(flags)
+        except Exception:
+            pass
+
+    def _owner_requested_stop(self) -> bool:
+        return bool(self.server_mode and self.server_stop_marker.exists())
 
     def _write_heartbeat(self, state: str = 'running', **extra) -> None:
         child_alive = bool(self.child is not None and self.child.poll() is None)
@@ -223,15 +243,23 @@ class Supervisor:
             self._say('backend не поднялся после 3 попыток; внешний Launcher watchdog попробует снова')
             self._write_heartbeat('failed_initial_start')
             return 2
-        try:
-            webbrowser.open(self._browser_url())
-        except Exception:
-            pass
+        if self.server_mode:
+            self._set_system_awake(True)
+            self._say(f'server mode ON · auto-update every {self.auto_update_interval_s}s · Windows sleep blocked while supervisor runs')
+        else:
+            try:
+                webbrowser.open(self._browser_url())
+            except Exception:
+                pass
         self.last_auto_check = time.time()
         try:
             while True:
                 try:
-                    self._write_heartbeat('running')
+                    if self._owner_requested_stop():
+                        self._say('owner stop marker detected; server exits cleanly')
+                        self._write_heartbeat('owner_stopped')
+                        return 0
+                    self._write_heartbeat('running', server_mode=self.server_mode, auto_update_interval_s=self.auto_update_interval_s)
                     if self.child is None or self.child.poll() is not None:
                         exit_code = None if self.child is None else self.child.returncode
                         self._say(f'backend child потерян exit={exit_code}; восстановление')
@@ -246,7 +274,7 @@ class Supervisor:
                     if request is not None:
                         self.apply_update(bool(request.get('force')))
                     state = self.control.get()
-                    if state.auto_update and time.time() - self.last_auto_check >= 1800:
+                    if state.auto_update and time.time() - self.last_auto_check >= self.auto_update_interval_s:
                         self.last_auto_check = time.time()
                         self.apply_update(False)
                     time.sleep(2)
@@ -260,6 +288,8 @@ class Supervisor:
             return 0
         finally:
             self.stop_child()
+            if self.server_mode:
+                self._set_system_awake(False)
             self._write_heartbeat('stopped')
 
 
