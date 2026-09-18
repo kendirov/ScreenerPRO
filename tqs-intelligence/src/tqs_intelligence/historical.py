@@ -62,7 +62,7 @@ class HistoricalBackfiller:
                                       open=float(x[1]), high=float(x[2]), low=float(x[3]), close=float(x[4]),
                                       volume=float(x[5]), turnover=float(x[7]) if len(x) > 7 else None, source='binance-history'))
             if not candles: break
-            self.lake.write_candles(candles); rows_total += len(candles); pages += 1
+            await asyncio.to_thread(self.lake.write_candles, candles); rows_total += len(candles); pages += 1
             next_cursor = candles[-1].ts_ms + step
             if next_cursor <= cursor: break
             cursor = next_cursor
@@ -110,7 +110,7 @@ class HistoricalBackfiller:
                         source='moex-iss-history'))
                 except Exception: continue
             if candles:
-                self.lake.write_candles(candles); rows_total += len(candles)
+                await asyncio.to_thread(self.lake.write_candles, candles); rows_total += len(candles)
             pages += 1; offset += len(data)
             cursor = payload.get('candles.cursor') if isinstance(payload, dict) else None
             total = None
