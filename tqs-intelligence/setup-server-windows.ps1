@@ -9,7 +9,9 @@ $DataDir = Join-Path $TqsRoot "data"
 $ConfigPath = Join-Path $DataDir "server-node.json"
 $StopMarker = Join-Path $DataDir "server-stop.flag"
 $ServerStart = Join-Path $TqsRoot "server-start-windows.ps1"
+$AiBridgeScript = Join-Path $TqsRoot "ai-bridge-windows.ps1"
 $TaskName = "TQS Intelligence Server"
+$AiBridgeTaskName = "TQS AI Bridge"
 $RemoteTarget = "http://127.0.0.1:8787"
 $ProgramW6432Path = [Environment]::GetEnvironmentVariable("ProgramW6432")
 
@@ -247,6 +249,8 @@ $node = [ordered]@{
     bind_host = "127.0.0.1"
     port = 8787
     public_exposure = $false
+    ai_bridge_task_name = $AiBridgeTaskName
+    ai_bridge_interval_seconds = 120
 }
 $node | ConvertTo-Json -Depth 6 | Set-Content -Path $ConfigPath -Encoding UTF8
 
@@ -281,12 +285,34 @@ $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances 
 try { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "TQS Intelligence always-on server: auto-start, auto-update and private Tailscale access." -Force | Out-Null
 
+if (Test-Path $AiBridgeScript) {
+    Write-Host "Registering TQS AI Bridge for Google Drive runtime visibility..." -ForegroundColor Yellow
+    try {
+        $userId = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $bridgeArgument = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $AiBridgeScript + '" -IntervalSeconds 120'
+        $bridgeAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $bridgeArgument -WorkingDirectory $TqsRoot
+        $bridgeTrigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
+        $bridgePrincipal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Limited
+        $bridgeSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
+        try { Unregister-ScheduledTask -TaskName $AiBridgeTaskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
+        Register-ScheduledTask -TaskName $AiBridgeTaskName -Action $bridgeAction -Trigger $bridgeTrigger -Principal $bridgePrincipal -Settings $bridgeSettings -Description "TQS sanitized runtime audit -> Google Drive for ChatGPT inspection." -Force | Out-Null
+    } catch {
+        Write-Host "AI Bridge task warning: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
 if (-not $NoStart) {
     # Hand ownership from any pre-setup interactive Supervisor to the scheduled
     # SYSTEM task. Without this takeover a second Supervisor would race for
     # 127.0.0.1:8787 until the old process exits.
     Stop-TqsProcesses
     try { Start-ScheduledTask -TaskName $TaskName } catch {}
+    if (Test-Path $AiBridgeScript) {
+        try {
+            Start-Sleep -Seconds 3
+            Start-ScheduledTask -TaskName $AiBridgeTaskName
+        } catch {}
+    }
 }
 
 $summaryPath = Join-Path $DataDir "remote-access.txt"
@@ -296,6 +322,7 @@ $summary = @(
     "Provider: Tailscale Serve (private tailnet only)"
     "Local bind: http://127.0.0.1:8787"
     "Autostart task: $TaskName"
+    "AI Bridge task: $AiBridgeTaskName (user logon, every 120 seconds)"
     "Auto-update check: every 300 seconds"
     "Public Funnel: NOT configured by TQS"
     ""
@@ -312,6 +339,9 @@ if ($remoteUrl) {
 }
 Write-Host "Autostart: enabled at Windows startup" -ForegroundColor Green
 Write-Host "Auto-update: enabled, check every 5 minutes" -ForegroundColor Green
+if (Test-Path $AiBridgeScript) {
+    Write-Host "AI Bridge: enabled at user logon; sanitized audit every 2 minutes to Google Drive when Drive for desktop is mounted." -ForegroundColor Green
+}
 Write-Host "Security: loopback-only TQS + private Tailscale Serve; no public port opened." -ForegroundColor Green
 Write-Host ""
 Write-Host "Mac needs one-time Tailscale sign-in to the same account. Then bookmark the Remote URL." -ForegroundColor Cyan
