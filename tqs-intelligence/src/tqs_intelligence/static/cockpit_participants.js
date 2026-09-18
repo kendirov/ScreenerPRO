@@ -71,8 +71,8 @@
         (trades.length?'<div class="participantEvents">'+trades.slice(0,150).map(t=>'<div><time>'+ts(t.ts_ms,true)+'</time><b>'+esc(t.seccode)+' · '+esc(String(t.side||'').toUpperCase())+'</b><span>'+num(t.quantity,2)+' @ '+num(t.price,4)+' · public CSV</span></div>').join('')+'</div>':'<div class="empty">Точные сделки ещё не скачаны. В режиме МАКС TQS постепенно делает это автоматически; кнопку выше можно использовать для этого участника сейчас.</div>')+
         '<h4>Изменения портфеля, которые увидел TQS</h4>'+
         (events.length?'<div class="participantEvents">'+events.slice(0,100).map(e=>'<div><time>'+ts(e.ts_ms,true)+'</time><b>'+esc(e.seccode)+' · '+esc(e.event_type)+'</b><span>'+num(e.previous_qty,2)+' → '+num(e.current_qty,2)+' · Δ '+num(e.delta_qty,2)+'</span></div>').join('')+'</div>':'<div class="empty">Для истории изменений нужно минимум два наблюдения.</div>');
-      $('.participantPosition').forEach(r=>r.onclick=()=>{setView('instrument');$('#instrumentSearch').value=r.dataset.symbol;searchInstrument(r.dataset.symbol)});
-      $('.lchiSyncTrades').forEach(b=>b.onclick=async()=>{try{toast('ЛЧИ: готовлю публичный CSV сделок…');await api('/api/moex/participants/lchi/account/'+encodeURIComponent(b.dataset.user)+'/trades/sync',{method:'POST'});toast('ЛЧИ: сделки обновлены');openParticipant(b.dataset.user)}catch(e){toast('ЛЧИ сделки: '+esc(e.message),10000)}});
+      $$('.participantPosition').forEach(r=>r.onclick=()=>{setView('instrument');$('#instrumentSearch').value=r.dataset.symbol;searchInstrument(r.dataset.symbol)});
+      $$('.lchiSyncTrades').forEach(b=>b.onclick=async()=>{try{toast('ЛЧИ: готовлю публичный CSV сделок…');await api('/api/moex/participants/lchi/account/'+encodeURIComponent(b.dataset.user)+'/trades/sync',{method:'POST'});toast('ЛЧИ: сделки обновлены');openParticipant(b.dataset.user)}catch(e){toast('ЛЧИ сделки: '+esc(e.message),10000)}});
     }catch(e){box.innerHTML='<div class="empty">Не удалось открыть участника: '+esc(e.message)+'</div>'}
   }
 
