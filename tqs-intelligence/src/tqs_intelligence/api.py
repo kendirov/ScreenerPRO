@@ -393,6 +393,13 @@ async def _build_audit_payload() -> dict[str, Any]:
         asyncio.to_thread(updater.status, False),
         asyncio.to_thread(store.list_logs, 300),
     )
+    resources_state = await asyncio.to_thread(
+        resource_monitor.snapshot,
+        control=control,
+        research_runtime=research_runtime,
+        service=service,
+        data_root=control.get().data_lake_root,
+    )
     return await asyncio.to_thread(
         build_runtime_audit,
         version=app.version,
@@ -407,6 +414,7 @@ async def _build_audit_payload() -> dict[str, Any]:
         update=update_state,
         recent_logs=logs,
         ai_control=ai_control.status(),
+        resources=resources_state,
     )
 
 
