@@ -34,7 +34,7 @@ from .news import NewsCollector
 from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
-from .remote_node import remote_node_status
+from .remote_node import remote_node_status, repair_server_contract
 from .runtime_audit import build_runtime_audit, audit_text
 from .service import IntelligenceService
 from .snapshot_export import SnapshotExporter
@@ -180,7 +180,24 @@ async def lifespan(_: FastAPI):
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
     service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start()
+
+    async def repair_remote_contract() -> None:
+        try:
+            result = await asyncio.to_thread(repair_server_contract)
+            if result.get("needed"):
+                service.log(
+                    "info" if result.get("ok") else "warning",
+                    "remote-node",
+                    "Post-update server contract repair completed" if result.get("ok") else "Post-update server contract repair failed",
+                    result=result,
+                )
+        except Exception as exc:
+            service.log("warning", "remote-node", "Post-update server contract repair error", error=str(exc)[:500])
+
+    repair_task = asyncio.create_task(repair_remote_contract(), name="tqs-remote-contract-repair")
     yield
+    if not repair_task.done():
+        repair_task.cancel()
     await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
