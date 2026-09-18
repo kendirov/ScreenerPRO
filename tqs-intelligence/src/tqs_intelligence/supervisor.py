@@ -130,7 +130,15 @@ class Supervisor:
         return False
 
     def _run(self, args: list[str], timeout: int = 180) -> subprocess.CompletedProcess:
-        return subprocess.run(args, cwd=self.root, text=True, capture_output=True, timeout=timeout)
+        flags = int(getattr(subprocess, 'CREATE_NO_WINDOW', 0)) if os.name == 'nt' else 0
+        return subprocess.run(
+            args,
+            cwd=self.root,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            creationflags=flags,
+        )
 
     def _busy(self) -> bool:
         try:
@@ -177,11 +185,13 @@ class Supervisor:
             return False
 
         try:
+            flags = int(getattr(subprocess, 'CREATE_NO_WINDOW', 0)) if os.name == 'nt' else 0
             new_head = subprocess.check_output(
                 ['git', '-C', str(self.updater.repo_root), 'rev-parse', 'HEAD'],
                 stderr=subprocess.STDOUT,
                 text=True,
                 timeout=20,
+                creationflags=flags,
             ).strip()
         except Exception:
             new_head = ''
@@ -229,9 +239,11 @@ class Supervisor:
 
     def _browser_url(self) -> str:
         try:
+            flags = int(getattr(subprocess, 'CREATE_NO_WINDOW', 0)) if os.name == 'nt' else 0
             build = subprocess.check_output(
                 ['git', '-C', str(self.root.parent), 'rev-parse', 'HEAD'],
                 stderr=subprocess.DEVNULL, text=True, timeout=5,
+                creationflags=flags,
             ).strip()[:12]
         except Exception:
             build = str(int(time.time()))
