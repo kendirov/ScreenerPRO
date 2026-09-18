@@ -17,6 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from . import __version__
 from .account_intelligence import AccountIntelStore, AccountIntelligenceService
+from .ai_control import AiControlBridge
 from .briefing import BriefingBuilder
 from .control import ControlCenter
 from .historical import HistoricalBackfiller
@@ -80,6 +81,8 @@ class Settings(BaseSettings):
     hyperliquid_wallets: str = ''
     pulse_handles: str = ''
     pulse_refresh_seconds: int = 300
+    ai_control_url: str = 'https://raw.githubusercontent.com/kendirov/ScreenerPRO/tqs-control/tqs-intelligence/control/remote-command.json'
+    ai_control_poll_seconds: int = 30
 
 
 class ControlPatch(BaseModel):
@@ -176,6 +179,13 @@ moex_lab = MoexLab(store)
 instrument_lab = InstrumentLab(store, lake, lab, metric_lake=metric_lake)
 exporter = SnapshotExporter(store, lab, control, lake, settings.db_path, account_store=account_store)
 updater = UpdateManager('./data/update-request.json')
+ai_control = AiControlBridge(
+    url=settings.ai_control_url,
+    control=control,
+    updater=updater,
+    service=service,
+    poll_seconds=settings.ai_control_poll_seconds,
+)
 RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
 RUNTIME_INSTANCE_ID = f'{RUNTIME_STARTED_AT_MS}-{os.getpid()}'
 
@@ -186,7 +196,7 @@ async def lifespan(_: FastAPI):
         lab.save_strategy(default_round_buffer_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
-    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start()
+    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start(); ai_control.start()
 
     async def repair_remote_contract() -> None:
         try:
@@ -205,7 +215,7 @@ async def lifespan(_: FastAPI):
     yield
     if not repair_task.done():
         repair_task.cancel()
-    await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
+    await ai_control.stop(); await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
@@ -290,14 +300,14 @@ async def health():
     # Liveness must never wait for analytical COUNT(*) queries or Parquet work.
     snapshot=_snapshot()
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.status(),
+            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.status(),'ai_control':ai_control.status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],
             'storage':{'deferred':True},'lab':{'deferred':True}}
 
 
 @app.get('/api/control')
-def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False)}
+def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False),'ai_control':ai_control.status()}
 
 @app.get('/api/resources')
 def get_resources():
@@ -363,6 +373,11 @@ async def system():
 @app.get('/api/node/remote')
 def node_remote_status():
     return remote_node_status()
+
+
+@app.get('/api/ai-control')
+def ai_control_status():
+    return ai_control.status()
 
 
 async def _build_audit_payload() -> dict[str, Any]:
