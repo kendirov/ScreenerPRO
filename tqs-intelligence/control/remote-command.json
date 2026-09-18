@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "command_id": "bootstrap-noop",
+  "issued_at_ms": 0,
+  "expires_at_ms": 0,
+  "requested_by": "chatgpt",
+  "action": "noop",
+  "params": {},
+  "note": "TQS AI control branch. Never store secrets here. Allowed actions are set_control, refresh_market, request_update and noop."
+}
