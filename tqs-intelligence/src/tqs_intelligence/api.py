@@ -406,6 +406,7 @@ async def _build_audit_payload() -> dict[str, Any]:
         remote=remote_state,
         update=update_state,
         recent_logs=logs,
+        ai_control=ai_control.status(),
     )
 
 
