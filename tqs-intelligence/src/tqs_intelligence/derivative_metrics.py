@@ -193,18 +193,21 @@ class DerivativeMetricBackfiller:
         funding = await self._binance_paged("https://fapi.binance.com/fapi/v1/fundingRate", {"symbol": symbol},
             start_ms=start_ms, end_ms=end_ms, ts_field="fundingTime", limit=1000, period_ms=1,
             progress=progress, label=f"Binance {symbol} funding", lo=0.02, hi=0.34)
-        written["funding_rate"] += self.lake.write(parse_binance_funding(funding, canonical_id))["rows_ingested"]
+        funding_stats = await asyncio.to_thread(self.lake.write, parse_binance_funding(funding, canonical_id))
+        written["funding_rate"] += funding_stats["rows_ingested"]
         month_start = max(int(start_ms), int(end_ms) - 31 * _DAY_MS)
         await _progress(progress, 0.36, f"Binance {symbol}: OI (официально только последний месяц)")
         oi = await self._binance_paged("https://fapi.binance.com/futures/data/openInterestHist", {"symbol": symbol, "period": "5m"},
             start_ms=month_start, end_ms=end_ms, ts_field="timestamp", limit=500, period_ms=300_000,
             progress=progress, label=f"Binance {symbol} OI", lo=0.36, hi=0.67)
-        written["open_interest"] += self.lake.write(parse_binance_open_interest(oi, canonical_id))["rows_ingested"]
+        oi_stats = await asyncio.to_thread(self.lake.write, parse_binance_open_interest(oi, canonical_id))
+        written["open_interest"] += oi_stats["rows_ingested"]
         await _progress(progress, 0.69, f"Binance {symbol}: basis")
         basis = await self._binance_paged("https://fapi.binance.com/futures/data/basis", {"pair": symbol, "contractType": "PERPETUAL", "period": "5m"},
             start_ms=month_start, end_ms=end_ms, ts_field="timestamp", limit=500, period_ms=300_000,
             progress=progress, label=f"Binance {symbol} basis", lo=0.69, hi=0.98)
-        written["basis"] += self.lake.write(parse_binance_basis(basis, canonical_id))["rows_ingested"]
+        basis_stats = await asyncio.to_thread(self.lake.write, parse_binance_basis(basis, canonical_id))
+        written["basis"] += basis_stats["rows_ingested"]
         await _progress(progress, 1.0, f"Binance {symbol}: derivative metrics готовы")
         return {"provider": "binance", "canonical_id": canonical_id, "symbol": symbol,
                 "funding_rows": len(funding), "oi_rows": len(oi), "basis_rows": len(basis), "points_written": dict(written),
@@ -273,7 +276,7 @@ class DerivativeMetricBackfiller:
                 data = block.get("data") or []
                 if not data:
                     break
-                stats = self.lake.write(parse_moex_futoi(block, canonical_id, delayed=not authorized)); total_rows += len(data); total_points += stats["rows_ingested"]; pages += 1; offset += len(data)
+                stats = await asyncio.to_thread(self.lake.write, parse_moex_futoi(block, canonical_id, delayed=not authorized)); total_rows += len(data); total_points += stats["rows_ingested"]; pages += 1; offset += len(data)
                 if len(data) < 1000:
                     break
                 await asyncio.sleep(0.05)
@@ -289,7 +292,10 @@ class DerivativeMetricBackfiller:
         if provider == "binance":
             return await self.backfill_binance(symbol=str(payload["symbol"]), start_ms=start_ms, end_ms=end_ms, progress=progress)
         if provider == "bybit":
-            return await self.backfill_bybit(symbol=str(payload["symbol"]), start_ms=start_ms, end_ms=end_ms, progress=progress)
+            from .bybit_metrics import BybitLongHistoryBackfiller
+            return await BybitLongHistoryBackfiller(self.http, self.lake).backfill(
+                symbol=str(payload["symbol"]), start_ms=start_ms, end_ms=end_ms, progress=progress
+            )
         if provider == "moex":
             return await self.backfill_moex_futoi(symbol=str(payload["symbol"]), start_ms=start_ms, end_ms=end_ms, progress=progress, authorized=bool(payload.get("authorized", False)))
         raise ValueError(f"provider {provider} does not have derivative metric backfill yet")
