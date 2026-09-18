@@ -25,6 +25,7 @@ from .instrument_lab import InstrumentLab
 from .lab_store import LabStore
 from .lake import DataLake
 from .lchi_public import LchiPublicService, LchiPublicStore
+from .lchi_deals import LchiDealsCollector
 from .models import AssetClass, HypothesisCreate
 from .moex_lab import MoexLab
 from .moex_features import MoexFeatureEngine
@@ -139,7 +140,8 @@ store = DuckStore(settings.db_path)
 lab = LabStore(settings.lab_db_path)
 account_store = AccountIntelStore(settings.accounts_db_path)
 lchi_store = LchiPublicStore(settings.lchi_db_path)
-lchi_service = LchiPublicService(control, lchi_store, http)
+lchi_deals = LchiDealsCollector(lchi_store, http)
+lchi_service = LchiPublicService(control, lchi_store, http, deals_collector=lchi_deals)
 pulse_store = PulsePublicStore('./data/tqs-pulse.sqlite3')
 pulse_service = PulsePublicService(
     control, pulse_store, http,
@@ -411,6 +413,19 @@ def lchi_positions(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
 @app.get('/api/moex/participants/lchi/events')
 def lchi_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
     return lchi_store.events(symbol=symbol, limit=limit)
+
+
+@app.get('/api/moex/participants/lchi/trades')
+def lchi_trades(symbol:str='', user_id:str='', limit:int=Query(1000,ge=1,le=10000)):
+    return lchi_deals.trades(symbol=symbol, user_id=user_id, limit=limit)
+
+
+@app.post('/api/moex/participants/lchi/account/{user_id}/trades/sync')
+async def lchi_trades_sync(user_id:str):
+    try:
+        return await lchi_deals.sync(user_id)
+    except Exception as exc:
+        raise HTTPException(502, f'LCHI public trade snapshot failed: {exc}')
 
 
 class PulseTrackCreate(BaseModel):
