@@ -365,6 +365,14 @@ async def lchi_participants(q:str='', limit:int=Query(200,ge=1,le=2000)):
     return lchi_store.participants(limit=limit, q=q)
 
 
+@app.get('/api/moex/participants/lchi/account/{user_id}')
+async def lchi_account(user_id:str):
+    payload = lchi_store.account(user_id)
+    if payload is None:
+        raise HTTPException(404, 'LCHI participant not found in local catalog')
+    return payload
+
+
 @app.get('/api/moex/participants/lchi/positions')
 async def lchi_positions(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
     return lchi_store.current_positions(symbol=symbol, limit=limit)
