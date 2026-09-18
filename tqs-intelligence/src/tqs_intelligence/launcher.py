@@ -15,6 +15,8 @@ import psutil
 import tkinter as tk
 from tkinter import ttk
 
+from .remote_node import remote_node_status, request_server_task_start, server_mode_enabled, stop_marker_path
+
 BG = "#090c0f"
 PANEL = "#10151a"
 PANEL_2 = "#151b21"
@@ -37,7 +39,10 @@ class TQSLauncher:
         self.update_state = self.data_dir / "update-state.json"
         self.python = self.root_dir / ".venv" / "Scripts" / "python.exe"
         self.update_script = self.root_dir / "update-windows.ps1"
+        self.server_setup_script = self.root_dir / "setup-server-windows.ps1"
         self.url = "http://127.0.0.1:8787"
+        self._remote_cache: dict[str, Any] = {}
+        self._remote_last_s = 0.0
         self._busy = False
         self._busy_lock = threading.Lock()
         self._last_log_text = ""
@@ -62,8 +67,8 @@ class TQSLauncher:
 
         self.root = tk.Tk()
         self.root.title("TQS Launcher")
-        self.root.geometry("1040x760")
-        self.root.minsize(900, 650)
+        self.root.geometry("1040x835")
+        self.root.minsize(900, 720)
         self.root.configure(bg=BG)
         self._setup_style()
         self._build_ui()
@@ -124,12 +129,22 @@ class TQSLauncher:
         ttk.Button(actions, text="⬆ Обновить", style="Primary.TButton", command=self.run_update).pack(side="left", padx=6)
         ttk.Button(actions, text="Сохранить TQS", command=self.export_snapshot).pack(side="right", padx=(6, 0))
 
-        modes = ttk.Frame(outer); modes.pack(fill="x", pady=(0, 12))
+        modes = ttk.Frame(outer); modes.pack(fill="x", pady=(0, 8))
         ttk.Label(modes, text="Нагрузка:", style="Muted.TLabel").pack(side="left", padx=(0, 8))
         ttk.Button(modes, text="СТОП", command=lambda: self.set_mode("stop")).pack(side="left", padx=4)
         ttk.Button(modes, text="ЛАЙТ", command=lambda: self.set_mode("light")).pack(side="left", padx=4)
         ttk.Button(modes, text="МАКС", command=lambda: self.set_mode("max")).pack(side="left", padx=4)
         self.resource_label = ttk.Label(modes, text="CPU — · RAM — · Data —", style="Muted.TLabel"); self.resource_label.pack(side="right")
+
+        remote = tk.Frame(outer, bg=PANEL, highlightbackground=BORDER, highlightthickness=1); remote.pack(fill="x", pady=(0, 10))
+        left_remote = tk.Frame(remote, bg=PANEL); left_remote.pack(side="left", fill="x", expand=True, padx=12, pady=9)
+        tk.Label(left_remote, text="TQS SERVER / УДАЛЁННЫЙ ДОСТУП", bg=PANEL, fg=MUTED, font=("Segoe UI Semibold", 8)).pack(anchor="w")
+        self.remote_value = tk.Label(left_remote, text="Проверяю…", bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 11)); self.remote_value.pack(anchor="w", pady=(2, 0))
+        self.remote_detail = tk.Label(left_remote, text="", bg=PANEL, fg=MUTED, font=("Segoe UI", 8)); self.remote_detail.pack(anchor="w")
+        remote_actions = tk.Frame(remote, bg=PANEL); remote_actions.pack(side="right", padx=8, pady=8)
+        ttk.Button(remote_actions, text="Настроить сервер", command=self.setup_server).pack(side="left", padx=4)
+        ttk.Button(remote_actions, text="Скопировать адрес для Mac", command=self.copy_remote_url).pack(side="left", padx=4)
+        ttk.Button(remote_actions, text="Открыть remote", style="Primary.TButton", command=self.open_remote).pack(side="left", padx=4)
 
         support = ttk.Frame(outer); support.pack(fill="x", pady=(0, 10))
         ttk.Label(support, text="Если что-то непонятно — нажми одну кнопку и вставь результат в ChatGPT.", style="Muted.TLabel").pack(side="left")
@@ -216,6 +231,10 @@ class TQSLauncher:
                 mode_note = ""
             ah = rr.get("auto_history") or {}
             am = rr.get("auto_metrics") or {}
+            remote = self._remote_cache or {}
+            remote_note = ""
+            if remote.get("enabled"):
+                remote_note = f"SERVER: {'ONLINE' if remote.get('ready') else 'НАСТРОЕН'} · {remote.get('remote_url') or 'URL определяется'} · автообновление {int(remote.get('update_check_seconds') or 300)//60} мин"
             summary = [
                 f"СЕЙЧАС: {rr.get('last_action') or runtime.get('last_action') or 'TQS работает'}",
                 f"РЕЖИМ: {mode} · {mode_note}",
@@ -224,6 +243,8 @@ class TQSLauncher:
                 f"АВТОМЕТРИКИ: готово {am.get('done', 0)}/{am.get('target_total', 0)} · осталось {am.get('remaining', 0)}",
                 f"ПУБЛИЧНЫЕ СЧЕТА: найдено {discovery.get('discovered_accounts', 0)} · hot {ai.get('tracked_accounts', 0)} · позиций {ai.get('open_positions', 0)} · fills {ai.get('fills', 0)}",
             ]
+            if remote_note:
+                summary.append(remote_note)
             day = self._owner_summary or {}
             if day:
                 st = day.get("status") or {}
@@ -301,6 +322,14 @@ class TQSLauncher:
         while True:
             health = self._probe_health()
             now = time.time()
+            if now - self._remote_last_s >= 15:
+                try:
+                    value = remote_node_status(self.root_dir)
+                    if isinstance(value, dict):
+                        self._remote_cache = value
+                    self._remote_last_s = now
+                except Exception:
+                    pass
             if health is not None and now - self._owner_summary_last_s >= 15:
                 try:
                     summary = self._api("/api/activity-summary?hours=24", timeout=2)
@@ -391,6 +420,22 @@ class TQSLauncher:
             vm = psutil.virtual_memory(); self.resource_label.configure(text=f"CPU {psutil.cpu_percent()}% · RAM {vm.percent}% · health timeout")
         else:
             self.cards["backend"][0].configure(text="OFFLINE", fg=RED); self.cards["backend"][1].configure(text="процессов TQS нет"); self.cards["mode"][0].configure(text="—"); self.cards["mode"][1].configure(text="backend offline"); vm = psutil.virtual_memory(); self.resource_label.configure(text=f"CPU {psutil.cpu_percent()}% · RAM {vm.percent}%")
+        remote = self._remote_cache or {}
+        if remote.get("enabled"):
+            if remote.get("ready"):
+                self.remote_value.configure(text="REMOTE ONLINE", fg=GREEN)
+            elif remote.get("stopped_by_owner"):
+                self.remote_value.configure(text="SERVER ОСТАНОВЛЕН", fg=RED)
+            else:
+                self.remote_value.configure(text="SERVER НАСТРОЕН", fg=AMBER)
+            url = remote.get("remote_url") or "адрес Tailscale пока не определён"
+            task = "автозапуск ON" if (remote.get("scheduled_task") or {}).get("installed") else "автозапуск ?"
+            ts = "Tailscale ON" if remote.get("tailscale_online") else "Tailscale ждёт"
+            self.remote_detail.configure(text=f"{url} · {task} · {ts} · update {int(remote.get('update_check_seconds') or 300)//60} мин")
+        else:
+            self.remote_value.configure(text="НЕ НАСТРОЕН", fg=MUTED)
+            self.remote_detail.configure(text="Один раз нажми «Настроить сервер»: автозапуск + приватный доступ с Mac + автообновления")
+
         if g.get("error"): self._set_banner("Не удалось определить локальную версию", MUTED, g["error"])
         elif g.get("dirty"): self._set_banner("Локальные изменения — автообновление заблокировано", AMBER, f"LOCAL {local} · REMOTE {remote}")
         elif self._git_fetch_error: self._set_banner("GitHub временно недоступен", MUTED, f"LOCAL v{version} · commit {local} · TQS продолжает работать")
@@ -406,6 +451,48 @@ class TQSLauncher:
         build = str((getattr(self, "_git_cache", {}) or {}).get("head") or "")[:12]
         suffix = f"?build={build}" if build else f"?t={int(time.time())}"
         webbrowser.open(self.url + "/" + suffix)
+
+
+    def setup_server(self) -> None:
+        def work() -> None:
+            if os.name != "nt":
+                raise RuntimeError("Автонастройка сервера сейчас предназначена для Windows-узла TQS")
+            if not self.server_setup_script.exists():
+                raise RuntimeError("setup-server-windows.ps1 не найден")
+            script = str(self.server_setup_script).replace("'", "''")
+            command = (
+                "$p=Start-Process -FilePath 'powershell.exe' -Verb RunAs -Wait -PassThru "
+                f"-ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','{script}'); "
+                "exit $p.ExitCode"
+            )
+            self._event("SERVER: запускаю одноразовую настройку Windows + Tailscale. Подтверди UAC и вход Tailscale, если Windows попросит.")
+            proc = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command], text=True, capture_output=True, timeout=420)
+            if proc.returncode != 0:
+                raise RuntimeError(((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()[-1200:] or f"server setup exit {proc.returncode}")
+            self._remote_cache = remote_node_status(self.root_dir)
+            self._remote_last_s = time.time()
+            if self._remote_cache.get("ready"):
+                self._event(f"SERVER READY: {self._remote_cache.get('remote_url')}")
+            else:
+                self._event("SERVER настроен. Если Tailscale просил подтверждение HTTPS/логина, заверши его и нажми «Настроить сервер» ещё раз.")
+        self._thread(work, exclusive=True)
+
+    def copy_remote_url(self) -> None:
+        remote = self._remote_cache or remote_node_status(self.root_dir)
+        url = str(remote.get("remote_url") or "")
+        if not url:
+            self._event("Remote URL пока не определён. Сначала настрой сервер/Tailscale.")
+            return
+        self.root.clipboard_clear(); self.root.clipboard_append(url); self.root.update()
+        self._event(f"Адрес для Mac скопирован: {url}")
+
+    def open_remote(self) -> None:
+        remote = self._remote_cache or remote_node_status(self.root_dir)
+        url = str(remote.get("remote_url") or "")
+        if not url:
+            self._event("Remote URL пока не определён. Сначала настрой сервер/Tailscale.")
+            return
+        webbrowser.open(url)
 
     def _diagnostic_text(self) -> str:
         g = getattr(self, "_git_cache", {}) or {}
@@ -503,9 +590,18 @@ class TQSLauncher:
     def _start_backend(self) -> None:
         if self._probe_health(): self._event("TQS уже запущен"); return
         if not self.python.exists(): raise RuntimeError(".venv не найден. Один раз запусти install-windows.cmd")
-        self._event("Запускаю TQS backend…"); log_handle = self.runtime_log.open("a", encoding="utf-8"); flags = 0
-        if os.name == "nt": flags = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) | int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        subprocess.Popen([str(self.python), "-m", "tqs_intelligence.supervisor"], cwd=str(self.root_dir), stdout=log_handle, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, creationflags=flags, close_fds=True)
+        marker = stop_marker_path(self.root_dir)
+        try:
+            if marker.exists(): marker.unlink()
+        except Exception:
+            pass
+        if server_mode_enabled(self.root_dir) and request_server_task_start(self.root_dir):
+            self._event("SERVER: запускаю автозапуск-задачу TQS…")
+        else:
+            self._event("Запускаю TQS backend…")
+            log_handle = self.runtime_log.open("a", encoding="utf-8"); flags = 0
+            if os.name == "nt": flags = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) | int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            subprocess.Popen([str(self.python), "-m", "tqs_intelligence.supervisor"], cwd=str(self.root_dir), stdout=log_handle, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, creationflags=flags, close_fds=True)
         for _ in range(60):
             if self._probe_health(): self._event("TQS ONLINE"); return
             time.sleep(1)
@@ -513,6 +609,11 @@ class TQSLauncher:
 
     def stop_backend(self) -> None: self._thread(self._stop_backend, exclusive=True)
     def _stop_backend(self) -> None:
+        if server_mode_enabled(self.root_dir):
+            try:
+                stop_marker_path(self.root_dir).write_text("owner requested stop\n", encoding="utf-8")
+            except Exception:
+                pass
         procs = self._matching_tqs_processes()
         if not procs: self._event("TQS уже остановлен"); return
         self._event(f"Останавливаю TQS ({len(procs)} процессов)…")
@@ -559,6 +660,26 @@ class TQSLauncher:
         self._git_cache = g; self._git_verified = True; self._git_fetch_error = ""
         if g["dirty"]: raise RuntimeError("Есть незакоммиченные локальные изменения. Обновление остановлено для защиты файлов.")
         if g["behind"] <= 0: self._event("Обновление не требуется — локальный commit последний"); return
+        if server_mode_enabled(self.root_dir):
+            self._event(f"SERVER UPDATE: ставлю {g['head'][:8]} → {g['remote_head'][:8]} через supervisor без остановки server task…")
+            self._api("/api/system/update", method="POST", payload=None, timeout=5)
+            deadline = time.time() + 600
+            last = None
+            while time.time() < deadline:
+                state = self._read_update_state()
+                if state and state != last:
+                    last = state
+                    self._event("UPDATE: " + " · ".join(str(state.get(k) or "") for k in ("step", "message") if state.get(k)))
+                    if state.get("status") in {"success", "noop", "rolled_back", "failed", "blocked"}:
+                        break
+                time.sleep(1)
+            state = self._read_update_state() or {}
+            if state.get("status") in {"failed", "rolled_back", "blocked"}:
+                raise RuntimeError(state.get("error") or state.get("message") or "server update failed")
+            self.refresh_git(fetch=False)
+            self._event("SERVER UPDATE завершён. TQS продолжает работать; перезапускаю Launcher на новом коде.")
+            self.root.after(0, self._restart_launcher_process)
+            return
         if not self.update_script.exists(): raise RuntimeError("update-windows.ps1 не найден")
         self._event(f"Запускаю обновление {g['head'][:8]} → {g['remote_head'][:8]}…")
         flags = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) | int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if os.name == "nt" else 0
