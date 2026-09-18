@@ -83,3 +83,34 @@ def test_lchi_portfolio_candidates_prioritize_unsynced_rank(tmp_path):
     store.upsert_participants([participant("u2", "Second", 2), participant("u1", "First", 1)], 1000)
     rows = store.portfolio_candidates(2)
     assert [x["user_id"] for x in rows] == ["u1", "u2"]
+
+
+
+def test_lchi_portfolio_candidates_do_not_block_event_loop(tmp_path):
+    import asyncio
+    import time
+
+    from tqs_intelligence.lchi_public import LchiPublicService
+
+    store = LchiPublicStore(str(tmp_path / "lchi.sqlite3"))
+
+    class DummyHttp:
+        pass
+
+    service = LchiPublicService(None, store, DummyHttp())
+
+    def slow_candidates(limit, stale_after_ms=6 * 3600_000):
+        time.sleep(0.15)
+        return []
+
+    store.portfolio_candidates = slow_candidates
+
+    async def scenario():
+        started = time.perf_counter()
+        task = asyncio.create_task(service._portfolio_batch(1))
+        await asyncio.sleep(0.02)
+        elapsed = time.perf_counter() - started
+        await task
+        assert elapsed < 0.10
+
+    asyncio.run(scenario())

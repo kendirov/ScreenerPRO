@@ -471,21 +471,21 @@ class LchiPublicService:
             )
             rows = [x for x in (payload.get("participants") or []) if isinstance(x, dict)]
             observed = _now_ms()
-            self.store.upsert_participants(rows, observed)
+            await asyncio.to_thread(self.store.upsert_participants, rows, observed)
             total_pages = int(payload.get("totalPages") or 0)
             if total_pages:
                 self.catalog_pages_total = total_pages
-                self.store.meta_set("catalog_pages_total", total_pages)
+                await asyncio.to_thread(self.store.meta_set, "catalog_pages_total", total_pages)
             self.catalog_page += 1
             if self.catalog_pages_total and self.catalog_page >= self.catalog_pages_total:
                 self.catalog_page = 0
-                self.store.meta_set("catalog_completed_at_ms", observed)
-            self.store.meta_set("catalog_page", self.catalog_page)
+                await asyncio.to_thread(self.store.meta_set, "catalog_completed_at_ms", observed)
+            await asyncio.to_thread(self.store.meta_set, "catalog_page", self.catalog_page)
             self.catalog_cycles += 1
             await asyncio.sleep(0.25)
 
     async def _portfolio_batch(self, limit: int) -> None:
-        candidates = self.store.portfolio_candidates(max(1, limit))
+        candidates = await asyncio.to_thread(self.store.portfolio_candidates, max(1, limit))
         for item in candidates:
             uid = str(item["user_id"])
             self.last_action = f"ЛЧИ: позиции {item.get('login') or uid[:8]} · {uid[:8]}…"
@@ -494,7 +494,7 @@ class LchiPublicService:
                     f"{BASE_URL}/api/v1/participants/{uid}/profile/portfolio",
                     timeout_s=15,
                 )
-                self.store.save_portfolio(uid, payload if isinstance(payload, dict) else {}, _now_ms())
+                await asyncio.to_thread(self.store.save_portfolio, uid, payload if isinstance(payload, dict) else {}, _now_ms())
                 self.last_error = None
             except asyncio.CancelledError:
                 raise
@@ -502,7 +502,7 @@ class LchiPublicService:
                 # Record a short cooldown so one broken/publicly-hidden profile
                 # does not monopolize every cycle.
                 self.last_error = f"{type(exc).__name__}: {exc}"
-                self.store.meta_set(f"portfolio_error:{uid}", self.last_error[:500])
+                await asyncio.to_thread(self.store.meta_set, f"portfolio_error:{uid}", self.last_error[:500])
             self.portfolio_cycles += 1
             await asyncio.sleep(0.35)
 
