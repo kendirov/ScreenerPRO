@@ -19,75 +19,181 @@
       "id": "platform-core",
       "name": "TQS Platform / Core",
       "role": "shared IDs, schemas, provenance, time semantics, routing and module contracts",
-      "repo_paths": ["TQS_PLATFORM.md", "TQS_MANIFEST.json"],
-      "upstream": ["external-primary-truth", "drive-product-truth"],
-      "downstream": ["intelligence", "screener-cockpit", "knowledge", "briefing-publishing"]
+      "repo_paths": [
+        "TQS_PLATFORM.md",
+        "TQS_MANIFEST.json"
+      ],
+      "upstream": [
+        "external-primary-truth",
+        "drive-product-truth"
+      ],
+      "downstream": [
+        "intelligence",
+        "screener-cockpit",
+        "knowledge",
+        "briefing-publishing"
+      ]
     },
     {
       "id": "intelligence",
       "name": "TQS Intelligence",
       "role": "local collection, normalization, Data Lake, features, anomalies, episodes, account intelligence, research and strategy computation",
-      "repo_paths": ["tqs-intelligence/"],
+      "repo_paths": [
+        "tqs-intelligence/"
+      ],
       "runtime": "Windows local primary node today; Linux/VPS-compatible direction",
-      "upstream": ["connectors-data"],
-      "downstream": ["screener-cockpit", "knowledge", "briefing-publishing"]
+      "upstream": [
+        "connectors-data"
+      ],
+      "downstream": [
+        "screener-cockpit",
+        "knowledge",
+        "briefing-publishing"
+      ]
     },
     {
       "id": "launcher",
       "name": "TQS Launcher",
-      "role": "local operations control plane: start/stop/update/rollback/mode/health/logs/support snapshot",
-      "repo_paths": ["tqs-intelligence/TQS-Launcher.cmd", "tqs-intelligence/src/tqs_intelligence/launcher.py", "tqs-intelligence/src/tqs_intelligence/launcher_entry.py", "tqs-intelligence/src/tqs_intelligence/supervisor.py"],
-      "upstream": ["intelligence", "git-technical-truth"],
-      "downstream": ["owner"]
+      "role": "local operations/control plane plus one-click Remote Node setup: start/stop/update/rollback/mode/health/logs/support snapshot/private remote status",
+      "repo_paths": [
+        "tqs-intelligence/TQS-Launcher.cmd",
+        "tqs-intelligence/src/tqs_intelligence/launcher.py",
+        "tqs-intelligence/src/tqs_intelligence/launcher_entry.py",
+        "tqs-intelligence/src/tqs_intelligence/supervisor.py",
+        "tqs-intelligence/setup-server-windows.ps1",
+        "tqs-intelligence/server-start-windows.ps1",
+        "tqs-intelligence/src/tqs_intelligence/remote_node.py"
+      ],
+      "upstream": [
+        "intelligence",
+        "git-technical-truth"
+      ],
+      "downstream": [
+        "owner"
+      ]
+    },
+    {
+      "id": "remote-node",
+      "name": "TQS Remote Node",
+      "role": "office Windows always-on private server: boot autostart, supervisor recovery, safe auto-update/rollback, loopback-only API and Tailscale Serve access for Mac/phone",
+      "repo_paths": [
+        "tqs-intelligence/REMOTE_NODE.md",
+        "tqs-intelligence/setup-server-windows.ps1",
+        "tqs-intelligence/server-start-windows.ps1",
+        "tqs-intelligence/src/tqs_intelligence/remote_node.py",
+        "tqs-intelligence/src/tqs_intelligence/supervisor.py"
+      ],
+      "upstream": [
+        "intelligence",
+        "git-technical-truth"
+      ],
+      "downstream": [
+        "screener-cockpit",
+        "owner"
+      ]
     },
     {
       "id": "screener-cockpit",
       "name": "TQS Screener / Cockpit",
       "role": "trader-facing visual and action layer; existing ScreenerPRO frontend evolves into this module",
-      "repo_paths": ["frontend/"],
-      "upstream": ["intelligence", "knowledge"],
-      "downstream": ["owner", "briefing-publishing"]
+      "repo_paths": [
+        "frontend/"
+      ],
+      "upstream": [
+        "intelligence",
+        "knowledge"
+      ],
+      "downstream": [
+        "owner",
+        "briefing-publishing"
+      ]
     },
     {
       "id": "knowledge",
       "name": "TQS Knowledge",
       "role": "durable observations, cases, hypotheses, validated findings, negative results and educational/product knowledge",
       "canonical_location": "Google Drive / Trading QS",
-      "upstream": ["owner", "intelligence", "research-strategy"],
-      "downstream": ["screener-cockpit", "briefing-publishing", "ai"]
+      "upstream": [
+        "owner",
+        "intelligence",
+        "research-strategy"
+      ],
+      "downstream": [
+        "screener-cockpit",
+        "briefing-publishing",
+        "ai"
+      ]
     },
     {
       "id": "research-strategy",
       "name": "TQS Research / Strategy Lab",
       "role": "reproducible hypotheses, event studies, controls, OOS, walk-forward, stability, costs and StrategySpec runs",
-      "repo_paths": ["tqs-intelligence/src/tqs_intelligence/research_runtime.py", "tqs-intelligence/src/tqs_intelligence/strategy_machine.py"],
-      "upstream": ["intelligence", "knowledge"],
-      "downstream": ["knowledge", "screener-cockpit", "briefing-publishing"]
+      "repo_paths": [
+        "tqs-intelligence/src/tqs_intelligence/research_runtime.py",
+        "tqs-intelligence/src/tqs_intelligence/strategy_machine.py"
+      ],
+      "upstream": [
+        "intelligence",
+        "knowledge"
+      ],
+      "downstream": [
+        "knowledge",
+        "screener-cockpit",
+        "briefing-publishing"
+      ]
     },
     {
       "id": "briefing-publishing",
       "name": "TQS Briefing / Publishing",
       "role": "briefings, streams, course/materials and presentation outputs from canonical intelligence/knowledge",
-      "upstream": ["intelligence", "knowledge", "research-strategy"],
-      "downstream": ["owner", "audience"]
+      "upstream": [
+        "intelligence",
+        "knowledge",
+        "research-strategy"
+      ],
+      "downstream": [
+        "owner",
+        "audience"
+      ]
     },
     {
       "id": "connectors-data",
       "name": "TQS Connectors / Data",
       "role": "exchange, MOEX, news/event, global data and account adapters plus canonical local storage",
-      "repo_paths": ["tqs-intelligence/src/tqs_intelligence/sources.py", "tqs-intelligence/src/tqs_intelligence/historical.py", "tqs-intelligence/src/tqs_intelligence/lake.py"],
-      "upstream": ["external-primary-truth"],
-      "downstream": ["intelligence"]
+      "repo_paths": [
+        "tqs-intelligence/src/tqs_intelligence/sources.py",
+        "tqs-intelligence/src/tqs_intelligence/historical.py",
+        "tqs-intelligence/src/tqs_intelligence/lake.py"
+      ],
+      "upstream": [
+        "external-primary-truth"
+      ],
+      "downstream": [
+        "intelligence"
+      ]
     }
   ],
   "runtime_nodes": [
     {
       "id": "windows-primary",
-      "name": "Windows TQS Runtime Node",
-      "role": "primary local compute/data node",
-      "runs": ["launcher", "supervisor", "intelligence API", "collectors", "Data Lake", "research workers", "strategy workers", "local cockpit"],
-      "truth": ["data-operational-truth", "runtime-liveness-truth"],
-      "notes": "Do not hardcode volatile hardware specs; inspect resource/storage telemetry from runtime diagnostics."
+      "name": "Windows TQS Remote/Runtime Node",
+      "role": "primary always-on local compute/data server after Remote Node setup",
+      "runs": [
+        "Windows startup task",
+        "supervisor",
+        "intelligence API",
+        "Tailscale Serve private access",
+        "collectors",
+        "Data Lake",
+        "research workers",
+        "strategy workers",
+        "local cockpit"
+      ],
+      "truth": [
+        "data-operational-truth",
+        "runtime-liveness-truth"
+      ],
+      "notes": "Launcher is optional after one-time Remote Node setup. TQS stays on 127.0.0.1; private remote access uses Tailscale Serve. Inspect runtime diagnostics for volatile resources/storage."
     },
     {
       "id": "chatgpt-ai",
@@ -100,14 +206,18 @@
       "id": "github",
       "name": "GitHub / CI",
       "role": "public-safe code distribution, technical contracts and deterministic verification",
-      "truth": ["git-technical-truth"],
+      "truth": [
+        "git-technical-truth"
+      ],
       "notes": "CI success does not prove a specific Windows runtime is healthy."
     },
     {
       "id": "google-drive",
       "name": "Google Drive",
       "role": "durable human-readable product/knowledge memory",
-      "truth": ["drive-product-truth"],
+      "truth": [
+        "drive-product-truth"
+      ],
       "notes": "Not a raw market database and not liveness evidence."
     },
     {
@@ -115,13 +225,25 @@
       "name": "TQS Screener / Web Cockpit",
       "role": "presentation/action client",
       "truth": [],
-      "notes": "Consumes canonical Intelligence/Knowledge data; cached page content does not prove backend liveness."
+      "notes": "Consumes canonical Intelligence/Knowledge data. Local Remote Node is reached through private Tailscale Serve; cached page content does not prove backend liveness."
+    },
+    {
+      "id": "mac-owner-client",
+      "name": "Owner Mac / private Cockpit client",
+      "role": "browser and ChatGPT operator client over the Remote Access Bridge",
+      "runs": [
+        "browser cockpit",
+        "ChatGPT/AI tools",
+        "optional Drive/GitHub clients"
+      ],
+      "truth": [],
+      "notes": "Not a market compute node. One-time Tailscale sign-in to the same tailnet gives access to the stable private TQS URL."
     }
   ],
   "integration_bridges": [
     {
       "id": "code-bridge",
-      "flow": "GitHub -> Launcher -> local install/update -> healthcheck -> rollback on failure",
+      "flow": "GitHub -> Supervisor/Launcher -> safe fast-forward install/update -> healthcheck -> rollback on failure",
       "purpose": "safe code delivery"
     },
     {
@@ -140,9 +262,14 @@
       "purpose": "visualize and act on one canonical compute layer"
     },
     {
+      "id": "remote-access-bridge",
+      "flow": "Windows TQS 127.0.0.1:8787 -> Tailscale Serve private tailnet HTTPS -> owner Mac/phone browser",
+      "purpose": "simple private multi-device Cockpit access without public port forwarding or a second market-data store"
+    },
+    {
       "id": "future-cloud-sync",
       "flow": "authenticated outbound local publish/sync -> private cloud/control plane -> remote views",
-      "purpose": "multi-device access without exposing an unauthenticated local runtime"
+      "purpose": "optional future multi-device/cloud layer beyond the current private Tailscale Remote Access Bridge"
     }
   ],
   "canonical_flow": [
@@ -165,10 +292,10 @@
   "sync_policy": {
     "mode": "contract_and_object_bridges_not_full_mirroring",
     "drive_to_github": "public-safe product rules/contracts only; never private Drive content or secrets",
-    "github_to_runtime": "versioned code + update path + CI-verified contracts",
+    "github_to_runtime": "versioned code -> Supervisor/Launcher safe update path -> healthcheck/rollback",
     "runtime_to_ai": "SUPPORT_REDACTED diagnostic snapshot by default",
     "runtime_to_drive": "durable human-useful findings/cases/briefings only; never raw market firehose",
-    "runtime_to_web": "canonical API or authenticated sync bridge with explicit freshness/provenance"
+    "runtime_to_web": "private Tailscale Remote Access Bridge today; future authenticated cloud sync only when justified"
   },
   "security": {
     "public_repo": true,
@@ -179,7 +306,7 @@
       "raw private account payloads",
       "raw FULL_PRIVATE diagnostic snapshots"
     ],
-    "forbid_public_runtime_pattern": "Do not expose the local TQS API/port unauthenticated to the public Internet."
+    "forbid_public_runtime_pattern": "Do not expose local TQS API/port 8787 unauthenticated to the public Internet. Current remote access is loopback-only TQS plus private Tailscale Serve; do not configure Funnel as part of TQS."
   },
   "development": {
     "default_route": "Chat-first",
