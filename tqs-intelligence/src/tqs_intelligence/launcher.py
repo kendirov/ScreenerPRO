@@ -39,6 +39,7 @@ class TQSLauncher:
         self.update_script = self.root_dir / "update-windows.ps1"
         self.url = "http://127.0.0.1:8787"
         self._busy = False
+        self._busy_lock = threading.Lock()
         self._last_log_text = ""
         self._events: deque[str] = deque(maxlen=100)
         try:
@@ -165,14 +166,22 @@ class TQSLauncher:
             self.content_frame.columnconfigure(1, weight=0)
             self.log_toggle_button.configure(text="Показать техлог")
 
-    def _thread(self, fn, *args) -> None:
-        if self._busy: return
-        self._busy = True
+    def _thread(self, fn, *args, exclusive: bool = False) -> None:
+        if exclusive:
+            with self._busy_lock:
+                if self._busy:
+                    self._event("Управляющая операция уже выполняется; остальные кнопки Launcher остаются доступны.")
+                    return
+                self._busy = True
         def run() -> None:
-            try: fn(*args)
-            except Exception as exc: self._event(f"ОШИБКА: {exc}")
+            try:
+                fn(*args)
+            except Exception as exc:
+                self._event(f"ОШИБКА: {exc}")
             finally:
-                self._busy = False
+                if exclusive:
+                    with self._busy_lock:
+                        self._busy = False
                 self.root.after(0, self.refresh_all)
         threading.Thread(target=run, daemon=True).start()
 
@@ -490,7 +499,7 @@ class TQSLauncher:
             except (psutil.NoSuchProcess, psutil.AccessDenied): pass
         return out
 
-    def start_backend(self) -> None: self._thread(self._start_backend)
+    def start_backend(self) -> None: self._thread(self._start_backend, exclusive=True)
     def _start_backend(self) -> None:
         if self._probe_health(): self._event("TQS уже запущен"); return
         if not self.python.exists(): raise RuntimeError(".venv не найден. Один раз запусти install-windows.cmd")
@@ -502,7 +511,7 @@ class TQSLauncher:
             time.sleep(1)
         raise RuntimeError("TQS не прошёл healthcheck за 60 секунд")
 
-    def stop_backend(self) -> None: self._thread(self._stop_backend)
+    def stop_backend(self) -> None: self._thread(self._stop_backend, exclusive=True)
     def _stop_backend(self) -> None:
         procs = self._matching_tqs_processes()
         if not procs: self._event("TQS уже остановлен"); return
@@ -518,9 +527,9 @@ class TQSLauncher:
 
     def restart_backend(self) -> None:
         def work(): self._stop_backend(); time.sleep(1); self._start_backend()
-        self._thread(work)
+        self._thread(work, exclusive=True)
 
-    def run_update(self) -> None: self._thread(self._run_update)
+    def run_update(self) -> None: self._thread(self._run_update, exclusive=True)
 
     def _restart_launcher_process(self) -> None:
         if not self.python.exists():
