@@ -276,3 +276,17 @@ If a future cloud control/data plane is added, prefer authenticated outbound syn
 Each bridge/module reports its own health. A green GitHub CI does not mean Windows is online; an online Launcher does not mean all market sources are fresh; a loaded web page does not mean research is running; a Drive document does not mean code was deployed.
 
 The owner-facing system should eventually show one unified status assembled from these distinct truths rather than collapsing them into one green/red dot.
+
+### TQS Operations Control / Resource Governor
+The owner control plane is not limited to STOP/LIGHT/MAX. v0.13 adds live resource policy:
+- 1..4 heavy research workers;
+- history/metric planner batch sizes;
+- live refresh override;
+- CPU/RAM soft limits.
+
+The System cockpit shows CPU/RAM/disk/network, TQS processes, worker states and active jobs. Resource policy changes are durable and apply without process restart.
+
+### AI CONTROL BRIDGE
+`ChatGPT GitHub write -> tqs-control/remote-command.json -> office TQS poll -> allow-listed action -> Runtime Audit -> Google Drive -> ChatGPT`
+
+Allowed actions are deliberately narrow: policy updates, market refresh and safe update request. There is no arbitrary shell, arbitrary process kill or order placement. This gives remote AI operations while preserving the existing private Tailscale boundary for the actual TQS web/API server.
