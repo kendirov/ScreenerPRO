@@ -366,7 +366,15 @@ class PulsePublicService:
         url = tracked["source_url"]
         self.last_action = f"Пульс: публичный профиль @{handle}"
         try:
-            text = await self.http.get_text(url, timeout_s=25)
+            text = await self.http.get_text(
+                url,
+                timeout_s=25,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.7",
+                },
+            )
             parsed = parse_pulse_html(handle, text)
             result = self.store.save(handle, parsed, _now_ms())
             self.last_error = None
