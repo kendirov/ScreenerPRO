@@ -27,6 +27,8 @@ from .lake import DataLake
 from .lchi_public import LchiPublicService, LchiPublicStore
 from .models import AssetClass, HypothesisCreate
 from .moex_lab import MoexLab
+from .moex_features import MoexFeatureEngine
+from .metric_lake import MetricLake
 from .news import NewsCollector
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
@@ -136,18 +138,21 @@ account_store = AccountIntelStore(settings.accounts_db_path)
 lchi_store = LchiPublicStore(settings.lchi_db_path)
 lchi_service = LchiPublicService(control, lchi_store, http)
 lake = DataLake(control.get().data_lake_root)
+metric_lake = MetricLake(lake.root)
 backfiller = HistoricalBackfiller(http, lake)
 strategy_machine = StrategyMachine()
 research_runtime = ResearchRuntime(control, lab, backfiller, lake, strategy_machine)
 account_service = AccountIntelligenceService(control, account_store, http, settings.account_refresh_seconds, settings.account_history_days)
+moex_feature_engine = MoexFeatureEngine(store, lchi_store=lchi_store, metric_lake=metric_lake)
 service = IntelligenceService(
     sources, news, store, settings.refresh_seconds, settings.episode_threshold,
     settings.episode_close_grace_seconds, settings.history_backfill_max,
     settings.history_refresh_every, settings.research_every_refreshes, control=control,
+    moex_feature_engine=moex_feature_engine,
 )
 briefing_builder = BriefingBuilder(store)
 moex_lab = MoexLab(store)
-instrument_lab = InstrumentLab(store, lake, lab)
+instrument_lab = InstrumentLab(store, lake, lab, metric_lake=metric_lake)
 exporter = SnapshotExporter(store, lab, control, lake, settings.db_path, account_store=account_store)
 updater = UpdateManager('./data/update-request.json')
 RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
@@ -345,6 +350,11 @@ def moex():
     payload = moex_lab.overview(_snapshot())
     payload['lchi_public'] = lchi_service.status()
     return payload
+
+
+@app.get('/api/moex/intelligence')
+def moex_intelligence(limit:int=Query(200,ge=1,le=1000)):
+    return moex_feature_engine.snapshot(limit=limit)
 
 
 @app.get('/api/moex/lab')
