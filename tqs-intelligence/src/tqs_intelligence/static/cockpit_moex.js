@@ -29,9 +29,10 @@
         api('/api/moex'),
         api('/api/quotes?provider=moex&limit=10000'),
         api('/api/jobs?limit=2000'),
-        api('/api/overview')
+        api('/api/overview'),
+        api('/api/moex/intelligence?limit=200')
       ]);
-      const m=result[0],quotes=result[1],jobs=result[2],o=result[3],lchi=m.lchi_public||{};
+      const m=result[0],quotes=result[1],jobs=result[2],o=result[3],intel=result[4]||{},lchi=m.lchi_public||{};
       const counts={shares:0,forts:0,index:0,selt:0,bonds:0};
       quotes.forEach(q=>{counts[q.market_type]=(counts[q.market_type]||0)+1});
       const src=(o.sources||[]).find(x=>x.provider==='moex');
@@ -73,6 +74,18 @@
       ];
       $('#moexParticipantSources').innerHTML=sourceRows.map(x=>'<div class="participantSource '+x[3]+'"><span>'+esc(x[0])+'</span><div><b>'+esc(x[1])+'</b><small>'+esc(x[2])+'</small></div></div>').join('');
 
+      const intelRows=(intel.rows||[]).filter(x=>Number(x.attention_score||0)>=20).slice(0,40);
+      if(intelRows.length){
+        $('#moexIntelligence').innerHTML='<table class="table"><thead><tr><th>Инструмент</th><th>Почему показан</th><th>15м</th><th>Оборот / норма</th><th>OI 15м</th><th>TQS</th></tr></thead><tbody>'+intelRows.map(x=>{
+          const reasons=(x.reasons||[]).slice(0,3).map(r=>'<small>'+esc(r)+'</small>').join('');
+          const tod=x.turnover_tod_ratio==null?'—':num(x.turnover_tod_ratio,1)+'x';
+          const oi=x.oi_15m_pct==null?'—':pct(x.oi_15m_pct,2);
+          return '<tr class="click moexIntelRow" data-cid="'+esc(x.canonical_id)+'"><td><b>'+esc(x.name||x.symbol)+'</b><small class="mono">'+esc(x.symbol||'')+'</small></td><td>'+reasons+'</td><td>'+pct(x.ret_15m_pct,2)+'</td><td>'+esc(tod)+'</td><td>'+oi+'</td><td><b>'+num(x.attention_score,0)+'</b><small>'+(x.baseline_days||0)+' дн. baseline</small></td></tr>';
+        }).join('')+'</tbody></table>';
+      }else{
+        $('#moexIntelligence').innerHTML='<div class="empty"><b>Сильных собственно-исторических аномалий сейчас нет.</b>TQS сравнивает текущий оборот/объём/сделки с нормой к этому времени дня и отслеживает 15-минутные price/OI/liquidity/LCHI-сдвиги.</div>';
+      }
+
       const mj=jobs.filter(j=>provider(j)==='moex'||/MOEX|FUTOI/i.test(j.title_ru||j.title||'')).slice(0,80);
       if(mj.length){
         $('#moexJobs').innerHTML='<table class="table"><thead><tr><th>Что делает</th><th>Данные</th><th>Статус</th><th>Прогресс</th></tr></thead><tbody>'+
@@ -88,7 +101,8 @@
 
       $('#moexStocks').innerHTML=table(m.top_stocks||[],false);
       $('#moexFutures').innerHTML=table(m.top_futures||[],true);
-      $$('.moexInstrument').forEach(r=>r.onclick=()=>openInstrument(r.dataset.cid));
+      $('.moexInstrument').forEach(r=>r.onclick=()=>openInstrument(r.dataset.cid));
+      $('.moexIntelRow').forEach(r=>r.onclick=()=>openInstrument(r.dataset.cid));
       $$('[data-moex-symbol]').forEach(b=>b.onclick=()=>{setView('instrument');$('#instrumentSearch').value=b.dataset.moexSymbol;searchInstrument(b.dataset.moexSymbol)});
     }catch(e){
       toast('Мосбиржа: '+esc(e.message),10000);
