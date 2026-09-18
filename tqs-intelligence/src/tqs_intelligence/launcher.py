@@ -40,6 +40,11 @@ class TQSLauncher:
         self._busy = False
         self._last_log_text = ""
         self._events: deque[str] = deque(maxlen=100)
+        self._health_payload: dict[str, Any] | None = None
+        self._health_last_ok_s = 0.0
+        self._health_last_probe_s = 0.0
+        self._health_error = ""
+        self._health_lock = threading.RLock()
 
         self.root = tk.Tk()
         self.root.title("TQS Launcher")
@@ -48,6 +53,7 @@ class TQSLauncher:
         self.root.configure(bg=BG)
         self._setup_style()
         self._build_ui()
+        threading.Thread(target=self._health_loop, name="tqs-launcher-health", daemon=True).start()
         self.root.after(250, self.refresh_all)
         self.root.after(2500, self._poll)
 
@@ -97,7 +103,7 @@ class TQSLauncher:
         ttk.Button(actions, text="▶ Запустить", style="Green.TButton", command=self.start_backend).pack(side="left", padx=(0, 6))
         ttk.Button(actions, text="■ Остановить", style="Red.TButton", command=self.stop_backend).pack(side="left", padx=6)
         ttk.Button(actions, text="↻ Перезапустить", command=self.restart_backend).pack(side="left", padx=6)
-        ttk.Button(actions, text="Открыть TQS", style="Primary.TButton", command=lambda: webbrowser.open(self.url)).pack(side="left", padx=6)
+        ttk.Button(actions, text="Открыть TQS", style="Primary.TButton", command=self.open_tqs).pack(side="left", padx=6)
         ttk.Separator(actions, orient="vertical").pack(side="left", fill="y", padx=10)
         ttk.Button(actions, text="Проверить обновление", command=lambda: self._thread(self.refresh_git, True)).pack(side="left", padx=6)
         ttk.Button(actions, text="⬆ Обновить", style="Primary.TButton", command=self.run_update).pack(side="left", padx=6)
@@ -110,12 +116,16 @@ class TQSLauncher:
         ttk.Button(modes, text="МАКС", command=lambda: self.set_mode("max")).pack(side="left", padx=4)
         self.resource_label = ttk.Label(modes, text="CPU — · RAM — · Data —", style="Muted.TLabel"); self.resource_label.pack(side="right")
 
+        support = ttk.Frame(outer); support.pack(fill="x", pady=(0, 10))
+        ttk.Label(support, text="Если что-то непонятно — нажми одну кнопку и вставь результат в ChatGPT.", style="Muted.TLabel").pack(side="left")
+        ttk.Button(support, text="Скопировать для ChatGPT", style="Primary.TButton", command=self.copy_diagnostics).pack(side="right")
+
         content = ttk.Frame(outer); content.pack(fill="both", expand=True); content.columnconfigure(0, weight=1); content.columnconfigure(1, weight=1); content.rowconfigure(0, weight=1)
         lp = tk.Frame(content, bg=PANEL, highlightbackground=BORDER, highlightthickness=1); lp.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
         rp = tk.Frame(content, bg=PANEL, highlightbackground=BORDER, highlightthickness=1); rp.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
-        tk.Label(lp, text="СОСТОЯНИЕ / ПОСЛЕДНИЕ ДЕЙСТВИЯ", bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 9)).pack(anchor="w", padx=12, pady=(10, 4))
+        tk.Label(lp, text="ЧТО ПРОИСХОДИТ / ПОСЛЕДНИЕ ДЕЙСТВИЯ", bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 9)).pack(anchor="w", padx=12, pady=(10, 4))
         self.activity = tk.Text(lp, bg="#0b0f12", fg="#cfd6dc", insertbackground=TEXT, relief="flat", font=("Cascadia Mono", 9), wrap="word"); self.activity.pack(fill="both", expand=True, padx=10, pady=(4, 10)); self.activity.configure(state="disabled")
-        tk.Label(rp, text="RUNTIME LOG", bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 9)).pack(anchor="w", padx=12, pady=(10, 4))
+        tk.Label(rp, text="ТЕХНИЧЕСКИЙ ЛОГ · ДЛЯ ДИАГНОСТИКИ", bg=PANEL, fg=TEXT, font=("Segoe UI Semibold", 9)).pack(anchor="w", padx=12, pady=(10, 4))
         self.log = tk.Text(rp, bg="#070a0c", fg="#9bc4a9", insertbackground=TEXT, relief="flat", font=("Cascadia Mono", 8), wrap="none"); self.log.pack(fill="both", expand=True, padx=10, pady=(4, 10)); self.log.configure(state="disabled")
 
         foot = ttk.Frame(outer); foot.pack(fill="x", pady=(10, 0))
@@ -170,9 +180,48 @@ class TQSLauncher:
         req = urllib.request.Request(self.url + path, data=data, headers=headers, method=method)
         with urllib.request.urlopen(req, timeout=timeout) as response: return json.loads(response.read().decode("utf-8"))
 
-    def health(self) -> dict[str, Any] | None:
-        try: return self._api("/api/health", timeout=2)
-        except Exception: return None
+    def _probe_health(self) -> dict[str, Any] | None:
+        now = time.time()
+        try:
+            payload = self._api("/api/health", timeout=1)
+            with self._health_lock:
+                self._health_payload = payload
+                self._health_last_ok_s = now
+                self._health_error = ""
+            return payload
+        except Exception as exc:
+            with self._health_lock:
+                self._health_error = f"{type(exc).__name__}: {exc}"
+            return None
+        finally:
+            with self._health_lock:
+                self._health_last_probe_s = time.time()
+
+    def _health_loop(self) -> None:
+        while True:
+            self._probe_health()
+            time.sleep(1.5)
+
+    def health(self, max_age_s: float = 12.0) -> dict[str, Any] | None:
+        with self._health_lock:
+            payload = self._health_payload
+            age = time.time() - self._health_last_ok_s if self._health_last_ok_s else 10**9
+        return payload if payload is not None and age <= max_age_s else None
+
+    def health_status(self) -> dict[str, Any]:
+        with self._health_lock:
+            age = time.time() - self._health_last_ok_s if self._health_last_ok_s else None
+            error = self._health_error
+            last_probe = self._health_last_probe_s
+        processes = self._matching_tqs_processes()
+        return {
+            "payload": self.health(),
+            "last_ok_age_s": round(age, 1) if age is not None else None,
+            "last_probe_age_s": round(time.time() - last_probe, 1) if last_probe else None,
+            "error": error,
+            "process_count": len(processes),
+            "processes_alive": bool(processes),
+        }
 
     def _product_version(self) -> str:
         try:
@@ -189,7 +238,7 @@ class TQSLauncher:
         try:
             if not hasattr(self, "_git_cache"): self._git_cache = self.git_state(fetch=False)
         except Exception as exc: self._git_cache = {"branch":"?", "head":"", "remote_head":"", "ahead":0, "behind":0, "dirty":False, "error":str(exc)}
-        g = self._git_cache; h = self.health(); version = self._product_version(); self.version_label.configure(text=f"product v{version}"); self.branch_label.configure(text=f"branch: {g.get('branch') or '—'}")
+        g = self._git_cache; hs = self.health_status(); h = hs.get("payload"); version = self._product_version(); self.version_label.configure(text=f"product v{version}"); self.branch_label.configure(text=f"branch: {g.get('branch') or '—'}")
         local = (g.get("head") or "")[:8] or "—"; remote = (g.get("remote_head") or "")[:8] or "—"
         self.cards["local"][0].configure(text=local, fg=AMBER if g.get("dirty") else TEXT); self.cards["local"][1].configure(text="есть локальные изменения" if g.get("dirty") else "working tree clean")
         self.cards["remote"][0].configure(text=remote); self.cards["remote"][1].configure(text=f"behind {g.get('behind',0)} · ahead {g.get('ahead',0)}")
@@ -197,8 +246,21 @@ class TQSLauncher:
             self.cards["backend"][0].configure(text="ONLINE", fg=GREEN); self.cards["backend"][1].configure(text="health OK")
             mode = str((h.get("control") or {}).get("mode") or "—").upper(); self.cards["mode"][0].configure(text=mode, fg=AMBER if mode == "MAX" else GREEN if mode == "LIGHT" else RED)
             self.cards["mode"][1].configure(text=str((h.get("research_runtime") or {}).get("last_action") or "")); res = h.get("resources") or {}; self.resource_label.configure(text=f"CPU {res.get('cpu_percent','—')}% · RAM {res.get('memory_percent','—')}% · Data {res.get('data_disk_free_gb','—')} GB free")
+        elif hs.get("processes_alive"):
+            age = hs.get("last_ok_age_s")
+            age_text = f"{age:.0f}с" if isinstance(age, (int, float)) else "—"
+            self.cards["backend"][0].configure(text="ЗАНЯТ", fg=AMBER)
+            self.cards["backend"][1].configure(text=f"процессы живы · API не ответил {age_text}")
+            try:
+                control = json.loads((self.data_dir / "control.json").read_text(encoding="utf-8"))
+                mode = str(control.get("mode") or "—").upper()
+            except Exception:
+                mode = "—"
+            self.cards["mode"][0].configure(text=mode, fg=AMBER)
+            self.cards["mode"][1].configure(text="работа не прерывается; Launcher не будет перезапускать процесс из-за одного timeout")
+            vm = psutil.virtual_memory(); self.resource_label.configure(text=f"CPU {psutil.cpu_percent()}% · RAM {vm.percent}% · health timeout")
         else:
-            self.cards["backend"][0].configure(text="OFFLINE", fg=RED); self.cards["backend"][1].configure(text="TQS не отвечает"); self.cards["mode"][0].configure(text="—"); self.cards["mode"][1].configure(text="backend offline"); vm = psutil.virtual_memory(); self.resource_label.configure(text=f"CPU {psutil.cpu_percent()}% · RAM {vm.percent}%")
+            self.cards["backend"][0].configure(text="OFFLINE", fg=RED); self.cards["backend"][1].configure(text="процессов TQS нет"); self.cards["mode"][0].configure(text="—"); self.cards["mode"][1].configure(text="backend offline"); vm = psutil.virtual_memory(); self.resource_label.configure(text=f"CPU {psutil.cpu_percent()}% · RAM {vm.percent}%")
         if g.get("error"): self._set_banner("Не удалось определить версию", MUTED, g["error"])
         elif g.get("dirty"): self._set_banner("Локальные изменения — автообновление заблокировано", AMBER, f"LOCAL {local} · REMOTE {remote}")
         elif g.get("behind", 0) > 0: self._set_banner("ЕСТЬ ОБНОВЛЕНИЕ", AMBER, f"LOCAL {local} → REMOTE {remote} · +{g['behind']} commit")
@@ -208,6 +270,71 @@ class TQSLauncher:
 
     def _set_banner(self, title: str, color: str, detail: str) -> None:
         self.status_dot.configure(fg=color); self.status_title.configure(text=title); self.status_detail.configure(text=detail)
+
+    def open_tqs(self) -> None:
+        build = str((getattr(self, "_git_cache", {}) or {}).get("head") or "")[:12]
+        suffix = f"?build={build}" if build else f"?t={int(time.time())}"
+        webbrowser.open(self.url + "/" + suffix)
+
+    def _diagnostic_text(self) -> str:
+        g = getattr(self, "_git_cache", {}) or {}
+        hs = self.health_status()
+        payload = hs.get("payload") or self._health_payload or {}
+        sections = [
+            "TQS DIAGNOSTICS — вставь этот блок в ChatGPT целиком",
+            f"Время: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Product: v{self._product_version()}",
+            f"Branch: {g.get('branch') or '—'}",
+            f"LOCAL: {(g.get('head') or '')[:12] or '—'}",
+            f"REMOTE: {(g.get('remote_head') or '')[:12] or '—'} · behind {g.get('behind',0)} · ahead {g.get('ahead',0)}",
+            f"Working tree: {'DIRTY' if g.get('dirty') else 'clean'}",
+            f"Health: {'ONLINE' if hs.get('payload') else 'BUSY/UNAVAILABLE' if hs.get('processes_alive') else 'OFFLINE'} · last OK age {hs.get('last_ok_age_s')}s · processes {hs.get('process_count')}",
+            f"Health error: {hs.get('error') or '—'}",
+            "",
+            "=== HEALTH / RUNTIME SUMMARY ===",
+            json.dumps({
+                "control": payload.get("control"),
+                "runtime": payload.get("runtime"),
+                "research_runtime": payload.get("research_runtime"),
+                "account_intelligence": payload.get("account_intelligence"),
+                "resources": payload.get("resources"),
+                "storage": payload.get("storage"),
+                "lab": payload.get("lab"),
+            }, ensure_ascii=False, indent=2, default=str),
+        ]
+        for filename, title in (("supervisor-heartbeat.json", "SUPERVISOR HEARTBEAT"), ("control.json", "CONTROL"), ("update-state.json", "UPDATE STATE")):
+            p = self.data_dir / filename
+            try:
+                content = p.read_text(encoding="utf-8-sig")
+            except Exception as exc:
+                content = f"unavailable: {exc}"
+            sections += ["", f"=== {title} ===", content]
+        for endpoint, title in (("/api/jobs?limit=80", "RECENT JOBS"), ("/api/data-lake", "DATA LAKE")):
+            try:
+                value = self._api(endpoint, timeout=2)
+                content = json.dumps(value, ensure_ascii=False, indent=2, default=str)
+            except Exception as exc:
+                content = f"unavailable: {type(exc).__name__}: {exc}"
+            sections += ["", f"=== {title} ===", content]
+        sections += ["", "=== LAUNCHER EVENTS ===", "\n".join(list(self._events)[:100])]
+        try:
+            log_tail = "\n".join(self.runtime_log.read_text(encoding="utf-8", errors="replace").splitlines()[-180:])
+        except Exception as exc:
+            log_tail = f"unavailable: {exc}"
+        sections += ["", "=== RUNTIME LOG TAIL ===", log_tail]
+        return "\n".join(sections)
+
+    def copy_diagnostics(self) -> None:
+        def work() -> None:
+            text = self._diagnostic_text()
+            folder = self.data_dir / "diagnostics"; folder.mkdir(parents=True, exist_ok=True)
+            path = folder / f"TQS-DIAGNOSTICS-{time.strftime('%Y%m%d-%H%M%S')}.txt"
+            path.write_text(text, encoding="utf-8")
+            def copy_ui() -> None:
+                self.root.clipboard_clear(); self.root.clipboard_append(text); self.root.update()
+                self._event(f"Диагностика скопирована для ChatGPT · {path}")
+            self.root.after(0, copy_ui)
+        self._thread(work)
 
     def _read_update_state(self) -> dict[str, Any] | None:
         try: return json.loads(self.update_state.read_text(encoding="utf-8-sig")) if self.update_state.exists() else None
@@ -237,13 +364,13 @@ class TQSLauncher:
 
     def start_backend(self) -> None: self._thread(self._start_backend)
     def _start_backend(self) -> None:
-        if self.health(): self._event("TQS уже запущен"); return
+        if self._probe_health(): self._event("TQS уже запущен"); return
         if not self.python.exists(): raise RuntimeError(".venv не найден. Один раз запусти install-windows.cmd")
         self._event("Запускаю TQS backend…"); log_handle = self.runtime_log.open("a", encoding="utf-8"); flags = 0
         if os.name == "nt": flags = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) | int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
         subprocess.Popen([str(self.python), "-m", "tqs_intelligence.supervisor"], cwd=str(self.root_dir), stdout=log_handle, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, creationflags=flags, close_fds=True)
         for _ in range(60):
-            if self.health(): self._event("TQS ONLINE"); return
+            if self._probe_health(): self._event("TQS ONLINE"); return
             time.sleep(1)
         raise RuntimeError("TQS не прошёл healthcheck за 60 секунд")
 
