@@ -1,4 +1,4 @@
-# TQS Intelligence & Strategy Machine v0.5
+# TQS Intelligence & Strategy Machine v0.11
 
 Одна локальная/серверная машина для рынка, аномалий, исторических исследований, стратегий, публичных счетов/позиций, новостей и брифинга.
 
@@ -102,6 +102,24 @@ Buy-the-dip grid автоматически перебирает:
 - **MAX** — heavy historical/research/strategy jobs execute.
 
 UI показывает CPU/RAM, очередь, current action и место на Data Root.
+
+### Remote Node / домашний Mac
+
+Офисный Windows-компьютер можно один раз превратить в always-on TQS Node кнопкой **Настроить сервер** в Launcher.
+
+После настройки:
+- Windows Task Scheduler запускает TQS при старте Windows;
+- Supervisor работает без открытого Launcher;
+- сервер остаётся на `127.0.0.1:8787`;
+- Tailscale Serve даёт приватный HTTPS-адрес только внутри tailnet;
+- Mac/телефон открывают тот же Cockpit по закладке;
+- безопасные Git-обновления проверяются каждые 5 минут и проходят через healthcheck/rollback;
+- Launcher показывает REMOTE ONLINE и умеет скопировать адрес для Mac.
+
+Один раз на Mac нужно установить Tailscale и войти в тот же аккаунт/tailnet. Публичный port-forward и Tailscale Funnel для TQS не нужны.
+
+Подробный контракт: `REMOTE_NODE.md`.
+
 
 ### Сохранить TQS
 Portable ZIP содержит:

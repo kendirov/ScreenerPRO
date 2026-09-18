@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .remote_node import server_mode_enabled
+
 
 class UpdateManager:
     def __init__(self, request_path: str = './data/update-request.json') -> None:
@@ -136,20 +138,27 @@ class UpdateManager:
         }
 
     def request(self, force: bool = False) -> dict[str, Any]:
-        try:
-            launched = self._launch_windows_updater()
-            if launched is not None:
-                return launched
-        except Exception as exc:
-            # Fall back to the supervisor request file. This keeps the old path available
-            # even if Windows blocks detached PowerShell for some reason.
-            launch_error = str(exc)
-        else:
+        # In always-on server mode the supervisor owns updates. Launching the
+        # external Windows updater would kill the scheduled-task supervisor and
+        # race Task Scheduler when it tries to restart it. Queue the request
+        # instead; the live supervisor consumes it in its main loop.
+        if server_mode_enabled(self.tqs_root):
             launch_error = None
+        else:
+            try:
+                launched = self._launch_windows_updater()
+                if launched is not None:
+                    return launched
+            except Exception as exc:
+                # Fall back to the supervisor request file. This keeps the old path available
+                # even if Windows blocks detached PowerShell for some reason.
+                launch_error = str(exc)
+            else:
+                launch_error = None
 
         payload = {'requested_at_ms': int(time.time() * 1000), 'force': bool(force)}
         self.request_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding='utf-8')
-        result: dict[str, Any] = {'ok': True, **payload, 'external': False}
+        result: dict[str, Any] = {'ok': True, **payload, 'external': False, 'server_mode': server_mode_enabled(self.tqs_root)}
         if launch_error:
             result['fallback_reason'] = launch_error
         return result

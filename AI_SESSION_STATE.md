@@ -19,7 +19,7 @@ PR: `#11 — TQS Intelligence Engine v0.1 — multi-market anomaly and research 
 
 The PR is intentionally stacked on the older TraderQuest TQ-004 branch rather than current `main`; integration to `main` must be deliberate. Do not assume a blind merge is safe.
 
-Package/product version on the current integration candidate: **v0.10.0**. The owner's Windows runtime remains whatever version it last updated to until Launcher applies the merged Git state.
+Package/product version on the current integration candidate: **v0.11.0**. The owner's Windows runtime remains whatever version it last updated to until the local Supervisor/Launcher applies the merged Git state.
 
 ## 3. What exists now
 
@@ -47,7 +47,8 @@ Under `tqs-intelligence/`:
 - portable TQS diagnostic/support snapshot;
 - MOEX own-history attention engine: same-time-of-day turnover/volume/trade baselines, short-horizon price/OI/liquidity features and explainable anomalies;
 - LCHI public participant catalog, portfolio diffs and exact public deals CSV ingestion with distinct timestamp semantics;
-- T-Bank Pulse public-profile observer with hidden operation size kept explicitly unknown.
+- T-Bank Pulse public-profile observer with hidden operation size kept explicitly unknown;
+- TQS Remote Node: Windows autostart task, private Tailscale Serve access, loopback-only backend, server-mode keep-awake and five-minute safe auto-update checks.
 
 ### TQS Launcher
 Operator/control surface, not the trading UI:
@@ -58,7 +59,11 @@ Operator/control surface, not the trading UI:
 - runtime log;
 - resource telemetry;
 - Windows keep-awake in MAX;
+- one-click **Настроить сервер** flow for Windows + Tailscale;
+- remote URL/status visible and copyable for Mac;
 - watchdog that must not kill healthy heavy work after one HTTP timeout.
+
+Launcher is not required to remain open after Remote Node setup. The Windows scheduled task + Supervisor become the always-on runtime.
 
 ### TQS Screener / Cockpit
 Existing web/frontend/ScreenerPRO surfaces are the future trader-facing TQS Screener/Cockpit module. They are not the canonical market compute engine. New integration should consume TQS Intelligence/Knowledge contracts rather than duplicate collection/research.
@@ -112,7 +117,8 @@ TQS modules:
 6. Research/Strategy Lab
 7. Briefing/Publishing
 8. Connectors/Data
-9. optional future Cloud/Sync
+9. Remote Node / private access (implemented for the Windows primary node via Tailscale Serve);
+10. optional future Cloud/Sync
 
 Keep modular monorepo while contracts evolve rapidly. A separate repo/service requires a concrete deployment/security/toolchain/scale boundary.
 
@@ -132,17 +138,20 @@ The current blocker is no longer “can TQS collect data?” but **can a trader 
 
 Until proven end-to-end, MOEX is the reference vertical. Read `tqs-intelligence/MOEX_REFERENCE_VERTICAL.md` before substantial market/UI work.
 
-v0.10 establishes the first usable reference slice: MOEX own-history anomaly context, FUTOI provenance, automated LCHI portfolio/trade evidence, a guarded Pulse public-profile layer, and unified instrument/event surfaces.
+v0.10 established the first usable MOEX reference slice. v0.11 adds the owner-access layer: the office Windows machine can be an always-on TQS server, auto-start after Windows boot, update itself without Launcher, and expose only a private Tailscale HTTPS URL to the owner's Mac/phone.
+
+Read `tqs-intelligence/REMOTE_NODE.md` before modifying server/autostart/update/remote-access behavior.
 
 Next priority:
-1. prove v0.10 on the Windows runtime with real accumulated MOEX snapshots and browser evidence;
-2. expand time-of-day baselines from locally accumulated quote snapshots into richer candle/session baselines;
-3. add an explicit stock ↔ future ↔ sector/index mapping registry and linked-divergence features;
-4. scale exact LCHI trade-history ingestion/cohort research while respecting source limits;
-5. add licensed realtime FUTOI only when entitlement exists; never merge it silently with delayed public history;
-6. expand MOEX microstructure/trades/L2 where lawful/provider access supports it;
-7. continuously feed new v0.10 anomaly episodes into existing replay/OOS/Strategy Machine research;
-8. only after the MOEX reference slice proves useful, replicate the pattern to crypto.
+1. prove v0.11 Remote Node on the office Windows runtime: one-time Tailscale sign-in, scheduled task installed, `/api/node/remote ready=true`, Launcher closed, Mac opens the stable URL, reboot recovery confirmed;
+2. then prove the v0.10 MOEX intelligence slice on real accumulated snapshots from the remote Mac cockpit;
+3. expand time-of-day baselines from locally accumulated quote snapshots into richer candle/session baselines;
+4. add an explicit stock ↔ future ↔ sector/index mapping registry and linked-divergence features;
+5. scale exact LCHI trade-history ingestion/cohort research while respecting source limits;
+6. add licensed realtime FUTOI only when entitlement exists; never merge it silently with delayed public history;
+7. expand MOEX microstructure/trades/L2 where lawful/provider access supports it;
+8. continuously feed new anomaly episodes into existing replay/OOS/Strategy Machine research;
+9. only after the MOEX reference slice proves useful, replicate the pattern to crypto.
 
 Do not add another generic technical screen. Every new object must end in a visible trader-facing answer or an explicit coverage/gap row.
 
