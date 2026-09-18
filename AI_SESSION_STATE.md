@@ -19,7 +19,7 @@ PR: `#11 — TQS Intelligence Engine v0.1 — multi-market anomaly and research 
 
 The PR is intentionally stacked on the older TraderQuest TQ-004 branch rather than current `main`; integration to `main` must be deliberate. Do not assume a blind merge is safe.
 
-Package/product version on the active local line: **v0.9.1**.
+Package/product version on the current integration candidate: **v0.10.0**. The owner's Windows runtime remains whatever version it last updated to until Launcher applies the merged Git state.
 
 ## 3. What exists now
 
@@ -44,7 +44,10 @@ Under `tqs-intelligence/`:
 - Hyperliquid public account discovery/intelligence;
 - Briefing builder;
 - relationships miner;
-- portable TQS diagnostic/support snapshot.
+- portable TQS diagnostic/support snapshot;
+- MOEX own-history attention engine: same-time-of-day turnover/volume/trade baselines, short-horizon price/OI/liquidity features and explainable anomalies;
+- LCHI public participant catalog, portfolio diffs and exact public deals CSV ingestion with distinct timestamp semantics;
+- T-Bank Pulse public-profile observer with hidden operation size kept explicitly unknown.
 
 ### TQS Launcher
 Operator/control surface, not the trading UI:
@@ -129,15 +132,17 @@ The current blocker is no longer “can TQS collect data?” but **can a trader 
 
 Until proven end-to-end, MOEX is the reference vertical. Read `tqs-intelligence/MOEX_REFERENCE_VERTICAL.md` before substantial market/UI work.
 
-Priority:
-1. dedicated Russian **Мосбиржа** cockpit: universe, coverage, downloads, failures and next actions;
-2. all relevant MOEX shares/FORTS live/searchable, progressive complete historical target;
-3. FUTOI aggregate physical/legal participant layer with explicit delay/licence provenance;
-4. automated public LCHI participant catalog/profile/trade evidence;
-5. Pulse public profile/trade evidence as a weaker layer (operation quantity is hidden publicly);
-6. one SBER/BR/Si Instrument Workspace with price/volume/OI/FUTOI/public-account/news/anomaly/research layers on one timeline;
-7. explicit MOEX research program and Russian result language;
-8. only after this reference slice is clear, replicate the pattern to crypto.
+v0.10 establishes the first usable reference slice: MOEX own-history anomaly context, FUTOI provenance, automated LCHI portfolio/trade evidence, a guarded Pulse public-profile layer, and unified instrument/event surfaces.
+
+Next priority:
+1. prove v0.10 on the Windows runtime with real accumulated MOEX snapshots and browser evidence;
+2. expand time-of-day baselines from locally accumulated quote snapshots into richer candle/session baselines;
+3. add an explicit stock ↔ future ↔ sector/index mapping registry and linked-divergence features;
+4. scale exact LCHI trade-history ingestion/cohort research while respecting source limits;
+5. add licensed realtime FUTOI only when entitlement exists; never merge it silently with delayed public history;
+6. expand MOEX microstructure/trades/L2 where lawful/provider access supports it;
+7. continuously feed new v0.10 anomaly episodes into existing replay/OOS/Strategy Machine research;
+8. only after the MOEX reference slice proves useful, replicate the pattern to crypto.
 
 Do not add another generic technical screen. Every new object must end in a visible trader-facing answer or an explicit coverage/gap row.
 
