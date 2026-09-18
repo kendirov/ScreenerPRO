@@ -104,3 +104,47 @@ class ResearchRunResult(BaseModel):
     next_action: str = ""
     strategy_id: str | None = None
     warnings: list[str] = Field(default_factory=list)
+
+
+
+class PaperBot(BaseModel):
+    id: str
+    name: str
+    strategy_id: str
+    strategy_run_id: str
+    canonical_id: str
+    status: Literal['draft','armed','paused','blocked'] = 'draft'
+    mode: Literal['paper'] = 'paper'
+    created_at_ms: int
+    updated_at_ms: int
+    config: dict[str, Any] = Field(default_factory=dict)
+    state: dict[str, Any] = Field(default_factory=dict)
+    live_allowed: bool = False
+    block_reason: str = ''
+
+
+class PaperSignal(BaseModel):
+    id: str
+    bot_id: str
+    ts_ms: int
+    canonical_id: str
+    kind: str
+    side: str = ''
+    price: float | None = None
+    reason: str = ''
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class PaperTrade(BaseModel):
+    id: str
+    bot_id: str
+    canonical_id: str
+    status: Literal['open','closed'] = 'open'
+    side: Literal['long','short']
+    entry_ts_ms: int
+    entry_price: float
+    exit_ts_ms: int | None = None
+    exit_price: float | None = None
+    pnl_pct: float | None = None
+    exit_reason: str = ''
+    payload: dict[str, Any] = Field(default_factory=dict)

@@ -32,6 +32,7 @@ from .models import AssetClass, HypothesisCreate
 from .moex_lab import MoexLab
 from .moex_features import MoexFeatureEngine
 from .metric_lake import MetricLake
+from .paper_bots import PaperBotService
 from .news import NewsCollector
 from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
@@ -142,6 +143,10 @@ class StrategyRunCreate(BaseModel):
     canonical_id: str
 
 
+class PaperBotStatusPatch(BaseModel):
+    status: Literal['draft','armed','paused']
+
+
 class SnapshotExportRequest(BaseModel):
     full: bool = False
 
@@ -231,6 +236,7 @@ service = IntelligenceService(
     settings.history_refresh_every, settings.research_every_refreshes, control=control,
     moex_feature_engine=moex_feature_engine,
 )
+paper_service = PaperBotService(lab, lambda: service.state.snapshot, poll_seconds=5)
 briefing_builder = BriefingBuilder(store)
 moex_lab = MoexLab(store)
 instrument_lab = InstrumentLab(store, lake, lab, metric_lake=metric_lake)
@@ -253,7 +259,7 @@ async def lifespan(_: FastAPI):
         lab.save_strategy(default_round_buffer_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
-    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start(); ai_control.start()
+    service.start(); research_runtime.start(); paper_service.start(); account_service.start(); lchi_service.start(); pulse_service.start(); ai_control.start()
 
     async def repair_remote_contract() -> None:
         try:
@@ -272,7 +278,7 @@ async def lifespan(_: FastAPI):
     yield
     if not repair_task.done():
         repair_task.cancel()
-    await ai_control.stop(); await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
+    await ai_control.stop(); await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await paper_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
@@ -871,6 +877,40 @@ def run_strategy(strategy_id:str,request:StrategyRunCreate):
     if spec is None: raise HTTPException(404,'strategy not found')
     job=lab.enqueue_job('strategy_run',f"Стратегия: {spec.name_ru} / {request.canonical_id}",{'strategy_id':strategy_id,'canonical_id':request.canonical_id})
     return job.model_dump(mode='json')
+
+
+@app.get('/api/paper-bots')
+def paper_bots(limit:int=Query(200,ge=1,le=2000)):
+    return {'status':paper_service.status(),
+            'bots':[x.model_dump(mode='json') for x in lab.list_paper_bots(limit)]}
+
+
+@app.post('/api/paper-bots/from-run/{run_id}')
+def create_paper_bot(run_id:str):
+    try:
+        return paper_service.create_from_run(run_id).model_dump(mode='json')
+    except KeyError as exc:
+        raise HTTPException(404,str(exc))
+
+
+@app.post('/api/paper-bots/{bot_id}/status')
+def set_paper_bot_status(bot_id:str,request:PaperBotStatusPatch):
+    try:
+        return paper_service.set_status(bot_id,request.status).model_dump(mode='json')
+    except KeyError as exc:
+        raise HTTPException(404,str(exc))
+    except ValueError as exc:
+        raise HTTPException(409,str(exc))
+
+
+@app.get('/api/paper-bots/signals')
+def paper_bot_signals(bot_id:str='',limit:int=Query(300,ge=1,le=3000)):
+    return [x.model_dump(mode='json') for x in lab.list_paper_signals(bot_id,limit)]
+
+
+@app.get('/api/paper-bots/trades')
+def paper_bot_trades(bot_id:str='',status:str='',limit:int=Query(300,ge=1,le=3000)):
+    return [x.model_dump(mode='json') for x in lab.list_paper_trades(bot_id,status,limit)]
 
 
 @app.get('/api/data-lake')

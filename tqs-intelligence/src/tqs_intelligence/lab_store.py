@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .strategy_models import ResearchJob, ResearchProject, ResearchRunResult, StrategyRunResult, StrategySpec
+from .strategy_models import PaperBot, PaperSignal, PaperTrade, ResearchJob, ResearchProject, ResearchRunResult, StrategyRunResult, StrategySpec
 
 
 def _now_ms() -> int:
@@ -61,6 +61,20 @@ class LabStore:
                     run_id text primary key, strategy_id text, canonical_id text,
                     created_at_ms integer, status text, result_json text
                 );
+                create table if not exists paper_bots (
+                    id text primary key, strategy_id text, strategy_run_id text, canonical_id text,
+                    status text, created_at_ms integer, updated_at_ms integer, bot_json text
+                );
+                create table if not exists paper_signals (
+                    id text primary key, bot_id text, ts_ms integer, canonical_id text,
+                    kind text, side text, price real, signal_json text
+                );
+                create table if not exists paper_trades (
+                    id text primary key, bot_id text, canonical_id text, status text,
+                    entry_ts_ms integer, exit_ts_ms integer, trade_json text
+                );
+                create index if not exists idx_paper_signals_bot_time on paper_signals(bot_id,ts_ms);
+                create index if not exists idx_paper_trades_bot_status on paper_trades(bot_id,status);
             ''')
             self._con.commit()
 
@@ -283,6 +297,69 @@ class LabStore:
             rows = self._con.execute(sql, params).fetchall()
         return [StrategyRunResult.model_validate_json(r[0]) for r in rows]
 
+    def get_strategy_run(self, run_id: str) -> StrategyRunResult | None:
+        with self._lock:
+            row=self._con.execute('select result_json from strategy_runs where run_id=?',[run_id]).fetchone()
+        return StrategyRunResult.model_validate_json(row[0]) if row else None
+
+    def save_paper_bot(self, bot: PaperBot) -> PaperBot:
+        bot.updated_at_ms=_now_ms()
+        with self._lock:
+            self._con.execute(
+                'insert or replace into paper_bots values (?, ?, ?, ?, ?, ?, ?, ?)',
+                [bot.id,bot.strategy_id,bot.strategy_run_id,bot.canonical_id,bot.status,
+                 bot.created_at_ms,bot.updated_at_ms,bot.model_dump_json()],
+            )
+            self._con.commit()
+        return bot
+
+    def get_paper_bot(self, bot_id: str) -> PaperBot | None:
+        with self._lock:
+            row=self._con.execute('select bot_json from paper_bots where id=?',[bot_id]).fetchone()
+        return PaperBot.model_validate_json(row[0]) if row else None
+
+    def list_paper_bots(self, limit: int = 300) -> list[PaperBot]:
+        with self._lock:
+            rows=self._con.execute('select bot_json from paper_bots order by updated_at_ms desc limit ?',[limit]).fetchall()
+        return [PaperBot.model_validate_json(r[0]) for r in rows]
+
+    def append_paper_signal(self, signal: PaperSignal) -> None:
+        with self._lock:
+            self._con.execute(
+                'insert or ignore into paper_signals values (?, ?, ?, ?, ?, ?, ?, ?)',
+                [signal.id,signal.bot_id,signal.ts_ms,signal.canonical_id,signal.kind,
+                 signal.side,signal.price,signal.model_dump_json()],
+            )
+            self._con.commit()
+
+    def list_paper_signals(self, bot_id: str = '', limit: int = 500) -> list[PaperSignal]:
+        sql='select signal_json from paper_signals'; params: list[Any]=[]
+        if bot_id: sql+=' where bot_id=?'; params.append(bot_id)
+        sql+=' order by ts_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows=self._con.execute(sql,params).fetchall()
+        return [PaperSignal.model_validate_json(r[0]) for r in rows]
+
+    def save_paper_trade(self, trade: PaperTrade) -> PaperTrade:
+        with self._lock:
+            self._con.execute(
+                'insert or replace into paper_trades values (?, ?, ?, ?, ?, ?, ?)',
+                [trade.id,trade.bot_id,trade.canonical_id,trade.status,
+                 trade.entry_ts_ms,trade.exit_ts_ms,trade.model_dump_json()],
+            )
+            self._con.commit()
+        return trade
+
+    def list_paper_trades(self, bot_id: str = '', status: str = '', limit: int = 500) -> list[PaperTrade]:
+        sql='select trade_json from paper_trades'; where=[]; params: list[Any]=[]
+        if bot_id: where.append('bot_id=?'); params.append(bot_id)
+        if status: where.append('status=?'); params.append(status)
+        if where: sql+=' where '+' and '.join(where)
+        sql+=' order by entry_ts_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows=self._con.execute(sql,params).fetchall()
+        return [PaperTrade.model_validate_json(r[0]) for r in rows]
+
     def stats(self) -> dict[str, int]:
         with self._lock:
             return {
@@ -293,4 +370,6 @@ class LabStore:
                 'running_jobs': self._con.execute("select count(*) from research_jobs where status='running'").fetchone()[0],
                 'strategies': self._con.execute('select count(*) from strategy_specs').fetchone()[0],
                 'strategy_runs': self._con.execute('select count(*) from strategy_runs').fetchone()[0],
+                'paper_bots': self._con.execute('select count(*) from paper_bots').fetchone()[0],
+                'paper_trades': self._con.execute('select count(*) from paper_trades').fetchone()[0],
             }
