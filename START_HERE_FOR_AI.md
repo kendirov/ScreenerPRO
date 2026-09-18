@@ -12,6 +12,7 @@ Current conceptual modules:
 - **TQS Intelligence** — local collection, Data Lake, features, anomalies/episodes, accounts, research and Strategy Machine;
 - **TQS Launcher** — Windows control/update/health/log/diagnostic surface for the local engine plus one-click Remote Node setup;
 - **TQS Remote Node** — office Windows as an always-on private server: boot autostart, Supervisor recovery, safe auto-update and Tailscale Serve access for Mac/phone;
+- **TQS Runtime Audit / AI Bridge** — `/api/audit` plus a sanitized Google Drive heartbeat so an AI session can verify what the private node is actually collecting without joining the tailnet;
 - **TQS Screener / Cockpit** — trader-facing web/UI layer; existing ScreenerPRO frontend evolves into this role;
 - **TQS Knowledge** — human-readable Google Drive knowledge + future structured index/graph;
 - **TQS Research / Strategy Lab** — reproducible hypotheses, replay, validation and strategies;
@@ -32,7 +33,7 @@ Do not read the whole repository or Drive by default.
 6. `PRODUCT_VISION.md` when a product/UX decision is involved.
 7. Deep legacy references (`PROJECT_CONTEXT.md`, older docs) only when a concrete decision needs them.
 
-For local engine work start at `tqs-intelligence/AGENTS.md`. For Windows server/autostart/remote-access/update work also read `tqs-intelligence/REMOTE_NODE.md`.
+For local engine work start at `tqs-intelligence/AGENTS.md`. For Windows server/autostart/remote-access/update/runtime-observability work also read `tqs-intelligence/REMOTE_NODE.md` and the latest release notes.
 
 ## Sources of truth
 
@@ -78,6 +79,7 @@ Do not hand the owner a prompt to another executor when the available tools can 
 - UI work needs loading/empty/error/stale states and browser/screenshot proof before a final visual PASS.
 - Local runtime work needs heartbeat, activity/progress, logs and diagnostic snapshot.
 - Remote access must not expose TQS port 8787 to the public Internet. Current Remote Node uses loopback-only TQS + private Tailscale Serve; Launcher is not required to stay open after server setup.
+- Never infer live runtime state from GitHub alone. Prefer a fresh `TQS_LIVE_AUDIT.json` from the Google Drive AI Bridge; otherwise state the live-node visibility gap explicitly.
 
 ## Privacy boundary
 
