@@ -515,6 +515,9 @@ class TQSLauncher:
             "=== ACCOUNT SUMMARY ===",
             json.dumps(self._owner_accounts or {}, ensure_ascii=False, indent=2, default=str),
             "",
+            "=== REMOTE NODE ===",
+            json.dumps(self._remote_cache or {}, ensure_ascii=False, indent=2, default=str),
+            "",
             "=== HEALTH / RUNTIME SUMMARY ===",
             json.dumps({
                 "control": payload.get("control"),
