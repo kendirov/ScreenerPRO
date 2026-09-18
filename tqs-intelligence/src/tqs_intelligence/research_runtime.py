@@ -65,13 +65,15 @@ class ResearchRuntime:
             try: await self._task
             except asyncio.CancelledError: pass
 
-    def status(self) -> dict[str,Any]:
+    def quick_status(self) -> dict[str,Any]:
         return {
             'running':self._running,'mode':self.control.get().mode,
             'last_action':self.last_action,'last_error':self.last_error,
             'auto_history':dict(self._auto_history),'auto_metrics':dict(self._auto_metrics),
-            **self.lab.stats(),
         }
+
+    def status(self) -> dict[str,Any]:
+        return {**self.quick_status(), **self.lab.stats()}
 
     def _enqueue_matching_strategies(self, canonical_id:str, interval:str) -> int:
         count=0

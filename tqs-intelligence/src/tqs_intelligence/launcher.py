@@ -54,6 +54,7 @@ class TQSLauncher:
         self._health_error = ""
         self._health_lock = threading.RLock()
         self._owner_summary: dict[str, Any] = {}
+        self._owner_accounts: dict[str, Any] = {}
         self._owner_summary_last_s = 0.0
 
         self.root = tk.Tk()
@@ -188,7 +189,7 @@ class TQSLauncher:
         health = hs.get("payload") or {}
         if health:
             rr = health.get("research_runtime") or {}
-            ai = health.get("account_intelligence") or {}
+            ai = self._owner_accounts or health.get("account_intelligence") or {}
             discovery = ai.get("discovery") or {}
             runtime = health.get("runtime") or {}
             control = health.get("control") or {}
@@ -291,9 +292,12 @@ class TQSLauncher:
             if health is not None and now - self._owner_summary_last_s >= 15:
                 try:
                     summary = self._api("/api/activity-summary?hours=24", timeout=2)
+                    accounts = self._api("/api/accounts", timeout=2)
                     if isinstance(summary, dict):
                         self._owner_summary = summary
-                        self._owner_summary_last_s = now
+                    if isinstance(accounts, dict):
+                        self._owner_accounts = accounts.get("status") or {}
+                    self._owner_summary_last_s = now
                 except Exception:
                     pass
             time.sleep(1.5)
@@ -389,6 +393,9 @@ class TQSLauncher:
             "",
             "=== OWNER SUMMARY 24H ===",
             json.dumps(self._owner_summary or {}, ensure_ascii=False, indent=2, default=str),
+            "",
+            "=== ACCOUNT SUMMARY ===",
+            json.dumps(self._owner_accounts or {}, ensure_ascii=False, indent=2, default=str),
             "",
             "=== HEALTH / RUNTIME SUMMARY ===",
             json.dumps({

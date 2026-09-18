@@ -233,8 +233,12 @@ class AccountDiscoveryService:
                 task.cancel()
                 try: await task
                 except asyncio.CancelledError: pass
-    def status(self)->dict[str,Any]:
+    def quick_status(self)->dict[str,Any]:
         return {'running':self.running,'refreshing':self.refreshing,'last_action':self.last_action,'last_error':self.last_error,
-            'discovery_count':self.discovery_count,'discovered_accounts':self.store.count(),'tracked_accounts':len(self.account_store.list_tracked()),
-            'promotion_limit':self._promotion_limit(),'interval_seconds':self.interval_seconds,'last_run':self.store.last_run(),'source':self.adapter.source,
+            'discovery_count':self.discovery_count,'promotion_limit':self._promotion_limit(),'interval_seconds':self.interval_seconds,
+            'source':self.adapter.source,
             'source_note_ru':'Полный публичный leaderboard — дешёвый каталог; positions/fills часто опрашиваются только для автоматически отобранного hot set.'}
+
+    def status(self)->dict[str,Any]:
+        return {**self.quick_status(),'discovered_accounts':self.store.count(),'tracked_accounts':len(self.account_store.list_tracked()),
+            'last_run':self.store.last_run()}

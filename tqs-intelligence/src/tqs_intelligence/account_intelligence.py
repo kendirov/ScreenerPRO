@@ -278,5 +278,9 @@ class AccountIntelligenceService:
                     except Exception: pass
                 self.last_action=f'Hot-set: позиции/fills обновлены ({len(accounts)} счетов)'; await asyncio.sleep(self.refresh_seconds)
         finally: self.running=False
+    def quick_status(self)->dict[str,Any]:
+        return {'running':self.running,'last_action':self.last_action,'last_error':self.last_error,'sync_count':self.sync_count,
+                'discovery':self.discovery.quick_status()}
+
     def status(self)->dict[str,Any]:
-        return {'running':self.running,'last_action':self.last_action,'last_error':self.last_error,'sync_count':self.sync_count,'discovery':self.discovery.status(),**self.store.stats()}
+        return {**self.quick_status(),'discovery':self.discovery.status(),**self.store.stats()}
