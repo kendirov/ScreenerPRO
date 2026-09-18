@@ -361,11 +361,19 @@ class DuckStore:
         return [ResearchFinding.model_validate_json(row[0]) for row in rows]
 
     def append_log(self, item: RuntimeLog) -> None:
-        with self._lock:
+        # Runtime logging must never stall the asyncio event loop behind a long
+        # analytical DuckDB read. MOEX feature jobs share this connection and
+        # can hold the store lock while scanning history; dropping an occasional
+        # diagnostic row is preferable to making /api/health unresponsive.
+        if not self._lock.acquire(timeout=0.05):
+            return
+        try:
             self._con.execute(
                 "insert into runtime_logs values (?, ?, ?, ?, ?)",
                 [item.ts_ms, item.level, item.component, item.message, json.dumps(item.details, ensure_ascii=False, default=str)],
             )
+        finally:
+            self._lock.release()
 
     def list_logs(self, limit: int = 200, level: str = "", component: str = "") -> list[RuntimeLog]:
         where: list[str] = []
