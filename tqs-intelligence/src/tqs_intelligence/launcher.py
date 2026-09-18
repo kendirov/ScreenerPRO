@@ -438,7 +438,9 @@ class TQSLauncher:
             url = remote.get("remote_url") or "адрес Tailscale пока не определён"
             task = "автозапуск ON" if (remote.get("scheduled_task") or {}).get("installed") else "автозапуск ?"
             ts = "Tailscale ON" if remote.get("tailscale_online") else "Tailscale ждёт"
-            self.remote_detail.configure(text=f"{url} · {task} · {ts} · update {int(remote.get('update_check_seconds') or 300)//60} мин")
+            bridge = remote.get("ai_bridge") or {}
+            bridge_text = "AI→Drive OK" if bridge.get("fresh") and bridge.get("drive_connected") else "AI→Drive ждёт"
+            self.remote_detail.configure(text=f"{url} · {task} · {ts} · {bridge_text} · update {int(remote.get('update_check_seconds') or 300)//60} мин")
         else:
             self.remote_value.configure(text="НЕ НАСТРОЕН", fg=MUTED)
             self.remote_detail.configure(text="Один раз нажми «Настроить сервер»: автозапуск + приватный доступ с Mac + автообновления")
