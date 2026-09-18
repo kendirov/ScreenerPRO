@@ -125,6 +125,28 @@ class MetricLake:
                 row["meta"] = {}
         return rows
 
+    def latest(self, canonical_id: str, metric: str, limit: int = 2) -> list[dict[str, Any]]:
+        """Return the newest metric points in chronological order.
+
+        This intentionally reuses the persisted provider/source/meta fields so
+        trader-facing features can distinguish delayed/public evidence from
+        licensed realtime data.
+        """
+        try:
+            lazy = pl.scan_parquet(self._pattern(canonical_id, metric)).sort("ts_ms", descending=True).head(max(1, int(limit)))
+            frame = lazy.collect().sort("ts_ms")
+        except Exception:
+            return []
+        cols = [x for x in ["ts_ms", "value", "unit", "provider", "source", "meta_json"] if x in frame.columns]
+        rows = frame.select(cols).to_dicts()
+        for row in rows:
+            raw = row.pop("meta_json", "") or ""
+            try:
+                row["meta"] = json.loads(raw)
+            except Exception:
+                row["meta"] = {}
+        return rows
+
     def count(self, canonical_id: str, metric: str) -> int:
         try:
             return int(pl.scan_parquet(self._pattern(canonical_id, metric)).select(pl.len()).collect().item())
