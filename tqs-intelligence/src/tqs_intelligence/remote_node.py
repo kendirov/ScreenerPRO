@@ -79,7 +79,15 @@ def find_tailscale(root: Path | None = None) -> Path | None:
 
 def _run(args: list[str], timeout: int = 8) -> tuple[int, str]:
     try:
-        proc = subprocess.run(args, text=True, capture_output=True, timeout=timeout, check=False)
+        flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if os.name == "nt" else 0
+        proc = subprocess.run(
+            args,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+            creationflags=flags,
+        )
         text = ((proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")).strip()
         return int(proc.returncode), text
     except Exception as exc:
@@ -116,6 +124,25 @@ def request_server_task_start(root: Path | None = None) -> bool:
     task_name = str(cfg.get("task_name") or TASK_NAME)
     code, _ = _run(["schtasks.exe", "/Run", "/TN", task_name], timeout=10)
     return code == 0
+
+
+def ai_bridge_state(root: Path | None = None) -> dict[str, Any]:
+    base = Path(root or tqs_root())
+    path = data_dir(base) / "ai-bridge-state.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+        if not isinstance(payload, dict):
+            return {"configured": False}
+    except Exception:
+        return {"configured": False}
+    now_ms = int(__import__("time").time() * 1000)
+    last = int(payload.get("last_publish_ms") or 0)
+    return {
+        **payload,
+        "configured": bool(payload.get("target_path")),
+        "age_s": max(0, int((now_ms - last) / 1000)) if last else None,
+        "fresh": bool(last and now_ms - last <= 10 * 60 * 1000),
+    }
 
 
 def remote_node_status(root: Path | None = None) -> dict[str, Any]:
@@ -196,4 +223,5 @@ def remote_node_status(root: Path | None = None) -> dict[str, Any]:
         "public_exposure": False,
         "setup_at_ms": cfg.get("setup_at_ms"),
         "security_note": "TQS remains bound to loopback; remote access is private through Tailscale Serve, not Funnel.",
+        "ai_bridge": ai_bridge_state(base),
     }
