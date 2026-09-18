@@ -66,19 +66,50 @@ class DuckStore:
         """)
 
     def persist_snapshot(self, quotes: list[Quote], anomalies: list[Anomaly], news: list[NewsItem]) -> None:
+        """Persist a full market snapshot using DuckDB Arrow bulk inserts.
+
+        DuckDB executemany is extremely slow for the ~16k-row live universe on
+        Windows because it repeatedly crosses the Python/DB boundary. Registering
+        Arrow batches keeps the same schema while turning snapshot persistence
+        into a native vectorized insert.
+        """
+        import pyarrow as pa
+
         with self._lock:
             if quotes:
-                self._con.executemany(
-                    "insert into quote_snapshots values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [(q.observed_at_ms, q.canonical_id, q.provider, q.asset_class.value, q.market_type, q.symbol,
-                      q.last, q.change_24h_pct, q.volume_24h, q.turnover_24h, q.open_interest, q.funding_rate,
-                      q.model_dump_json()) for q in quotes],
-                )
+                quote_batch = pa.table({
+                    "observed_at_ms": [q.observed_at_ms for q in quotes],
+                    "canonical_id": [q.canonical_id for q in quotes],
+                    "provider": [q.provider for q in quotes],
+                    "asset_class": [q.asset_class.value for q in quotes],
+                    "market_type": [q.market_type for q in quotes],
+                    "symbol": [q.symbol for q in quotes],
+                    "last": [q.last for q in quotes],
+                    "change_24h_pct": [q.change_24h_pct for q in quotes],
+                    "volume_24h": [q.volume_24h for q in quotes],
+                    "turnover_24h": [q.turnover_24h for q in quotes],
+                    "open_interest": [q.open_interest for q in quotes],
+                    "funding_rate": [q.funding_rate for q in quotes],
+                    "payload_json": [q.model_dump_json() for q in quotes],
+                })
+                self._con.register("_tqs_quote_batch", quote_batch)
+                try:
+                    self._con.execute("insert into quote_snapshots select * from _tqs_quote_batch")
+                finally:
+                    self._con.unregister("_tqs_quote_batch")
             if anomalies:
-                self._con.executemany(
-                    "insert into anomaly_snapshots values (?, ?, ?, ?, ?)",
-                    [(a.quote.observed_at_ms, a.canonical_id, a.score, a.severity, a.model_dump_json()) for a in anomalies],
-                )
+                anomaly_batch = pa.table({
+                    "observed_at_ms": [a.quote.observed_at_ms for a in anomalies],
+                    "canonical_id": [a.canonical_id for a in anomalies],
+                    "score": [a.score for a in anomalies],
+                    "severity": [a.severity for a in anomalies],
+                    "payload_json": [a.model_dump_json() for a in anomalies],
+                })
+                self._con.register("_tqs_anomaly_batch", anomaly_batch)
+                try:
+                    self._con.execute("insert into anomaly_snapshots select * from _tqs_anomaly_batch")
+                finally:
+                    self._con.unregister("_tqs_anomaly_batch")
             for item in news:
                 self._con.execute(
                     "insert or ignore into news_items values (?, ?, ?, ?, ?)",

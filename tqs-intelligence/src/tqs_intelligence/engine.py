@@ -1,22 +1,24 @@
 from __future__ import annotations
 
 import math
+from bisect import bisect_right
 from collections import defaultdict
 
 from .models import Anomaly, MarketState, Quote
 
 
 def _percentile_ranks(values: list[float | None]) -> list[float]:
+    """Cross-sectional percentile ranks in O(n log n), preserving tie semantics."""
     clean = sorted(v for v in values if v is not None and math.isfinite(v))
     if not clean:
         return [0.0] * len(values)
+    total = len(clean)
     result: list[float] = []
     for value in values:
         if value is None or not math.isfinite(value):
             result.append(0.0)
             continue
-        less_or_equal = sum(1 for item in clean if item <= value)
-        result.append(less_or_equal / len(clean))
+        result.append(bisect_right(clean, value) / total)
     return result
 
 
