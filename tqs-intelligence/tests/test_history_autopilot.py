@@ -30,12 +30,14 @@ def test_history_plan_round_robins_crypto_and_moex():
     ]
     payloads, stats = build_history_plan(quotes, [], batch_size=4)
     assert len(payloads) == 4
-    assert payloads[0]['provider'] == 'binance'
+    # MOEX is now the reference vertical: shares/FORTS are planned first,
+    # but round-robin must still retain at least one crypto item in a small batch.
+    assert payloads[0]['provider'] == 'moex' and payloads[0]['market_type'] == 'shares'
     assert payloads[1]['provider'] == 'moex' and payloads[1]['market_type'] == 'forts'
-    assert payloads[2]['provider'] == 'moex' and payloads[2]['market_type'] == 'shares'
-    assert payloads[3]['provider'] == 'binance' and payloads[3]['market_type'] == 'spot'
+    assert any(p['provider'] == 'binance' for p in payloads)
     assert all(p['start_ms'] == START_2021_MS for p in payloads)
     assert stats['target_total'] == 5
+    assert 'MOEX complete observable' in stats['scope']
 
 
 def test_history_plan_does_not_requeue_known_or_failed_symbol():
