@@ -6,9 +6,11 @@
 
   async function loadParticipants(){
     try{
-      const [status,participants]=await Promise.all([
+      const [status,participants,pulseStatus,pulseProfiles]=await Promise.all([
         api('/api/moex/participants/lchi/status'),
-        api('/api/moex/participants/lchi?limit=200'+(participantQuery?'&q='+encodeURIComponent(participantQuery):''))
+        api('/api/moex/participants/lchi?limit=200'+(participantQuery?'&q='+encodeURIComponent(participantQuery):'')),
+        api('/api/moex/participants/pulse/status'),
+        api('/api/moex/participants/pulse?limit=200')
       ]);
       $('#participantMetrics').innerHTML=[
         pMetric('ЛЧИ найдено',compact(status.participants_discovered||0),'публичный каталог'),
@@ -19,6 +21,7 @@
         pMetric('Качество','Публичный счёт','ЛЧИ ≠ FUTOI ≠ Пульс')
       ].join('');
       renderParticipantList(participants);
+      renderPulse(pulseStatus,pulseProfiles);
       if(symbolQuery)await loadSymbolPositions(symbolQuery);
     }catch(e){
       toast('Участники: '+esc(e.message),10000);
@@ -66,12 +69,33 @@
     }catch(e){box.innerHTML='<div class="empty">Не удалось открыть участника: '+esc(e.message)+'</div>'}
   }
 
+
+  function renderPulse(status,rows){
+    const s=$('#pulseStatus'),box=$('#pulseProfiles');
+    if(s)s.innerHTML='<div class="participantInstrumentSummary"><span>Профилей <b>'+compact(status.profiles_tracked||0)+'</b></span><span>Синхронизировано <b>'+compact(status.profiles_synced||0)+'</b></span><span>Публичных операций <b>'+compact(status.events||0)+'</b></span><span>Сбор <b>'+(status.running?'работает':'ожидает')+'</b></span></div><div class="participantCaution">Пульс — более слабый уровень доказательности, чем ЛЧИ: если количество операции скрыто, TQS хранит только факт/направление/время/цену, которые реально доступны, и size_known=false.</div>';
+    if(!box)return;
+    box.innerHTML=(rows||[]).length?'<table class="table"><thead><tr><th>Профиль</th><th>Подписчики</th><th>Посты</th><th>Последняя синхронизация</th><th>Состояние</th></tr></thead><tbody>'+rows.map(p=>'<tr><td><b>'+esc(p.display_name||p.handle)+'</b><small>@'+esc(p.handle)+'</small></td><td>'+compact(p.followers)+'</td><td>'+compact(p.posts_count)+'</td><td>'+ts(p.last_sync_ms,true)+'</td><td>'+(p.last_error?'<span class="down">'+esc(String(p.last_error).slice(0,90))+'</span>':'публичный профиль')+'</td></tr>').join('')+'</tbody></table>':'<div class="empty"><b>Профили Пульса пока не добавлены.</b>Добавь публичный ник справа. Это вторичный ручной вход; позже discovery можно расширить отдельным публичным каталогом, если источник его даст.</div>';
+  }
+
+  async function trackPulse(){
+    const input=$('#pulseHandle'),handle=String(input?.value||'').trim().replace(/^@/,'');
+    if(!handle)return;
+    try{
+      const r=await api('/api/moex/participants/pulse/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({handle})});
+      toast(r.ok?'Пульс: профиль синхронизирован':'Пульс: профиль добавлен, но источник вернул ошибку',9000);
+      if(input)input.value='';
+      loadParticipants();
+    }catch(e){toast('Пульс: '+esc(e.message),10000)}
+  }
+
   function wireParticipants(){
-    const find=$('#participantFind'),input=$('#participantSearch'),sf=$('#participantSymbolFind'),si=$('#participantSymbol');
+    const find=$('#participantFind'),input=$('#participantSearch'),sf=$('#participantSymbolFind'),si=$('#participantSymbol'),pulse=$('#pulseTrack'),pulseInput=$('#pulseHandle');
     if(find)find.onclick=()=>{participantQuery=input.value.trim();loadParticipants()};
     if(input)input.addEventListener('keydown',e=>{if(e.key==='Enter'){participantQuery=input.value.trim();loadParticipants()}});
     if(sf)sf.onclick=()=>loadSymbolPositions(si.value);
     if(si)si.addEventListener('keydown',e=>{if(e.key==='Enter')loadSymbolPositions(si.value)});
+    if(pulse)pulse.onclick=trackPulse;
+    if(pulseInput)pulseInput.addEventListener('keydown',e=>{if(e.key==='Enter')trackPulse()});
   }
 
   window.loadParticipants=loadParticipants;
