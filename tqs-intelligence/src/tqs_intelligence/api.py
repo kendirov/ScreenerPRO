@@ -251,11 +251,11 @@ async def health():
 
 
 @app.get('/api/control')
-async def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False)}
+def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False)}
 
 
 @app.post('/api/control')
-async def set_control(request: ControlPatch):
+def set_control(request: ControlPatch):
     old=control.get(); changes=request.model_dump(exclude_none=True); changes['changed_by']='ui'
     state=control.update(**changes); restart_required=state.data_lake_root!=old.data_lake_root
     service.log('info','control',f'Режим/настройки изменены: {state.mode.upper()}',restart_required=restart_required)
@@ -269,7 +269,7 @@ async def refresh():
 
 
 @app.get('/api/overview')
-async def overview():
+def overview():
     snapshot=_snapshot(); classes={}
     if snapshot:
         for quote in snapshot.quotes: classes[quote.asset_class.value]=classes.get(quote.asset_class.value,0)+1
@@ -286,10 +286,16 @@ async def overview():
 
 @app.get('/api/system')
 async def system():
-    data_lake = await asyncio.to_thread(lake.verify)
-    return {'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),'research_runtime':research_runtime.status(),
-            'account_intelligence':account_service.status(),'control':control.status(),'resources':_resources(),
-            'storage':store.stats(),'lab':lab.stats(),'data_lake':data_lake,
+    data_lake, storage_stats, lab_stats, research_status_full, account_status_full = await asyncio.gather(
+        asyncio.to_thread(lake.verify),
+        asyncio.to_thread(store.stats),
+        asyncio.to_thread(lab.stats),
+        asyncio.to_thread(research_runtime.status),
+        asyncio.to_thread(account_service.status),
+    )
+    return {'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),'research_runtime':research_status_full,
+            'account_intelligence':account_status_full,'control':control.status(),'resources':_resources(),
+            'storage':storage_stats,'lab':lab_stats,'data_lake':data_lake,
             'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
                       'twelve_data_enabled':bool(settings.twelve_data_api_key),'episode_threshold':settings.episode_threshold,
                       'moex_premium_enabled':settings.moex_premium_enabled,'telegram_news_enabled':settings.telegram_news_enabled},
@@ -298,11 +304,11 @@ async def system():
 
 
 @app.get('/api/system/update')
-async def update_status(fetch: bool=False): return updater.status(fetch)
+def update_status(fetch: bool=False): return updater.status(fetch)
 
 
 @app.post('/api/system/update')
-async def request_update(): return updater.request(False)
+def request_update(): return updater.request(False)
 
 
 @app.get('/api/capabilities')
@@ -335,38 +341,38 @@ async def universal_instrument(canonical_id:str):
 
 
 @app.get('/api/moex')
-async def moex():
+def moex():
     payload = moex_lab.overview(_snapshot())
     payload['lchi_public'] = lchi_service.status()
     return payload
 
 
 @app.get('/api/moex/lab')
-async def moex_market_lab():
+def moex_market_lab():
     payload = moex_lab.overview(_snapshot())
     payload['lchi_public'] = lchi_service.status()
     return payload
 
 
 @app.get('/api/moex/lab/{canonical_id:path}')
-async def moex_instrument_lab(canonical_id:str):
+def moex_instrument_lab(canonical_id:str):
     snapshot=_snapshot(); quote=next((q for q in (snapshot.quotes if snapshot else []) if q.canonical_id==canonical_id),None)
     if quote is None: raise HTTPException(404,'instrument not found in current snapshot')
     return {'instrument':moex_lab.enrich_quote(quote),'history_stats':moex_lab.instrument_history_stats(canonical_id)}
 
 
 @app.get('/api/moex/participants/lchi/status')
-async def lchi_status():
+def lchi_status():
     return lchi_service.status()
 
 
 @app.get('/api/moex/participants/lchi')
-async def lchi_participants(q:str='', limit:int=Query(200,ge=1,le=2000)):
+def lchi_participants(q:str='', limit:int=Query(200,ge=1,le=2000)):
     return lchi_store.participants(limit=limit, q=q)
 
 
 @app.get('/api/moex/participants/lchi/account/{user_id}')
-async def lchi_account(user_id:str):
+def lchi_account(user_id:str):
     payload = lchi_store.account(user_id)
     if payload is None:
         raise HTTPException(404, 'LCHI participant not found in local catalog')
@@ -374,22 +380,22 @@ async def lchi_account(user_id:str):
 
 
 @app.get('/api/moex/participants/lchi/positions')
-async def lchi_positions(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
+def lchi_positions(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
     return lchi_store.current_positions(symbol=symbol, limit=limit)
 
 
 @app.get('/api/moex/participants/lchi/events')
-async def lchi_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
+def lchi_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
     return lchi_store.events(symbol=symbol, limit=limit)
 
 
 @app.get('/api/episodes')
-async def episodes(limit:int=Query(200,ge=1,le=2000),status:str='',provider:str='',q:str=''):
+def episodes(limit:int=Query(200,ge=1,le=2000),status:str='',provider:str='',q:str=''):
     return [x.model_dump(mode='json') for x in store.list_episodes(limit,status,provider,q)]
 
 
 @app.get('/api/episodes/{episode_id}')
-async def episode_detail(episode_id:str,before_hours:int=Query(24,ge=1,le=168),after_hours:int=Query(24,ge=1,le=168)):
+def episode_detail(episode_id:str,before_hours:int=Query(24,ge=1,le=168),after_hours:int=Query(24,ge=1,le=168)):
     episode=store.get_episode(episode_id)
     if episode is None: raise HTTPException(status_code=404,detail='episode not found')
     outcome=store.episode_outcome(episode_id); series=store.episode_series(episode_id,before_hours*3600_000,after_hours*3600_000)
@@ -402,12 +408,12 @@ async def episode_detail(episode_id:str,before_hours:int=Query(24,ge=1,le=168),a
 
 
 @app.get('/api/research/findings')
-async def research_findings(limit:int=Query(100,ge=1,le=1000)):
+def research_findings(limit:int=Query(100,ge=1,le=1000)):
     return [x.model_dump(mode='json') for x in store.list_findings(limit)]
 
 
 @app.get('/api/research/runtime')
-async def research_status(): return research_runtime.status()
+def research_status(): return research_runtime.status()
 
 
 @app.get('/api/news')
@@ -425,24 +431,24 @@ async def relationships(limit:int=Query(50,ge=1,le=500),min_samples:int=Query(20
 
 
 @app.get('/api/logs')
-async def logs(limit:int=Query(200,ge=1,le=2000),level:str='',component:str=''):
+def logs(limit:int=Query(200,ge=1,le=2000),level:str='',component:str=''):
     return [x.model_dump(mode='json') for x in store.list_logs(limit,level,component)]
 
 
 @app.post('/api/hypotheses')
-async def create_hypothesis(request:HypothesisCreate): return store.create_hypothesis(request,int(time.time()*1000)).model_dump(mode='json')
+def create_hypothesis(request:HypothesisCreate): return store.create_hypothesis(request,int(time.time()*1000)).model_dump(mode='json')
 
 
 @app.get('/api/hypotheses')
-async def list_hypotheses(limit:int=Query(100,ge=1,le=500)): return [x.model_dump(mode='json') for x in store.list_hypotheses(limit)]
+def list_hypotheses(limit:int=Query(100,ge=1,le=500)): return [x.model_dump(mode='json') for x in store.list_hypotheses(limit)]
 
 
 @app.post('/api/ideas')
-async def create_idea(request:IdeaCreate): return lab.add_idea(request.title,request.text,'artem',request.kind,request.priority,request.tags)
+def create_idea(request:IdeaCreate): return lab.add_idea(request.title,request.text,'artem',request.kind,request.priority,request.tags)
 
 
 @app.get('/api/ideas')
-async def ideas(limit:int=Query(300,ge=1,le=2000),status:str=''): return lab.list_ideas(limit,status)
+def ideas(limit:int=Query(300,ge=1,le=2000),status:str=''): return lab.list_ideas(limit,status)
 
 
 @app.post('/api/accounts/track')
@@ -457,16 +463,16 @@ async def track_account(request:AccountTrackCreate):
 
 
 @app.get('/api/accounts')
-async def accounts(): return {'status':account_service.status(),'profiles':account_store.profiles()}
+def accounts(): return {'status':account_service.status(),'profiles':account_store.profiles()}
 
 
 @app.get('/api/accounts/positions')
-async def account_positions(source:str='',account_id:str='',limit:int=Query(500,ge=1,le=5000)):
+def account_positions(source:str='',account_id:str='',limit:int=Query(500,ge=1,le=5000)):
     return account_store.current_positions(source,account_id,limit)
 
 
 @app.get('/api/accounts/{source}/{account_id}/profile')
-async def account_profile(source:str,account_id:str):
+def account_profile(source:str,account_id:str):
     profile=account_store.profile(source,account_id)
     if profile is None: raise HTTPException(404,'tracked account not found')
     return {'profile':profile,'positions':account_store.current_positions(source,account_id,500),'fills':account_store.recent_fills(source,account_id,500)}
@@ -479,7 +485,7 @@ async def sync_account(source:str,account_id:str):
 
 
 @app.post('/api/backfill')
-async def create_backfill(request:BackfillCreate):
+def create_backfill(request:BackfillCreate):
     payload=request.model_dump(exclude_none=True)
     if request.provider=='moex':
         payload.setdefault('engine','futures' if 'future' in request.market_type or request.market_type=='forts' else 'stock')
@@ -490,7 +496,7 @@ async def create_backfill(request:BackfillCreate):
 
 
 @app.get('/api/jobs')
-async def jobs(limit:int=Query(300,ge=1,le=2000)): return [x.model_dump(mode='json') for x in lab.list_jobs(limit)]
+def jobs(limit:int=Query(300,ge=1,le=2000)): return [x.model_dump(mode='json') for x in lab.list_jobs(limit)]
 
 
 def _metric_points_from_result(result: dict[str, Any]) -> int:
@@ -503,7 +509,7 @@ def _metric_points_from_result(result: dict[str, Any]) -> int:
 
 
 @app.get('/api/activity-summary')
-async def activity_summary(hours:int=Query(24,ge=1,le=168)):
+def activity_summary(hours:int=Query(24,ge=1,le=168)):
     since_ms = int(time.time()*1000) - int(hours)*3_600_000
     rows = lab.recent_job_activity(since_ms, 5000)
     status_counts = {key: 0 for key in ('queued','running','done','failed','cancelled')}
@@ -547,20 +553,20 @@ async def activity_summary(hours:int=Query(24,ge=1,le=168)):
 
 
 @app.get('/api/strategies')
-async def strategies(): return [x.model_dump(mode='json') for x in lab.list_strategies()]
+def strategies(): return [x.model_dump(mode='json') for x in lab.list_strategies()]
 
 
 @app.post('/api/strategies')
-async def save_strategy(spec:StrategySpec): return lab.save_strategy(spec).model_dump(mode='json')
+def save_strategy(spec:StrategySpec): return lab.save_strategy(spec).model_dump(mode='json')
 
 
 @app.get('/api/strategies/runs')
-async def strategy_runs(strategy_id:str='',limit:int=Query(200,ge=1,le=2000)):
+def strategy_runs(strategy_id:str='',limit:int=Query(200,ge=1,le=2000)):
     return [x.model_dump(mode='json') for x in lab.list_strategy_runs(strategy_id,limit)]
 
 
 @app.post('/api/strategies/{strategy_id}/run')
-async def run_strategy(strategy_id:str,request:StrategyRunCreate):
+def run_strategy(strategy_id:str,request:StrategyRunCreate):
     spec=lab.get_strategy(strategy_id)
     if spec is None: raise HTTPException(404,'strategy not found')
     job=lab.enqueue_job('strategy_run',f"Стратегия: {spec.name_ru} / {request.canonical_id}",{'strategy_id':strategy_id,'canonical_id':request.canonical_id})
@@ -573,7 +579,7 @@ async def data_lake_status():
 
 
 @app.post('/api/data-lake/verify')
-async def verify_data_lake(): return lab.enqueue_job('verify_lake','Проверка Data Lake',{}).model_dump(mode='json')
+def verify_data_lake(): return lab.enqueue_job('verify_lake','Проверка Data Lake',{}).model_dump(mode='json')
 
 
 @app.get('/api/briefing')
