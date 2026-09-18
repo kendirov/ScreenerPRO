@@ -92,6 +92,11 @@ jobs:
           grep -q 'supervisor-heartbeat.json' src/tqs_intelligence/launcher_entry.py
           grep -q 'hard_recover_after_s=180' src/tqs_intelligence/launcher_entry.py
           grep -q 'supervisor-heartbeat.json' src/tqs_intelligence/supervisor.py
+          grep -q '_health_loop' src/tqs_intelligence/launcher.py
+          grep -q 'text="ЗАНЯТ"' src/tqs_intelligence/launcher.py
+          grep -q 'Скопировать для ChatGPT' src/tqs_intelligence/launcher.py
+          grep -q 'TQS-DIAGNOSTICS-' src/tqs_intelligence/launcher.py
+          grep -q '_browser_url' src/tqs_intelligence/supervisor.py
           echo 'Launcher/watchdog contract PASS'
       - name: API import and trader surface contract
         run: |
