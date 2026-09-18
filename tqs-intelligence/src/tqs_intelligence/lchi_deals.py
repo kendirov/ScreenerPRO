@@ -269,14 +269,15 @@ class LchiDealsCollector:
         self.last_action = f"ЛЧИ сделки: скачиваю CSV {uid[:8]}…"
         csv_text = await self.http.post_text(download_url, None, timeout_s=30)
         parsed = parse_deals_csv(uid, csv_text)
-        result = self._persist(uid, parsed)
+        result = await asyncio.to_thread(self._persist, uid, parsed)
         self.last_error = None
         self.last_action = f"ЛЧИ сделки: {uid[:8]} · {result['trades_seen']:,} строк"
         return {"ok": True, "user_id": uid, "request_id": request_id, **result}
 
     async def sync_batch(self, limit: int = 1) -> dict[str, int]:
         done = failed = added = 0
-        for item in self.candidates(limit):
+        candidates = await asyncio.to_thread(self.candidates, limit)
+        for item in candidates:
             uid = str(item.get("user_id") or "")
             try:
                 result = await self.sync(uid)
@@ -287,7 +288,7 @@ class LchiDealsCollector:
             except Exception as exc:
                 failed += 1
                 self.last_error = f"{type(exc).__name__}: {exc}"
-                self.store.meta_set(f"deals_error:{uid}", self.last_error[:500])
+                await asyncio.to_thread(self.store.meta_set, f"deals_error:{uid}", self.last_error[:500])
         return {"done": done, "failed": failed, "added": added}
 
     def trades(self, symbol: str = "", user_id: str = "", limit: int = 1000) -> list[dict[str, Any]]:

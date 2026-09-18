@@ -38,3 +38,32 @@ def test_lchi_deals_persist_exact_trade_evidence(tmp_path):
     assert rows[0]["login"] == "Trader"
     assert rows[0]["quantity"] == 100
     assert rows[0]["price"] == 301.25
+
+
+
+def test_lchi_deals_candidates_do_not_block_event_loop(tmp_path):
+    import asyncio
+    import time
+
+    store = LchiPublicStore(str(tmp_path / "lchi.sqlite3"))
+
+    class DummyHttp:
+        pass
+
+    collector = LchiDealsCollector(store, DummyHttp())
+
+    def slow_candidates(limit=1, stale_ms=6 * 3_600_000):
+        time.sleep(0.15)
+        return []
+
+    collector.candidates = slow_candidates
+
+    async def scenario():
+        started = time.perf_counter()
+        task = asyncio.create_task(collector.sync_batch(1))
+        await asyncio.sleep(0.02)
+        elapsed = time.perf_counter() - started
+        await task
+        assert elapsed < 0.10
+
+    asyncio.run(scenario())
