@@ -207,6 +207,16 @@ class Supervisor:
             time.sleep(min(8, attempt * 2))
         return False
 
+    def _browser_url(self) -> str:
+        try:
+            build = subprocess.check_output(
+                ['git', '-C', str(self.root.parent), 'rev-parse', 'HEAD'],
+                stderr=subprocess.DEVNULL, text=True, timeout=5,
+            ).strip()[:12]
+        except Exception:
+            build = str(int(time.time()))
+        return f'{self.url}/?build={build}'
+
     def run(self) -> int:
         self._write_heartbeat('booting')
         if not self._ensure_initial_child():
@@ -214,7 +224,7 @@ class Supervisor:
             self._write_heartbeat('failed_initial_start')
             return 2
         try:
-            webbrowser.open(self.url)
+            webbrowser.open(self._browser_url())
         except Exception:
             pass
         self.last_auto_check = time.time()
