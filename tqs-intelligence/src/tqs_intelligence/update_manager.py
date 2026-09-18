@@ -19,11 +19,13 @@ class UpdateManager:
         self.repo_root = Path(__file__).resolve().parents[3]
 
     def _git(self, *args: str, timeout: int = 30) -> str:
+        flags = int(getattr(subprocess, 'CREATE_NO_WINDOW', 0)) if os.name == 'nt' else 0
         return subprocess.check_output(
             ['git', '-C', str(self.repo_root), *args],
             stderr=subprocess.STDOUT,
             text=True,
             timeout=timeout,
+            creationflags=flags,
         ).strip()
 
     def _remote_ref(self, branch: str) -> tuple[str | None, str | None]:
