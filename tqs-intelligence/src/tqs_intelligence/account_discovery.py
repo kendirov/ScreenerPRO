@@ -205,13 +205,46 @@ class AccountDiscoveryService:
         if self.refreshing: return {'ok':True,'accepted':False,'message':'Разведка уже выполняется'}
         self.refreshing=True; started=_now_ms(); self.last_action='Hyperliquid: загружаю полный публичный leaderboard'
         try:
-            rows=await self.adapter.fetch(); discovered=self.store.upsert_rows(self.adapter.source,rows); candidates=self.store.list(limit=self._promotion_limit(),min_score=20); promoted=0
+            rows = await self.adapter.fetch()
+            discovered = await asyncio.to_thread(self.store.upsert_rows, self.adapter.source, rows)
+            candidates = await asyncio.to_thread(
+                self.store.list, limit=self._promotion_limit(), min_score=20
+            )
+            promoted = 0
             for item in candidates:
-                label=item.get('display_name') or f"AUTO {item['account_id'][:8]}"; self.account_store.track('hyperliquid',item['account_id'],str(label)); promoted+=1
-            self.discovery_count+=1; self.last_error=None; self.last_action=f'Разведка: {discovered:,} публичных счетов; {promoted} в горячем наблюдении'
-            self.store.log_run(self.adapter.source,'ok',discovered,promoted,_now_ms()-started); return {'ok':True,'accepted':True,'discovered':discovered,'promoted':promoted}
+                label = item.get('display_name') or f"AUTO {item['account_id'][:8]}"
+                await asyncio.to_thread(
+                    self.account_store.track,
+                    'hyperliquid',
+                    item['account_id'],
+                    str(label),
+                )
+                promoted += 1
+            self.discovery_count += 1
+            self.last_error = None
+            self.last_action = f'Разведка: {discovered:,} публичных счетов; {promoted} в горячем наблюдении'
+            await asyncio.to_thread(
+                self.store.log_run,
+                self.adapter.source,
+                'ok',
+                discovered,
+                promoted,
+                _now_ms() - started,
+            )
+            return {'ok': True, 'accepted': True, 'discovered': discovered, 'promoted': promoted}
         except Exception as exc:
-            self.last_error=str(exc); self.last_action='Разведка счетов: ошибка источника'; self.store.log_run(self.adapter.source,'error',0,0,_now_ms()-started,str(exc)); return {'ok':False,'accepted':True,'error':str(exc)}
+            self.last_error = str(exc)
+            self.last_action = 'Разведка счетов: ошибка источника'
+            await asyncio.to_thread(
+                self.store.log_run,
+                self.adapter.source,
+                'error',
+                0,
+                0,
+                _now_ms() - started,
+                str(exc),
+            )
+            return {'ok': False, 'accepted': True, 'error': str(exc)}
         finally: self.refreshing=False
     def request_discovery(self)->bool:
         if self.refreshing or (self._manual and not self._manual.done()): return False
