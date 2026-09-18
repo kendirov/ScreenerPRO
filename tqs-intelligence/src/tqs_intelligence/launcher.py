@@ -33,6 +33,7 @@ class TQSLauncher:
         self.data_dir = self.root_dir / "data"
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.runtime_log = self.data_dir / "runtime.log"
+        self.launcher_event_log = self.data_dir / "launcher-events.log"
         self.update_state = self.data_dir / "update-state.json"
         self.python = self.root_dir / ".venv" / "Scripts" / "python.exe"
         self.update_script = self.root_dir / "update-windows.ps1"
@@ -40,6 +41,13 @@ class TQSLauncher:
         self._busy = False
         self._last_log_text = ""
         self._events: deque[str] = deque(maxlen=100)
+        try:
+            previous = self.launcher_event_log.read_text(encoding="utf-8", errors="replace").splitlines()[-100:]
+            for row in reversed(previous):
+                if row.strip():
+                    self._events.append(row)
+        except Exception:
+            pass
         self._health_payload: dict[str, Any] | None = None
         self._health_last_ok_s = 0.0
         self._health_last_probe_s = 0.0
@@ -144,7 +152,13 @@ class TQSLauncher:
         threading.Thread(target=run, daemon=True).start()
 
     def _event(self, text: str) -> None:
-        self._events.appendleft(f"[{time.strftime('%H:%M:%S')}] {text}")
+        line = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {text}"
+        self._events.appendleft(line)
+        try:
+            with self.launcher_event_log.open("a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except Exception:
+            pass
         self.root.after(0, self._render_activity)
 
     def _render_activity(self) -> None:
