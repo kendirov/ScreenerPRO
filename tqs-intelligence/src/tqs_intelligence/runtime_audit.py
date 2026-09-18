@@ -41,6 +41,7 @@ def build_runtime_audit(
     remote: dict[str, Any],
     update: dict[str, Any],
     recent_logs: list[Any],
+    ai_control: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one compact, machine-readable truth packet for owner + AI.
 
@@ -275,6 +276,16 @@ def build_runtime_audit(
         evidence={"task": bridge_task, "state": bridge},
     )
 
+    control_bridge = ai_control or {}
+    add(
+        "ai_control",
+        "ChatGPT operational control bridge",
+        "ok" if control_bridge.get("enabled") and control_bridge.get("running") and not control_bridge.get("last_error") else "warn" if control_bridge.get("enabled") else "not_configured",
+        f"enabled={bool(control_bridge.get('enabled'))}; running={bool(control_bridge.get('running'))}; poll_age={control_bridge.get('poll_age_s') if control_bridge.get('poll_age_s') is not None else 'none'}s; last_action={(control_bridge.get('last_command') or {}).get('action') or 'none'}; last_result_ok={(control_bridge.get('last_result') or {}).get('ok')}",
+        evidence=control_bridge,
+        required=False,
+    )
+
     add(
         "updates",
         "Safe automatic Git update path",
@@ -352,6 +363,7 @@ def build_runtime_audit(
         "research": lab,
         "participants": {"lchi": lchi, "pulse": pulse},
         "remote_node": remote,
+        "ai_control": control_bridge,
         "update": {
             "available": update.get("available"),
             "branch": update.get("branch"),
