@@ -276,7 +276,14 @@ class TQSLauncher:
         self.activity.configure(state="normal"); self.activity.delete("1.0", "end"); self.activity.insert("1.0", "\n".join(lines[:80]) or "Launcher готов. Запусти TQS или проверь обновление."); self.activity.configure(state="disabled")
 
     def _run_git(self, *args: str, timeout: int = 45, allow_fail: bool = False) -> tuple[int, str]:
-        p = subprocess.run(["git", "-C", str(self.repo_root), *args], text=True, capture_output=True, timeout=timeout)
+        flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if os.name == "nt" else 0
+        p = subprocess.run(
+            ["git", "-C", str(self.repo_root), *args],
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            creationflags=flags,
+        )
         text = ((p.stdout or "") + ("\n" + p.stderr if p.stderr else "")).strip()
         if p.returncode and not allow_fail: raise RuntimeError(text or f"git {' '.join(args)} failed: {p.returncode}")
         return p.returncode, text
@@ -431,7 +438,9 @@ class TQSLauncher:
             url = remote.get("remote_url") or "адрес Tailscale пока не определён"
             task = "автозапуск ON" if (remote.get("scheduled_task") or {}).get("installed") else "автозапуск ?"
             ts = "Tailscale ON" if remote.get("tailscale_online") else "Tailscale ждёт"
-            self.remote_detail.configure(text=f"{url} · {task} · {ts} · update {int(remote.get('update_check_seconds') or 300)//60} мин")
+            bridge = remote.get("ai_bridge") or {}
+            bridge_text = "AI→Drive OK" if bridge.get("fresh") and bridge.get("drive_connected") else "AI→Drive ждёт"
+            self.remote_detail.configure(text=f"{url} · {task} · {ts} · {bridge_text} · update {int(remote.get('update_check_seconds') or 300)//60} мин")
         else:
             self.remote_value.configure(text="НЕ НАСТРОЕН", fg=MUTED)
             self.remote_detail.configure(text="Один раз нажми «Настроить сервер»: автозапуск + приватный доступ с Mac + автообновления")

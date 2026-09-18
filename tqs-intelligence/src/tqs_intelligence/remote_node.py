@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +80,15 @@ def find_tailscale(root: Path | None = None) -> Path | None:
 
 def _run(args: list[str], timeout: int = 8) -> tuple[int, str]:
     try:
-        proc = subprocess.run(args, text=True, capture_output=True, timeout=timeout, check=False)
+        flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if os.name == "nt" else 0
+        proc = subprocess.run(
+            args,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+            creationflags=flags,
+        )
         text = ((proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")).strip()
         return int(proc.returncode), text
     except Exception as exc:
@@ -116,6 +125,98 @@ def request_server_task_start(root: Path | None = None) -> bool:
     task_name = str(cfg.get("task_name") or TASK_NAME)
     code, _ = _run(["schtasks.exe", "/Run", "/TN", task_name], timeout=10)
     return code == 0
+
+
+def ai_bridge_state(root: Path | None = None) -> dict[str, Any]:
+    base = Path(root or tqs_root())
+    path = data_dir(base) / "ai-bridge-state.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+        if not isinstance(payload, dict):
+            return {"configured": False}
+    except Exception:
+        return {"configured": False}
+    now_ms = int(time.time() * 1000)
+    last_local = int(payload.get("last_publish_ms") or 0)
+    last_drive = int(payload.get("last_drive_publish_ms") or 0)
+    effective = last_drive if payload.get("drive_connected") and last_drive else last_local
+    return {
+        **payload,
+        "configured": bool(payload.get("target_path")),
+        "age_s": max(0, int((now_ms - effective) / 1000)) if effective else None,
+        "local_age_s": max(0, int((now_ms - last_local) / 1000)) if last_local else None,
+        "drive_age_s": max(0, int((now_ms - last_drive) / 1000)) if last_drive else None,
+        "fresh": bool(effective and now_ms - effective <= 10 * 60 * 1000),
+    }
+
+
+def repair_server_contract(root: Path | None = None) -> dict[str, Any]:
+    """Best-effort post-update repair for an already configured Windows node.
+
+    This runs only when server mode is already enabled and the local setup
+    schema predates the current contract. The FastAPI child normally runs under
+    the SYSTEM-owned Supervisor, so no UAC interaction is needed.
+    """
+    base = Path(root or tqs_root())
+    cfg = load_node_config(base)
+    if not bool(cfg.get("enabled")):
+        return {"needed": False, "ok": True, "reason": "server mode not configured"}
+    try:
+        schema = int(cfg.get("schema_version") or 0)
+    except Exception:
+        schema = 0
+    if schema >= 2 and cfg.get("ai_bridge_task_name"):
+        return {"needed": False, "ok": True, "schema_version": schema}
+
+    script = base / "setup-server-windows.ps1"
+    if os.name != "nt" or not script.exists():
+        return {"needed": True, "ok": False, "reason": "Windows setup script unavailable"}
+
+    state_path = data_dir(base) / "server-repair-state.json"
+    started_ms = int(time.time() * 1000)
+    try:
+        flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        proc = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(script),
+                "-NoStart",
+            ],
+            cwd=str(base),
+            text=True,
+            capture_output=True,
+            timeout=240,
+            creationflags=flags,
+            check=False,
+        )
+        result = {
+            "needed": True,
+            "ok": proc.returncode == 0,
+            "returncode": int(proc.returncode),
+            "started_at_ms": started_ms,
+            "finished_at_ms": int(time.time() * 1000),
+            "stdout": (proc.stdout or "")[-2000:],
+            "stderr": (proc.stderr or "")[-2000:],
+        }
+    except Exception as exc:
+        result = {
+            "needed": True,
+            "ok": False,
+            "started_at_ms": started_ms,
+            "finished_at_ms": int(time.time() * 1000),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+    try:
+        state_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return result
 
 
 def remote_node_status(root: Path | None = None) -> dict[str, Any]:
@@ -158,6 +259,8 @@ def remote_node_status(root: Path | None = None) -> dict[str, Any]:
     loopback_only = host in {"127.0.0.1", "localhost", "::1"}
 
     task_installed = _task_installed(task_name) if enabled else False
+    ai_bridge_task_name = str(cfg.get("ai_bridge_task_name") or "TQS AI Bridge")
+    ai_bridge_task_installed = _task_installed(ai_bridge_task_name) if enabled else False
     stopped_by_owner = stop_marker_path(base).exists()
     ready = bool(
         enabled
@@ -188,6 +291,10 @@ def remote_node_status(root: Path | None = None) -> dict[str, Any]:
             "name": task_name,
             "installed": task_installed,
         },
+        "ai_bridge_task": {
+            "name": ai_bridge_task_name,
+            "installed": ai_bridge_task_installed,
+        },
         "stopped_by_owner": stopped_by_owner,
         "auto_update": bool(cfg.get("auto_update", True)),
         "update_check_seconds": auto_update_interval_seconds(base),
@@ -196,4 +303,5 @@ def remote_node_status(root: Path | None = None) -> dict[str, Any]:
         "public_exposure": False,
         "setup_at_ms": cfg.get("setup_at_ms"),
         "security_note": "TQS remains bound to loopback; remote access is private through Tailscale Serve, not Funnel.",
+        "ai_bridge": ai_bridge_state(base),
     }

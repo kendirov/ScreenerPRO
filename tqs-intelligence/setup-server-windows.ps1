@@ -9,7 +9,9 @@ $DataDir = Join-Path $TqsRoot "data"
 $ConfigPath = Join-Path $DataDir "server-node.json"
 $StopMarker = Join-Path $DataDir "server-stop.flag"
 $ServerStart = Join-Path $TqsRoot "server-start-windows.ps1"
+$AiBridgeScript = Join-Path $TqsRoot "ai-bridge-windows.ps1"
 $TaskName = "TQS Intelligence Server"
+$AiBridgeTaskName = "TQS AI Bridge"
 $RemoteTarget = "http://127.0.0.1:8787"
 $ProgramW6432Path = [Environment]::GetEnvironmentVariable("ProgramW6432")
 
@@ -20,37 +22,44 @@ function Test-IsAdministrator {
 }
 
 if (-not (Test-IsAdministrator)) {
-    $quoted = '"' + $PSCommandPath + '"'
-    $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $quoted)
-    if ($NoStart) { $args += "-NoStart" }
-    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $args
+    $quotedScript = '"' + $PSCommandPath + '"'
+    $arguments = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $quotedScript)
+    if ($NoStart) { $arguments += "-NoStart" }
+    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $arguments
     exit 0
 }
 
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 Set-Location $TqsRoot
 
-function Set-EnvValue([string]$Key, [string]$Value) {
+function Set-EnvValue {
+    param(
+        [Parameter(Mandatory=$true)][string]$Key,
+        [Parameter(Mandatory=$true)][string]$Value
+    )
+
     $envPath = Join-Path $TqsRoot ".env"
     if (-not (Test-Path $envPath)) {
-        if (Test-Path (Join-Path $TqsRoot ".env.example")) {
-            Copy-Item (Join-Path $TqsRoot ".env.example") $envPath
+        $example = Join-Path $TqsRoot ".env.example"
+        if (Test-Path $example) {
+            Copy-Item $example $envPath
         } else {
             New-Item -ItemType File -Path $envPath -Force | Out-Null
         }
     }
+
     $lines = @(Get-Content $envPath -ErrorAction SilentlyContinue)
     $found = $false
-    $out = foreach ($line in $lines) {
-        if ($line -match "^$([regex]::Escape($Key))=") {
-            "$Key=$Value"
+    $output = foreach ($line in $lines) {
+        if ($line -match ("^" + [regex]::Escape($Key) + "=")) {
             $found = $true
+            "$Key=$Value"
         } else {
             $line
         }
     }
-    if (-not $found) { $out += "$Key=$Value" }
-    Set-Content -Path $envPath -Value $out -Encoding UTF8
+    if (-not $found) { $output += "$Key=$Value" }
+    Set-Content -Path $envPath -Value $output -Encoding UTF8
 }
 
 function Invoke-NativeSafe {
@@ -59,30 +68,34 @@ function Invoke-NativeSafe {
         [string[]]$Arguments = @(),
         [switch]$AllowFailure
     )
-    $old = $ErrorActionPreference
+
+    $oldPreference = $ErrorActionPreference
     $rows = @()
-    $code = 1
+    $exitCode = 1
     try {
         $ErrorActionPreference = "Continue"
         $rows = & $FilePath @Arguments 2>&1
-        $code = $LASTEXITCODE
+        $exitCode = $LASTEXITCODE
     }
     finally {
-        $ErrorActionPreference = $old
+        $ErrorActionPreference = $oldPreference
     }
+
     $text = (($rows | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine).Trim()
-    if ($code -ne 0 -and -not $AllowFailure) {
-        throw "$FilePath $($Arguments -join ' ') failed with exit code $code $text"
+    if ($exitCode -ne 0 -and -not $AllowFailure) {
+        throw "$FilePath $($Arguments -join ' ') failed with exit code $exitCode $text"
     }
-    return [pscustomobject]@{ ExitCode = $code; Text = $text }
+    return [pscustomobject]@{ ExitCode = $exitCode; Text = $text }
 }
 
 function Find-Tailscale {
-    $cmd = Get-Command tailscale.exe -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
+    $command = Get-Command tailscale.exe -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+
     $candidates = @()
     if ($env:ProgramFiles) { $candidates += (Join-Path $env:ProgramFiles "Tailscale\tailscale.exe") }
     if ($ProgramW6432Path) { $candidates += (Join-Path $ProgramW6432Path "Tailscale\tailscale.exe") }
+
     foreach ($candidate in $candidates) {
         if ($candidate -and (Test-Path $candidate)) { return $candidate }
     }
@@ -90,43 +103,84 @@ function Find-Tailscale {
 }
 
 function Find-Git {
-    $cmd = Get-Command git.exe -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
+    $command = Get-Command git.exe -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+
     $candidates = @()
     if ($env:ProgramFiles) {
         $candidates += (Join-Path $env:ProgramFiles "Git\cmd\git.exe")
         $candidates += (Join-Path $env:ProgramFiles "Git\bin\git.exe")
     }
     if ($ProgramW6432Path) { $candidates += (Join-Path $ProgramW6432Path "Git\cmd\git.exe") }
+
     foreach ($candidate in $candidates) {
         if ($candidate -and (Test-Path $candidate)) { return $candidate }
     }
     return $null
 }
 
+function Resolve-OwnerUser {
+    try {
+        if (Test-Path $ConfigPath) {
+            $existing = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+            if ($existing.owner_user) { return [string]$existing.owner_user }
+        }
+    } catch {}
+
+    try {
+        $interactive = (Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue).UserName
+        if ($interactive) { return [string]$interactive }
+    } catch {}
+
+    try {
+        $current = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+        if ($current -and -not $current.EndsWith("\SYSTEM")) { return [string]$current }
+    } catch {}
+
+    try {
+        $parts = $TqsRoot -split "\\"
+        $usersIndex = [Array]::IndexOf($parts, "Users")
+        if ($usersIndex -ge 0 -and ($usersIndex + 1) -lt $parts.Length) {
+            $localName = $parts[$usersIndex + 1]
+            if ($localName) { return "$env:COMPUTERNAME\$localName" }
+        }
+    } catch {}
+
+    return $null
+}
+
 function Stop-TqsProcesses {
-    $targets = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-        $_.ProcessId -ne $PID -and $_.CommandLine -and (
-            $_.CommandLine -match 'tqs_intelligence\.supervisor' -or
-            $_.CommandLine -match 'tqs_intelligence\.api' -or
-            $_.CommandLine -match 'uvicorn.*tqs_intelligence\.api'
-        )
-    }
-    foreach ($proc in $targets) {
-        try { Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue } catch {}
+    $targets = @(
+        Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.ProcessId -ne $PID -and
+                $_.CommandLine -and
+                (
+                    $_.CommandLine -match "tqs_intelligence\.supervisor" -or
+                    $_.CommandLine -match "tqs_intelligence\.api" -or
+                    $_.CommandLine -match "uvicorn.*tqs_intelligence\.api"
+                )
+            }
+    )
+    foreach ($process in $targets) {
+        try { Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue } catch {}
     }
     if ($targets.Count -gt 0) { Start-Sleep -Seconds 2 }
 }
 
-function Get-TailscaleStatus([string]$Exe) {
+function Get-TailscaleStatus {
+    param([Parameter(Mandatory=$true)][string]$Exe)
+
     $result = Invoke-NativeSafe -FilePath $Exe -Arguments @("status", "--json") -AllowFailure
     if ($result.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($result.Text)) { return $null }
     try { return ($result.Text | ConvertFrom-Json) } catch { return $null }
 }
 
-function Open-LoginUrlFromText([string]$Text) {
+function Open-LoginUrlFromText {
+    param([string]$Text)
+
     if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
-    $match = [regex]::Match($Text, 'https://[^\s]+')
+    $match = [regex]::Match($Text, "https://[^\s]+")
     if (-not $match.Success) { return $false }
     try {
         Start-Process $match.Value | Out-Null
@@ -141,7 +195,8 @@ Write-Host "TQS REMOTE NODE SETUP" -ForegroundColor Cyan
 Write-Host "Private remote access only. TQS stays bound to 127.0.0.1." -ForegroundColor DarkGray
 Write-Host ""
 
-if (-not (Test-Path (Join-Path $TqsRoot ".venv\Scripts\python.exe"))) {
+$python = Join-Path $TqsRoot ".venv\Scripts\python.exe"
+if (-not (Test-Path $python)) {
     throw "TQS virtual environment is missing. Run install-windows.cmd once before server setup."
 }
 if (-not (Test-Path $ServerStart)) {
@@ -158,11 +213,20 @@ if (-not $tailscale) {
     $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
     if ($winget) {
         Write-Host "Installing Tailscale..." -ForegroundColor Yellow
-        Invoke-NativeSafe -FilePath $winget.Source -Arguments @("install", "--id", "Tailscale.Tailscale", "--exact", "--silent", "--accept-package-agreements", "--accept-source-agreements") -AllowFailure | Out-Null
+        $wingetArgs = @(
+            "install",
+            "--id", "Tailscale.Tailscale",
+            "--exact",
+            "--silent",
+            "--accept-package-agreements",
+            "--accept-source-agreements"
+        )
+        Invoke-NativeSafe -FilePath $winget.Source -Arguments $wingetArgs -AllowFailure | Out-Null
         Start-Sleep -Seconds 3
         $tailscale = Find-Tailscale
     }
 }
+
 if (-not $tailscale) {
     Start-Process "https://tailscale.com/download/windows" | Out-Null
     throw "Tailscale could not be installed automatically. Install it from the opened page and run server setup again."
@@ -178,20 +242,22 @@ try {
 } catch {}
 
 Write-Host "Connecting Tailscale..." -ForegroundColor Yellow
-$status = Get-TailscaleStatus $tailscale
+$status = Get-TailscaleStatus -Exe $tailscale
 if (-not $status -or $status.BackendState -ne "Running") {
     $up = Invoke-NativeSafe -FilePath $tailscale -Arguments @("up", "--unattended=true", "--timeout=5s") -AllowFailure
-    [void](Open-LoginUrlFromText $up.Text)
+    [void](Open-LoginUrlFromText -Text $up.Text)
     if ($up.ExitCode -ne 0) {
         Write-Host "Complete the one-time Tailscale sign-in in the browser." -ForegroundColor Yellow
     }
+
     $deadline = (Get-Date).AddMinutes(3)
     do {
         Start-Sleep -Seconds 2
-        $status = Get-TailscaleStatus $tailscale
+        $status = Get-TailscaleStatus -Exe $tailscale
         if ($status -and $status.BackendState -eq "Running") { break }
     } while ((Get-Date) -lt $deadline)
 }
+
 if (-not $status -or $status.BackendState -ne "Running") {
     throw "Tailscale is installed but not connected. Sign in once and run server setup again."
 }
@@ -204,7 +270,7 @@ if ($unattended.ExitCode -ne 0) {
 Write-Host "Configuring private HTTPS access..." -ForegroundColor Yellow
 $serve = Invoke-NativeSafe -FilePath $tailscale -Arguments @("serve", "--bg", "--yes", $RemoteTarget) -AllowFailure
 if ($serve.ExitCode -ne 0) {
-    $opened = Open-LoginUrlFromText $serve.Text
+    $opened = Open-LoginUrlFromText -Text $serve.Text
     if ($opened) {
         Write-Host "Approve Tailscale HTTPS/Serve in the browser. Retrying in 8 seconds..." -ForegroundColor Yellow
         Start-Sleep -Seconds 8
@@ -215,25 +281,26 @@ if ($serve.ExitCode -ne 0) {
     throw "Tailscale Serve setup failed: $($serve.Text)"
 }
 
-$status = Get-TailscaleStatus $tailscale
+$status = Get-TailscaleStatus -Exe $tailscale
 $dnsName = ""
 if ($status -and $status.Self -and $status.Self.DNSName) {
     $dnsName = ([string]$status.Self.DNSName).Trim().TrimEnd(".")
 }
 $remoteUrl = if ($dnsName) { "https://$dnsName" } else { "" }
 
-Set-EnvValue "TQS_HOST" "127.0.0.1"
-Set-EnvValue "TQS_PORT" "8787"
-Set-EnvValue "TQS_AUTO_UPDATE" "true"
-Set-EnvValue "TQS_SERVER_MODE" "true"
-Set-EnvValue "TQS_UPDATE_CHECK_SECONDS" "300"
+Set-EnvValue -Key "TQS_HOST" -Value "127.0.0.1"
+Set-EnvValue -Key "TQS_PORT" -Value "8787"
+Set-EnvValue -Key "TQS_AUTO_UPDATE" -Value "true"
+Set-EnvValue -Key "TQS_SERVER_MODE" -Value "true"
+Set-EnvValue -Key "TQS_UPDATE_CHECK_SECONDS" -Value "300"
 
 try {
     Invoke-NativeSafe -FilePath $git -Arguments @("config", "--system", "--add", "safe.directory", $RepoRoot) -AllowFailure | Out-Null
 } catch {}
 
+$ownerUser = Resolve-OwnerUser
 $node = [ordered]@{
-    schema_version = 1
+    schema_version = 2
     enabled = $true
     server_mode = $true
     remote_provider = "tailscale"
@@ -247,6 +314,9 @@ $node = [ordered]@{
     bind_host = "127.0.0.1"
     port = 8787
     public_exposure = $false
+    owner_user = $ownerUser
+    ai_bridge_task_name = $AiBridgeTaskName
+    ai_bridge_interval_seconds = 120
 }
 $node | ConvertTo-Json -Depth 6 | Set-Content -Path $ConfigPath -Encoding UTF8
 
@@ -257,6 +327,7 @@ try {
     } else {
         $control = [pscustomobject]@{ mode = "light" }
     }
+
     if ($null -eq $control.PSObject.Properties["auto_update"]) {
         $control | Add-Member -NotePropertyName auto_update -NotePropertyValue $true
     } else {
@@ -272,33 +343,73 @@ if (Test-Path $StopMarker) {
 }
 
 Write-Host "Registering Windows autostart task..." -ForegroundColor Yellow
-$taskArgument = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $ServerStart + '"'
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $taskArgument -WorkingDirectory $TqsRoot
-$trigger = New-ScheduledTaskTrigger -AtStartup
-$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
+$serverArguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $ServerStart + '"'
+$serverAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $serverArguments -WorkingDirectory $TqsRoot
+$serverTrigger = New-ScheduledTaskTrigger -AtStartup
+$serverPrincipal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+$serverSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
 
 try { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "TQS Intelligence always-on server: auto-start, auto-update and private Tailscale access." -Force | Out-Null
+$serverTaskParams = @{
+    TaskName = $TaskName
+    Action = $serverAction
+    Trigger = $serverTrigger
+    Principal = $serverPrincipal
+    Settings = $serverSettings
+    Description = "TQS Intelligence always-on server: auto-start, auto-update and private Tailscale access."
+    Force = $true
+}
+Register-ScheduledTask @serverTaskParams | Out-Null
+
+if (Test-Path $AiBridgeScript) {
+    Write-Host "Registering TQS AI Bridge for Google Drive runtime visibility..." -ForegroundColor Yellow
+    try {
+        if (-not $ownerUser) {
+            throw "Could not resolve the interactive Windows owner for AI Bridge task."
+        }
+
+        $bridgeArguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $AiBridgeScript + '" -IntervalSeconds 120'
+        $bridgeAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $bridgeArguments -WorkingDirectory $TqsRoot
+        $bridgeTrigger = New-ScheduledTaskTrigger -AtLogOn -User $ownerUser
+        $bridgePrincipal = New-ScheduledTaskPrincipal -UserId $ownerUser -LogonType Interactive -RunLevel Limited
+        $bridgeSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -RestartCount 10 -RestartInterval (New-TimeSpan -Minutes 1) -ExecutionTimeLimit ([TimeSpan]::Zero)
+
+        try { Unregister-ScheduledTask -TaskName $AiBridgeTaskName -Confirm:$false -ErrorAction SilentlyContinue } catch {}
+        $bridgeTaskParams = @{
+            TaskName = $AiBridgeTaskName
+            Action = $bridgeAction
+            Trigger = $bridgeTrigger
+            Principal = $bridgePrincipal
+            Settings = $bridgeSettings
+            Description = "TQS sanitized runtime audit to Google Drive for ChatGPT inspection."
+            Force = $true
+        }
+        Register-ScheduledTask @bridgeTaskParams | Out-Null
+    } catch {
+        Write-Host "AI Bridge task warning: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
 
 if (-not $NoStart) {
-    # Hand ownership from any pre-setup interactive Supervisor to the scheduled
-    # SYSTEM task. Without this takeover a second Supervisor would race for
-    # 127.0.0.1:8787 until the old process exits.
     Stop-TqsProcesses
     try { Start-ScheduledTask -TaskName $TaskName } catch {}
 }
 
+if (Test-Path $AiBridgeScript) {
+    try { Start-ScheduledTask -TaskName $AiBridgeTaskName } catch {}
+}
+
 $summaryPath = Join-Path $DataDir "remote-access.txt"
 $summary = @(
-    "TQS REMOTE NODE"
-    "Remote URL: $remoteUrl"
-    "Provider: Tailscale Serve (private tailnet only)"
-    "Local bind: http://127.0.0.1:8787"
-    "Autostart task: $TaskName"
-    "Auto-update check: every 300 seconds"
-    "Public Funnel: NOT configured by TQS"
-    ""
+    "TQS REMOTE NODE",
+    "Remote URL: $remoteUrl",
+    "Provider: Tailscale Serve (private tailnet only)",
+    "Local bind: http://127.0.0.1:8787",
+    "Autostart task: $TaskName",
+    "AI Bridge task: $AiBridgeTaskName (user logon, every 120 seconds)",
+    "Auto-update check: every 300 seconds",
+    "Public Funnel: NOT configured by TQS",
+    "",
     "Mac: install Tailscale, sign in to the same account/tailnet, then open the Remote URL in Safari/Chrome."
 )
 $summary | Set-Content -Path $summaryPath -Encoding UTF8
@@ -312,6 +423,9 @@ if ($remoteUrl) {
 }
 Write-Host "Autostart: enabled at Windows startup" -ForegroundColor Green
 Write-Host "Auto-update: enabled, check every 5 minutes" -ForegroundColor Green
+if (Test-Path $AiBridgeScript) {
+    Write-Host "AI Bridge: enabled at user logon; sanitized audit every 2 minutes to Google Drive when Drive for desktop is mounted." -ForegroundColor Green
+}
 Write-Host "Security: loopback-only TQS + private Tailscale Serve; no public port opened." -ForegroundColor Green
 Write-Host ""
 Write-Host "Mac needs one-time Tailscale sign-in to the same account. Then bookmark the Remote URL." -ForegroundColor Cyan

@@ -75,7 +75,7 @@
     {
       "id": "remote-node",
       "name": "TQS Remote Node",
-      "role": "office Windows always-on private server: boot autostart, supervisor recovery, safe auto-update/rollback, loopback-only API and Tailscale Serve access for Mac/phone",
+      "role": "office Windows always-on private server: boot autostart, supervisor recovery, safe auto-update/rollback, loopback-only API, Tailscale Serve access and runtime-audit bridge repair",
       "repo_paths": [
         "tqs-intelligence/REMOTE_NODE.md",
         "tqs-intelligence/setup-server-windows.ps1",
@@ -90,6 +90,27 @@
       "downstream": [
         "screener-cockpit",
         "owner"
+      ]
+    },
+    {
+      "id": "runtime-audit-ai-bridge",
+      "name": "TQS Runtime Audit / AI Bridge",
+      "role": "deterministic live coverage audit plus sanitized Google Drive publisher for AI inspection",
+      "repo_paths": [
+        "tqs-intelligence/src/tqs_intelligence/runtime_audit.py",
+        "tqs-intelligence/ai-bridge-windows.ps1",
+        "tqs-intelligence/src/tqs_intelligence/api.py",
+        "tqs-intelligence/REMOTE_NODE.md"
+      ],
+      "upstream": [
+        "intelligence",
+        "remote-node",
+        "git-technical-truth"
+      ],
+      "downstream": [
+        "owner",
+        "google-drive-knowledge",
+        "ai-sessions"
       ]
     },
     {
@@ -267,6 +288,11 @@
       "purpose": "simple private multi-device Cockpit access without public port forwarding or a second market-data store"
     },
     {
+      "id": "ai-observability-bridge",
+      "flow": "TQS /api/audit -> hidden Windows user-session publisher -> Google Drive runtime folder -> ChatGPT Drive connector",
+      "purpose": "sanitized near-live node observability for future AI sessions without exposing the private tailnet"
+    },
+    {
       "id": "future-cloud-sync",
       "flow": "authenticated outbound local publish/sync -> private cloud/control plane -> remote views",
       "purpose": "optional future multi-device/cloud layer beyond the current private Tailscale Remote Access Bridge"
@@ -294,7 +320,7 @@
     "drive_to_github": "public-safe product rules/contracts only; never private Drive content or secrets",
     "github_to_runtime": "versioned code -> Supervisor/Launcher safe update path -> healthcheck/rollback",
     "runtime_to_ai": "SUPPORT_REDACTED diagnostic snapshot by default",
-    "runtime_to_drive": "durable human-useful findings/cases/briefings only; never raw market firehose",
+    "runtime_to_drive": "sanitized TQS_LIVE_AUDIT.json every ~2 minutes when Google Drive for desktop is mounted; hourly audit checkpoints retained 7 days",
     "runtime_to_web": "private Tailscale Remote Access Bridge today; future authenticated cloud sync only when justified"
   },
   "security": {
@@ -306,7 +332,8 @@
       "raw private account payloads",
       "raw FULL_PRIVATE diagnostic snapshots"
     ],
-    "forbid_public_runtime_pattern": "Do not expose local TQS API/port 8787 unauthenticated to the public Internet. Current remote access is loopback-only TQS plus private Tailscale Serve; do not configure Funnel as part of TQS."
+    "forbid_public_runtime_pattern": "Do not expose local TQS API/port 8787 unauthenticated to the public Internet. Current remote access is loopback-only TQS plus private Tailscale Serve; do not configure Funnel as part of TQS.",
+    "ai_bridge": "Runtime audit bridge must exclude secrets/raw private account DBs. ChatGPT may claim live-node visibility only after reading a fresh Drive audit."
   },
   "development": {
     "default_route": "Chat-first",

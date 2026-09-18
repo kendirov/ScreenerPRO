@@ -106,3 +106,32 @@ def test_update_request_stays_inside_supervisor_in_server_mode(tmp_path, monkeyp
     assert result["external"] is False
     assert result["server_mode"] is True
     assert (tmp_path / "update-request.json").exists()
+
+
+def test_ai_bridge_state_reports_fresh_drive_publish(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    data.mkdir()
+    now_ms = 2_000_000_000_000
+    (data / "ai-bridge-state.json").write_text(
+        json.dumps(
+            {
+                "last_publish_ms": now_ms - 60_000,
+                "target_path": r"G:\\My Drive\\Trading QS\\RUNTIME",
+                "drive_connected": True,
+                "audit_overall": "OK",
+                "version": "0.12.0",
+            }
+        ),
+        encoding="utf-8",
+    )
+    # ai_bridge_state uses the real clock; make the saved timestamp current enough.
+    import time
+    payload = json.loads((data / "ai-bridge-state.json").read_text(encoding="utf-8"))
+    payload["last_publish_ms"] = int(time.time() * 1000) - 60_000
+    (data / "ai-bridge-state.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    state = remote_node.ai_bridge_state(tmp_path)
+    assert state["configured"] is True
+    assert state["drive_connected"] is True
+    assert state["fresh"] is True
+    assert state["audit_overall"] == "OK"
