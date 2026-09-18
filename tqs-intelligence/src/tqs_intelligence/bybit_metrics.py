@@ -95,8 +95,8 @@ class BybitLongHistoryBackfiller:
         fund_start = max(int(start_ms), int(fund_bounds.get("last_ms") or start_ms) - 8 * 3_600_000)
         oi, oi_pages = await self._oi(symbol, oi_start, end_ms, progress)
         funding, funding_pages = await self._funding(symbol, fund_start, end_ms, progress)
-        oi_stats = self.lake.write(parse_bybit_open_interest(oi, cid))
-        fund_stats = self.lake.write(parse_bybit_funding(funding, cid))
+        oi_stats = await asyncio.to_thread(self.lake.write, parse_bybit_open_interest(oi, cid))
+        fund_stats = await asyncio.to_thread(self.lake.write, parse_bybit_funding(funding, cid))
         await _progress(progress, 1.0, f"Bybit {symbol}: long-history OI/funding готовы")
         return {
             "provider":"bybit","canonical_id":cid,"symbol":symbol,
