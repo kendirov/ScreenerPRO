@@ -16,6 +16,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .remote_node import remote_node_status, request_server_task_start, server_mode_enabled, stop_marker_path
+from .update_manager import UpdateManager
 
 BG = "#090c0f"
 PANEL = "#10151a"
@@ -291,7 +292,17 @@ class TQSLauncher:
     def git_state(self, fetch: bool = False) -> dict[str, Any]:
         branch = self._run_git("branch", "--show-current")[1].strip()
         if fetch and branch: self._run_git("fetch", "--prune", "origin", branch, timeout=90)
-        head = self._run_git("rev-parse", "HEAD")[1].strip(); dirty = bool(self._run_git("status", "--porcelain")[1].strip())
+        head = self._run_git("rev-parse", "HEAD")[1].strip()
+        status_raw = self._run_git("status", "--porcelain=v1", "--untracked-files=all")[1].strip()
+        dirty_lines = [line for line in status_raw.splitlines() if line.strip()]
+        dirty = bool(dirty_lines)
+        dirty_paths = []
+        for line in dirty_lines[:100]:
+            code = line[:2] if len(line) >= 2 else "??"
+            path = line[3:].strip() if len(line) >= 4 else line.strip()
+            if " -> " in path:
+                path = path.split(" -> ", 1)[1].strip()
+            dirty_paths.append({"code": code, "path": path.replace("\\", "/")})
         remote_ref = f"origin/{branch}" if branch else ""; remote_head = ""; ahead = behind = 0
         if remote_ref:
             code, remote_head = self._run_git("rev-parse", "--verify", remote_ref, allow_fail=True)
@@ -299,7 +310,20 @@ class TQSLauncher:
                 _, counts = self._run_git("rev-list", "--left-right", "--count", f"HEAD...{remote_ref}"); parts = counts.split()
                 if len(parts) >= 2: ahead, behind = int(parts[0]), int(parts[1])
             else: remote_head = ""
-        return {"branch": branch, "head": head, "remote_head": remote_head.strip(), "ahead": ahead, "behind": behind, "dirty": dirty}
+        safe_generated = [x for x in dirty_paths if UpdateManager._safe_generated_untracked(x)]
+        blocking_dirty = [x for x in dirty_paths if not UpdateManager._safe_generated_untracked(x)]
+        return {
+            "branch": branch,
+            "head": head,
+            "remote_head": remote_head.strip(),
+            "ahead": ahead,
+            "behind": behind,
+            "dirty": dirty,
+            "dirty_paths": dirty_paths,
+            "safe_generated_dirty": safe_generated,
+            "blocking_dirty_paths": blocking_dirty,
+            "safe_generated_only": bool(dirty_paths) and not blocking_dirty,
+        }
 
     def _api(self, path: str, method: str = "GET", payload: dict[str, Any] | None = None, timeout: int = 3) -> Any:
         data = None; headers = {}
@@ -446,7 +470,12 @@ class TQSLauncher:
             self.remote_detail.configure(text="Один раз нажми «Настроить сервер»: автозапуск + приватный доступ с Mac + автообновления")
 
         if g.get("error"): self._set_banner("Не удалось определить локальную версию", MUTED, g["error"])
-        elif g.get("dirty"): self._set_banner("Локальные изменения — автообновление заблокировано", AMBER, f"LOCAL {local} · REMOTE {remote}")
+        elif g.get("blocking_dirty_paths"):
+            paths = ", ".join(str(x.get("path") or "") for x in (g.get("blocking_dirty_paths") or [])[:3])
+            self._set_banner("Локальные изменения — автообновление заблокировано", AMBER, f"{paths or 'см. диагностику'}")
+        elif g.get("safe_generated_only"):
+            paths = ", ".join(str(x.get("path") or "") for x in (g.get("safe_generated_dirty") or [])[:2])
+            self._set_banner("Служебные локальные файлы — update разрешён", AMBER, paths or "generated artifacts")
         elif self._git_fetch_error: self._set_banner("GitHub временно недоступен", MUTED, f"LOCAL v{version} · commit {local} · TQS продолжает работать")
         elif self._git_verified and g.get("behind", 0) > 0: self._set_banner("ЕСТЬ ОБНОВЛЕНИЕ", AMBER, f"LOCAL {local} → REMOTE {remote} · +{g['behind']} commit")
         elif self._git_verified and remote != "—" and local == remote: self._set_banner("АКТУАЛЬНАЯ ВЕРСИЯ", GREEN, f"v{version} · commit {local} · проверено по GitHub")
@@ -515,6 +544,7 @@ class TQSLauncher:
             f"LOCAL: {(g.get('head') or '')[:12] or '—'}",
             f"REMOTE: {(g.get('remote_head') or '')[:12] or '—'} · behind {g.get('behind',0)} · ahead {g.get('ahead',0)}",
             f"Working tree: {'DIRTY' if g.get('dirty') else 'clean'}",
+            "Dirty paths: " + (json.dumps(g.get('dirty_paths') or [], ensure_ascii=False) if g.get('dirty') else "[]"),
             f"Health: {'ONLINE' if hs.get('payload') else 'BUSY/UNAVAILABLE' if hs.get('processes_alive') else 'OFFLINE'} · last OK age {hs.get('last_ok_age_s')}s · processes {hs.get('process_count')}",
             f"Health error: {hs.get('error') or '—'}",
             "",
@@ -670,7 +700,11 @@ class TQSLauncher:
             self._git_fetch_error = "GitHub/VPN не ответил вовремя"
             raise RuntimeError("GitHub/VPN не ответил при проверке обновления. TQS не остановлен; повтори позже.") from exc
         self._git_cache = g; self._git_verified = True; self._git_fetch_error = ""
-        if g["dirty"]: raise RuntimeError("Есть незакоммиченные локальные изменения. Обновление остановлено для защиты файлов.")
+        if g.get("blocking_dirty_paths"):
+            paths = ", ".join(str(x.get("path") or "") for x in g.get("blocking_dirty_paths", [])[:6])
+            raise RuntimeError(f"Есть реальные локальные изменения: {paths}. Обновление остановлено для защиты файлов.")
+        if g.get("safe_generated_only"):
+            self._event("Git: только служебные untracked-файлы — обновление разрешено")
         if g["behind"] <= 0: self._event("Обновление не требуется — локальный commit последний"); return
         if server_mode_enabled(self.root_dir):
             self._event(f"SERVER UPDATE: ставлю {g['head'][:8]} → {g['remote_head'][:8]} через supervisor без остановки server task…")

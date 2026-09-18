@@ -74,7 +74,7 @@ jobs:
           python - <<'PY'
           from importlib.metadata import version
           from tqs_intelligence import __version__
-          assert version('tqs-intelligence') == __version__ == '0.13.0', (version('tqs-intelligence'), __version__)
+          assert version('tqs-intelligence') == __version__ == '0.13.1', (version('tqs-intelligence'), __version__)
           print('Version contract PASS', __version__)
           PY
       - name: Launcher and watchdog contract

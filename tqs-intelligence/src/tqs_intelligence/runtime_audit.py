@@ -263,7 +263,7 @@ def build_runtime_audit(
         f"ready={bool(remote.get('ready'))}; tailscale={bool(remote.get('tailscale_online'))}; serve={bool(remote.get('serve_configured'))}; loopback_only={bool(remote.get('loopback_only'))}",
         evidence=remote,
     )
-    update_ok = bool(update.get("available")) and not bool(update.get("dirty")) and not update.get("reason")
+    update_ok = bool(update.get("available")) and not bool(update.get("blocking_dirty_paths")) and not update.get("reason")
     bridge = remote.get("ai_bridge") or {}
     bridge_task = remote.get("ai_bridge_task") or {}
     add(
@@ -313,7 +313,7 @@ def build_runtime_audit(
         "updates",
         "Safe automatic Git update path",
         _status(update_ok, bool(update.get("available"))),
-        f"branch={update.get('branch') or 'none'}; dirty={bool(update.get('dirty'))}; behind={int(update.get('behind') or 0)}; reason={update.get('reason') or 'none'}",
+        f"branch={update.get('branch') or 'none'}; dirty={bool(update.get('dirty'))}; blocking_dirty={len(update.get('blocking_dirty_paths') or [])}; safe_generated={len(update.get('safe_generated_dirty') or [])}; behind={int(update.get('behind') or 0)}; reason={update.get('reason') or 'none'}",
         evidence={
             "branch": update.get("branch"),
             "head": update.get("head"),

@@ -138,8 +138,9 @@ class AccountTrackCreate(BaseModel):
 
 settings = Settings()
 control_path = Path(settings.control_path)
+control_preexisting = control_path.exists()
 control = ControlCenter(settings.control_path)
-if not control_path.exists():
+if not control_preexisting:
     control.update(
         mode=settings.mode,
         data_lake_root=settings.data_lake_root,
@@ -151,8 +152,33 @@ if not control_path.exists():
         refresh_seconds_override=settings.refresh_seconds_override,
         cpu_soft_limit_pct=settings.cpu_soft_limit_pct,
         ram_soft_limit_pct=settings.ram_soft_limit_pct,
-        changed_by='env',
+        changed_by='env-initial',
     )
+else:
+    # Repair the v0.12 service-context regression without overriding durable
+    # owner controls. If control.json was accidentally moved to the default
+    # local ./data-lake but .env explicitly names a real data root (for example
+    # D:\\TQS_DATA), restore that path. Other runtime policy stays untouched.
+    current_control = control.get()
+    explicit = set(getattr(settings, 'model_fields_set', set()) or set())
+    path_repair: dict[str, Any] = {}
+    current_root = str(current_control.data_lake_root or '').strip()
+    configured_root = str(settings.data_lake_root or '').strip()
+    if (
+        'data_lake_root' in explicit
+        and configured_root
+        and configured_root not in {'./data-lake', '.\\data-lake'}
+        and current_root in {'', './data-lake', '.\\data-lake'}
+    ):
+        path_repair['data_lake_root'] = configured_root
+    if (
+        'drive_export_root' in explicit
+        and str(settings.drive_export_root or '').strip()
+        and not str(current_control.drive_export_root or '').strip()
+    ):
+        path_repair['drive_export_root'] = settings.drive_export_root
+    if path_repair:
+        control.update(**path_repair, changed_by='env-path-repair')
 
 http = JsonHttp(); sources = []
 if settings.enable_bitget: sources.append(BitgetSource(http))

@@ -152,8 +152,21 @@ class ResourceMonitor:
             except Exception:
                 pass
 
+            try:
+                resolved_data_root = str(Path(data_root).expanduser().resolve())
+                resolved_repo_root = str(self.root.resolve())
+                data_root_inside_repo = Path(resolved_data_root).is_relative_to(Path(resolved_repo_root))
+            except Exception:
+                resolved_data_root = str(data_root)
+                data_root_inside_repo = False
+
             return {
                 "generated_at_ms": int(now * 1000),
+                "data_root": {
+                    "path": resolved_data_root,
+                    "inside_tqs_repo": data_root_inside_repo,
+                    "warning": "Data Lake is inside the Git checkout; move it to a dedicated data drive." if data_root_inside_repo else "",
+                },
                 "system": {
                     "cpu_percent": round(float(psutil.cpu_percent(interval=None)), 1),
                     "cpu_per_core": [round(float(x), 1) for x in cpu_per_core],
