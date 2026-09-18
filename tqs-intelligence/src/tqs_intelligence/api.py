@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+from uuid import uuid4
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
@@ -31,6 +32,7 @@ from .models import AssetClass, HypothesisCreate
 from .moex_lab import MoexLab
 from .moex_features import MoexFeatureEngine
 from .metric_lake import MetricLake
+from .paper_bots import PaperBotService
 from .news import NewsCollector
 from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
@@ -43,7 +45,7 @@ from .snapshot_export import SnapshotExporter
 from .sources import BinanceSource, BitgetSource, BybitSource, MoexSource, OkxSource, TwelveDataSource
 from .storage import DuckStore
 from .strategy_machine import StrategyMachine, default_round_buffer_spec
-from .strategy_models import StrategySpec
+from .strategy_models import ResearchProject, StrategySpec
 from .update_manager import UpdateManager
 
 
@@ -111,6 +113,21 @@ class IdeaCreate(BaseModel):
     tags: list[str] = Field(default_factory=list)
 
 
+class ResearchProjectCreate(BaseModel):
+    title: str
+    hypothesis: str
+    origin: str = 'artem'
+    market: str = 'multi'
+    instruments: list[str] = Field(default_factory=list)
+    data_requirements: list[str] = Field(default_factory=list)
+    event: dict[str, Any] = Field(default_factory=dict)
+    controls: list[str] = Field(default_factory=list)
+    regimes: list[str] = Field(default_factory=list)
+    horizons: list[str] = Field(default_factory=lambda: ['5m','1h','1d'])
+    metrics: list[str] = Field(default_factory=lambda: ['forward_return','mfe','mae','hit_rate'])
+    notes: list[str] = Field(default_factory=list)
+
+
 class BackfillCreate(BaseModel):
     provider: Literal['binance','moex']
     symbol: str
@@ -124,6 +141,10 @@ class BackfillCreate(BaseModel):
 
 class StrategyRunCreate(BaseModel):
     canonical_id: str
+
+
+class PaperBotStatusPatch(BaseModel):
+    status: Literal['draft','armed','paused']
 
 
 class SnapshotExportRequest(BaseModel):
@@ -215,6 +236,7 @@ service = IntelligenceService(
     settings.history_refresh_every, settings.research_every_refreshes, control=control,
     moex_feature_engine=moex_feature_engine,
 )
+paper_service = PaperBotService(lab, lambda: service.state.snapshot, poll_seconds=5)
 briefing_builder = BriefingBuilder(store)
 moex_lab = MoexLab(store)
 instrument_lab = InstrumentLab(store, lake, lab, metric_lake=metric_lake)
@@ -237,7 +259,7 @@ async def lifespan(_: FastAPI):
         lab.save_strategy(default_round_buffer_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
-    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start(); ai_control.start()
+    service.start(); research_runtime.start(); paper_service.start(); account_service.start(); lchi_service.start(); pulse_service.start(); ai_control.start()
 
     async def repair_remote_contract() -> None:
         try:
@@ -256,7 +278,7 @@ async def lifespan(_: FastAPI):
     yield
     if not repair_task.done():
         repair_task.cancel()
-    await ai_control.stop(); await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
+    await ai_control.stop(); await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await paper_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
@@ -640,6 +662,62 @@ def episode_detail(episode_id:str,before_hours:int=Query(24,ge=1,le=168),after_h
     return {'episode':episode.model_dump(mode='json'),'outcome':outcome.model_dump(mode='json'),'series':series,'similar':similar}
 
 
+@app.get('/api/research/projects')
+def research_projects(limit:int=Query(200,ge=1,le=2000),status:str=''):
+    return [x.model_dump(mode='json') for x in lab.list_research_projects(limit,status)]
+
+
+@app.post('/api/research/projects')
+def create_research_project(request:ResearchProjectCreate):
+    now=int(time.time()*1000)
+    project=ResearchProject(
+        id=f"R-{uuid4().hex[:10].upper()}", created_at_ms=now, updated_at_ms=now,
+        **request.model_dump()
+    )
+    return lab.save_research_project(project).model_dump(mode='json')
+
+
+@app.get('/api/research/projects/{project_id}')
+def research_project_detail(project_id:str):
+    project=lab.get_research_project(project_id)
+    if project is None: raise HTTPException(404,'research project not found')
+    runs=lab.list_research_runs(project_id,'',200)
+    return {'project':project.model_dump(mode='json'),'runs':[x.model_dump(mode='json') for x in runs]}
+
+
+@app.get('/api/research/runs')
+def research_runs(project_id:str='',canonical_id:str='',limit:int=Query(300,ge=1,le=3000)):
+    return [x.model_dump(mode='json') for x in lab.list_research_runs(project_id,canonical_id,limit)]
+
+
+@app.post('/api/research/projects/{project_id}/queue')
+def queue_research_project(project_id:str,canonical_id:str=''):
+    project=lab.get_research_project(project_id)
+    if project is None: raise HTTPException(404,'research project not found')
+    targets=list(project.instruments)
+    if canonical_id:
+        if canonical_id not in targets:
+            raise HTTPException(400,'canonical_id is not registered in this research project')
+        targets=[canonical_id]
+    queued=[]
+    existing=set(project.linked_job_ids)
+    active={(j.kind,str(j.payload.get('research_project_id')),str(j.payload.get('canonical_id')))
+            for j in lab.list_jobs(5000) if j.status in {'queued','running'}}
+    for cid in targets:
+        key=('research_project_run',project.id,cid)
+        if key in active:
+            continue
+        job=lab.enqueue_job('research_project_run',f"Research {project.id}: {cid}",{
+            'research_project_id':project.id,'canonical_id':cid,'attempt':0,
+        })
+        queued.append(job.id); existing.add(job.id)
+    project.linked_job_ids=sorted(existing)
+    project.status='exploratory'
+    lab.save_research_project(project)
+    return {'project':project.model_dump(mode='json'),'queued_job_ids':queued,
+            'message':'queued' if queued else 'no instruments or already active'}
+
+
 @app.get('/api/research/findings')
 def research_findings(limit:int=Query(100,ge=1,le=1000)):
     return [x.model_dump(mode='json') for x in store.list_findings(limit)]
@@ -804,6 +882,40 @@ def run_strategy(strategy_id:str,request:StrategyRunCreate):
     if spec is None: raise HTTPException(404,'strategy not found')
     job=lab.enqueue_job('strategy_run',f"Стратегия: {spec.name_ru} / {request.canonical_id}",{'strategy_id':strategy_id,'canonical_id':request.canonical_id})
     return job.model_dump(mode='json')
+
+
+@app.get('/api/paper-bots')
+def paper_bots(limit:int=Query(200,ge=1,le=2000)):
+    return {'status':paper_service.status(),
+            'bots':[x.model_dump(mode='json') for x in lab.list_paper_bots(limit)]}
+
+
+@app.post('/api/paper-bots/from-run/{run_id}')
+def create_paper_bot(run_id:str):
+    try:
+        return paper_service.create_from_run(run_id).model_dump(mode='json')
+    except KeyError as exc:
+        raise HTTPException(404,str(exc))
+
+
+@app.post('/api/paper-bots/{bot_id}/status')
+def set_paper_bot_status(bot_id:str,request:PaperBotStatusPatch):
+    try:
+        return paper_service.set_status(bot_id,request.status).model_dump(mode='json')
+    except KeyError as exc:
+        raise HTTPException(404,str(exc))
+    except ValueError as exc:
+        raise HTTPException(409,str(exc))
+
+
+@app.get('/api/paper-bots/signals')
+def paper_bot_signals(bot_id:str='',limit:int=Query(300,ge=1,le=3000)):
+    return [x.model_dump(mode='json') for x in lab.list_paper_signals(bot_id,limit)]
+
+
+@app.get('/api/paper-bots/trades')
+def paper_bot_trades(bot_id:str='',status:str='',limit:int=Query(300,ge=1,le=3000)):
+    return [x.model_dump(mode='json') for x in lab.list_paper_trades(bot_id,status,limit)]
 
 
 @app.get('/api/data-lake')

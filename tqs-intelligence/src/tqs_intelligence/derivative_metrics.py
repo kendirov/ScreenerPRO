@@ -187,31 +187,61 @@ class DerivativeMetricBackfiller:
             await asyncio.sleep(0.04)
         return collected
 
+    async def _binance_recent_backward(self, url: str, params: dict[str, Any], *, start_ms: int, end_ms: int,
+                                       ts_field: str, limit: int, period_ms: int, progress: Progress | None,
+                                       label: str, lo: float, hi: float) -> list[dict[str, Any]]:
+        end_cursor=int(end_ms); collected: list[dict[str, Any]]=[]
+        while end_cursor >= int(start_ms):
+            query=dict(params); query.update({"startTime":int(start_ms),"endTime":end_cursor,"limit":int(limit)})
+            payload=await self.http.get_json(url,query)
+            if not isinstance(payload,list) or not payload: break
+            rows=[x for x in payload if isinstance(x,dict)]
+            collected.extend(rows)
+            first=min((int(x.get(ts_field) or 0) for x in rows),default=0)
+            if first <= int(start_ms) or len(rows) < limit: break
+            next_end=first-max(1,period_ms)
+            if next_end >= end_cursor: break
+            end_cursor=next_end
+            frac=(int(end_ms)-end_cursor)/max(1,int(end_ms)-int(start_ms))
+            await _progress(progress,lo+min(1.0,frac)*(hi-lo),f"{label}: {len(collected):,} точек")
+            await asyncio.sleep(0.15)
+        unique={int(x.get(ts_field) or 0):x for x in collected if int(x.get(ts_field) or 0)}
+        return [unique[k] for k in sorted(unique)]
+
     async def backfill_binance(self, *, symbol: str, start_ms: int, end_ms: int, progress: Progress | None = None) -> dict[str, Any]:
-        canonical_id = f"binance:usdt-futures:{symbol}"; written: dict[str, int] = defaultdict(int)
-        await _progress(progress, 0.02, f"Binance {symbol}: funding history")
-        funding = await self._binance_paged("https://fapi.binance.com/fapi/v1/fundingRate", {"symbol": symbol},
-            start_ms=start_ms, end_ms=end_ms, ts_field="fundingTime", limit=1000, period_ms=1,
-            progress=progress, label=f"Binance {symbol} funding", lo=0.02, hi=0.34)
-        funding_stats = await asyncio.to_thread(self.lake.write, parse_binance_funding(funding, canonical_id))
-        written["funding_rate"] += funding_stats["rows_ingested"]
-        month_start = max(int(start_ms), int(end_ms) - 31 * _DAY_MS)
-        await _progress(progress, 0.36, f"Binance {symbol}: OI (официально только последний месяц)")
-        oi = await self._binance_paged("https://fapi.binance.com/futures/data/openInterestHist", {"symbol": symbol, "period": "5m"},
-            start_ms=month_start, end_ms=end_ms, ts_field="timestamp", limit=500, period_ms=300_000,
-            progress=progress, label=f"Binance {symbol} OI", lo=0.36, hi=0.67)
-        oi_stats = await asyncio.to_thread(self.lake.write, parse_binance_open_interest(oi, canonical_id))
-        written["open_interest"] += oi_stats["rows_ingested"]
-        await _progress(progress, 0.69, f"Binance {symbol}: basis")
-        basis = await self._binance_paged("https://fapi.binance.com/futures/data/basis", {"pair": symbol, "contractType": "PERPETUAL", "period": "5m"},
-            start_ms=month_start, end_ms=end_ms, ts_field="timestamp", limit=500, period_ms=300_000,
-            progress=progress, label=f"Binance {symbol} basis", lo=0.69, hi=0.98)
-        basis_stats = await asyncio.to_thread(self.lake.write, parse_binance_basis(basis, canonical_id))
-        written["basis"] += basis_stats["rows_ingested"]
-        await _progress(progress, 1.0, f"Binance {symbol}: derivative metrics готовы")
-        return {"provider": "binance", "canonical_id": canonical_id, "symbol": symbol,
-                "funding_rows": len(funding), "oi_rows": len(oi), "basis_rows": len(basis), "points_written": dict(written),
-                "coverage": {"funding_start_ms": start_ms, "oi_basis_public_limit": "latest_1_month"}}
+        canonical_id=f"binance:usdt-futures:{symbol}"; written: dict[str,int]=defaultdict(int); warnings=[]
+        month_start=max(int(start_ms),int(end_ms)-29*_DAY_MS)
+        await _progress(progress,0.02,f"Binance {symbol}: OI recent public window")
+        oi=await self._binance_recent_backward(
+            "https://fapi.binance.com/futures/data/openInterestHist",{"symbol":symbol,"period":"15m"},
+            start_ms=month_start,end_ms=end_ms,ts_field="timestamp",limit=500,period_ms=900_000,
+            progress=progress,label=f"Binance {symbol} OI",lo=0.02,hi=0.56)
+        oi_stats=await asyncio.to_thread(self.lake.write,parse_binance_open_interest(oi,canonical_id))
+        written["open_interest"]+=oi_stats["rows_ingested"]
+        funding=[]
+        try:
+            await _progress(progress,0.58,f"Binance {symbol}: funding history")
+            funding=await self._binance_paged("https://fapi.binance.com/fapi/v1/fundingRate",{"symbol":symbol},
+                start_ms=start_ms,end_ms=end_ms,ts_field="fundingTime",limit=1000,period_ms=1,
+                progress=progress,label=f"Binance {symbol} funding",lo=0.58,hi=0.78)
+            st=await asyncio.to_thread(self.lake.write,parse_binance_funding(funding,canonical_id)); written["funding_rate"]+=st["rows_ingested"]
+        except Exception as exc:
+            warnings.append(f"funding partial: {type(exc).__name__}: {str(exc)[:220]}")
+        basis=[]
+        try:
+            await _progress(progress,0.80,f"Binance {symbol}: basis optional")
+            basis=await self._binance_recent_backward(
+                "https://fapi.binance.com/futures/data/basis",{"pair":symbol,"contractType":"PERPETUAL","period":"15m"},
+                start_ms=month_start,end_ms=end_ms,ts_field="timestamp",limit=500,period_ms=900_000,
+                progress=progress,label=f"Binance {symbol} basis",lo=0.80,hi=0.98)
+            st=await asyncio.to_thread(self.lake.write,parse_binance_basis(basis,canonical_id)); written["basis"]+=st["rows_ingested"]
+        except Exception as exc:
+            warnings.append(f"basis partial: {type(exc).__name__}: {str(exc)[:220]}")
+        await _progress(progress,1.0,f"Binance {symbol}: OI ready; optional metrics best effort")
+        return {"provider":"binance","canonical_id":canonical_id,"symbol":symbol,
+                "funding_rows":len(funding),"oi_rows":len(oi),"basis_rows":len(basis),"points_written":dict(written),
+                "warnings":warnings,"status":"partial" if warnings else "ok",
+                "coverage":{"funding_start_ms":start_ms,"oi_basis_public_limit":"latest_30_days","oi_period":"15m"}}
 
     async def _bybit_open_interest(self, symbol: str, start_ms: int, end_ms: int, progress: Progress | None) -> list[dict[str, Any]]:
         url = "https://api.bybit.com/v5/market/open-interest"; cursor: str | None = None; rows: list[dict[str, Any]] = []

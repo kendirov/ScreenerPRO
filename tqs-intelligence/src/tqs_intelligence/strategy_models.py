@@ -55,3 +55,96 @@ class ResearchJob(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     result: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
+
+
+class ResearchProject(BaseModel):
+    id: str
+    title: str
+    version: int = 1
+    hypothesis: str
+    origin: str = 'artem'
+    status: Literal['idea','exploratory','validation','oos','confirmed','rejected','insufficient_data'] = 'exploratory'
+    market: str = 'multi'
+    instruments: list[str] = Field(default_factory=list)
+    data_requirements: list[str] = Field(default_factory=list)
+    event: dict[str, Any] = Field(default_factory=dict)
+    controls: list[str] = Field(default_factory=list)
+    regimes: list[str] = Field(default_factory=list)
+    horizons: list[str] = Field(default_factory=lambda: ['5m','1h','1d'])
+    metrics: list[str] = Field(default_factory=lambda: ['forward_return','mfe','mae','hit_rate'])
+    validation: dict[str, Any] = Field(default_factory=lambda: {
+        'multiple_testing': True,
+        'oos_required': True,
+        'walk_forward': True,
+        'min_events': 40,
+        'status_note': 'exploratory until independent OOS/replication',
+    })
+    linked_job_ids: list[str] = Field(default_factory=list)
+    linked_strategy_ids: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    created_at_ms: int
+    updated_at_ms: int
+
+
+class ResearchRunResult(BaseModel):
+    run_id: str
+    research_id: str
+    canonical_id: str
+    family: str
+    interval: str
+    generated_at_ms: int
+    status: str
+    sample_count: int = 0
+    control_count: int = 0
+    coverage: dict[str, Any] = Field(default_factory=dict)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    splits: dict[str, Any] = Field(default_factory=dict)
+    regimes: dict[str, Any] = Field(default_factory=dict)
+    conclusion: str = ""
+    next_action: str = ""
+    strategy_id: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
+
+class PaperBot(BaseModel):
+    id: str
+    name: str
+    strategy_id: str
+    strategy_run_id: str
+    canonical_id: str
+    status: Literal['draft','armed','paused','blocked'] = 'draft'
+    mode: Literal['paper'] = 'paper'
+    created_at_ms: int
+    updated_at_ms: int
+    config: dict[str, Any] = Field(default_factory=dict)
+    state: dict[str, Any] = Field(default_factory=dict)
+    live_allowed: bool = False
+    block_reason: str = ''
+
+
+class PaperSignal(BaseModel):
+    id: str
+    bot_id: str
+    ts_ms: int
+    canonical_id: str
+    kind: str
+    side: str = ''
+    price: float | None = None
+    reason: str = ''
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class PaperTrade(BaseModel):
+    id: str
+    bot_id: str
+    canonical_id: str
+    status: Literal['open','closed'] = 'open'
+    side: Literal['long','short']
+    entry_ts_ms: int
+    entry_price: float
+    exit_ts_ms: int | None = None
+    exit_price: float | None = None
+    pnl_pct: float | None = None
+    exit_reason: str = ''
+    payload: dict[str, Any] = Field(default_factory=dict)

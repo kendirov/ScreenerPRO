@@ -15,9 +15,11 @@ from .lab_store import LabStore
 from .lake import DataLake
 from .metric_autopilot import build_metric_plan, metric_title
 from .replay import HistoricalReplayEngine
+from .research_experiments import ResearchExperimentEngine
 from .sources import BinanceSource, BybitSource, MoexSource
 from .strategy_extensions import default_buy_dip_bps_spec, default_buy_dip_points_spec, run_buy_dip_grid
 from .strategy_machine import StrategyMachine, default_round_buffer_spec
+from .strategy_models import ResearchProject
 
 
 class ResearchPaused(RuntimeError):
@@ -29,6 +31,7 @@ class ResearchRuntime:
                  lake: DataLake, machine: StrategyMachine) -> None:
         self.control=control; self.lab=lab; self.backfiller=backfiller; self.lake=lake; self.machine=machine
         self.replay=HistoricalReplayEngine(lake)
+        self.experiments=ResearchExperimentEngine(lake, backfiller.metric_lake, lab, machine)
         self.bybit_metrics=BybitLongHistoryBackfiller(backfiller.http, backfiller.metric_lake)
         self._task: asyncio.Task|None=None; self._running=False; self.last_action='Ожидание'; self.last_error: str|None=None
         self._last_auto_plan_s=0.0
@@ -63,6 +66,85 @@ class ResearchRuntime:
         if self.lab.get_strategy(crypto.id) is None: self.lab.save_strategy(crypto)
         for spec in (default_buy_dip_bps_spec(), default_buy_dip_points_spec()):
             if self.lab.get_strategy(spec.id) is None: self.lab.save_strategy(spec)
+        self._seed_research_projects()
+
+    def _seed_research_projects(self) -> None:
+        now=int(time.time()*1000)
+        seeds=[
+            ResearchProject(
+                id='TQS-RESEARCH-ROUND-LEVELS-001',
+                title='Круглые уровни: clustering / barrier / breakout',
+                hypothesis='Круглые цены меняют поведение рынка относительно matched pseudo-level controls; эффект зависит от first touch, acceptance, режима и ликвидности.',
+                origin='artem+drive',status='exploratory',market='multi',
+                data_requirements=['OHLCV','tick size','spread','volume','session','volatility','matched pseudo-level controls'],
+                event={'family':'round_level','states':['approach','touch','rejection','acceptance','breakout','retest']},
+                controls=['matched pseudo-level','same session','same volatility','same direction'],
+                regimes=['trend/range','high/low vol','session','liquidity','news/no-news'],
+                horizons=['1m','5m','15m','1h','1d'],
+                notes=['Drive evidence base exists; do not equate price clustering with tradable barrier effect.'],
+                created_at_ms=now,updated_at_ms=now,
+            ),
+            ResearchProject(
+                id='TQS-RESEARCH-PRICE-OI-DIVERGENCE-001',
+                title='Цена стоит, OI растёт',
+                version=2,
+                hypothesis='Рост OI при слабом движении цены формирует состояния накопления/борьбы, после которых распределение будущего движения отличается от matched controls.',
+                origin='artem',status='exploratory',market='multi',
+                data_requirements=['price','open_interest','delta OI','volume','spread','FUTOI where available'],
+                event={'family':'price_oi_divergence','price_abs_return_max_bps':20,'oi_change_percentile':0.80,'lookback_bars':3,'reset_bars':3},
+                controls=['same volatility','same session','similar volume without OI shock'],
+                regimes=['trend/range','pre-expiry/normal','high/low vol','participant context'],
+                horizons=['5m','15m','1h','4h','1d'],
+                notes=['Never infer long/short direction from aggregate OI alone.'],
+                created_at_ms=now,updated_at_ms=now,
+            ),
+            ResearchProject(
+                id='TQS-RESEARCH-MOEX-EXPIRY-001',
+                title='MOEX квартальная экспирация и ролловер',
+                hypothesis='Вблизи квартальной экспирации меняются ликвидность, basis, OI split и intraday response; эффекты должны измеряться относительно non-expiry controls.',
+                origin='artem+drive',status='exploratory',market='MOEX',
+                data_requirements=['current/next futures','expiry metadata','OI','volume','basis','underlying/index','FUTOI when available'],
+                event={'family':'expiry','windows':['T-10','T-5','T-3','T-1','T0','T+1']},
+                controls=['same weekday non-expiry','same volatility','same contract age'],
+                regimes=['roll intensity','market trend','high/low vol','index/commodity/currency future'],
+                horizons=['30m','1h','session','1d','3d'],
+                notes=['Settlement/expiry time must come from versioned contract metadata, not hardcoded historical assumptions.'],
+                created_at_ms=now,updated_at_ms=now,
+            ),
+        ]
+        defaults={
+            'TQS-RESEARCH-ROUND-LEVELS-001': ['moex:shares:SBER','binance:usdt-futures:BTCUSDT','binance:usdt-futures:ETHUSDT','binance:usdt-futures:ZECUSDT'],
+            'TQS-RESEARCH-PRICE-OI-DIVERGENCE-001': ['binance:usdt-futures:BTCUSDT','binance:usdt-futures:ETHUSDT'],
+            'TQS-RESEARCH-MOEX-EXPIRY-001': [],
+        }
+        for project in seeds:
+            existing=self.lab.get_research_project(project.id)
+            if existing is None:
+                project.instruments=list(defaults.get(project.id,[]))
+                if project.id=='TQS-RESEARCH-ROUND-LEVELS-001':
+                    project.linked_strategy_ids=['TQS-STRAT-ROUND-BUFFER-001','TQS-STRAT-ROUND-BUFFER-CRYPTO-001']
+                self.lab.save_research_project(project)
+                continue
+            changed=False
+            if not existing.instruments and defaults.get(project.id):
+                existing.instruments=list(defaults[project.id]); changed=True
+            if project.id=='TQS-RESEARCH-ROUND-LEVELS-001':
+                for cid in defaults[project.id]:
+                    if cid not in existing.instruments:
+                        existing.instruments.append(cid); changed=True
+                for sid in ('TQS-STRAT-ROUND-BUFFER-001','TQS-STRAT-ROUND-BUFFER-CRYPTO-001'):
+                    if sid not in existing.linked_strategy_ids:
+                        existing.linked_strategy_ids.append(sid); changed=True
+            if project.id=='TQS-RESEARCH-PRICE-OI-DIVERGENCE-001' and int(existing.version or 1)<2:
+                existing.version=2
+                existing.event=dict(project.event)
+                existing.notes=list(existing.notes)+[
+                    'v1 fixed +1% OI / 15m produced no usable sample; v2 preregisters the OI threshold as an exploration-only percentile, frozen for validation/holdout.'
+                ]
+                existing.status='exploratory'
+                changed=True
+            if changed:
+                self.lab.save_research_project(existing)
 
     def start(self) -> None:
         if self._task is None or self._task.done(): self._task=asyncio.create_task(self._loop(),name='tqs-research-runtime')
@@ -110,12 +192,72 @@ class ResearchRuntime:
             if float(value) < 0.999 and not self.control.get().heavy_allowed:
                 raise ResearchPaused(f"режим {self.control.get().mode.upper()}")
             self.last_action=message; self.lab.update_job(job.id,progress=value)
+        if job.kind=='research_project_run':
+            project_id=str(job.payload.get('research_project_id') or '')
+            canonical_id=str(job.payload.get('canonical_id') or '')
+            attempt=int(job.payload.get('attempt') or 0)
+            project=self.lab.get_research_project(project_id)
+            if project is None:
+                raise KeyError(f'research project {project_id} not found')
+            await progress(.08,f'Research {project_id}: loading {canonical_id}')
+            result=await asyncio.to_thread(self.experiments.run,project,canonical_id)
+            self.lab.save_research_run(result)
+            if result.strategy_id and result.strategy_id not in project.linked_strategy_ids:
+                project.linked_strategy_ids.append(result.strategy_id)
+            if job.id not in project.linked_job_ids:
+                project.linked_job_ids.append(job.id)
+            latest={}
+            for row in self.lab.list_research_runs(project.id,'',1000):
+                if row.canonical_id not in latest:
+                    latest[row.canonical_id]=row
+            statuses=[latest[cid].status for cid in project.instruments if cid in latest]
+            complete=bool(project.instruments) and len(statuses)==len(project.instruments)
+            if any(x=='candidate' for x in statuses):
+                project.status='validation'
+            elif complete and statuses and all(x=='rejected' for x in statuses):
+                project.status='rejected'
+            elif complete and statuses and all(x=='insufficient_data' for x in statuses):
+                project.status='insufficient_data'
+            else:
+                project.status='exploratory'
+            self.lab.save_research_project(project)
+            coverage=result.coverage or {}
+            queued=[]
+            parts=canonical_id.split(':',2)
+            if attempt < 1 and coverage.get('need_history') and len(parts)==3:
+                provider,market_type,symbol=parts
+                if provider in {'binance','moex'}:
+                    payload={'provider':provider,'symbol':symbol,'market_type':market_type,'interval':result.interval,
+                             'research_project_id':project_id,'research_canonical_id':canonical_id,'research_attempt':attempt+1}
+                    if provider=='moex':
+                        payload['engine']='futures' if market_type=='forts' else 'stock'; payload['market']='forts' if market_type=='forts' else 'shares'
+                    child=self.lab.enqueue_job('historical_backfill',f'Research data: {project_id} / {symbol}',payload)
+                    queued.append(child.id)
+            elif attempt < 1 and coverage.get('need_open_interest') and len(parts)==3:
+                provider,market_type,symbol=parts
+                if provider in {'binance','bybit'}:
+                    child=self.lab.enqueue_job('derivative_metric_backfill',f'Research OI: {project_id} / {symbol}',{
+                        'provider':provider,'symbol':symbol,'market_type':market_type,
+                        'start_ms':int(time.time()*1000)-29*86_400_000,
+                        'research_project_id':project_id,'research_canonical_id':canonical_id,'research_attempt':attempt+1})
+                    queued.append(child.id)
+            payload=result.model_dump(mode='json')
+            payload['followup_jobs']=queued
+            await progress(1,f'Research {project_id}: {result.status}')
+            return payload
         if job.kind=='historical_backfill':
             result=await self.backfiller.backfill(job.payload,progress)
             if int(result.get('rows') or 0)>0:
                 cid=str(result['canonical_id']); interval=str(result['interval'])
                 self.lab.enqueue_job('historical_replay',f'Historical Replay: {cid}',{'canonical_id':cid,'interval':interval,'threshold':70.0})
                 result['next']='historical_replay queued'
+            project_id=str(job.payload.get('research_project_id') or '')
+            research_cid=str(job.payload.get('research_canonical_id') or result.get('canonical_id') or '')
+            if project_id and research_cid:
+                child=self.lab.enqueue_job('research_project_run',f'Resume research: {project_id} / {research_cid}',{
+                    'research_project_id':project_id,'canonical_id':research_cid,
+                    'attempt':int(job.payload.get('research_attempt') or 1)})
+                result['research_resume_job']=child.id
             return result
         if job.kind=='derivative_metric_backfill':
             payload=dict(job.payload); provider=str(payload.get('provider') or '').lower(); symbol=str(payload.get('symbol') or '')
@@ -130,6 +272,13 @@ class ResearchRuntime:
             else:
                 result=await self.backfiller.derivative_metrics.backfill(payload,progress)
             result['metric_lake']=await asyncio.to_thread(self.backfiller.metric_lake.stats)
+            project_id=str(job.payload.get('research_project_id') or '')
+            research_cid=str(job.payload.get('research_canonical_id') or result.get('canonical_id') or '')
+            if project_id and research_cid:
+                child=self.lab.enqueue_job('research_project_run',f'Resume research: {project_id} / {research_cid}',{
+                    'research_project_id':project_id,'canonical_id':research_cid,
+                    'attempt':int(job.payload.get('research_attempt') or 1)})
+                result['research_resume_job']=child.id
             return result
         if job.kind=='historical_replay':
             cid=str(job.payload['canonical_id']); interval=str(job.payload.get('interval','10m')); threshold=float(job.payload.get('threshold',70))

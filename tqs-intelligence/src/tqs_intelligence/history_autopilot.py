@@ -41,6 +41,7 @@ def history_key(payload: dict[str, Any]) -> tuple[str, ...]:
         str(payload.get("interval") or ""),
         str(payload.get("engine") or ""),
         str(payload.get("market") or ""),
+        str(payload.get("history_parser_version") or ""),
     )
 
 
@@ -68,6 +69,7 @@ def _payload_for_quote(q: Quote) -> dict[str, Any] | None:
             "market": market,
             "interval": "10m",
             "start_ms": START_2021_MS,
+            "history_parser_version": 2,
         }
     return None
 
