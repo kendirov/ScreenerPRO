@@ -1,6 +1,6 @@
 # AI_SESSION_STATE — TQS PLATFORM
 
-Status: ACTIVE RESUME STATE — 2026-09-17
+Status: ACTIVE RESUME STATE — 2026-09-18
 
 > Do not treat a hardcoded SHA in a state file as fresher than Git itself. On every new session verify the current branch/PR/CI/runtime first.
 
@@ -19,7 +19,7 @@ PR: `#11 — TQS Intelligence Engine v0.1 — multi-market anomaly and research 
 
 The PR is intentionally stacked on the older TraderQuest TQ-004 branch rather than current `main`; integration to `main` must be deliberate. Do not assume a blind merge is safe.
 
-Package/product version after the current normalization slice: **v0.8.4**.
+Package/product version on the active local line: **v0.9.1**.
 
 ## 3. What exists now
 
@@ -123,17 +123,23 @@ Keep modular monorepo while contracts evolve rapidly. A separate repo/service re
 
 The repository is public: secrets/private Drive contents/private account payloads/raw private support snapshots must not be committed.
 
-## 9. Next product focus
+## 9. Current product focus — MOEX reference vertical
 
-After local v0.8.4 is updated and overnight stability is proven, highest-value next work is:
-1. owner-facing Activity Ledger + “что сделано за ночь” summary;
-2. visual redesign of TQS Screener/Cockpit and Universal Instrument Lab;
-3. richer historical feature layer (OI/funding/basis/liquidations/microstructure as source availability permits);
-4. Research visualization: event studies/distributions/regimes/OOS/counterexamples;
-5. explicit integration bridge from local TQS Intelligence API/snapshots to web TQS Screener;
-6. structured Knowledge indexing only when retrieval/use cases justify it.
+The current blocker is no longer “can TQS collect data?” but **can a trader understand and use what TQS collected?**
 
-Do not add 20 sources before observability, semantics and research usefulness of existing sources are clear.
+Until proven end-to-end, MOEX is the reference vertical. Read `tqs-intelligence/MOEX_REFERENCE_VERTICAL.md` before substantial market/UI work.
+
+Priority:
+1. dedicated Russian **Мосбиржа** cockpit: universe, coverage, downloads, failures and next actions;
+2. all relevant MOEX shares/FORTS live/searchable, progressive complete historical target;
+3. FUTOI aggregate physical/legal participant layer with explicit delay/licence provenance;
+4. automated public LCHI participant catalog/profile/trade evidence;
+5. Pulse public profile/trade evidence as a weaker layer (operation quantity is hidden publicly);
+6. one SBER/BR/Si Instrument Workspace with price/volume/OI/FUTOI/public-account/news/anomaly/research layers on one timeline;
+7. explicit MOEX research program and Russian result language;
+8. only after this reference slice is clear, replicate the pattern to crypto.
+
+Do not add another generic technical screen. Every new object must end in a visible trader-facing answer or an explicit coverage/gap row.
 
 ## 10. New-session algorithm
 

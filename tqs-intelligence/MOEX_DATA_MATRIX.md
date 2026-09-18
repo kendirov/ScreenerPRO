@@ -185,3 +185,15 @@ Any promising relationship remains a hypothesis until control/OOS/walk-forward/c
 ## UI rule
 
 The full universe remains accessible through search/filter/export, but the primary screen must be sparse and decision-oriented. A quiet market is allowed to look quiet.
+
+
+## Public participant sources — evidence separation (2026-09-18)
+
+### LCHI 2026 / Финуслуги
+Treat public LCHI participant pages as **individual public account evidence**, separate from exchange aggregate FUTOI. Public pages may expose signed positions, quantity, average price/P&L and trade/order counts; public trade downloads may provide deeper history. The intended TQS adapter is automatic discovery + rate-limited snapshots/diffs, not a manual address form.
+
+### T-Bank Pulse
+Treat Pulse as **public profile/trade evidence with hidden size**. Public profile composition and last-month trade history can be useful for timing/context, but operation quantity is hidden to other users. Do not estimate exact notional from Pulse unless another lawful source supports it.
+
+### Evidence UI
+Every participant row/marker must carry `source_type`, source/profile URL or stable source ID, observed timestamp, parser/version and quality/visibility. FUTOI aggregate, LCHI account and Pulse profile must never be presented as one homogeneous “smart money” dataset.

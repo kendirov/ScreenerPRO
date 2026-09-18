@@ -76,8 +76,10 @@ Status legend:
 | behavioral signatures | DERIVED/PARTIAL | descriptive, not motive inference |
 | account-market synchronization | NEXT | entry/fill vs MarketContext |
 | account cohorts | NEXT | style/holding period/instrument/regime clusters |
-| MOEX aggregate OI | PARTIAL/NEXT | public/premium depending field/timeliness |
-| MOEX physical/legal long/short | PAID/NEXT | licensed/premium participant data layer |
+| MOEX aggregate OI | LIVE/PARTIAL | current FORTS snapshots; source/time semantics required |
+| MOEX FUTOI physical/legal long/short | HIST/PARTIAL + LICENSED-REALTIME | public/delayed or visual access may exist; realtime/licensed entitlement kept explicit |
+| LCHI public participant positions/trades | NEXT/PUBLIC | public contest profiles expose participant-level positions/trade evidence; automate discovery with rate limits and provenance |
+| T-Bank Pulse public profiles/trades | NEXT/PUBLIC/PARTIAL | public composition + recent trade timing/price; exact operation quantity hidden to other users |
 | individual broker/client accounts | CONDITIONAL | only user-authorized/public/legal sources |
 
 ## F. Events / news / external context
