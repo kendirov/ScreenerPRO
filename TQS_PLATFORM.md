@@ -33,6 +33,11 @@ Responsibilities: Windows boot autostart, Supervisor-owned backend recovery, ser
 The TQS API remains bound to `127.0.0.1`; Remote Node must not make port 8787 public.
 Canonical technical contract: `tqs-intelligence/REMOTE_NODE.md`.
 
+### TQS Runtime Audit / AI Bridge
+The running node publishes deterministic evidence through `GET /api/audit`. A hidden user-session bridge writes the sanitized audit to Google Drive every two minutes when Drive for desktop is mounted.
+Purpose: give the owner and future ChatGPT sessions a verifiable view of source health, snapshot freshness, MOEX coverage, participant layers, update state, missing data layers and recent errors without exposing the private Tailscale server.
+A ChatGPT session must not claim live-node visibility until it has actually read a fresh Drive audit.
+
 ### TQS Screener / Cockpit
 Trader-facing visual/action layer. The existing ScreenerPRO frontend evolves into this module.
 Responsibilities: market pulse, In Play, universal instrument drill-down, anomalies/episodes, accounts/positions, research/strategy results, briefings and operator actions. It should consume canonical TQS APIs/objects rather than re-implementing collection or research logic.
@@ -251,6 +256,17 @@ Properties:
 - tailnet identity/ACLs are the outer access boundary;
 - Remote Node status is observable through Launcher, `GET /api/node/remote` and the System cockpit;
 - closing Launcher must not stop the server.
+
+### AI OBSERVABILITY BRIDGE
+`TQS /api/audit → hidden owner-session publisher → synced Google Drive → ChatGPT Drive connector`
+
+Properties:
+- outbound/sanitized only;
+- no raw account database, token, cookie or Tailscale credential;
+- current truth file is overwritten every two minutes;
+- hourly checkpoints retain only seven days;
+- if Drive is unavailable, TQS still writes a local audit and reports the bridge as stale/not connected;
+- this bridge is observability, not a second market-data source.
 
 ### FUTURE CLOUD/SYNC BRIDGE
 If a future cloud control/data plane is added, prefer authenticated outbound sync/publish rather than public exposure of the workstation. It is separate from today's private Tailscale Remote Access Bridge. Sync only the data needed for remote views/actions, with explicit freshness and provenance.
