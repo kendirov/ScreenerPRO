@@ -49,6 +49,10 @@ class IntelligenceService:
         self.engine = IntelligenceEngine(); self.state = RuntimeState(); self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock(); self._manual_tasks: set[asyncio.Task] = set(); self._source_status: dict[str, str] = {}
         self._sources_by_provider = {source.provider: source for source in sources}
+        self._moex_task: asyncio.Task | None = None
+        self._moex_cached: list[Anomaly] = []
+        self._moex_feature_last_finished_ms: int | None = None
+        self._moex_feature_last_error: str | None = None
 
     def mode(self) -> str:
         return self.control.get().mode if self.control else 'max'
@@ -75,7 +79,11 @@ class IntelligenceService:
                 "last_refresh_duration_ms":self.state.last_refresh_duration_ms,"refresh_count":self.state.refresh_count,
                 "last_error":self.state.last_error,"refresh_seconds":self.interval_s,"configured_refresh_seconds":base,"last_research_ms":self.state.last_research_ms,
                 "episode_threshold":self.episode_threshold,"mode":mode,
-                "effective_refresh_seconds":None if mode=='stop' else (max(15,base//2) if mode=='max' else max(30,base))}
+                "effective_refresh_seconds":None if mode=='stop' else (max(15,base//2) if mode=='max' else max(30,base)),
+                "moex_features":{"running":bool(self._moex_task and not self._moex_task.done()),
+                                 "cached_anomalies":len(self._moex_cached),
+                                 "last_finished_ms":self._moex_feature_last_finished_ms,
+                                 "last_error":self._moex_feature_last_error}}
 
     async def _fetch_history(self, episode: AnomalyEpisode, quote: Quote) -> int:
         source = self._sources_by_provider.get(episode.provider)
@@ -116,6 +124,28 @@ class IntelligenceService:
         self.store.persist_findings(findings); self.state.last_research_ms=_now_ms()
         self.log("info","research","Автоисследование эпизодов завершено",closed_episodes=len(closed),findings=len(findings),candidates=sum(1 for x in findings if x.status=="candidate"))
 
+    def _consume_moex_features(self) -> None:
+        task = self._moex_task
+        if task is None or not task.done():
+            return
+        self._moex_task = None
+        try:
+            self._moex_cached = list(task.result() or [])
+            self._moex_feature_last_finished_ms = _now_ms()
+            self._moex_feature_last_error = None
+        except Exception as exc:
+            self._moex_feature_last_error = str(exc)[:1000]
+            self.log("warning","moex-features","MOEX feature engine не завершил фоновый цикл",error=self._moex_feature_last_error)
+
+    def _start_moex_features(self, quotes: list[Quote]) -> None:
+        if self.moex_feature_engine is None or self._moex_task is not None:
+            return
+        frozen_quotes = list(quotes)
+        self._moex_task = asyncio.create_task(
+            asyncio.to_thread(self.moex_feature_engine.analyze, frozen_quotes),
+            name="tqs-moex-features-background",
+        )
+
     async def refresh(self, force: bool = False) -> Snapshot | None:
         if not force and self.mode()=='stop':
             return self.state.snapshot
@@ -133,11 +163,9 @@ class IntelligenceService:
                 news=await self.news.collect()
                 anomalies=await asyncio.to_thread(self.engine.analyze, quotes)
                 if self.moex_feature_engine is not None:
-                    try:
-                        moex_anomalies = await asyncio.to_thread(self.moex_feature_engine.analyze, quotes)
-                        anomalies = merge_anomalies(anomalies, moex_anomalies)
-                    except Exception as exc:
-                        self.log("warning", "moex-features", "MOEX feature engine не завершил цикл", error=str(exc)[:500])
+                    self._consume_moex_features()
+                    if self._moex_cached:
+                        anomalies = merge_anomalies(anomalies, self._moex_cached)
                 now=_now_ms(); snapshot=Snapshot(generated_at_ms=now,quotes=quotes,anomalies=anomalies,source_health=health,news=news)
                 await asyncio.to_thread(self.store.persist_snapshot, quotes, anomalies, news)
                 created=await asyncio.to_thread(self.store.update_episodes, anomalies, now, self.episode_threshold, self.episode_close_grace_ms)
@@ -152,6 +180,7 @@ class IntelligenceService:
                 self.state.snapshot=snapshot; self.state.refresh_count=next_count; duration=_now_ms()-started; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=duration
                 online=sum(1 for x in health if x.status in (SourceStatus.OK,SourceStatus.DEGRADED))
                 self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),new_episodes=len(created),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode)
+                self._start_moex_features(quotes)
                 return snapshot
             except Exception as exc:
                 self.state.last_error=str(exc)[:1000]; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=_now_ms()-started

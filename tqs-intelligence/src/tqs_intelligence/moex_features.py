@@ -131,17 +131,36 @@ class MoexFeatureEngine:
         self.last_rows: list[dict[str, Any]] = []
 
     @staticmethod
-    def _candidate_quotes(quotes: list[Quote], limit: int = 900) -> list[Quote]:
+    def _candidate_quotes(quotes: list[Quote], limit: int = 450) -> list[Quote]:
+        """Bound the expensive historical layer to the liquid/active MOEX universe.
+
+        The generic live detector still evaluates every MOEX quote. Historical
+        same-time baselines are intentionally concentrated on liquid futures and
+        the most active cash instruments so a feature refresh completes before
+        the next market cycle.
+        """
         rows = [q for q in quotes if q.provider == "moex" and q.last not in (None, 0)]
-        futures = [q for q in rows if q.market_type == "forts"]
+        futures = sorted(
+            [q for q in rows if q.market_type == "forts"],
+            key=lambda q: (
+                float(q.turnover_24h or 0.0),
+                float(q.volume_24h or 0.0),
+                abs(float(q.open_interest or 0.0)),
+            ),
+            reverse=True,
+        )
         others = sorted(
             [q for q in rows if q.market_type != "forts"],
             key=lambda q: (float(q.turnover_24h or 0.0), float(q.volume_24h or 0.0)),
             reverse=True,
         )
+        futures_budget = min(len(futures), max(100, int(limit * 2 / 3)))
+        ordered = futures[:futures_budget] + others
+        if len(ordered) < limit:
+            ordered.extend(futures[futures_budget:])
         seen: set[str] = set()
         out: list[Quote] = []
-        for q in futures + others:
+        for q in ordered:
             if q.canonical_id in seen:
                 continue
             seen.add(q.canonical_id)
