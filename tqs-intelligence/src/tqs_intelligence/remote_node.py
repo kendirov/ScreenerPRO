@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -135,7 +136,7 @@ def ai_bridge_state(root: Path | None = None) -> dict[str, Any]:
             return {"configured": False}
     except Exception:
         return {"configured": False}
-    now_ms = int(__import__("time").time() * 1000)
+    now_ms = int(time.time() * 1000)
     last = int(payload.get("last_publish_ms") or 0)
     return {
         **payload,
@@ -168,7 +169,7 @@ def repair_server_contract(root: Path | None = None) -> dict[str, Any]:
         return {"needed": True, "ok": False, "reason": "Windows setup script unavailable"}
 
     state_path = data_dir(base) / "server-repair-state.json"
-    started_ms = int(__import__("time").time() * 1000)
+    started_ms = int(time.time() * 1000)
     try:
         flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0))
         proc = subprocess.run(
@@ -195,7 +196,7 @@ def repair_server_contract(root: Path | None = None) -> dict[str, Any]:
             "ok": proc.returncode == 0,
             "returncode": int(proc.returncode),
             "started_at_ms": started_ms,
-            "finished_at_ms": int(__import__("time").time() * 1000),
+            "finished_at_ms": int(time.time() * 1000),
             "stdout": (proc.stdout or "")[-2000:],
             "stderr": (proc.stderr or "")[-2000:],
         }
@@ -204,7 +205,7 @@ def repair_server_contract(root: Path | None = None) -> dict[str, Any]:
             "needed": True,
             "ok": False,
             "started_at_ms": started_ms,
-            "finished_at_ms": int(__import__("time").time() * 1000),
+            "finished_at_ms": int(time.time() * 1000),
             "error": f"{type(exc).__name__}: {exc}",
         }
     try:
