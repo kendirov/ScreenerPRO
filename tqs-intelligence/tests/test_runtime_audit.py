@@ -62,7 +62,14 @@ def test_runtime_audit_proves_declared_layers_without_claiming_everything():
             "participants_with_trades": 10,
         },
         pulse={"profiles_tracked": 0, "profiles_synced": 0, "events": 0},
-        remote={"ready": True, "loopback_only": True, "tailscale_online": True, "serve_configured": True},
+        remote={
+            "ready": True,
+            "loopback_only": True,
+            "tailscale_online": True,
+            "serve_configured": True,
+            "ai_bridge_task": {"installed": True},
+            "ai_bridge": {"fresh": True, "drive_connected": True, "configured": True, "age_s": 30},
+        },
         update={"available": True, "dirty": False, "behind": 0, "ahead": 0, "branch": "integration", "reason": None},
         recent_logs=[],
     )
@@ -88,7 +95,12 @@ def test_runtime_audit_fails_when_live_snapshot_is_missing():
         lab={},
         lchi={},
         pulse={},
-        remote={"ready": True, "loopback_only": True},
+        remote={
+            "ready": True,
+            "loopback_only": True,
+            "ai_bridge_task": {"installed": True},
+            "ai_bridge": {"fresh": True, "drive_connected": True, "configured": True, "age_s": 30},
+        },
         update={"available": True, "dirty": False, "behind": 0, "branch": "integration", "reason": None},
         recent_logs=[Dumpable(level="warning", component="market-data", message="no snapshot")],
     )
