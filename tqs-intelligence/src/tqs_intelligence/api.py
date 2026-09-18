@@ -307,15 +307,16 @@ def overview():
 
 @app.get('/api/system')
 async def system():
-    data_lake, storage_stats, lab_stats, research_status_full, account_status_full = await asyncio.gather(
+    data_lake, storage_stats, lab_stats, research_status_full, account_status_full, remote_status_full = await asyncio.gather(
         asyncio.to_thread(lake.verify),
         asyncio.to_thread(store.stats),
         asyncio.to_thread(lab.stats),
         asyncio.to_thread(research_runtime.status),
         asyncio.to_thread(account_service.status),
+        asyncio.to_thread(remote_node_status),
     )
     return {'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),'research_runtime':research_status_full,
-            'account_intelligence':account_status_full,'control':control.status(),'resources':_resources(),'remote_node':remote_node_status(),
+            'account_intelligence':account_status_full,'control':control.status(),'resources':_resources(),'remote_node':remote_status_full,
             'storage':storage_stats,'lab':lab_stats,'data_lake':data_lake,
             'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
                       'twelve_data_enabled':bool(settings.twelve_data_api_key),'episode_threshold':settings.episode_threshold,
