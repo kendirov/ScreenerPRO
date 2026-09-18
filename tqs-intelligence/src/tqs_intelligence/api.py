@@ -35,6 +35,7 @@ from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
 from .remote_node import remote_node_status, repair_server_contract
+from .resource_monitor import ResourceMonitor
 from .runtime_audit import build_runtime_audit, audit_text
 from .service import IntelligenceService
 from .snapshot_export import SnapshotExporter
@@ -86,7 +87,12 @@ class ControlPatch(BaseModel):
     data_lake_root: str | None = None
     drive_export_root: str | None = None
     auto_update: bool | None = None
-    heavy_workers: int | None = Field(default=None, ge=1, le=16)
+    heavy_workers: int | None = Field(default=None, ge=1, le=4)
+    history_batch_size: int | None = Field(default=None, ge=1, le=16)
+    metric_batch_size: int | None = Field(default=None, ge=1, le=8)
+    refresh_seconds_override: int | None = Field(default=None, ge=0, le=900)
+    cpu_soft_limit_pct: int | None = Field(default=None, ge=50, le=99)
+    ram_soft_limit_pct: int | None = Field(default=None, ge=50, le=99)
 
 
 class IdeaCreate(BaseModel):
@@ -156,6 +162,7 @@ metric_lake = MetricLake(lake.root)
 backfiller = HistoricalBackfiller(http, lake)
 strategy_machine = StrategyMachine()
 research_runtime = ResearchRuntime(control, lab, backfiller, lake, strategy_machine)
+resource_monitor = ResourceMonitor(Path(__file__).resolve().parents[2])
 account_service = AccountIntelligenceService(control, account_store, http, settings.account_refresh_seconds, settings.account_history_days)
 moex_feature_engine = MoexFeatureEngine(store, lchi_store=lchi_store, metric_lake=metric_lake)
 service = IntelligenceService(
@@ -291,6 +298,16 @@ async def health():
 
 @app.get('/api/control')
 def get_control(): return {'control':control.status(),'resources':_resources(),'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'update':updater.status(False)}
+
+@app.get('/api/resources')
+def get_resources():
+    return resource_monitor.snapshot(
+        control=control,
+        research_runtime=research_runtime,
+        service=service,
+        data_root=control.get().data_lake_root,
+    )
+
 
 
 @app.post('/api/control')
