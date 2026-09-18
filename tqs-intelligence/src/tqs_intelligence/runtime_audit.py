@@ -61,13 +61,19 @@ def build_runtime_audit(
 
     sources: list[dict[str, Any]] = []
     source_bad = 0
+    source_degraded = 0
+    source_ok = 0
     for item in source_health:
         try:
             row = item.model_dump(mode="json")
         except Exception:
             row = dict(item) if isinstance(item, dict) else {"value": str(item)}
         status = str(row.get("status") or "").lower()
-        if status not in {"ok", "degraded"}:
+        if status == "ok":
+            source_ok += 1
+        elif status == "degraded":
+            source_degraded += 1
+        else:
             source_bad += 1
         sources.append(row)
 
@@ -145,11 +151,18 @@ def build_runtime_audit(
         f"age={snapshot_age_s if snapshot_age_s is not None else 'none'}s; expected_refresh={refresh_seconds}s; quotes={len(quotes)}",
         evidence={"generated_at_ms": generated_at_ms, "age_s": snapshot_age_s, "quotes": len(quotes)},
     )
+    source_status = (
+        "ok"
+        if sources and source_bad == 0 and source_degraded == 0
+        else "warn"
+        if sources and (source_ok + source_degraded) > 0
+        else "fail"
+    )
     add(
         "source_health",
         "Declared live sources",
-        _status(bool(sources) and source_bad == 0, bool(sources)),
-        f"sources={len(sources)}; non-ok={source_bad}",
+        source_status,
+        f"sources={len(sources)}; ok={source_ok}; degraded={source_degraded}; error/pending={source_bad}",
         evidence={"sources": sources},
     )
     add(
