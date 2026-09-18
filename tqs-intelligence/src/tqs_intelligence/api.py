@@ -691,14 +691,19 @@ def research_runs(project_id:str='',canonical_id:str='',limit:int=Query(300,ge=1
 
 
 @app.post('/api/research/projects/{project_id}/queue')
-def queue_research_project(project_id:str):
+def queue_research_project(project_id:str,canonical_id:str=''):
     project=lab.get_research_project(project_id)
     if project is None: raise HTTPException(404,'research project not found')
+    targets=list(project.instruments)
+    if canonical_id:
+        if canonical_id not in targets:
+            raise HTTPException(400,'canonical_id is not registered in this research project')
+        targets=[canonical_id]
     queued=[]
     existing=set(project.linked_job_ids)
     active={(j.kind,str(j.payload.get('research_project_id')),str(j.payload.get('canonical_id')))
             for j in lab.list_jobs(5000) if j.status in {'queued','running'}}
-    for cid in project.instruments:
+    for cid in targets:
         key=('research_project_run',project.id,cid)
         if key in active:
             continue
