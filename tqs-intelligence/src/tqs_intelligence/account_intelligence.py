@@ -256,20 +256,27 @@ class AccountIntelligenceService:
     async def sync_account(self,source:str,account_id:str)->dict[str,Any]:
         source=source.lower(); account_id=account_id.lower()
         if source!='hyperliquid': raise ValueError(f'unsupported account source: {source}')
-        self.last_action=f'Счёт {account_id[:10]}…: позиции/fills'; last=self.store.last_fill_ts(source,account_id); start=(last+1) if last else _now_ms()-self.history_days*86_400_000
+        self.last_action=f'Счёт {account_id[:10]}…: позиции/fills'
+        last = await asyncio.to_thread(self.store.last_fill_ts, source, account_id)
+        start=(last+1) if last else _now_ms()-self.history_days*86_400_000
         try:
-            positions,fills=await asyncio.gather(self.adapter.positions(account_id),self.adapter.fills(account_id,start)); added=self.store.upsert_fills(fills); npos=self.store.save_positions(positions)
-            self.store.log_sync(source,account_id,'ok',added,npos,''); self.sync_count+=1; self.last_error=None
+            positions,fills=await asyncio.gather(self.adapter.positions(account_id),self.adapter.fills(account_id,start))
+            added = await asyncio.to_thread(self.store.upsert_fills, fills)
+            npos = await asyncio.to_thread(self.store.save_positions, positions)
+            await asyncio.to_thread(self.store.log_sync, source, account_id, 'ok', added, npos, '')
+            self.sync_count+=1; self.last_error=None
             return {'ok':True,'source':source,'account_id':account_id,'fills_added':added,'positions':npos}
         except Exception as exc:
-            self.last_error=str(exc); self.store.log_sync(source,account_id,'error',0,0,str(exc)); raise
+            self.last_error=str(exc)
+            await asyncio.to_thread(self.store.log_sync, source, account_id, 'error', 0, 0, str(exc))
+            raise
     async def _loop(self)->None:
         self.running=True
         try:
             while True:
                 if not self.control.get().live_allowed:
                     self.last_action='Счета/позиции на паузе — STOP'; await asyncio.sleep(2); continue
-                accounts=self.store.list_tracked()
+                accounts=await asyncio.to_thread(self.store.list_tracked)
                 if not accounts:
                     self.last_action='Авторазведка формирует первый hot-set публичных счетов'; await asyncio.sleep(5); continue
                 for item in accounts:
