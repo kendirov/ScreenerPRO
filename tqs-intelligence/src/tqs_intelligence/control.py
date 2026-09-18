@@ -17,6 +17,11 @@ class ControlState:
     drive_export_root: str = ''
     auto_update: bool = True
     heavy_workers: int = 2
+    history_batch_size: int = 4
+    metric_batch_size: int = 2
+    refresh_seconds_override: int = 0
+    cpu_soft_limit_pct: int = 90
+    ram_soft_limit_pct: int = 92
     changed_by: str = 'default'
 
     @property
@@ -42,6 +47,11 @@ class ControlCenter:
             drive_export_root=os.getenv('TQS_DRIVE_EXPORT_ROOT', ''),
             auto_update=os.getenv('TQS_AUTO_UPDATE', 'true').lower() in {'1','true','yes','on'},
             heavy_workers=max(1, int(os.getenv('TQS_HEAVY_WORKERS', '2'))),
+            history_batch_size=max(1, int(os.getenv('TQS_HISTORY_BATCH_SIZE', '4'))),
+            metric_batch_size=max(1, int(os.getenv('TQS_METRIC_BATCH_SIZE', '2'))),
+            refresh_seconds_override=max(0, int(os.getenv('TQS_REFRESH_SECONDS_OVERRIDE', '0'))),
+            cpu_soft_limit_pct=max(50, min(99, int(os.getenv('TQS_CPU_SOFT_LIMIT_PCT', '90')))),
+            ram_soft_limit_pct=max(50, min(99, int(os.getenv('TQS_RAM_SOFT_LIMIT_PCT', '92')))),
         )
 
     def _sync_mtime(self) -> None:
@@ -58,7 +68,12 @@ class ControlCenter:
             data = asdict(base); data.update({k: v for k, v in raw.items() if k in data})
             state = ControlState(**data)
             if state.mode not in VALID_MODES: state.mode = 'light'
-            state.heavy_workers = max(1, min(int(state.heavy_workers), 16))
+            state.heavy_workers = max(1, min(int(state.heavy_workers), 4))
+            state.history_batch_size = max(1, min(int(state.history_batch_size), 16))
+            state.metric_batch_size = max(1, min(int(state.metric_batch_size), 8))
+            state.refresh_seconds_override = max(0, min(int(state.refresh_seconds_override), 900))
+            state.cpu_soft_limit_pct = max(50, min(int(state.cpu_soft_limit_pct), 99))
+            state.ram_soft_limit_pct = max(50, min(int(state.ram_soft_limit_pct), 99))
             return state
         except Exception:
             return base
@@ -81,7 +96,12 @@ class ControlCenter:
                 if key in data and value is not None: data[key] = value
             state = ControlState(**data); state.mode = str(state.mode).lower()
             if state.mode not in VALID_MODES: raise ValueError(f'unsupported mode: {state.mode}')
-            state.heavy_workers = max(1, min(int(state.heavy_workers), 16))
+            state.heavy_workers = max(1, min(int(state.heavy_workers), 4))
+            state.history_batch_size = max(1, min(int(state.history_batch_size), 16))
+            state.metric_batch_size = max(1, min(int(state.metric_batch_size), 8))
+            state.refresh_seconds_override = max(0, min(int(state.refresh_seconds_override), 900))
+            state.cpu_soft_limit_pct = max(50, min(int(state.cpu_soft_limit_pct), 99))
+            state.ram_soft_limit_pct = max(50, min(int(state.ram_soft_limit_pct), 99))
             Path(state.data_lake_root).expanduser().mkdir(parents=True, exist_ok=True)
             if state.drive_export_root: Path(state.drive_export_root).expanduser().mkdir(parents=True, exist_ok=True)
             self._state = state
