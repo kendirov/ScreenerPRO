@@ -53,6 +53,8 @@ class TQSLauncher:
         self._health_last_probe_s = 0.0
         self._health_error = ""
         self._health_lock = threading.RLock()
+        self._owner_summary: dict[str, Any] = {}
+        self._owner_summary_last_s = 0.0
 
         self.root = tk.Tk()
         self.root.title("TQS Launcher")
@@ -189,8 +191,20 @@ class TQSLauncher:
                 f"АВТОИСТОРИЯ: готово {ah.get('done', 0)}/{ah.get('target_total', 0)} · осталось {ah.get('remaining', 0)}",
                 f"АВТОМЕТРИКИ: готово {am.get('done', 0)}/{am.get('target_total', 0)} · осталось {am.get('remaining', 0)}",
                 f"ПУБЛИЧНЫЕ СЧЕТА: найдено {discovery.get('discovered_accounts', 0)} · hot {ai.get('tracked_accounts', 0)} · позиций {ai.get('open_positions', 0)} · fills {ai.get('fills', 0)}",
-                "",
             ]
+            day = self._owner_summary or {}
+            if day:
+                st = day.get("status") or {}
+                summary += [
+                    "",
+                    f"ЗА 24 ЧАСА: jobs {day.get('jobs_touched', 0)} · готово {st.get('done', 0)} · в работе/очереди {day.get('unfinished', 0)} · ошибок {day.get('failed', 0)}",
+                    f"ДАННЫЕ +24Ч: свечей {day.get('candles_added', 0):,} · metric points {day.get('metric_points_added', 0):,}",
+                    f"ИССЛЕДОВАНИЯ +24Ч: replay {day.get('replay_runs_done', 0)} · strategy runs {day.get('strategy_runs_done', 0)}",
+                ]
+                errors = day.get("recent_errors") or []
+                if errors:
+                    summary.append(f"ПОСЛЕДНЯЯ ОШИБКА: {errors[0].get('title_ru') or errors[0].get('id')} · {errors[0].get('error') or ''}")
+            summary.append("")
             lines = summary + lines
         elif hs.get("processes_alive"):
             age = hs.get("last_ok_age_s")
@@ -253,7 +267,16 @@ class TQSLauncher:
 
     def _health_loop(self) -> None:
         while True:
-            self._probe_health()
+            health = self._probe_health()
+            now = time.time()
+            if health is not None and now - self._owner_summary_last_s >= 15:
+                try:
+                    summary = self._api("/api/activity-summary?hours=24", timeout=2)
+                    if isinstance(summary, dict):
+                        self._owner_summary = summary
+                        self._owner_summary_last_s = now
+                except Exception:
+                    pass
             time.sleep(1.5)
 
     def health(self, max_age_s: float = 12.0) -> dict[str, Any] | None:
@@ -344,6 +367,9 @@ class TQSLauncher:
             f"Working tree: {'DIRTY' if g.get('dirty') else 'clean'}",
             f"Health: {'ONLINE' if hs.get('payload') else 'BUSY/UNAVAILABLE' if hs.get('processes_alive') else 'OFFLINE'} · last OK age {hs.get('last_ok_age_s')}s · processes {hs.get('process_count')}",
             f"Health error: {hs.get('error') or '—'}",
+            "",
+            "=== OWNER SUMMARY 24H ===",
+            json.dumps(self._owner_summary or {}, ensure_ascii=False, indent=2, default=str),
             "",
             "=== HEALTH / RUNTIME SUMMARY ===",
             json.dumps({
