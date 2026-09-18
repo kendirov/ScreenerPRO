@@ -10,7 +10,6 @@ $LocalDir = Join-Path $DataDir "ai-bridge"
 $StatePath = Join-Path $DataDir "ai-bridge-state.json"
 $NodeConfigPath = Join-Path $DataDir "server-node.json"
 $AuditUrl = "http://127.0.0.1:8787/api/audit"
-$AuditTextUrl = "http://127.0.0.1:8787/api/audit/text"
 
 New-Item -ItemType Directory -Force -Path $LocalDir | Out-Null
 
@@ -127,8 +126,21 @@ function Publish-Audit {
 
     try {
         $audit = Invoke-RestMethod -Uri $AuditUrl -Method Get -TimeoutSec 25
-        $textPayload = Invoke-RestMethod -Uri $AuditTextUrl -Method Get -TimeoutSec 25
-        $text = [string]($textPayload.text)
+        $textLines = @(
+            "TQS LIVE AUDIT",
+            "generated_at_ms: $($audit.generated_at_ms)",
+            "version: $($audit.version)",
+            "overall: $($audit.overall)",
+            "",
+            "CHECKS"
+        )
+        foreach ($check in @($audit.checks)) {
+            $textLines += "[$(([string]$check.status).ToUpper())] $($check.title): $($check.detail)"
+        }
+        $textLines += ""
+        $textLines += "AI NOTE"
+        $textLines += [string]$audit.scope_note_ru
+        $text = ($textLines -join [Environment]::NewLine) + [Environment]::NewLine
 
         $state.audit_overall = [string]$audit.overall
         $state.version = [string]$audit.version
