@@ -137,49 +137,55 @@ class DuckStore:
         qualifying = [a for a in anomalies if a.score >= threshold]
         created: list[AnomalyEpisode] = []
         with self._lock:
-            rows = self._con.execute("select * from anomaly_episodes where status = 'active'").fetchall()
-            active = {str(row[1]): self._episode_from_row(row) for row in rows}
-            seen: set[str] = set()
-            for anomaly in qualifying:
-                seen.add(anomaly.canonical_id)
-                current = active.get(anomaly.canonical_id)
-                pattern_key = self._pattern_key(anomaly)
-                signals_json = json.dumps(anomaly.signals, ensure_ascii=False)
-                reasons_json = json.dumps(anomaly.reasons, ensure_ascii=False)
-                price = anomaly.quote.last
-                if current is None:
-                    item = AnomalyEpisode(
-                        id=f"A-{uuid4().hex[:12].upper()}", canonical_id=anomaly.canonical_id,
-                        provider=anomaly.provider, symbol=anomaly.symbol, asset_class=anomaly.asset_class,
-                        market_type=anomaly.market_type, opened_at_ms=now_ms, last_seen_ms=now_ms,
-                        first_score=anomaly.score, peak_score=anomaly.score, last_score=anomaly.score,
-                        trigger_price=price, last_price=price, direction=anomaly.state.direction,
-                        pattern_key=pattern_key, signals=anomaly.signals, reasons=anomaly.reasons, hits=1,
-                    )
-                    self._con.execute(
-                        "insert into anomaly_episodes values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        [item.id, item.canonical_id, item.provider, item.symbol, item.asset_class.value, item.market_type,
-                         item.opened_at_ms, item.last_seen_ms, None, item.status, item.first_score, item.peak_score,
-                         item.last_score, item.trigger_price, item.last_price, item.direction, item.pattern_key,
-                         signals_json, reasons_json, item.hits],
-                    )
-                    created.append(item)
-                    active[item.canonical_id] = item
-                else:
-                    peak = max(current.peak_score, anomaly.score)
-                    self._con.execute(
-                        """update anomaly_episodes set last_seen_ms=?, peak_score=?, last_score=?, last_price=?,
-                           direction=?, pattern_key=?, signals_json=?, reasons_json=?, hits=hits+1 where id=?""",
-                        [now_ms, peak, anomaly.score, price, anomaly.state.direction, pattern_key,
-                         signals_json, reasons_json, current.id],
-                    )
-            stale_before = now_ms - close_after_ms
-            for canonical_id, current in active.items():
-                if canonical_id not in seen and current.last_seen_ms <= stale_before:
-                    self._con.execute(
-                        "update anomaly_episodes set status='closed', closed_at_ms=? where id=?",
-                        [current.last_seen_ms, current.id],
-                    )
+            self._con.execute("begin transaction")
+            try:
+                rows = self._con.execute("select * from anomaly_episodes where status = 'active'").fetchall()
+                active = {str(row[1]): self._episode_from_row(row) for row in rows}
+                seen: set[str] = set()
+                for anomaly in qualifying:
+                    seen.add(anomaly.canonical_id)
+                    current = active.get(anomaly.canonical_id)
+                    pattern_key = self._pattern_key(anomaly)
+                    signals_json = json.dumps(anomaly.signals, ensure_ascii=False)
+                    reasons_json = json.dumps(anomaly.reasons, ensure_ascii=False)
+                    price = anomaly.quote.last
+                    if current is None:
+                        item = AnomalyEpisode(
+                            id=f"A-{uuid4().hex[:12].upper()}", canonical_id=anomaly.canonical_id,
+                            provider=anomaly.provider, symbol=anomaly.symbol, asset_class=anomaly.asset_class,
+                            market_type=anomaly.market_type, opened_at_ms=now_ms, last_seen_ms=now_ms,
+                            first_score=anomaly.score, peak_score=anomaly.score, last_score=anomaly.score,
+                            trigger_price=price, last_price=price, direction=anomaly.state.direction,
+                            pattern_key=pattern_key, signals=anomaly.signals, reasons=anomaly.reasons, hits=1,
+                        )
+                        self._con.execute(
+                            "insert into anomaly_episodes values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            [item.id, item.canonical_id, item.provider, item.symbol, item.asset_class.value, item.market_type,
+                             item.opened_at_ms, item.last_seen_ms, None, item.status, item.first_score, item.peak_score,
+                             item.last_score, item.trigger_price, item.last_price, item.direction, item.pattern_key,
+                             signals_json, reasons_json, item.hits],
+                        )
+                        created.append(item)
+                        active[item.canonical_id] = item
+                    else:
+                        peak = max(current.peak_score, anomaly.score)
+                        self._con.execute(
+                            """update anomaly_episodes set last_seen_ms=?, peak_score=?, last_score=?, last_price=?,
+                               direction=?, pattern_key=?, signals_json=?, reasons_json=?, hits=hits+1 where id=?""",
+                            [now_ms, peak, anomaly.score, price, anomaly.state.direction, pattern_key,
+                             signals_json, reasons_json, current.id],
+                        )
+                stale_before = now_ms - close_after_ms
+                for canonical_id, current in active.items():
+                    if canonical_id not in seen and current.last_seen_ms <= stale_before:
+                        self._con.execute(
+                            "update anomaly_episodes set status='closed', closed_at_ms=? where id=?",
+                            [current.last_seen_ms, current.id],
+                        )
+                self._con.execute("commit")
+            except Exception:
+                self._con.execute("rollback")
+                raise
         return created
 
     def list_episodes(self, limit: int = 200, status: str = "", provider: str = "", q: str = "") -> list[AnomalyEpisode]:
