@@ -16,6 +16,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .remote_node import remote_node_status, request_server_task_start, server_mode_enabled, stop_marker_path
+from .update_manager import UpdateManager
 
 BG = "#090c0f"
 PANEL = "#10151a"
@@ -309,7 +310,20 @@ class TQSLauncher:
                 _, counts = self._run_git("rev-list", "--left-right", "--count", f"HEAD...{remote_ref}"); parts = counts.split()
                 if len(parts) >= 2: ahead, behind = int(parts[0]), int(parts[1])
             else: remote_head = ""
-        return {"branch": branch, "head": head, "remote_head": remote_head.strip(), "ahead": ahead, "behind": behind, "dirty": dirty, "dirty_paths": dirty_paths}
+        safe_generated = [x for x in dirty_paths if UpdateManager._safe_generated_untracked(x)]
+        blocking_dirty = [x for x in dirty_paths if not UpdateManager._safe_generated_untracked(x)]
+        return {
+            "branch": branch,
+            "head": head,
+            "remote_head": remote_head.strip(),
+            "ahead": ahead,
+            "behind": behind,
+            "dirty": dirty,
+            "dirty_paths": dirty_paths,
+            "safe_generated_dirty": safe_generated,
+            "blocking_dirty_paths": blocking_dirty,
+            "safe_generated_only": bool(dirty_paths) and not blocking_dirty,
+        }
 
     def _api(self, path: str, method: str = "GET", payload: dict[str, Any] | None = None, timeout: int = 3) -> Any:
         data = None; headers = {}
@@ -456,9 +470,12 @@ class TQSLauncher:
             self.remote_detail.configure(text="Один раз нажми «Настроить сервер»: автозапуск + приватный доступ с Mac + автообновления")
 
         if g.get("error"): self._set_banner("Не удалось определить локальную версию", MUTED, g["error"])
-        elif g.get("dirty"):
-            paths = ", ".join(str(x.get("path") or "") for x in (g.get("dirty_paths") or [])[:3])
+        elif g.get("blocking_dirty_paths"):
+            paths = ", ".join(str(x.get("path") or "") for x in (g.get("blocking_dirty_paths") or [])[:3])
             self._set_banner("Локальные изменения — автообновление заблокировано", AMBER, f"{paths or 'см. диагностику'}")
+        elif g.get("safe_generated_only"):
+            paths = ", ".join(str(x.get("path") or "") for x in (g.get("safe_generated_dirty") or [])[:2])
+            self._set_banner("Служебные локальные файлы — update разрешён", AMBER, paths or "generated artifacts")
         elif self._git_fetch_error: self._set_banner("GitHub временно недоступен", MUTED, f"LOCAL v{version} · commit {local} · TQS продолжает работать")
         elif self._git_verified and g.get("behind", 0) > 0: self._set_banner("ЕСТЬ ОБНОВЛЕНИЕ", AMBER, f"LOCAL {local} → REMOTE {remote} · +{g['behind']} commit")
         elif self._git_verified and remote != "—" and local == remote: self._set_banner("АКТУАЛЬНАЯ ВЕРСИЯ", GREEN, f"v{version} · commit {local} · проверено по GitHub")
@@ -683,7 +700,11 @@ class TQSLauncher:
             self._git_fetch_error = "GitHub/VPN не ответил вовремя"
             raise RuntimeError("GitHub/VPN не ответил при проверке обновления. TQS не остановлен; повтори позже.") from exc
         self._git_cache = g; self._git_verified = True; self._git_fetch_error = ""
-        if g["dirty"]: raise RuntimeError("Есть незакоммиченные локальные изменения. Обновление остановлено для защиты файлов.")
+        if g.get("blocking_dirty_paths"):
+            paths = ", ".join(str(x.get("path") or "") for x in g.get("blocking_dirty_paths", [])[:6])
+            raise RuntimeError(f"Есть реальные локальные изменения: {paths}. Обновление остановлено для защиты файлов.")
+        if g.get("safe_generated_only"):
+            self._event("Git: только служебные untracked-файлы — обновление разрешено")
         if g["behind"] <= 0: self._event("Обновление не требуется — локальный commit последний"); return
         if server_mode_enabled(self.root_dir):
             self._event(f"SERVER UPDATE: ставлю {g['head'][:8]} → {g['remote_head'][:8]} через supervisor без остановки server task…")
