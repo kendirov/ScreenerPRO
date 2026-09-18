@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     drive_export_root: str = ''
     mode: str = 'light'
     heavy_workers: int = 2
+    history_batch_size: int = 4
+    metric_batch_size: int = 2
+    refresh_seconds_override: int = 0
+    cpu_soft_limit_pct: int = 90
+    ram_soft_limit_pct: int = 92
     auto_update: bool = True
     refresh_seconds: int = 60
     enable_binance: bool = True
@@ -135,9 +140,19 @@ settings = Settings()
 control_path = Path(settings.control_path)
 control = ControlCenter(settings.control_path)
 if not control_path.exists():
-    control.update(mode=settings.mode, data_lake_root=settings.data_lake_root,
-                   drive_export_root=settings.drive_export_root, auto_update=settings.auto_update,
-                   heavy_workers=settings.heavy_workers, changed_by='env')
+    control.update(
+        mode=settings.mode,
+        data_lake_root=settings.data_lake_root,
+        drive_export_root=settings.drive_export_root,
+        auto_update=settings.auto_update,
+        heavy_workers=settings.heavy_workers,
+        history_batch_size=settings.history_batch_size,
+        metric_batch_size=settings.metric_batch_size,
+        refresh_seconds_override=settings.refresh_seconds_override,
+        cpu_soft_limit_pct=settings.cpu_soft_limit_pct,
+        ram_soft_limit_pct=settings.ram_soft_limit_pct,
+        changed_by='env',
+    )
 
 http = JsonHttp(); sources = []
 if settings.enable_bitget: sources.append(BitgetSource(http))
