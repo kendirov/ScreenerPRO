@@ -379,7 +379,9 @@ async def news_items(limit:int=Query(100,ge=1,le=500),symbol:str=''):
 
 @app.get('/api/relationships')
 async def relationships(limit:int=Query(50,ge=1,le=500),min_samples:int=Query(20,ge=5,le=1000)):
-    return [x.model_dump(mode='json') for x in mine_relationships(store.price_series(),min_samples=min_samples)[:limit]]
+    def build_relationships():
+        return [x.model_dump(mode='json') for x in mine_relationships(store.price_series(),min_samples=min_samples)[:limit]]
+    return await asyncio.to_thread(build_relationships)
 
 
 @app.get('/api/logs')
@@ -535,7 +537,9 @@ async def verify_data_lake(): return lab.enqueue_job('verify_lake','Провер
 
 
 @app.get('/api/briefing')
-async def briefing(): return briefing_builder.build(_snapshot())
+async def briefing():
+    snapshot = _snapshot()
+    return await asyncio.to_thread(briefing_builder.build, snapshot)
 
 
 @app.post('/api/export/snapshot')

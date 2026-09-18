@@ -117,12 +117,15 @@ class ResearchRuntime:
             await progress(1,f'Historical Replay завершён: {cid} / {result.get("status")}')
             return result
         if job.kind=='verify_lake':
-            await progress(.5,'Проверка Parquet Data Lake'); result=self.lake.verify(); await progress(1,'Data Lake проверен'); return result
+            await progress(.5,'Проверка Parquet Data Lake')
+            result=await asyncio.to_thread(self.lake.verify)
+            await progress(1,'Data Lake проверен')
+            return result
         if job.kind=='strategy_run':
             strategy_id=str(job.payload['strategy_id']); canonical_id=str(job.payload['canonical_id']); spec=self.lab.get_strategy(strategy_id)
             if spec is None: raise KeyError(f'strategy {strategy_id} not found')
             await progress(.1,f'Загрузка истории {canonical_id}')
-            frame=self.lake.read_candles(canonical_id,spec.interval)
+            frame=await asyncio.to_thread(self.lake.read_candles,canonical_id,spec.interval)
             await progress(.35,f'Поиск событий, параметров и controls: {canonical_id}')
             if str(spec.event.get('type'))=='buy_dip_grid': result=await asyncio.to_thread(run_buy_dip_grid,spec,canonical_id,frame)
             else: result=await asyncio.to_thread(self.machine.run,spec,canonical_id,frame)
