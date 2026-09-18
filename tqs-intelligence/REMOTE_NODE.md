@@ -206,3 +206,43 @@ Tailscale's current documented Windows behavior supports:
 - HTTPS termination by the Tailscale daemon.
 
 If Tailscale changes its CLI contract, update `setup-server-windows.ps1` and this document together.
+
+
+## v0.12: ChatGPT Runtime Audit Bridge
+
+The private Tailscale URL is intentionally not reachable from generic ChatGPT cloud tools. v0.12 therefore adds a second, outbound observability path that does not expose the TQS server.
+
+### Runtime audit
+
+`GET /api/audit` is the canonical machine-readable self-check.
+
+It verifies current runtime/source/data/update evidence and explicitly labels missing/partial layers. A green server URL is not sufficient proof that market data is fresh; the audit is the acceptance surface.
+
+### Google Drive AI Bridge
+
+`ai-bridge-windows.ps1` runs as the owner user after Windows logon and polls the local audit endpoint every two minutes. It attempts to find the synced Drive path:
+
+`Trading QS / 08_АВТОМАТИЗАЦИЯ И ПРОДУКТ / 03_TQS REMOTE NODE / RUNTIME — TQS AI BRIDGE`
+
+Published files:
+- `TQS_LIVE_AUDIT.json` — current structured truth packet;
+- `TQS_LIVE_AUDIT.txt` — compact human-readable version;
+- `history/TQS-AUDIT-YYYYMMDD-HH.json` — one hourly checkpoint, retained for seven days.
+
+This is deliberately sanitized. Do not add raw private account databases, tokens, cookies or Tailscale credentials to the bridge.
+
+### Tasks
+
+After setup schema v2:
+- **TQS Intelligence Server** runs as SYSTEM at Windows startup.
+- **TQS AI Bridge** runs as the owner account at Windows logon.
+
+The backend performs a best-effort post-update repair when it detects an older server setup schema. This allows an already configured v0.11 node to gain the v0.12 AI Bridge without requiring the owner to manually rebuild the server task.
+
+### No-console contract
+
+Recurring Git, Tailscale, schtasks and update probes must use hidden Windows subprocess flags. Terminal windows may appear only for explicit one-time interactive setup/UAC flows, not for periodic monitoring.
+
+### Acceptance for AI-assisted operation
+
+Another ChatGPT session may claim it can inspect the node only after it has successfully read a fresh `TQS_LIVE_AUDIT.json` from Google Drive. Until then, GitHub proves code state and the private Mac browser proves Tailscale access, but ChatGPT does not have direct live-node visibility.
