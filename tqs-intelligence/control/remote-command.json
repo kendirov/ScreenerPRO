@@ -1,10 +1,18 @@
 {
   "schema_version": 1,
-  "command_id": "bootstrap-noop",
-  "issued_at_ms": 0,
-  "expires_at_ms": 0,
+  "command_id": "chatgpt-20260918-1054-stabilize-1",
+  "issued_at_ms": 1789728840000,
+  "expires_at_ms": 1789732440000,
   "requested_by": "chatgpt",
-  "action": "noop",
-  "params": {},
-  "note": "TQS AI control branch. Never store secrets here. Allowed actions are set_control, refresh_market, request_update and noop."
+  "action": "set_control",
+  "params": {
+    "mode": "light",
+    "heavy_workers": 1,
+    "history_batch_size": 1,
+    "metric_batch_size": 1,
+    "refresh_seconds_override": 300,
+    "cpu_soft_limit_pct": 70,
+    "ram_soft_limit_pct": 82
+  },
+  "note": "Temporary stabilization policy while diagnosing high RAM and dirty worktree."
 }
