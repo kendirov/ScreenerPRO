@@ -279,54 +279,102 @@ class MoexFeatureEngine:
                 values.append(abs(change))
         return values
 
-    def _lchi_flow(self, symbol: str, now_ms: int) -> dict[str, Any]:
-        if self.lchi_store is None:
+    @staticmethod
+    def _empty_lchi_bucket() -> dict[str, Any]:
+        return {"changed": set(), "long_inc": set(), "short_inc": set(), "delta": 0.0, "events": 0}
+
+    @staticmethod
+    def _add_lchi_event(bucket: dict[str, Any], row: Any) -> None:
+        event_type = str(row[1] or "")
+        prev = float(row[2] or 0.0)
+        cur = float(row[3] or 0.0)
+        delta = float(row[4] or 0.0)
+        uid = str(row[5] or "")
+        if uid:
+            bucket["changed"].add(uid)
+        bucket["delta"] += delta
+        bucket["events"] += 1
+        if uid and cur > 0 and (prev <= 0 or cur > prev):
+            bucket["long_inc"].add(uid)
+        if uid and cur < 0 and (prev >= 0 or cur < prev):
+            bucket["short_inc"].add(uid)
+        if uid and event_type == "flipped":
+            (bucket["long_inc"] if cur > 0 else bucket["short_inc"]).add(uid)
+
+    @staticmethod
+    def _finish_lchi_bucket(bucket: dict[str, Any] | None, since_ms: int) -> dict[str, Any]:
+        if not bucket:
             return {}
+        return {
+            "changed_accounts": len(bucket["changed"]),
+            "long_increase_accounts": len(bucket["long_inc"]),
+            "short_increase_accounts": len(bucket["short_inc"]),
+            "net_delta_qty": float(bucket["delta"]),
+            "events": int(bucket["events"]),
+            "since_ms": since_ms,
+            "evidence_time": "TQS observation time; not exact trade time",
+        }
+
+    def _lchi_flows(self, symbols: list[str], now_ms: int) -> dict[str, dict[str, Any]]:
+        """Load the last hour of LCHI events once and fan them out in memory.
+
+        The old path executed one SQLite query per MOEX candidate. With hundreds
+        of candidates this became the dominant refresh cost and contended with
+        the public LCHI collector. One bounded query preserves the same
+        exact-symbol + root-family semantics without the N+1 query pattern.
+        """
+        if self.lchi_store is None or not symbols:
+            return {}
+        since_ms = now_ms - 60 * MINUTE_MS
+        wanted = {str(symbol or "").upper().strip() for symbol in symbols if str(symbol or "").strip()}
+        roots = {symbol.split("-")[0] for symbol in wanted}
         try:
-            if hasattr(self.lchi_store, "symbol_flow"):
-                return dict(self.lchi_store.symbol_flow(symbol, since_ms=now_ms - 60 * MINUTE_MS) or {})
-            needle = str(symbol or "").upper().strip()
-            root = needle.split("-")[0]
-            since_ms = now_ms - 60 * MINUTE_MS
             with self.lchi_store._lock:
                 rows = self.lchi_store._con.execute(
-                    """select event_type, previous_qty, current_qty, delta_qty, user_id
+                    """select upper(seccode), event_type, previous_qty, current_qty, delta_qty, user_id
                        from lchi_position_events
-                       where ts_ms>=? and (upper(seccode)=? or upper(seccode) like ?)
+                       where ts_ms>=?
                        order by ts_ms desc""",
-                    [since_ms, needle, root + "-%"],
+                    [since_ms],
                 ).fetchall()
-            changed = set()
-            long_inc = set()
-            short_inc = set()
-            delta = 0.0
-            for row in rows:
-                event_type = str(row[0] or "")
-                prev = float(row[1] or 0.0)
-                cur = float(row[2] or 0.0)
-                d = float(row[3] or 0.0)
-                uid = str(row[4] or "")
-                if uid:
-                    changed.add(uid)
-                delta += d
-                # Count accounts that materially increased directional exposure.
-                if cur > 0 and (prev <= 0 or cur > prev):
-                    long_inc.add(uid)
-                if cur < 0 and (prev >= 0 or cur < prev):
-                    short_inc.add(uid)
-                if event_type == "flipped":
-                    (long_inc if cur > 0 else short_inc).add(uid)
-            return {
-                "changed_accounts": len(changed),
-                "long_increase_accounts": len(long_inc),
-                "short_increase_accounts": len(short_inc),
-                "net_delta_qty": delta,
-                "events": len(rows),
-                "since_ms": since_ms,
-                "evidence_time": "TQS observation time; not exact trade time",
-            }
         except Exception:
             return {}
+
+        exact: dict[str, dict[str, Any]] = {}
+        families: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            code = str(row[0] or "").upper().strip()
+            if not code:
+                continue
+            if code in wanted:
+                bucket = exact.setdefault(code, self._empty_lchi_bucket())
+                self._add_lchi_event(bucket, row)
+            if "-" in code:
+                root = code.split("-", 1)[0]
+                if root in roots:
+                    bucket = families.setdefault(root, self._empty_lchi_bucket())
+                    self._add_lchi_event(bucket, row)
+
+        result: dict[str, dict[str, Any]] = {}
+        for symbol in wanted:
+            root = symbol.split("-", 1)[0]
+            if "-" in symbol:
+                result[symbol] = self._finish_lchi_bucket(families.get(root), since_ms)
+                continue
+            direct = exact.get(symbol)
+            family = families.get(root)
+            if direct and family:
+                merged = self._empty_lchi_bucket()
+                for source in (direct, family):
+                    merged["changed"].update(source["changed"])
+                    merged["long_inc"].update(source["long_inc"])
+                    merged["short_inc"].update(source["short_inc"])
+                    merged["delta"] += source["delta"]
+                    merged["events"] += source["events"]
+                result[symbol] = self._finish_lchi_bucket(merged, since_ms)
+            else:
+                result[symbol] = self._finish_lchi_bucket(direct or family, since_ms)
+        return result
 
     def _futoi_context(self, quote: Quote) -> dict[str, Any]:
         if self.metric_lake is None or quote.market_type != "forts":
@@ -359,6 +407,7 @@ class MoexFeatureEngine:
         ids = [q.canonical_id for q in candidates]
         baselines = self._same_time_baselines(ids, now_ms)
         recent = self._recent_history(ids, now_ms)
+        lchi_flows = self._lchi_flows([q.symbol for q in candidates], now_ms)
         anomalies: list[Anomaly] = []
         rows_out: list[dict[str, Any]] = []
 
@@ -392,7 +441,7 @@ class MoexFeatureEngine:
             spread_median = _median(spread_history)
             spread_ratio = _ratio(q.spread_bps, spread_median)
 
-            lchi = self._lchi_flow(q.symbol, now_ms)
+            lchi = lchi_flows.get(str(q.symbol or "").upper().strip(), {})
             futoi = self._futoi_context(q)
 
             score = 0.0

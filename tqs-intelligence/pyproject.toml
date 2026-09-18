@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tqs-intelligence"
-version = "0.13.7"
+version = "0.13.8"
 description = "TQS Platform local intelligence: instrument-first trader cockpit, multi-market collection, Metric Lake, account/position intelligence, research/strategy machine and Windows launcher."
 requires-python = ">=3.12"
 dependencies = [

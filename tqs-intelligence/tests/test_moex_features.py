@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tqs_intelligence.lchi_public import LchiPublicStore
 from tqs_intelligence.models import AssetClass, Quote
 from tqs_intelligence.moex_features import DAY_MS, MoexFeatureEngine
 from tqs_intelligence.storage import DuckStore
@@ -66,3 +67,26 @@ def test_quiet_moex_instrument_is_not_promoted(tmp_path):
     engine = MoexFeatureEngine(store)
     anomalies = engine.analyze([quote(now, turnover=105, volume=105, trades=105, price=100.02)])
     assert anomalies == []
+
+
+def test_lchi_flow_is_batched_and_preserves_root_family_semantics(tmp_path):
+    lchi = LchiPublicStore(str(tmp_path / "lchi.sqlite3"))
+    now = 1_800_000_000_000
+    rows = [
+        ("e1", "u1", now - 1_000, "SBER", "stock", "increased", 10, 20, 10, 100, "x", "public_account"),
+        ("e2", "u2", now - 2_000, "RI-9.26", "forts", "opened", 0, 3, 3, 100, "x", "public_account"),
+        ("e3", "u3", now - 3_000, "RI-12.26", "forts", "opened", 0, -2, -2, 100, "x", "public_account"),
+    ]
+    with lchi._lock:
+        lchi._con.executemany("insert into lchi_position_events values(?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+        lchi._con.commit()
+
+    engine = MoexFeatureEngine(None, lchi_store=lchi)
+    flows = engine._lchi_flows(["SBER", "RI-9.26"], now)
+
+    assert flows["SBER"]["events"] == 1
+    assert flows["SBER"]["changed_accounts"] == 1
+    assert flows["RI-9.26"]["events"] == 2
+    assert flows["RI-9.26"]["changed_accounts"] == 2
+    assert flows["RI-9.26"]["long_increase_accounts"] == 1
+    assert flows["RI-9.26"]["short_increase_accounts"] == 1

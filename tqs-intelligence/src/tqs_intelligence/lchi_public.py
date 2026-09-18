@@ -442,6 +442,7 @@ class LchiPublicService:
         self.catalog_cycles = 0
         self.portfolio_cycles = 0
         self._stats_cache = store.stats()
+        self._deals_stats_cache = deals_collector.stats() if deals_collector is not None else {}
 
     @property
     def results_url(self) -> str:
@@ -523,7 +524,8 @@ class LchiPublicService:
                     await self._portfolio_batch(portfolio_limit)
                     if state.mode == "max" and self.deals_collector is not None:
                         await self.deals_collector.sync_batch(1)
-                    self._stats_cache = self.store.stats()
+                        self._deals_stats_cache = await asyncio.to_thread(self.deals_collector.stats)
+                    self._stats_cache = await asyncio.to_thread(self.store.stats)
                     self.last_action = (
                         f"ЛЧИ: найдено {self._stats_cache['participants_discovered']:,} участников · "
                         f"портфели {self._stats_cache['participants_with_portfolio']:,}"
@@ -539,7 +541,7 @@ class LchiPublicService:
 
     def quick_status(self) -> dict[str, Any]:
         total = self.catalog_pages_total * PAGE_SIZE if self.catalog_pages_total else None
-        deals = self.deals_collector.stats() if self.deals_collector is not None else {}
+        deals = self._deals_stats_cache
         return {
             "running": self.running,
             "last_action": self.last_action,
@@ -558,4 +560,6 @@ class LchiPublicService:
 
     def status(self) -> dict[str, Any]:
         self._stats_cache = self.store.stats()
+        if self.deals_collector is not None:
+            self._deals_stats_cache = self.deals_collector.stats()
         return self.quick_status()

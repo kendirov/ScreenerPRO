@@ -362,8 +362,9 @@ async def dashboard(): return FileResponse(STATIC / 'index.html', headers={'Cach
 async def health():
     # Liveness must never wait for analytical COUNT(*) queries or Parquet work.
     snapshot=_snapshot()
+    pulse_status = await asyncio.to_thread(pulse_service.status)
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.status(),'ai_control':ai_control.status(),
+            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_status,'ai_control':ai_control.status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],
             'storage':{'deferred':True},'lab':{'deferred':True}}
