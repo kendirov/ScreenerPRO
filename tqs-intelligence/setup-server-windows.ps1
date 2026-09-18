@@ -104,6 +104,20 @@ function Find-Git {
     return $null
 }
 
+function Stop-TqsProcesses {
+    $targets = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.ProcessId -ne $PID -and $_.CommandLine -and (
+            $_.CommandLine -match 'tqs_intelligence\.supervisor' -or
+            $_.CommandLine -match 'tqs_intelligence\.api' -or
+            $_.CommandLine -match 'uvicorn.*tqs_intelligence\.api'
+        )
+    }
+    foreach ($proc in $targets) {
+        try { Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue } catch {}
+    }
+    if ($targets.Count -gt 0) { Start-Sleep -Seconds 2 }
+}
+
 function Get-TailscaleStatus([string]$Exe) {
     $result = Invoke-NativeSafe -FilePath $Exe -Arguments @("status", "--json") -AllowFailure
     if ($result.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($result.Text)) { return $null }
@@ -268,6 +282,10 @@ try { Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction 
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "TQS Intelligence always-on server: auto-start, auto-update and private Tailscale access." -Force | Out-Null
 
 if (-not $NoStart) {
+    # Hand ownership from any pre-setup interactive Supervisor to the scheduled
+    # SYSTEM task. Without this takeover a second Supervisor would race for
+    # 127.0.0.1:8787 until the old process exits.
+    Stop-TqsProcesses
     try { Start-ScheduledTask -TaskName $TaskName } catch {}
 }
 
