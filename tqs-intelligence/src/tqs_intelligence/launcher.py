@@ -276,7 +276,14 @@ class TQSLauncher:
         self.activity.configure(state="normal"); self.activity.delete("1.0", "end"); self.activity.insert("1.0", "\n".join(lines[:80]) or "Launcher готов. Запусти TQS или проверь обновление."); self.activity.configure(state="disabled")
 
     def _run_git(self, *args: str, timeout: int = 45, allow_fail: bool = False) -> tuple[int, str]:
-        p = subprocess.run(["git", "-C", str(self.repo_root), *args], text=True, capture_output=True, timeout=timeout)
+        flags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if os.name == "nt" else 0
+        p = subprocess.run(
+            ["git", "-C", str(self.repo_root), *args],
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            creationflags=flags,
+        )
         text = ((p.stdout or "") + ("\n" + p.stderr if p.stderr else "")).strip()
         if p.returncode and not allow_fail: raise RuntimeError(text or f"git {' '.join(args)} failed: {p.returncode}")
         return p.returncode, text
