@@ -19,7 +19,7 @@ PR: `#11 — TQS Intelligence Engine v0.1 — multi-market anomaly and research 
 
 The PR is intentionally stacked on the older TraderQuest TQ-004 branch rather than current `main`; integration to `main` must be deliberate. Do not assume a blind merge is safe.
 
-Package/product version on the current integration candidate: **v0.11.0**. The owner's Windows runtime remains whatever version it last updated to until the local Supervisor/Launcher applies the merged Git state.
+Package/product version on the current integration candidate: **v0.12.0**. The owner's Windows runtime remains whatever version it last updated to until the local Supervisor/Launcher applies the merged Git state.
 
 ## 3. What exists now
 
@@ -48,7 +48,8 @@ Under `tqs-intelligence/`:
 - MOEX own-history attention engine: same-time-of-day turnover/volume/trade baselines, short-horizon price/OI/liquidity features and explainable anomalies;
 - LCHI public participant catalog, portfolio diffs and exact public deals CSV ingestion with distinct timestamp semantics;
 - T-Bank Pulse public-profile observer with hidden operation size kept explicitly unknown;
-- TQS Remote Node: Windows autostart task, private Tailscale Serve access, loopback-only backend, server-mode keep-awake and five-minute safe auto-update checks.
+- TQS Remote Node: Windows autostart task, private Tailscale Serve access, loopback-only backend, server-mode keep-awake and five-minute safe auto-update checks;
+- TQS Runtime Audit + AI Bridge: deterministic proof of live source/data/update coverage and a sanitized two-minute Google Drive truth packet that another ChatGPT session can inspect.
 
 ### TQS Launcher
 Operator/control surface, not the trading UI:
@@ -140,11 +141,13 @@ Until proven end-to-end, MOEX is the reference vertical. Read `tqs-intelligence/
 
 v0.10 established the first usable MOEX reference slice. v0.11 adds the owner-access layer: the office Windows machine can be an always-on TQS server, auto-start after Windows boot, update itself without Launcher, and expose only a private Tailscale HTTPS URL to the owner's Mac/phone.
 
-Read `tqs-intelligence/REMOTE_NODE.md` before modifying server/autostart/update/remote-access behavior.
+Read `tqs-intelligence/REMOTE_NODE.md` before modifying server/autostart/update/remote-access behavior. v0.12 adds `/api/audit` and `ai-bridge-windows.ps1`; do not claim live-node visibility from ChatGPT until a fresh `TQS_LIVE_AUDIT.json` has actually been read from Drive.
 
 Next priority:
-1. prove v0.11 Remote Node on the office Windows runtime: one-time Tailscale sign-in, scheduled task installed, `/api/node/remote ready=true`, Launcher closed, Mac opens the stable URL, reboot recovery confirmed;
-2. then prove the v0.10 MOEX intelligence slice on real accumulated snapshots from the remote Mac cockpit;
+1. prove v0.12 on the real office node: `/api/audit`, System -> Самопроверка TQS, no recurring console flashes, AI Bridge task installed, Google Drive audit fresh;
+2. read the fresh Drive audit from ChatGPT and use that as the first true remote AI inspection of the node;
+3. prove auto-update by observing a later Git commit move through local HEAD/health without an owner click;
+4. then inspect MOEX data coverage gaps from the audit and expand the missing highest-value layers;
 3. expand time-of-day baselines from locally accumulated quote snapshots into richer candle/session baselines;
 4. add an explicit stock ↔ future ↔ sector/index mapping registry and linked-divergence features;
 5. scale exact LCHI trade-history ingestion/cohort research while respecting source limits;
