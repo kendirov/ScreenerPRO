@@ -249,7 +249,7 @@ try {
 $ownerUser = Resolve-OwnerUser
 
 $node = [ordered]@{
-    schema_version = 1
+    schema_version = 2
     enabled = $true
     server_mode = $true
     remote_provider = "tailscale"
@@ -323,12 +323,15 @@ if (-not $NoStart) {
     # 127.0.0.1:8787 until the old process exits.
     Stop-TqsProcesses
     try { Start-ScheduledTask -TaskName $TaskName } catch {}
-    if (Test-Path $AiBridgeScript) {
-        try {
-            Start-Sleep -Seconds 3
-            Start-ScheduledTask -TaskName $AiBridgeTaskName
-        } catch {}
-    }
+}
+
+# AI Bridge is a user-session helper, independent from server ownership. A
+# post-update repair running as SYSTEM may safely start it without restarting
+# the TQS server itself.
+if (Test-Path $AiBridgeScript) {
+    try {
+        Start-ScheduledTask -TaskName $AiBridgeTaskName
+    } catch {}
 }
 
 $summaryPath = Join-Path $DataDir "remote-access.txt"
