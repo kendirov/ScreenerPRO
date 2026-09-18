@@ -25,7 +25,13 @@ Responsibilities: source adapters, normalization, live collection, Data Lake, fe
 
 ### TQS Launcher
 Owner-facing local control plane for TQS Intelligence on Windows.
-Responsibilities: start/stop/restart, STOP/LIGHT/MAX, version and Git state, update/rollback, process/supervisor/API health, logs, keep-awake, diagnostic/support snapshot. Launcher controls the machine; it is not the trading cockpit.
+Responsibilities: start/stop/restart, STOP/LIGHT/MAX, version and Git state, update/rollback, process/supervisor/API health, logs, diagnostic/support snapshot and one-click Remote Node setup/status. Launcher controls and configures the machine; it is not the trading cockpit and is not required to remain open after Remote Node setup.
+
+### TQS Remote Node
+The office Windows workstation can operate as the always-on private TQS server.
+Responsibilities: Windows boot autostart, Supervisor-owned backend recovery, server-mode keep-awake, safe Git auto-update/rollback and private browser access through Tailscale Serve.
+The TQS API remains bound to `127.0.0.1`; Remote Node must not make port 8787 public.
+Canonical technical contract: `tqs-intelligence/REMOTE_NODE.md`.
 
 ### TQS Screener / Cockpit
 Trader-facing visual/action layer. The existing ScreenerPRO frontend evolves into this module.
@@ -50,8 +56,10 @@ Replaceable source adapters for Bitget, Binance, Bybit, OKX, MOEX, global market
 ### TQS Data / Data Lake
 Operational market-data memory: Parquet for bulk history, DuckDB/local stores for analytics/control today; ClickHouse or another scale layer only when measured workload justifies it. Raw/high-frequency data does not belong in Google Drive.
 
-### Future: TQS Cloud / Sync
-Optional control/metadata plane for multi-device/web access. Add only when needed. It must not become a second source of market truth.
+### Current private remote access + Future TQS Cloud / Sync
+Current multi-device access is provided by Remote Node: loopback-only local TQS -> private Tailscale Serve -> owner Mac/phone browser. This is an access bridge, not a second market-data store.
+
+A future Cloud / Sync control/metadata plane may be added only when it creates value beyond the private node. It must not become a second source of market truth.
 
 ## 3. Canonical flow
 
@@ -179,9 +187,11 @@ The AI must infer the TQS module, continue the existing system, work Chat-first 
 TQS is a distributed system even while most compute is local. The nodes have different roles and must not be treated as interchangeable copies.
 
 ### Windows TQS Runtime Node — current primary compute/data node
-The current office Windows workstation is the primary always-on-ish local TQS node.
+The current office Windows workstation is the primary always-on TQS compute/data node once Remote Node setup is enabled.
 It runs:
-- TQS Launcher and supervisor;
+- Windows scheduled task `TQS Intelligence Server` at boot;
+- TQS Supervisor and Intelligence backend without requiring Launcher to stay open;
+- TQS Launcher only when the owner wants local control/setup/diagnostics;
 - TQS Intelligence backend;
 - market/news/account collectors;
 - local DuckDB/SQLite control state;
@@ -206,8 +216,10 @@ Drive stores durable human-readable goals, decisions, observations, cases and co
 ### TQS Screener / Web node
 The web/Cockpit layer is a presentation/action client. During local development it may call local TQS APIs. A future cloud web surface must consume an authenticated safe bridge/sync layer; do not expose an unauthenticated local `8787` port to the public Internet.
 
-### Optional Mac / other operator devices
-Other devices can be AI/research/monitoring clients through Drive/GitHub/web. They are not canonical compute nodes unless explicitly promoted and given a runtime identity.
+### Mac / other operator devices
+The owner's MacBook and phone are supported private Cockpit clients through the Remote Access Bridge. They do not need the market databases or a local TQS runtime. After one-time Tailscale sign-in to the same tailnet, the normal workflow is simply open the stable TQS HTTPS bookmark.
+
+These devices are not canonical compute nodes unless explicitly promoted and given a runtime identity.
 
 ## 13. Integration bridges
 
@@ -229,8 +241,19 @@ This bridge must be selective: raw candles/ticks/log spam do not go to Drive.
 
 The Cockpit consumes results; it must not create a parallel definition of anomalies, instruments or research statistics.
 
+### REMOTE ACCESS BRIDGE
+`Windows TQS 127.0.0.1:8787 → Tailscale Serve private tailnet HTTPS → Mac/phone browser`
+
+Properties:
+- no router port-forwarding;
+- no public TQS bind;
+- no Tailscale Funnel configured by TQS;
+- tailnet identity/ACLs are the outer access boundary;
+- Remote Node status is observable through Launcher, `GET /api/node/remote` and the System cockpit;
+- closing Launcher must not stop the server.
+
 ### FUTURE CLOUD/SYNC BRIDGE
-Prefer an authenticated outbound sync/publish mechanism from the local node to a private control/data plane rather than opening the local workstation for inbound public access. Sync only the data needed for remote views/actions, with explicit freshness and provenance.
+If a future cloud control/data plane is added, prefer authenticated outbound sync/publish rather than public exposure of the workstation. It is separate from today's private Tailscale Remote Access Bridge. Sync only the data needed for remote views/actions, with explicit freshness and provenance.
 
 ## 14. Failure-domain rule
 
