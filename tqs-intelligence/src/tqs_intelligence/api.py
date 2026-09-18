@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
@@ -279,9 +280,10 @@ async def overview():
 
 @app.get('/api/system')
 async def system():
+    data_lake = await asyncio.to_thread(lake.verify)
     return {'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),'research_runtime':research_runtime.status(),
             'account_intelligence':account_service.status(),'control':control.status(),'resources':_resources(),
-            'storage':store.stats(),'lab':lab.stats(),'data_lake':lake.verify(),
+            'storage':store.stats(),'lab':lab.stats(),'data_lake':data_lake,
             'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
                       'twelve_data_enabled':bool(settings.twelve_data_api_key),'episode_threshold':settings.episode_threshold,
                       'moex_premium_enabled':settings.moex_premium_enabled,'telegram_news_enabled':settings.telegram_news_enabled},
@@ -322,7 +324,8 @@ async def quotes(q:str='',provider:str='',market_type:str='',asset_class:AssetCl
 
 @app.get('/api/instrument/{canonical_id:path}')
 async def universal_instrument(canonical_id:str):
-    return instrument_lab.build(canonical_id, _snapshot())
+    snapshot = _snapshot()
+    return await asyncio.to_thread(instrument_lab.build, canonical_id, snapshot)
 
 
 @app.get('/api/moex')
@@ -470,7 +473,8 @@ async def run_strategy(strategy_id:str,request:StrategyRunCreate):
 
 
 @app.get('/api/data-lake')
-async def data_lake_status(): return lake.verify()
+async def data_lake_status():
+    return await asyncio.to_thread(lake.verify)
 
 
 @app.post('/api/data-lake/verify')
@@ -483,8 +487,13 @@ async def briefing(): return briefing_builder.build(_snapshot())
 
 @app.post('/api/export/snapshot')
 async def export_snapshot(request:SnapshotExportRequest):
-    rels=mine_relationships(store.price_series(),min_samples=20)[:200]
-    return exporter.export(runtime=service.runtime_status(),research_runtime=research_runtime.status(),snapshot=_snapshot(),relationships=rels,full=request.full)
+    snapshot = _snapshot()
+    runtime = service.runtime_status()
+    research = research_runtime.status()
+    def build_export():
+        rels = mine_relationships(store.price_series(), min_samples=20)[:200]
+        return exporter.export(runtime=runtime, research_runtime=research, snapshot=snapshot, relationships=rels, full=request.full)
+    return await asyncio.to_thread(build_export)
 
 
 def main()->None:
