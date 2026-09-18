@@ -101,12 +101,31 @@ def build_runtime_audit(
         and row.meta.get("trading_status") not in (None, "")
     )
 
-    metrics = dict((lake.get("metrics") or {}).get("metrics") or {})
-    metric_rows = int((lake.get("metrics") or {}).get("rows") or 0)
+    metric_state = lake.get("metrics") or {}
+    metrics = dict(metric_state.get("metrics") or {})
+    metric_files = dict(metric_state.get("metric_files") or {})
+    metric_rows_raw = metric_state.get("rows")
+    metric_rows = int(metric_rows_raw or 0) if metric_rows_raw is not None else 0
+    history_rows_raw = lake.get("rows")
+    history_rows = int(history_rows_raw or 0) if history_rows_raw is not None else 0
+    history_files = int(lake.get("files") or 0)
     futoi_points = sum(int(v or 0) for k, v in metrics.items() if str(k).startswith("futoi_"))
     derivative_points = sum(
         int(v or 0)
         for k, v in metrics.items()
+        if str(k) in {
+            "open_interest",
+            "open_interest_value",
+            "funding_rate",
+            "basis",
+            "basis_rate",
+            "annualized_basis_rate",
+        }
+    )
+    futoi_metric_files = sum(int(v or 0) for k, v in metric_files.items() if str(k).startswith("futoi_"))
+    derivative_metric_files = sum(
+        int(v or 0)
+        for k, v in metric_files.items()
         if str(k) in {
             "open_interest",
             "open_interest_value",
@@ -208,26 +227,31 @@ def build_runtime_audit(
         f"OI={present(moex_futures, 'open_interest')}/{len(moex_futures)} futures",
         evidence={"oi_ratio": _ratio(present(moex_futures, "open_interest"), len(moex_futures))},
     )
+    history_present = history_rows > 0 or history_files > 0
+    history_rows_text = f"{history_rows:,}" if history_rows_raw is not None else "deferred"
     add(
         "history",
         "Historical candle Data Lake",
-        _status(int(lake.get("rows") or 0) > 0, True),
-        f"rows={int(lake.get('rows') or 0):,}; files={int(lake.get('files') or 0)}; bad_files={len(lake.get('bad_files') or [])}",
-        evidence={"rows": lake.get("rows"), "files": lake.get("files"), "bad_files": lake.get("bad_files") or []},
+        _status(history_present, True),
+        f"rows={history_rows_text}; files={history_files}; bad_files={len(lake.get('bad_files') or [])}; stats_mode={lake.get('stats_mode') or 'full'}",
+        evidence={"rows": history_rows_raw, "files": history_files, "bad_files": lake.get("bad_files") or [], "stats_mode": lake.get("stats_mode")},
     )
+    metric_file_count = int(metric_state.get("files") or 0)
+    metric_present = metric_rows > 0 or metric_file_count > 0
+    metric_rows_text = f"{metric_rows:,}" if metric_rows_raw is not None else "deferred"
     add(
         "metric_lake",
         "Derivative Metric Lake",
-        _status(metric_rows > 0, True),
-        f"points={metric_rows:,}; derivative_points={derivative_points:,}; futoi_points={futoi_points:,}",
-        evidence={"metrics": metrics},
+        _status(metric_present, True),
+        f"points={metric_rows_text}; files={metric_file_count}; derivative_points={derivative_points:,}; derivative_files={derivative_metric_files}; futoi_points={futoi_points:,}; futoi_files={futoi_metric_files}",
+        evidence={"metrics": metrics, "metric_files": metric_files, "stats_mode": metric_state.get("stats_mode")},
     )
     add(
         "futoi",
         "MOEX FUTOI participant aggregate",
-        _status(futoi_points > 0, True),
-        f"points={futoi_points:,}; public/unauthorized history is delayed and is not treated as realtime",
-        evidence={"futoi_points": futoi_points},
+        _status(futoi_points > 0 or futoi_metric_files > 0, True),
+        f"points={futoi_points if futoi_points > 0 else 'deferred'}; files={futoi_metric_files}; public/unauthorized history is delayed and is not treated as realtime",
+        evidence={"futoi_points": futoi_points, "futoi_files": futoi_metric_files},
     )
     add(
         "lchi",
