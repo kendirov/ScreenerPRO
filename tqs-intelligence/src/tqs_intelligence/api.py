@@ -394,7 +394,7 @@ def overview():
 @app.get('/api/system')
 async def system():
     data_lake, storage_stats, lab_stats, research_status_full, account_status_full, remote_status_full = await asyncio.gather(
-        asyncio.to_thread(lake.verify),
+        asyncio.to_thread(lake.quick_stats),
         asyncio.to_thread(store.stats),
         asyncio.to_thread(lab.stats),
         asyncio.to_thread(research_runtime.status),
