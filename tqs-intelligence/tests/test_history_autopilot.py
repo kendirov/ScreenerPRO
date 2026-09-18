@@ -58,3 +58,18 @@ def test_unsupported_provider_is_not_planned():
     payloads, stats = build_history_plan(quotes, [], batch_size=10)
     assert payloads == []
     assert stats['target_total'] == 0
+
+
+def test_moex_parser_version_requeues_legacy_zero_history_job():
+    quotes = [q('moex','shares','SBER',1000,engine='stock',market='shares')]
+    legacy = {
+        'provider':'moex','symbol':'SBER','market_type':'shares',
+        'engine':'stock','market':'shares','interval':'10m','start_ms':START_2021_MS,
+    }
+    jobs = [SimpleNamespace(kind='historical_backfill', payload=legacy, status='done')]
+    payloads, stats = build_history_plan(quotes, jobs, batch_size=10)
+    assert len(payloads) == 1
+    assert payloads[0]['symbol'] == 'SBER'
+    assert payloads[0]['history_parser_version'] == 2
+    assert history_key(payloads[0]) != history_key(legacy)
+    assert stats['remaining'] == 1

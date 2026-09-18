@@ -113,7 +113,7 @@ class ResearchRuntime:
             ),
         ]
         defaults={
-            'TQS-RESEARCH-ROUND-LEVELS-001': ['binance:usdt-futures:BTCUSDT','binance:usdt-futures:ETHUSDT','binance:usdt-futures:ZECUSDT'],
+            'TQS-RESEARCH-ROUND-LEVELS-001': ['moex:shares:SBER','binance:usdt-futures:BTCUSDT','binance:usdt-futures:ETHUSDT','binance:usdt-futures:ZECUSDT'],
             'TQS-RESEARCH-PRICE-OI-DIVERGENCE-001': ['binance:usdt-futures:BTCUSDT','binance:usdt-futures:ETHUSDT'],
             'TQS-RESEARCH-MOEX-EXPIRY-001': [],
         }
@@ -129,6 +129,9 @@ class ResearchRuntime:
             if not existing.instruments and defaults.get(project.id):
                 existing.instruments=list(defaults[project.id]); changed=True
             if project.id=='TQS-RESEARCH-ROUND-LEVELS-001':
+                for cid in defaults[project.id]:
+                    if cid not in existing.instruments:
+                        existing.instruments.append(cid); changed=True
                 for sid in ('TQS-STRAT-ROUND-BUFFER-001','TQS-STRAT-ROUND-BUFFER-CRYPTO-001'):
                     if sid not in existing.linked_strategy_ids:
                         existing.linked_strategy_ids.append(sid); changed=True
