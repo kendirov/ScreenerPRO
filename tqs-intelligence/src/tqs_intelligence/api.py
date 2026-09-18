@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     lab_db_path: str = './data/tqs-lab.sqlite3'
     accounts_db_path: str = './data/tqs-accounts.sqlite3'
     lchi_db_path: str = './data/tqs-lchi.sqlite3'
+    pulse_db_path: str = './data/tqs-pulse.sqlite3'
     control_path: str = './data/control.json'
     data_lake_root: str = './data-lake'
     drive_export_root: str = ''
@@ -142,7 +143,7 @@ account_store = AccountIntelStore(settings.accounts_db_path)
 lchi_store = LchiPublicStore(settings.lchi_db_path)
 lchi_deals = LchiDealsCollector(lchi_store, http)
 lchi_service = LchiPublicService(control, lchi_store, http, deals_collector=lchi_deals)
-pulse_store = PulsePublicStore('./data/tqs-pulse.sqlite3')
+pulse_store = PulsePublicStore(settings.pulse_db_path)
 pulse_service = PulsePublicService(
     control, pulse_store, http,
     [x.strip() for x in settings.pulse_handles.split(',') if x.strip()],
