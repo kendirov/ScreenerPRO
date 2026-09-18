@@ -1,4 +1,4 @@
-# TQS Intelligence & Strategy Machine v0.11
+# TQS Intelligence & Strategy Machine v0.12
 
 Одна локальная/серверная машина для рынка, аномалий, исторических исследований, стратегий, публичных счетов/позиций, новостей и брифинга.
 
@@ -119,6 +119,17 @@ UI показывает CPU/RAM, очередь, current action и место н
 Один раз на Mac нужно установить Tailscale и войти в тот же аккаунт/tailnet. Публичный port-forward и Tailscale Funnel для TQS не нужны.
 
 Подробный контракт: `REMOTE_NODE.md`.
+
+### Runtime Audit / AI Bridge
+
+Для проверки фактической работы узла есть:
+- `GET /api/audit` — структурированная самопроверка источников, свежести snapshot, MOEX/metrics/LCHI/Pulse/remote/update;
+- `GET /api/audit/text` — компактный текст;
+- **Система → Самопроверка TQS** в Cockpit.
+
+При настроенном Remote Node скрытый `TQS AI Bridge` каждые ~2 минуты публикует санитарный `TQS_LIVE_AUDIT.json` в Google Drive папку Remote Node. Это позволяет следующему ChatGPT-чату реально читать состояние сервера через Drive connector, не получая доступ к приватному Tailscale tailnet.
+
+Аудит специально показывает отсутствующие слои. На v0.12 full L2/depth history, канонический tick-by-tick MOEX tape и полный corporate/news feed ещё не считаются завершёнными.
 
 
 ### Сохранить TQS
