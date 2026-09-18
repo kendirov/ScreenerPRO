@@ -216,9 +216,23 @@ class Supervisor:
         if not status.get('update_available'):
             self._write_update_state(status='noop', step='status', message='Новых обновлений нет', head=status.get('head'))
             return True
-        if status.get('dirty'):
-            self._write_update_state(status='blocked', step='preflight', error='Локальная ветка содержит незакоммиченные изменения')
+        if status.get('blocking_dirty_paths'):
+            paths = ', '.join(str(x.get('path') or '') for x in (status.get('blocking_dirty_paths') or [])[:8])
+            self._write_update_state(
+                status='blocked',
+                step='preflight',
+                error='Локальная ветка содержит реальные незакоммиченные изменения',
+                dirty_paths=status.get('blocking_dirty_paths'),
+                detail=paths,
+            )
             return False
+        if status.get('safe_generated_only'):
+            self._write_update_state(
+                status='running',
+                step='preflight',
+                message='Есть только служебные untracked-файлы; они не блокируют обновление',
+                safe_generated_dirty=status.get('safe_generated_dirty'),
+            )
 
         # Continuous MAX autopilot can keep the queue busy indefinitely. Quiesce
         # research cooperatively, apply the update, then restore the previous mode.
