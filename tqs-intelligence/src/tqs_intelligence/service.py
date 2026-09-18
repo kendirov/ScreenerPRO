@@ -74,7 +74,7 @@ class IntelligenceService:
         try:
             candles = await source.fetch_candles(quote, "5m", 500)
             if candles:
-                self.store.persist_candles(candles)
+                await asyncio.to_thread(self.store.persist_candles, candles)
                 self.log("info","history",f"История {episode.symbol} подгружена",episode_id=episode.id,provider=episode.provider,candles=len(candles))
             return len(candles)
         except Exception as exc:
@@ -89,7 +89,7 @@ class IntelligenceService:
         if tasks: await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _refresh_active_history(self, quotes: list[Quote]) -> None:
-        active = self.store.list_episodes(limit=20,status="active")
+        active = await asyncio.to_thread(self.store.list_episodes, 20, "active")
         if not active: return
         by_id = {q.canonical_id:q for q in quotes}; tasks=[]
         for ep in active:
@@ -121,16 +121,19 @@ class IntelligenceService:
                         self.log("error" if item.status==SourceStatus.ERROR else "warning",f"source:{item.provider}",f"{item.name}: {current}",instruments=item.instruments,latency_ms=item.latency_ms,error=item.error)
                     elif prev and prev!=SourceStatus.OK.value:
                         self.log("info",f"source:{item.provider}",f"{item.name}: источник восстановлен",instruments=item.instruments,latency_ms=item.latency_ms)
-                news=await self.news.collect(); anomalies=self.engine.analyze(quotes); now=_now_ms(); snapshot=Snapshot(generated_at_ms=now,quotes=quotes,anomalies=anomalies,source_health=health,news=news)
-                self.store.persist_snapshot(quotes,anomalies,news)
-                created=self.store.update_episodes(anomalies,now,self.episode_threshold,self.episode_close_grace_ms)
+                news=await self.news.collect()
+                anomalies=await asyncio.to_thread(self.engine.analyze, quotes)
+                now=_now_ms(); snapshot=Snapshot(generated_at_ms=now,quotes=quotes,anomalies=anomalies,source_health=health,news=news)
+                await asyncio.to_thread(self.store.persist_snapshot, quotes, anomalies, news)
+                created=await asyncio.to_thread(self.store.update_episodes, anomalies, now, self.episode_threshold, self.episode_close_grace_ms)
                 mode=self.mode(); heavy=mode=='max'
                 if created:
                     self.log("info","episodes","Открыты новые эпизоды аномалий",count=len(created),ids=[x.id for x in created[:20]])
                     await self._backfill_created(created,quotes,None if heavy else 1)
                 next_count=self.state.refresh_count+1
                 if heavy and next_count % self.history_refresh_every == 0: await self._refresh_active_history(quotes)
-                if heavy and next_count % self.research_every_refreshes == 0: self._run_research()
+                if heavy and next_count % self.research_every_refreshes == 0:
+                    await asyncio.to_thread(self._run_research)
                 self.state.snapshot=snapshot; self.state.refresh_count=next_count; duration=_now_ms()-started; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=duration
                 online=sum(1 for x in health if x.status in (SourceStatus.OK,SourceStatus.DEGRADED))
                 self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),new_episodes=len(created),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode)
