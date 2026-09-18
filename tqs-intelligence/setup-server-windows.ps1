@@ -28,7 +28,18 @@ function Resolve-OwnerUser {
     } catch {}
     try {
         $current = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-        if ($current -and $current -notmatch '\\SYSTEM    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        if ($current -and $current -notmatch '\\SYSTEM$') { return [string]$current }
+    } catch {}
+    try {
+        if ($TqsRoot -match '^[A-Za-z]:\\Users\\([^\\]+)\\') {
+            return "$env:COMPUTERNAME\$($Matches[1])"
+        }
+    } catch {}
+    return $null
+}
+
+function Test-IsAdministrator {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($identity)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
