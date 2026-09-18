@@ -95,7 +95,12 @@ class UpdateManager:
         return False
 
     def dirty_state(self) -> dict[str, Any]:
-        raw = self._git('status', '--porcelain=v1', '--untracked-files=all')
+        try:
+            raw = self._git('status', '--porcelain=v1', '--untracked-files=all')
+        except Exception:
+            # Compatibility with older Git wrappers/tests that only expose the
+            # classic porcelain command.
+            raw = self._git('status', '--porcelain')
         entries = self._parse_porcelain(raw)
         safe = [x for x in entries if self._safe_generated_untracked(x)]
         blocking = [x for x in entries if not self._safe_generated_untracked(x)]
