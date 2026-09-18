@@ -137,12 +137,16 @@ def ai_bridge_state(root: Path | None = None) -> dict[str, Any]:
     except Exception:
         return {"configured": False}
     now_ms = int(time.time() * 1000)
-    last = int(payload.get("last_publish_ms") or 0)
+    last_local = int(payload.get("last_publish_ms") or 0)
+    last_drive = int(payload.get("last_drive_publish_ms") or 0)
+    effective = last_drive if payload.get("drive_connected") and last_drive else last_local
     return {
         **payload,
         "configured": bool(payload.get("target_path")),
-        "age_s": max(0, int((now_ms - last) / 1000)) if last else None,
-        "fresh": bool(last and now_ms - last <= 10 * 60 * 1000),
+        "age_s": max(0, int((now_ms - effective) / 1000)) if effective else None,
+        "local_age_s": max(0, int((now_ms - last_local) / 1000)) if last_local else None,
+        "drive_age_s": max(0, int((now_ms - last_drive) / 1000)) if last_drive else None,
+        "fresh": bool(effective and now_ms - effective <= 10 * 60 * 1000),
     }
 
 
