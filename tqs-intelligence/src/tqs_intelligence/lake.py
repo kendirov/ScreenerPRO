@@ -100,6 +100,42 @@ class DataLake:
         except Exception:
             return {'first_ms': None, 'last_ms': None, 'rows': 0}
 
+    def quick_stats(self) -> dict[str, object]:
+        """Cheap operational stats for frequent runtime health checks.
+
+        This deliberately avoids reading every Parquet footer/row group. Full
+        verification remains available through verify() for explicit deep
+        diagnostics. Runtime Audit runs every few minutes and must never scan
+        the entire historical lake just to prove that the node is alive.
+        """
+        history_files = list(self.history_root.glob('**/*.parquet'))
+        usage = shutil.disk_usage(self.root)
+        try:
+            from .metric_lake import MetricLake
+            metric_stats = MetricLake(self.root).quick_stats()
+        except Exception as exc:
+            metric_stats = {
+                'root': str((self.root/'metrics').resolve()),
+                'files': 0,
+                'rows': None,
+                'row_count_known': False,
+                'metrics': {},
+                'metric_files': {},
+                'bad_files': [str(exc)],
+            }
+        return {
+            'root': str(self.root.resolve()),
+            'files': len(history_files),
+            'rows': None,
+            'row_count_known': False,
+            'bad_files': [],
+            'metrics': metric_stats,
+            'all_rows': None,
+            'free_gb': round(usage.free / (1024**3), 2),
+            'total_gb': round(usage.total / (1024**3), 2),
+            'stats_mode': 'quick',
+        }
+
     def verify(self) -> dict[str, object]:
         files = list(self.history_root.glob('**/*.parquet'))
         bad: list[str] = []
