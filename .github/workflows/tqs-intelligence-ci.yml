@@ -104,7 +104,7 @@ jobs:
           from tqs_intelligence import __version__
           from tqs_intelligence.api import app
           paths = {route.path for route in app.routes}
-          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing'}
+          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary'}
           missing = required - paths
           assert not missing, missing
           assert app.version == __version__, (app.version, __version__)
@@ -140,6 +140,7 @@ jobs:
           grep -q 'EXIT' src/tqs_intelligence/static/cockpit_context.js
           grep -q 'metricLakePanel' src/tqs_intelligence/static/cockpit_context.js
           grep -q 'Что машина сделала' src/tqs_intelligence/static/cockpit_activity.js
+          grep -q '/api/activity-summary?hours=' src/tqs_intelligence/static/cockpit_activity.js
           grep -q 'AUTO METRICS' src/tqs_intelligence/static/cockpit_activity.js
           grep -q 'TQS_INSTRUMENT_AI_PACK_V1' src/tqs_intelligence/static/cockpit_ai.js
           grep -q 'AI ПАКЕТ' src/tqs_intelligence/static/cockpit_ai.js
