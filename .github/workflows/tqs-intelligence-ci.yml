@@ -40,7 +40,7 @@ jobs:
       - name: Windows PowerShell syntax
         shell: pwsh
         run: |
-          foreach ($file in @('./update-windows.ps1','./install-windows.ps1','./start-windows.ps1')) {
+          foreach ($file in @('./update-windows.ps1','./install-windows.ps1','./start-windows.ps1','./setup-server-windows.ps1','./server-start-windows.ps1')) {
             $tokens = $null; $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
             if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error "$file : $($_.Message)" }; exit 1 }
@@ -74,7 +74,7 @@ jobs:
           python - <<'PY'
           from importlib.metadata import version
           from tqs_intelligence import __version__
-          assert version('tqs-intelligence') == __version__ == '0.10.0', (version('tqs-intelligence'), __version__)
+          assert version('tqs-intelligence') == __version__ == '0.11.0', (version('tqs-intelligence'), __version__)
           print('Version contract PASS', __version__)
           PY
       - name: Launcher and watchdog contract
@@ -96,6 +96,10 @@ jobs:
           grep -q 'text="ЗАНЯТ"' src/tqs_intelligence/launcher.py
           grep -q 'Скопировать для ChatGPT' src/tqs_intelligence/launcher.py
           grep -q 'TQS-DIAGNOSTICS-' src/tqs_intelligence/launcher.py
+          grep -q 'TQS SERVER / УДАЛЁННЫЙ ДОСТУП' src/tqs_intelligence/launcher.py
+          grep -q 'setup-server-windows.ps1' src/tqs_intelligence/launcher.py
+          grep -q 'server_mode_enabled' src/tqs_intelligence/supervisor.py
+          grep -q 'auto_update_interval_seconds' src/tqs_intelligence/supervisor.py
           grep -q '_browser_url' src/tqs_intelligence/supervisor.py
           grep -q 'asyncio.to_thread(self.store.persist_snapshot' src/tqs_intelligence/service.py
           grep -q 'asyncio.to_thread(self.store.update_episodes' src/tqs_intelligence/service.py
@@ -107,7 +111,7 @@ jobs:
           from tqs_intelligence import __version__
           from tqs_intelligence.api import app
           routes = {route.path: route for route in app.routes}
-          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary', '/api/moex/intelligence', '/api/moex/participants/lchi/status', '/api/moex/participants/lchi/positions', '/api/moex/participants/lchi/events', '/api/moex/participants/lchi/trades', '/api/moex/participants/pulse/status', '/api/moex/participants/pulse/events'}
+          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary', '/api/node/remote', '/api/moex/intelligence', '/api/moex/participants/lchi/status', '/api/moex/participants/lchi/positions', '/api/moex/participants/lchi/events', '/api/moex/participants/lchi/trades', '/api/moex/participants/pulse/status', '/api/moex/participants/pulse/events'}
           missing = required - set(routes)
           assert not missing, missing
           assert app.version == __version__, (app.version, __version__)
@@ -150,6 +154,8 @@ jobs:
           grep -q 'cockpit_ai.js' src/tqs_intelligence/static/index.html
           grep -q 'researchJobs' src/tqs_intelligence/static/index.html
           grep -q 'systemLogs' src/tqs_intelligence/static/index.html
+          grep -q 'Remote node' src/tqs_intelligence/static/cockpit.js
+          grep -q 'LOOPBACK + TAILSCALE' src/tqs_intelligence/static/cockpit.js
           grep -q 'Публичные позиции' src/tqs_intelligence/static/cockpit.js
           grep -q 'Open Interest' src/tqs_intelligence/static/cockpit.js
           grep -q 'MOEX FUTOI' src/tqs_intelligence/static/cockpit_metrics.js
