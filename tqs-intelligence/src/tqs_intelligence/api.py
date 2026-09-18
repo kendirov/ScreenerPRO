@@ -24,6 +24,7 @@ from .http import JsonHttp
 from .instrument_lab import InstrumentLab
 from .lab_store import LabStore
 from .lake import DataLake
+from .lchi_public import LchiPublicService, LchiPublicStore
 from .models import AssetClass, HypothesisCreate
 from .moex_lab import MoexLab
 from .news import NewsCollector
@@ -43,6 +44,7 @@ class Settings(BaseSettings):
     db_path: str = './data/tqs-intelligence.duckdb'
     lab_db_path: str = './data/tqs-lab.sqlite3'
     accounts_db_path: str = './data/tqs-accounts.sqlite3'
+    lchi_db_path: str = './data/tqs-lchi.sqlite3'
     control_path: str = './data/control.json'
     data_lake_root: str = './data-lake'
     drive_export_root: str = ''
@@ -131,6 +133,8 @@ news = NewsCollector(http, [x.strip() for x in settings.rss_urls.split(',') if x
 store = DuckStore(settings.db_path)
 lab = LabStore(settings.lab_db_path)
 account_store = AccountIntelStore(settings.accounts_db_path)
+lchi_store = LchiPublicStore(settings.lchi_db_path)
+lchi_service = LchiPublicService(control, lchi_store, http)
 lake = DataLake(control.get().data_lake_root)
 backfiller = HistoricalBackfiller(http, lake)
 strategy_machine = StrategyMachine()
@@ -156,9 +160,9 @@ async def lifespan(_: FastAPI):
         lab.save_strategy(default_round_buffer_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
-    service.start(); research_runtime.start(); account_service.start()
+    service.start(); research_runtime.start(); account_service.start(); lchi_service.start()
     yield
-    await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
+    await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
@@ -240,7 +244,7 @@ async def health():
     # Liveness must never wait for analytical COUNT(*) queries or Parquet work.
     snapshot=_snapshot()
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),
+            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],
             'storage':{'deferred':True},'lab':{'deferred':True}}
@@ -331,11 +335,17 @@ async def universal_instrument(canonical_id:str):
 
 
 @app.get('/api/moex')
-async def moex(): return moex_lab.overview(_snapshot())
+async def moex():
+    payload = moex_lab.overview(_snapshot())
+    payload['lchi_public'] = lchi_service.status()
+    return payload
 
 
 @app.get('/api/moex/lab')
-async def moex_market_lab(): return moex_lab.overview(_snapshot())
+async def moex_market_lab():
+    payload = moex_lab.overview(_snapshot())
+    payload['lchi_public'] = lchi_service.status()
+    return payload
 
 
 @app.get('/api/moex/lab/{canonical_id:path}')
@@ -343,6 +353,26 @@ async def moex_instrument_lab(canonical_id:str):
     snapshot=_snapshot(); quote=next((q for q in (snapshot.quotes if snapshot else []) if q.canonical_id==canonical_id),None)
     if quote is None: raise HTTPException(404,'instrument not found in current snapshot')
     return {'instrument':moex_lab.enrich_quote(quote),'history_stats':moex_lab.instrument_history_stats(canonical_id)}
+
+
+@app.get('/api/moex/participants/lchi/status')
+async def lchi_status():
+    return lchi_service.status()
+
+
+@app.get('/api/moex/participants/lchi')
+async def lchi_participants(q:str='', limit:int=Query(200,ge=1,le=2000)):
+    return lchi_store.participants(limit=limit, q=q)
+
+
+@app.get('/api/moex/participants/lchi/positions')
+async def lchi_positions(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
+    return lchi_store.current_positions(symbol=symbol, limit=limit)
+
+
+@app.get('/api/moex/participants/lchi/events')
+async def lchi_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
+    return lchi_store.events(symbol=symbol, limit=limit)
 
 
 @app.get('/api/episodes')
