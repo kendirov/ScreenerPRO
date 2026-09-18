@@ -255,6 +255,8 @@ def remote_node_status(root: Path | None = None) -> dict[str, Any]:
     loopback_only = host in {"127.0.0.1", "localhost", "::1"}
 
     task_installed = _task_installed(task_name) if enabled else False
+    ai_bridge_task_name = str(cfg.get("ai_bridge_task_name") or "TQS AI Bridge")
+    ai_bridge_task_installed = _task_installed(ai_bridge_task_name) if enabled else False
     stopped_by_owner = stop_marker_path(base).exists()
     ready = bool(
         enabled
@@ -284,6 +286,10 @@ def remote_node_status(root: Path | None = None) -> dict[str, Any]:
         "scheduled_task": {
             "name": task_name,
             "installed": task_installed,
+        },
+        "ai_bridge_task": {
+            "name": ai_bridge_task_name,
+            "installed": ai_bridge_task_installed,
         },
         "stopped_by_owner": stopped_by_owner,
         "auto_update": bool(cfg.get("auto_update", True)),
