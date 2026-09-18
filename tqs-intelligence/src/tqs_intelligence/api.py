@@ -34,6 +34,7 @@ from .news import NewsCollector
 from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
+from .remote_node import remote_node_status
 from .service import IntelligenceService
 from .snapshot_export import SnapshotExporter
 from .sources import BinanceSource, BitgetSource, BybitSource, MoexSource, OkxSource, TwelveDataSource
@@ -314,13 +315,18 @@ async def system():
         asyncio.to_thread(account_service.status),
     )
     return {'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),'research_runtime':research_status_full,
-            'account_intelligence':account_status_full,'control':control.status(),'resources':_resources(),
+            'account_intelligence':account_status_full,'control':control.status(),'resources':_resources(),'remote_node':remote_node_status(),
             'storage':storage_stats,'lab':lab_stats,'data_lake':data_lake,
             'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
                       'twelve_data_enabled':bool(settings.twelve_data_api_key),'episode_threshold':settings.episode_threshold,
                       'moex_premium_enabled':settings.moex_premium_enabled,'telegram_news_enabled':settings.telegram_news_enabled},
             'pipeline':['collect','normalize','persist','anomaly','episode lifecycle','account/position intelligence','historical lake',
                         'strategy/event study','control/OOS/walk-forward/costs','relationship mining','briefing snapshot','portable AI snapshot']}
+
+
+@app.get('/api/node/remote')
+def node_remote_status():
+    return remote_node_status()
 
 
 @app.get('/api/system/update')
