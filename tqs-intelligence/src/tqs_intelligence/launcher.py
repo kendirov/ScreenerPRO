@@ -453,8 +453,35 @@ class TQSLauncher:
         if state.get("status") in {"failed", "rolled_back"}: raise RuntimeError(state.get("error") or state.get("message") or "update failed")
         self._event("Обновление завершено. Версия перечитана из Git.")
 
+    def _write_control_mode_fallback(self, mode: str) -> None:
+        path = self.data_dir / "control.json"
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+            if not isinstance(raw, dict):
+                raw = {}
+        except Exception:
+            raw = {}
+        raw["mode"] = mode
+        raw["changed_by"] = "launcher-fallback"
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(path)
+
     def set_mode(self, mode: str) -> None:
-        def work(): self._api("/api/control", method="POST", payload={"mode": mode}, timeout=5); self._event(f"Режим: {mode.upper()}")
+        mode = str(mode).lower()
+        if mode not in {"stop", "light", "max"}:
+            self._event(f"ОШИБКА: неизвестный режим {mode}")
+            return
+        def work() -> None:
+            try:
+                self._api("/api/control", method="POST", payload={"mode": mode}, timeout=2)
+                self._event(f"Режим: {mode.upper()} · подтверждён backend")
+            except Exception as exc:
+                self._write_control_mode_fallback(mode)
+                self._event(
+                    f"Режим: {mode.upper()} · записан локально, API был занят ({type(exc).__name__}); "
+                    "backend подхватит изменение автоматически"
+                )
         self._thread(work)
 
     def export_snapshot(self) -> None:
