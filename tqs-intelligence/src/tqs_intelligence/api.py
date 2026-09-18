@@ -35,6 +35,7 @@ from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
 from .remote_node import remote_node_status
+from .runtime_audit import build_runtime_audit, audit_text
 from .service import IntelligenceService
 from .snapshot_export import SnapshotExporter
 from .sources import BinanceSource, BitgetSource, BybitSource, MoexSource, OkxSource, TwelveDataSource
@@ -328,6 +329,46 @@ async def system():
 @app.get('/api/node/remote')
 def node_remote_status():
     return remote_node_status()
+
+
+async def _build_audit_payload() -> dict[str, Any]:
+    runtime = service.runtime_status()
+    snapshot = _snapshot()
+    storage, lake_state, lab_state, lchi_state, pulse_state, remote_state, update_state, logs = await asyncio.gather(
+        asyncio.to_thread(store.stats),
+        asyncio.to_thread(lake.verify),
+        asyncio.to_thread(lab.stats),
+        asyncio.to_thread(lchi_service.status),
+        asyncio.to_thread(pulse_service.status),
+        asyncio.to_thread(remote_node_status),
+        asyncio.to_thread(updater.status, False),
+        asyncio.to_thread(store.list_logs, 300),
+    )
+    return await asyncio.to_thread(
+        build_runtime_audit,
+        version=app.version,
+        runtime=runtime,
+        snapshot=snapshot,
+        storage=storage,
+        lake=lake_state,
+        lab=lab_state,
+        lchi=lchi_state,
+        pulse=pulse_state,
+        remote=remote_state,
+        update=update_state,
+        recent_logs=logs,
+    )
+
+
+@app.get('/api/audit')
+async def runtime_audit():
+    return await _build_audit_payload()
+
+
+@app.get('/api/audit/text')
+async def runtime_audit_text():
+    payload = await _build_audit_payload()
+    return {"text": audit_text(payload), "generated_at_ms": payload.get("generated_at_ms"), "overall": payload.get("overall")}
 
 
 @app.get('/api/system/update')
