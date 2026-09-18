@@ -7,9 +7,11 @@ from .models import Quote
 
 START_2021_MS = 1609459200000
 METRIC_QUOTAS: dict[tuple[str, str], int] = {
+    # Wide FUTOI target for the MOEX reference vertical. Unique futures roots
+    # are still processed incrementally in tiny batches and failed roots are remembered.
+    ("moex", "forts"): 300,
     ("binance", "usdt-futures"): 40,
     ("bybit", "linear"): 25,
-    ("moex", "forts"): 8,
 }
 # Backwards-compatible name used by CI/older tooling.
 BYBIT_LINEAR_QUOTA = METRIC_QUOTAS[("bybit", "linear")]
@@ -94,7 +96,7 @@ def build_metric_plan(
 
     remaining = [p for p in targets if metric_key(p) not in existing]
     # Interleave providers instead of exhausting one exchange first.
-    provider_order = {"binance": 0, "bybit": 1, "moex": 2}
+    provider_order = {"moex": 0, "binance": 1, "bybit": 2}
     remaining.sort(key=lambda p: (sum(1 for x in existing if x[0] == p["provider"]), provider_order.get(p["provider"], 9)))
     selected = remaining[: max(0, int(batch_size))]
     stats = {
@@ -107,7 +109,7 @@ def build_metric_plan(
         "remaining": len(remaining),
         "batch_planned": len(selected),
         "buckets": bucket_counts,
-        "scope": "Binance OI/funding/basis + Bybit OI/funding + MOEX FUTOI; separate provider provenance",
+        "scope": "MOEX FUTOI wide incremental target + Binance/Bybit derivative metrics; separate provider provenance",
     }
     return selected, stats
 

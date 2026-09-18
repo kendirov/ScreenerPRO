@@ -12,21 +12,24 @@ START_2021_MS = 1609459200000
 # once. The planner is deterministic and can be expanded without changing the
 # ResearchRuntime worker.
 BUCKET_QUOTAS: dict[tuple[str, str], int] = {
+    # MOEX is the reference vertical: target the complete currently observable
+    # share/FORTS universe, still ranked liquid-first so overnight value appears early.
+    ("moex", "shares"): 2_000,
+    ("moex", "forts"): 2_000,
+    ("moex", "index"): 200,
+    ("moex", "selt"): 200,
+    # Crypto remains active, but no longer consumes the MOEX reference build first.
     ("binance", "usdt-futures"): 60,
-    ("moex", "forts"): 60,
-    ("moex", "shares"): 60,
     ("binance", "spot"): 30,
-    ("moex", "index"): 20,
-    ("moex", "selt"): 20,
 }
 
 BUCKET_ORDER = [
-    ("binance", "usdt-futures"),
-    ("moex", "forts"),
     ("moex", "shares"),
-    ("binance", "spot"),
+    ("moex", "forts"),
     ("moex", "index"),
     ("moex", "selt"),
+    ("binance", "usdt-futures"),
+    ("binance", "spot"),
 ]
 
 
@@ -125,7 +128,7 @@ def build_history_plan(
         "failed": sum(1 for p in targets if existing.get(history_key(p)) == "failed"),
         "remaining": len(remaining),
         "batch_planned": len(selected),
-        "scope": "Binance spot/futures + MOEX shares/FORTS/index/FX, priority tiers from 2021",
+        "scope": "MOEX complete observable shares/FORTS target + indices/FX, liquid-first from 2021; Binance priority tiers continue",
     }
     return selected, stats
 
