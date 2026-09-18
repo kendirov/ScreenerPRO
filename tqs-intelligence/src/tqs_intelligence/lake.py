@@ -110,19 +110,23 @@ class DataLake:
         """
         history_files = list(self.history_root.glob('**/*.parquet'))
         usage = shutil.disk_usage(self.root)
-        try:
-            from .metric_lake import MetricLake
-            metric_stats = MetricLake(self.root).quick_stats()
-        except Exception as exc:
-            metric_stats = {
-                'root': str((self.root/'metrics').resolve()),
-                'files': 0,
-                'rows': None,
-                'row_count_known': False,
-                'metrics': {},
-                'metric_files': {},
-                'bad_files': [str(exc)],
-            }
+        metric_root = self.root / 'metrics'
+        metric_files_list = list(metric_root.glob('**/*.parquet'))
+        metric_files: dict[str, int] = {}
+        for path in metric_files_list:
+            part = next((x for x in path.parts if x.startswith('metric=')), 'metric=unknown')
+            key = part.split('=', 1)[1]
+            metric_files[key] = metric_files.get(key, 0) + 1
+        metric_stats = {
+            'root': str(metric_root.resolve()),
+            'files': len(metric_files_list),
+            'rows': None,
+            'row_count_known': False,
+            'metrics': {},
+            'metric_files': metric_files,
+            'bad_files': [],
+            'stats_mode': 'quick',
+        }
         return {
             'root': str(self.root.resolve()),
             'files': len(history_files),
