@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from .control import ControlCenter
 from .engine import IntelligenceEngine
 from .models import AnomalyEpisode, Quote, RuntimeLog, Snapshot, SourceHealth, SourceStatus
+from .moex_features import merge_anomalies
 from .news import NewsCollector
 from .research import build_research_findings
 from .sources import MarketSource
@@ -34,7 +35,8 @@ class IntelligenceService:
     def __init__(self, sources: list[MarketSource], news: NewsCollector, store: DuckStore, interval_s: int = 60,
                  episode_threshold: float = 70.0, episode_close_grace_s: int = 180,
                  history_backfill_max: int = 8, history_refresh_every: int = 5,
-                 research_every_refreshes: int = 15, control: ControlCenter | None = None) -> None:
+                 research_every_refreshes: int = 15, control: ControlCenter | None = None,
+                 moex_feature_engine: object | None = None) -> None:
         self.sources, self.news, self.store = sources, news, store
         self.interval_s = max(15, interval_s)
         self.episode_threshold = episode_threshold
@@ -43,6 +45,7 @@ class IntelligenceService:
         self.history_refresh_every = max(1, history_refresh_every)
         self.research_every_refreshes = max(1, research_every_refreshes)
         self.control = control
+        self.moex_feature_engine = moex_feature_engine
         self.engine = IntelligenceEngine(); self.state = RuntimeState(); self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock(); self._manual_tasks: set[asyncio.Task] = set(); self._source_status: dict[str, str] = {}
         self._sources_by_provider = {source.provider: source for source in sources}
@@ -123,6 +126,12 @@ class IntelligenceService:
                         self.log("info",f"source:{item.provider}",f"{item.name}: источник восстановлен",instruments=item.instruments,latency_ms=item.latency_ms)
                 news=await self.news.collect()
                 anomalies=await asyncio.to_thread(self.engine.analyze, quotes)
+                if self.moex_feature_engine is not None:
+                    try:
+                        moex_anomalies = await asyncio.to_thread(self.moex_feature_engine.analyze, quotes)
+                        anomalies = merge_anomalies(anomalies, moex_anomalies)
+                    except Exception as exc:
+                        self.log("warning", "moex-features", "MOEX feature engine не завершил цикл", error=str(exc)[:500])
                 now=_now_ms(); snapshot=Snapshot(generated_at_ms=now,quotes=quotes,anomalies=anomalies,source_health=health,news=news)
                 await asyncio.to_thread(self.store.persist_snapshot, quotes, anomalies, news)
                 created=await asyncio.to_thread(self.store.update_episodes, anomalies, now, self.episode_threshold, self.episode_close_grace_ms)
