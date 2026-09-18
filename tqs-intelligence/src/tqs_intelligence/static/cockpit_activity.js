@@ -62,27 +62,32 @@
   async function loadActivityLedger(){
     ensureActivityPanel();
     try{
-      const [jobs,o,accounts,lake,logs]=await Promise.all([
-        api('/api/jobs?limit=2000'),api('/api/overview'),api('/api/accounts'),api('/api/data-lake'),api('/api/logs?limit=500')
+      const [day,o,accounts,lake,logs]=await Promise.all([
+        api(`/api/activity-summary?hours=${activityHours}`),api('/api/overview'),api('/api/accounts'),api('/api/data-lake'),api('/api/logs?limit=120')
       ]);
-      const cutoff=Date.now()-activityHours*3600_000;
-      const recent=jobs.filter(j=>Number(j.created_at_ms||0)>=cutoff).sort((a,b)=>Number(b.created_at_ms||0)-Number(a.created_at_ms||0));
-      const a=aggregate(recent),rr=o.research_runtime||{},rt=o.runtime||{},ai=accounts.status||{},disc=ai.discovery||{},metrics=lake.metrics||{};
+      const rr=o.research_runtime||{},rt=o.runtime||{},ai=accounts.status||{},disc=ai.discovery||{},metrics=lake.metrics||{};
+      const st=day.status||{};
       $('#activitySummary').innerHTML=[
-        ['Market cycles',rt.refresh_count||0,'текущая runtime-сессия'],['Свечи +',a.candles,`${activityHours}ч jobs`],['Metric points +',a.metricPoints,'OI / funding / basis / FUTOI'],
-        ['Replay',a.replays,'завершено'],['Strategies',a.strategyRuns,'прогонов'],['Failed',a.failed,a.failed?'требуют внимания':'нет job failures']
+        ['Market cycles',rt.refresh_count||0,'текущая runtime-сессия'],
+        ['Свечи +',day.candles_added||0,`${activityHours}ч durable jobs`],
+        ['Metric points +',day.metric_points_added||0,'OI / funding / basis / FUTOI'],
+        ['Replay',day.replay_runs_done||0,'завершено'],
+        ['Strategies',day.strategy_runs_done||0,'прогонов'],
+        ['Failed',day.failed||0,day.failed?'требуют внимания':'нет job failures']
       ].map(([x,y,z])=>`<div class="activityKpi"><span>${esc(x)}</span><b class="${x==='Failed'&&Number(y)?'down':''}">${compact(y)}</b><small>${esc(z)}</small></div>`).join('');
-      renderActivityJobs(recent);
-      const currentJobs=jobs.filter(j=>['running','queued'].includes(j.status));
+      const errorRows=(day.recent_errors||[]).map(x=>({id:x.id,kind:'failed',status:'failed',created_at_ms:x.finished_at_ms,title_ru:x.title_ru,error:x.error,result:{}}));
+      const seen=new Set(),ledger=[...(day.current||[]),...(day.recent_done||[]),...errorRows].filter(x=>x?.id&&!seen.has(x.id)&&seen.add(x.id));
+      renderActivityJobs(ledger);
       const recentErrors=logs.filter(x=>String(x.level||'').toLowerCase()==='error').slice(0,4);
       $('#activityNow').innerHTML=`
         <div class="nowRow"><span>СЕЙЧАС</span><b>${esc(rr.last_action||'Research ожидает')}</b></div>
-        <div class="nowRow"><span>ОЧЕРЕДЬ</span><b>${currentJobs.length} queued/running · ${esc(String(o.control?.mode||'—').toUpperCase())}</b></div>
+        <div class="nowRow"><span>ОЧЕРЕДЬ</span><b>${day.unfinished||0} queued/running · ${esc(String(o.control?.mode||'—').toUpperCase())}</b></div>
+        <div class="nowRow"><span>ЗА ${activityHours}Ч</span><b>${st.done||0} done · ${st.failed||0} failed · ${day.jobs_touched||0} jobs touched</b></div>
         <div class="nowRow"><span>AUTO HISTORY</span><b>${compact(rr.auto_history?.done||0)} done / ${compact(rr.auto_history?.target_total||0)} target · ${compact(rr.auto_history?.remaining||0)} remaining</b></div>
         <div class="nowRow"><span>AUTO METRICS</span><b>${compact(rr.auto_metrics?.done||0)} done / ${compact(rr.auto_metrics?.target_total||0)} target · ${compact(rr.auto_metrics?.remaining||0)} remaining</b></div>
         <div class="nowRow"><span>PUBLIC ACCOUNTS</span><b>${compact(disc.discovered_accounts||0)} discovered · ${compact(ai.tracked_accounts||0)} hot · ${compact(ai.open_positions||0)} positions · ${compact(ai.fills||0)} fills</b></div>
         <div class="nowRow"><span>DATA LAKE</span><b>${compact(lake.rows||0)} candle rows · ${compact(metrics.rows||0)} metric rows · ${num(lake.free_gb,1)} GB free</b></div>
-        ${a.failed||recentErrors.length?`<div class="activityWarning">Есть ${a.failed} failed jobs и ${recentErrors.length} свежих runtime error-событий. Открой «Система» перед тем как считать ночь успешной.</div>`:`<div class="activityGood">В выбранном окне нет job failures/runtime errors в доступной выборке.</div>`}`;
+        ${day.failed||recentErrors.length?`<div class="activityWarning">Есть ${day.failed||0} failed jobs и ${recentErrors.length} свежих runtime error-событий. Детали сохранены в журнале и диагностическом пакете.</div>`:`<div class="activityGood">В выбранном окне нет job failures/runtime errors в доступной выборке.</div>`}`;
     }catch(e){$('#activityNow').innerHTML=`<div class="activityWarning">Activity Ledger не загрузился: ${esc(e.message)}</div>`}
   }
 
