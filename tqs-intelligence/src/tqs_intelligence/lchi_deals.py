@@ -267,7 +267,7 @@ class LchiDealsCollector:
         else:
             raise TimeoutError(f"LCHI deals snapshot {request_id} not ready; last status={status}")
         self.last_action = f"ЛЧИ сделки: скачиваю CSV {uid[:8]}…"
-        csv_text = await self.http.post_text(download_url, {}, timeout_s=30)
+        csv_text = await self.http.post_text(download_url, None, timeout_s=30)
         parsed = parse_deals_csv(uid, csv_text)
         result = self._persist(uid, parsed)
         self.last_error = None
