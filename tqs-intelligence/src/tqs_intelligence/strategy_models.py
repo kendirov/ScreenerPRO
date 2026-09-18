@@ -60,6 +60,7 @@ class ResearchJob(BaseModel):
 class ResearchProject(BaseModel):
     id: str
     title: str
+    version: int = 1
     hypothesis: str
     origin: str = 'artem'
     status: Literal['idea','exploratory','validation','oos','confirmed','rejected','insufficient_data'] = 'exploratory'
@@ -83,3 +84,23 @@ class ResearchProject(BaseModel):
     notes: list[str] = Field(default_factory=list)
     created_at_ms: int
     updated_at_ms: int
+
+
+class ResearchRunResult(BaseModel):
+    run_id: str
+    research_id: str
+    canonical_id: str
+    family: str
+    interval: str
+    generated_at_ms: int
+    status: str
+    sample_count: int = 0
+    control_count: int = 0
+    coverage: dict[str, Any] = Field(default_factory=dict)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    splits: dict[str, Any] = Field(default_factory=dict)
+    regimes: dict[str, Any] = Field(default_factory=dict)
+    conclusion: str = ""
+    next_action: str = ""
+    strategy_id: str | None = None
+    warnings: list[str] = Field(default_factory=list)

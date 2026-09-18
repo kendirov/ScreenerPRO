@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .strategy_models import ResearchJob, ResearchProject, StrategyRunResult, StrategySpec
+from .strategy_models import ResearchJob, ResearchProject, ResearchRunResult, StrategyRunResult, StrategySpec
 
 
 def _now_ms() -> int:
@@ -43,6 +43,10 @@ class LabStore:
                 create table if not exists research_projects (
                     id text primary key, created_at_ms integer, updated_at_ms integer,
                     title text, status text, project_json text
+                );
+                create table if not exists research_runs (
+                    run_id text primary key, research_id text, canonical_id text,
+                    created_at_ms integer, status text, result_json text
                 );
                 create table if not exists research_jobs (
                     id text primary key, kind text, created_at_ms integer, updated_at_ms integer,
@@ -141,6 +145,29 @@ class LabStore:
             row = self._con.execute('select project_json from research_projects where id=?', [project_id]).fetchone()
         return ResearchProject.model_validate_json(row[0]) if row else None
 
+    def save_research_run(self, result: ResearchRunResult) -> None:
+        with self._lock:
+            self._con.execute(
+                'insert or replace into research_runs values (?, ?, ?, ?, ?, ?)',
+                [result.run_id, result.research_id, result.canonical_id,
+                 result.generated_at_ms, result.status, result.model_dump_json()],
+            )
+            self._con.commit()
+
+    def list_research_runs(self, research_id: str = '', canonical_id: str = '', limit: int = 300) -> list[ResearchRunResult]:
+        sql = 'select result_json from research_runs'
+        where = []; params: list[Any] = []
+        if research_id:
+            where.append('research_id=?'); params.append(research_id)
+        if canonical_id:
+            where.append('canonical_id=?'); params.append(canonical_id)
+        if where:
+            sql += ' where ' + ' and '.join(where)
+        sql += ' order by created_at_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows = self._con.execute(sql, params).fetchall()
+        return [ResearchRunResult.model_validate_json(r[0]) for r in rows]
+
     def enqueue_job(self, kind: str, title_ru: str, payload: dict[str, Any]) -> ResearchJob:
         item = ResearchJob(id=f'J-{uuid4().hex[:10].upper()}', kind=kind, created_at_ms=_now_ms(), title_ru=title_ru, payload=payload)
         with self._lock:
@@ -183,8 +210,23 @@ class LabStore:
 
     def claim_next_job(self) -> ResearchJob | None:
         with self._lock:
-            row = self._con.execute("select * from research_jobs where status='queued' order by created_at_ms limit 1").fetchone()
-            if row is None: return None
+            rows = self._con.execute("select * from research_jobs where status='queued' order by created_at_ms limit 200").fetchall()
+            if not rows: return None
+            def priority(r: sqlite3.Row) -> tuple[int, int]:
+                payload = _loads(r['payload_json'], {})
+                kind = str(r['kind'] or '')
+                if kind == 'research_project_run':
+                    p = 0
+                elif payload.get('research_project_id'):
+                    p = 1
+                elif kind == 'strategy_run':
+                    p = 2
+                elif kind == 'historical_replay':
+                    p = 3
+                else:
+                    p = 4
+                return (p, int(r['created_at_ms'] or 0))
+            row = min(rows, key=priority)
             now = _now_ms()
             self._con.execute("update research_jobs set status='running',progress=0.01,started_at_ms=?,updated_at_ms=? where id=?", [now, now, row['id']])
             self._con.commit()
@@ -246,6 +288,7 @@ class LabStore:
             return {
                 'ideas': self._con.execute('select count(*) from ideas').fetchone()[0],
                 'research_projects': self._con.execute('select count(*) from research_projects').fetchone()[0],
+                'research_runs': self._con.execute('select count(*) from research_runs').fetchone()[0],
                 'queued_jobs': self._con.execute("select count(*) from research_jobs where status='queued'").fetchone()[0],
                 'running_jobs': self._con.execute("select count(*) from research_jobs where status='running'").fetchone()[0],
                 'strategies': self._con.execute('select count(*) from strategy_specs').fetchone()[0],

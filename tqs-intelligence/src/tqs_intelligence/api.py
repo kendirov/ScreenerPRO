@@ -671,24 +671,40 @@ def create_research_project(request:ResearchProjectCreate):
     return lab.save_research_project(project).model_dump(mode='json')
 
 
+@app.get('/api/research/projects/{project_id}')
+def research_project_detail(project_id:str):
+    project=lab.get_research_project(project_id)
+    if project is None: raise HTTPException(404,'research project not found')
+    runs=lab.list_research_runs(project_id,'',200)
+    return {'project':project.model_dump(mode='json'),'runs':[x.model_dump(mode='json') for x in runs]}
+
+
+@app.get('/api/research/runs')
+def research_runs(project_id:str='',canonical_id:str='',limit:int=Query(300,ge=1,le=3000)):
+    return [x.model_dump(mode='json') for x in lab.list_research_runs(project_id,canonical_id,limit)]
+
+
 @app.post('/api/research/projects/{project_id}/queue')
 def queue_research_project(project_id:str):
     project=lab.get_research_project(project_id)
     if project is None: raise HTTPException(404,'research project not found')
     queued=[]
     existing=set(project.linked_job_ids)
+    active={(j.kind,str(j.payload.get('research_project_id')),str(j.payload.get('canonical_id')))
+            for j in lab.list_jobs(5000) if j.status in {'queued','running'}}
     for cid in project.instruments:
-        interval='10m' if cid.startswith('moex:') else '5m'
-        job=lab.enqueue_job('historical_replay',f"Research {project.id}: {cid}",{
-            'canonical_id':cid,'interval':interval,'threshold':70.0,'research_project_id':project.id,
-            'hypothesis':project.hypothesis,'horizons':project.horizons,'controls':project.controls,
-            'regimes':project.regimes,
+        key=('research_project_run',project.id,cid)
+        if key in active:
+            continue
+        job=lab.enqueue_job('research_project_run',f"Research {project.id}: {cid}",{
+            'research_project_id':project.id,'canonical_id':cid,'attempt':0,
         })
         queued.append(job.id); existing.add(job.id)
     project.linked_job_ids=sorted(existing)
     project.status='exploratory'
     lab.save_research_project(project)
-    return {'project':project.model_dump(mode='json'),'queued_job_ids':queued}
+    return {'project':project.model_dump(mode='json'),'queued_job_ids':queued,
+            'message':'queued' if queued else 'no instruments or already active'}
 
 
 @app.get('/api/research/findings')
