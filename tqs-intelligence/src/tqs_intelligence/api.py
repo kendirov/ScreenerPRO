@@ -426,7 +426,7 @@ async def _build_audit_payload() -> dict[str, Any]:
     snapshot = _snapshot()
     storage, lake_state, lab_state, lchi_state, pulse_state, remote_state, update_state, logs = await asyncio.gather(
         asyncio.to_thread(store.stats),
-        asyncio.to_thread(lake.verify),
+        asyncio.to_thread(lake.quick_stats),
         asyncio.to_thread(lab.stats),
         asyncio.to_thread(lchi_service.status),
         asyncio.to_thread(pulse_service.status),
