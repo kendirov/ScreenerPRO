@@ -1,18 +1,10 @@
 {
   "schema_version": 1,
-  "command_id": "chatgpt-1789730737479-light-stable",
-  "issued_at_ms": 1789730737479,
-  "expires_at_ms": 1789733437479,
+  "command_id": "chatgpt-1789732507913-update-v0133",
+  "issued_at_ms": 1789732507913,
+  "expires_at_ms": 1789735207913,
   "requested_by": "chatgpt",
-  "action": "set_control",
-  "params": {
-    "mode": "light",
-    "heavy_workers": 1,
-    "history_batch_size": 1,
-    "metric_batch_size": 1,
-    "refresh_seconds_override": 120,
-    "cpu_soft_limit_pct": 70,
-    "ram_soft_limit_pct": 82
-  },
-  "note": "Resume stable live collection after v0.13.1 repair; keep heavy research paused under high RAM pressure."
+  "action": "request_update",
+  "params": {},
+  "note": "Install merged TQS v0.13.3 runtime hotfix and scalable anomaly ranking."
 }
