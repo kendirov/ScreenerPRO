@@ -56,6 +56,8 @@ class TQSLauncher:
         self._owner_summary: dict[str, Any] = {}
         self._owner_accounts: dict[str, Any] = {}
         self._owner_summary_last_s = 0.0
+        self._git_verified = False
+        self._git_fetch_error = ""
 
         self.root = tk.Tk()
         self.root.title("TQS Launcher")
@@ -66,6 +68,7 @@ class TQSLauncher:
         self._build_ui()
         threading.Thread(target=self._health_loop, name="tqs-launcher-health", daemon=True).start()
         self.root.after(250, self.refresh_all)
+        self.root.after(1200, lambda: self._thread(self.refresh_git, True))
         self.root.after(2500, self._poll)
 
     def _setup_style(self) -> None:
@@ -330,9 +333,27 @@ class TQSLauncher:
         except Exception: return "—"
 
     def refresh_git(self, fetch: bool = False) -> None:
-        if fetch: self._event("Проверяю GitHub…")
-        state = self.git_state(fetch=fetch); self._git_cache = state
-        if fetch: self._event(f"Есть обновление: +{state['behind']} commit(ов)" if state["behind"] > 0 else "Локальная версия совпадает с GitHub")
+        if fetch:
+            self._event("Проверяю GitHub…")
+        try:
+            state = self.git_state(fetch=fetch)
+        except subprocess.TimeoutExpired:
+            if fetch:
+                self._git_verified = False
+                self._git_fetch_error = "GitHub/VPN не ответил вовремя"
+                self._event("GitHub временно недоступен или медленный VPN. TQS продолжает работать; проверку обновлений можно повторить позже.")
+            return
+        except Exception as exc:
+            if fetch:
+                self._git_verified = False
+                self._git_fetch_error = str(exc)[:300]
+                self._event(f"Не удалось проверить GitHub: {str(exc)[:180]}. Это не останавливает TQS.")
+            return
+        self._git_cache = state
+        if fetch:
+            self._git_verified = True
+            self._git_fetch_error = ""
+            self._event(f"Есть обновление: +{state['behind']} commit(ов)" if state["behind"] > 0 else "Локальная версия подтверждена GitHub")
 
     def refresh_all(self) -> None:
         try:
@@ -361,11 +382,12 @@ class TQSLauncher:
             vm = psutil.virtual_memory(); self.resource_label.configure(text=f"CPU {psutil.cpu_percent()}% · RAM {vm.percent}% · health timeout")
         else:
             self.cards["backend"][0].configure(text="OFFLINE", fg=RED); self.cards["backend"][1].configure(text="процессов TQS нет"); self.cards["mode"][0].configure(text="—"); self.cards["mode"][1].configure(text="backend offline"); vm = psutil.virtual_memory(); self.resource_label.configure(text=f"CPU {psutil.cpu_percent()}% · RAM {vm.percent}%")
-        if g.get("error"): self._set_banner("Не удалось определить версию", MUTED, g["error"])
+        if g.get("error"): self._set_banner("Не удалось определить локальную версию", MUTED, g["error"])
         elif g.get("dirty"): self._set_banner("Локальные изменения — автообновление заблокировано", AMBER, f"LOCAL {local} · REMOTE {remote}")
-        elif g.get("behind", 0) > 0: self._set_banner("ЕСТЬ ОБНОВЛЕНИЕ", AMBER, f"LOCAL {local} → REMOTE {remote} · +{g['behind']} commit")
-        elif remote != "—" and local == remote: self._set_banner("АКТУАЛЬНАЯ ВЕРСИЯ", GREEN, f"v{version} · commit {local}")
-        else: self._set_banner("Версия не проверена по сети", MUTED, f"LOCAL {local} · нажми «Проверить обновление»")
+        elif self._git_fetch_error: self._set_banner("GitHub временно недоступен", MUTED, f"LOCAL v{version} · commit {local} · TQS продолжает работать")
+        elif self._git_verified and g.get("behind", 0) > 0: self._set_banner("ЕСТЬ ОБНОВЛЕНИЕ", AMBER, f"LOCAL {local} → REMOTE {remote} · +{g['behind']} commit")
+        elif self._git_verified and remote != "—" and local == remote: self._set_banner("АКТУАЛЬНАЯ ВЕРСИЯ", GREEN, f"v{version} · commit {local} · проверено по GitHub")
+        else: self._set_banner("Локальная версия", MUTED, f"v{version} · commit {local} · сверяю с GitHub…")
         self._render_activity(); self._refresh_log()
 
     def _set_banner(self, title: str, color: str, detail: str) -> None:
@@ -519,7 +541,13 @@ class TQSLauncher:
         self.root.after(700, self.root.destroy)
 
     def _run_update(self) -> None:
-        g = self.git_state(fetch=True); self._git_cache = g
+        try:
+            g = self.git_state(fetch=True)
+        except subprocess.TimeoutExpired as exc:
+            self._git_verified = False
+            self._git_fetch_error = "GitHub/VPN не ответил вовремя"
+            raise RuntimeError("GitHub/VPN не ответил при проверке обновления. TQS не остановлен; повтори позже.") from exc
+        self._git_cache = g; self._git_verified = True; self._git_fetch_error = ""
         if g["dirty"]: raise RuntimeError("Есть незакоммиченные локальные изменения. Обновление остановлено для защиты файлов.")
         if g["behind"] <= 0: self._event("Обновление не требуется — локальный commit последний"); return
         if not self.update_script.exists(): raise RuntimeError("update-windows.ps1 не найден")
