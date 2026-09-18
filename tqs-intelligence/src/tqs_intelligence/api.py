@@ -30,6 +30,7 @@ from .moex_lab import MoexLab
 from .moex_features import MoexFeatureEngine
 from .metric_lake import MetricLake
 from .news import NewsCollector
+from .pulse_public import PulsePublicService, PulsePublicStore
 from .relationships import mine_relationships
 from .research_runtime import ResearchRuntime
 from .service import IntelligenceService
@@ -72,6 +73,8 @@ class Settings(BaseSettings):
     account_refresh_seconds: int = 60
     account_history_days: int = 30
     hyperliquid_wallets: str = ''
+    pulse_handles: str = ''
+    pulse_refresh_seconds: int = 300
 
 
 class ControlPatch(BaseModel):
@@ -137,6 +140,12 @@ lab = LabStore(settings.lab_db_path)
 account_store = AccountIntelStore(settings.accounts_db_path)
 lchi_store = LchiPublicStore(settings.lchi_db_path)
 lchi_service = LchiPublicService(control, lchi_store, http)
+pulse_store = PulsePublicStore('./data/tqs-pulse.sqlite3')
+pulse_service = PulsePublicService(
+    control, pulse_store, http,
+    [x.strip() for x in settings.pulse_handles.split(',') if x.strip()],
+    settings.pulse_refresh_seconds,
+)
 lake = DataLake(control.get().data_lake_root)
 metric_lake = MetricLake(lake.root)
 backfiller = HistoricalBackfiller(http, lake)
@@ -165,9 +174,9 @@ async def lifespan(_: FastAPI):
         lab.save_strategy(default_round_buffer_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
-    service.start(); research_runtime.start(); account_service.start(); lchi_service.start()
+    service.start(); research_runtime.start(); account_service.start(); lchi_service.start(); pulse_service.start()
     yield
-    await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
+    await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
 STATIC = Path(__file__).with_name('static')
@@ -224,6 +233,9 @@ def _capabilities() -> list[dict[str, object]]:
         {'provider':'accounts','name':'Account / Position Intelligence','enabled':True,'markets':['Hyperliquid public accounts','MOEX participant aggregates later'],'asset_classes':[],
          'data_fields':['open positions','fills','PnL samples','long/short bias','instrument concentration','execution style'],'access':'Публичные данные / разрешённые feeds',
          'description':'Публичные счета анализируются описательно; мотив/стоп/логика не объявляются фактами без синхронизации с рыночными данными.'},
+        {'provider':'pulse-public','name':'T-Bank Pulse public profiles','enabled':True,'markets':['MOEX / Russian retail context'],'asset_classes':[],
+         'data_fields':['public profile','public trade markers when present in SSR','side/time/price','size_known=false'],'access':'Public profile pages; client-side/auth-only operations remain unavailable',
+         'description':'Public profile evidence only. Exact operation quantity is never estimated when hidden by Pulse.'},
         {'provider':'instrument-lab','name':'Universal Instrument Lab','enabled':True,'markets':['Все подключённые рынки'],'asset_classes':[],
          'data_fields':['candles','live snapshots','anomaly overlay','OI','funding','episodes','news','strategy runs','related instruments'],'access':'Локальный terminal',
          'description':'Один инструмент → максимум накопленного контекста и дозагрузка истории из того же интерфейса.'},
@@ -249,7 +261,7 @@ async def health():
     # Liveness must never wait for analytical COUNT(*) queries or Parquet work.
     snapshot=_snapshot()
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),
+            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],
             'storage':{'deferred':True},'lab':{'deferred':True}}
@@ -284,7 +296,7 @@ def overview():
             'active_episode_count':stats.get('active_episodes',0),'episode_count':stats.get('anomaly_episodes',0),
             'news_count':len(snapshot.news) if snapshot else 0,'asset_classes':classes,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),
+            'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'pulse_public':pulse_service.status(),
             'control':control.status(),'resources':_resources(),'storage':stats,'lab':lab.stats(),
             'top_anomalies':[x.model_dump(mode='json') for x in snapshot.anomalies[:30]] if snapshot else []}
 
@@ -349,6 +361,7 @@ async def universal_instrument(canonical_id:str):
 def moex():
     payload = moex_lab.overview(_snapshot())
     payload['lchi_public'] = lchi_service.status()
+    payload['pulse_public'] = pulse_service.status()
     return payload
 
 
@@ -361,6 +374,7 @@ def moex_intelligence(limit:int=Query(200,ge=1,le=1000)):
 def moex_market_lab():
     payload = moex_lab.overview(_snapshot())
     payload['lchi_public'] = lchi_service.status()
+    payload['pulse_public'] = pulse_service.status()
     return payload
 
 
@@ -397,6 +411,33 @@ def lchi_positions(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
 @app.get('/api/moex/participants/lchi/events')
 def lchi_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
     return lchi_store.events(symbol=symbol, limit=limit)
+
+
+class PulseTrackCreate(BaseModel):
+    handle: str
+
+
+@app.get('/api/moex/participants/pulse/status')
+def pulse_status():
+    return pulse_service.status()
+
+
+@app.get('/api/moex/participants/pulse')
+def pulse_profiles(limit:int=Query(200,ge=1,le=2000)):
+    return pulse_store.profiles(limit=limit)
+
+
+@app.get('/api/moex/participants/pulse/events')
+def pulse_events(symbol:str='', limit:int=Query(500,ge=1,le=5000)):
+    return pulse_store.events(symbol=symbol, limit=limit)
+
+
+@app.post('/api/moex/participants/pulse/track')
+async def pulse_track(request:PulseTrackCreate):
+    handle=request.handle.strip().lstrip('@')
+    if not handle:
+        raise HTTPException(400,'Pulse handle is required')
+    return await pulse_service.sync(handle)
 
 
 @app.get('/api/episodes')
