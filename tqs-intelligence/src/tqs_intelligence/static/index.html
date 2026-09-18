@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/static/cockpit_activity.css">
   <link rel="stylesheet" href="/static/cockpit_ai.css">
   <link rel="stylesheet" href="/static/cockpit_runtime.css">
+  <link rel="stylesheet" href="/static/cockpit_moex.css">
   <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
@@ -17,10 +18,11 @@
   <aside class="sidebar">
     <div class="brand">TQS<small>TRADING INTELLIGENCE</small></div>
     <nav class="nav">
-      <button data-view="overview">Пульт</button>
-      <button data-view="instrument" class="active">Инструмент</button>
+      <button data-view="overview" class="active">Пульт</button>
+      <button data-view="moex">Мосбиржа</button>
+      <button data-view="instrument">Инструмент</button>
       <button data-view="research" class="research">Исследования</button>
-      <button data-view="data">Данные</button>
+      <button data-view="data">Данные и покрытие</button>
       <button data-view="system">Система</button>
     </nav>
     <div class="sidebarFoot">
@@ -38,13 +40,20 @@
         <button id="saveSnapshot" class="btn small">Снимок</button><button id="refreshMarket" class="btn small primary">Обновить рынок</button>
       </div>
     </header>
-    <section id="instrument" class="view active">
+    <section id="instrument" class="view">
       <div class="hero"><div><span class="eyebrow">UNIVERSAL INSTRUMENT WORKSPACE</span><h2>Цена, позиции, события и исследования<br>на одной временной оси.</h2><p>Не отдельный скринер и не набор AI-карточек. Это рабочее место для конкретного инструмента: свечи и объём, OI, funding, basis, аномалии, эпизоды, публичные позиции/fills, MOEX FUTOI, новости, связанные рынки и результаты Strategy Machine.</p></div><div><div class="searchBar"><input id="instrumentSearch" placeholder="BTC, ETH, BR, SBER, Si…" autocomplete="off"><button id="instrumentFind" class="btn primary">Открыть</button></div><div class="quickSymbols"><span class="muted">Быстро:</span><button data-symbol="BTC">BTC</button><button data-symbol="ETH">ETH</button><button data-symbol="BR">BR</button><button data-symbol="SBER">SBER</button><button data-symbol="Si">Si</button></div></div></div>
       <div id="searchResults" class="searchResults"></div><div id="instrumentWorkspace"><div class="empty"><b>Выбери инструмент.</b>TQS соберёт в одном месте всё, что уже знает, и честно покажет отсутствующие слои.</div></div>
     </section>
-    <section id="overview" class="view">
+    <section id="overview" class="view active">
       <div class="hero"><div><span class="eyebrow">TQS COCKPIT</span><h2>Рынок и машина сейчас.</h2><p>Сначала что реально происходит, что машина сделала за выбранное окно и что делает сейчас. Ни один счётчик не должен маскировать offline/stale состояние.</p></div></div><div id="overviewMetrics" class="metrics"></div>
       <div class="overviewGrid"><div class="stack"><div class="panel"><div class="panelHead"><div><b>In Play / аномалии</b><small>кандидаты мест потенциального движения, не торговые рекомендации</small></div></div><div id="overviewAnomalies" class="tableWrap"></div></div><div class="panel"><div class="panelHead"><div><b>Рынок</b><small>ликвидные наблюдаемые инструменты</small></div></div><div id="overviewMovers" class="tableWrap"></div></div></div><div class="stack"><div class="panel"><div class="panelHead"><div><b>Что делает машина</b><small>market / research / accounts</small></div></div><div id="overviewMachine" class="panelBody"></div></div><div class="panel"><div class="panelHead"><div><b>Источники</b><small>состояние текущего цикла</small></div></div><div id="overviewSources" class="panelBody"></div></div><div class="panel"><div class="panelHead"><div><b>Покрытие рынков</b></div></div><div id="overviewMarkets" class="panelBody marketRows"></div></div></div></div>
+    </section>
+    <section id="moex" class="view">
+      <div class="hero"><div><span class="eyebrow">МОСКОВСКАЯ БИРЖА · ЭТАЛОННЫЙ КОНТУР</span><h2>Что мы видим, что уже скачали<br>и что исследуем по MOEX.</h2><p>Акции, фьючерсы, OI/FUTOI, участники, события и история должны сходиться в один понятный трейдерский контекст. Каждый слой показывает покрытие и ограничения.</p></div><div class="quickSymbols"><span class="muted">Быстро:</span><button data-moex-symbol="SBER">SBER</button><button data-moex-symbol="BR">BR</button><button data-moex-symbol="Si">Si</button><button data-moex-symbol="IMOEX">IMOEX</button></div></div>
+      <div id="moexMetrics" class="metrics"></div>
+      <div class="grid2"><div class="panel"><div class="panelHead"><div><b>Покрытие данных MOEX</b><small>цель → готово → очередь → ошибки → что дальше</small></div></div><div id="moexCoverage" class="panelBody"></div></div><div class="panel"><div class="panelHead"><div><b>Источники участников</b><small>агрегат, публичный счёт и публичный профиль — разные уровни доказательности</small></div></div><div id="moexParticipantSources" class="panelBody"></div></div></div>
+      <div class="panel" style="margin-top:10px"><div class="panelHead"><div><b>Что TQS делает по Мосбирже сейчас</b><small>конкретные задачи вместо RUN / WAIT</small></div></div><div id="moexJobs" class="tableWrap"></div></div>
+      <div class="grid2" style="margin-top:10px"><div class="panel"><div class="panelHead"><div><b>Акции</b><small>самые активные сейчас · клик открывает весь контекст</small></div></div><div id="moexStocks" class="tableWrap"></div></div><div class="panel"><div class="panelHead"><div><b>Фьючерсы</b><small>оборот + открытый интерес · клик открывает весь контекст</small></div></div><div id="moexFutures" class="tableWrap"></div></div></div>
     </section>
     <section id="research" class="view">
       <div class="hero"><div><span class="eyebrow">RESEARCH / STRATEGY LAB</span><h2>Что машина проверяет и что уже знает.</h2><p>Research здесь отделён от красивых историй: задача → данные → тест → controls/OOS → результат/отрицательный результат → знание.</p></div></div>
@@ -55,6 +64,6 @@
   </main>
 </div>
 <div id="toast" class="toast"></div>
-<script src="/static/cockpit.js"></script><script src="/static/cockpit_metrics.js"></script><script src="/static/cockpit_context.js"></script><script src="/static/cockpit_activity.js"></script><script src="/static/cockpit_ai.js"></script><script src="/static/cockpit_runtime.js"></script>
+<script src="/static/cockpit.js"></script><script src="/static/cockpit_moex.js"></script><script src="/static/cockpit_metrics.js"></script><script src="/static/cockpit_context.js"></script><script src="/static/cockpit_activity.js"></script><script src="/static/cockpit_ai.js"></script><script src="/static/cockpit_runtime.js"></script>
 </body>
 </html>
