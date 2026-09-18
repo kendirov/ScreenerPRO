@@ -31,7 +31,7 @@
         api('/api/jobs?limit=2000'),
         api('/api/overview')
       ]);
-      const m=result[0],quotes=result[1],jobs=result[2],o=result[3];
+      const m=result[0],quotes=result[1],jobs=result[2],o=result[3],lchi=m.lchi_public||{};
       const counts={shares:0,forts:0,index:0,selt:0,bonds:0};
       quotes.forEach(q=>{counts[q.market_type]=(counts[q.market_type]||0)+1});
       const src=(o.sources||[]).find(x=>x.provider==='moex');
@@ -60,7 +60,7 @@
         coverageRow('История акций',shDone+' из '+(counts.shares||0),'готово '+shDone+' · очередь/работа '+shQ+' · ошибок '+shF+' · цель: весь доступный universe с 2021',shF?'warn':shDone?'good':''),
         coverageRow('История фьючерсов',fuDone+' из '+(counts.forts||0),'готово '+fuDone+' · очередь/работа '+fuQ+' · ошибок '+fuF+' · цель: весь FORTS с 2021',fuF?'warn':fuDone?'good':''),
         coverageRow('FUTOI физлица / юрлица',fmDone?(fmDone+' корней'):'НЕТ ГОТОВЫХ','очередь/работа '+fmQ+' · ошибок '+fmF+' · задержка/лицензия сохраняются в provenance',fmF?'warn':fmDone?'good':''),
-        coverageRow('ЛЧИ 2026 — публичные участники','ПОДКЛЮЧАЕМ','автообнаружение → позиции → сделки → изменения → маркеры на графике','plan'),
+        coverageRow('ЛЧИ 2026 — публичные участники',lchi.running?'РАБОТАЕТ':'ОЖИДАЕТ','найдено '+compact(lchi.participants_discovered||0)+' · портфели '+compact(lchi.participants_with_portfolio||0)+' · события изменений '+compact(lchi.position_events||0)+' · '+(lchi.last_action||''),lchi.last_error?'warn':lchi.running?'good':'plan'),
         coverageRow('Т‑Банк Пульс — публичные профили','ПЛАН','состав/сделки доступны частично; точный размер операции скрыт и не будет выдумываться','plan'),
         coverageRow('Новости / события',(o.news_count||0)+' сейчас','официальные MOEX/эмитенты/ЦБ + выбранные новости будут отдельными источниками','plan')
       ].join('');
@@ -68,7 +68,7 @@
       const sourceRows=[
         ['БИРЖА','MOEX ISS','котировки, оборот, статус торгов, свечи, OI где доступно','good'],
         ['АГРЕГАТ','MOEX FUTOI','физлица/юрлица long/short и число участников; задержка/лицензия обязательны',fmDone?'good':'warn'],
-        ['ПУБЛИЧНЫЙ СЧЁТ','ЛЧИ 2026','позиции, количество, средняя цена, P&L и сделки — только опубликованные данные','plan'],
+        ['ПУБЛИЧНЫЙ СЧЁТ','ЛЧИ 2026','автокаталог '+compact(lchi.participants_discovered||0)+' участников · портфели '+compact(lchi.participants_with_portfolio||0)+' · количество/цена только из публичного источника',lchi.running?'good':'plan'],
         ['ПУБЛИЧНЫЙ ПРОФИЛЬ','Пульс','состав и недавние сделки; размер операции скрыт','plan']
       ];
       $('#moexParticipantSources').innerHTML=sourceRows.map(x=>'<div class="participantSource '+x[3]+'"><span>'+esc(x[0])+'</span><div><b>'+esc(x[1])+'</b><small>'+esc(x[2])+'</small></div></div>').join('');
