@@ -280,10 +280,51 @@ class MoexFeatureEngine:
         return values
 
     def _lchi_flow(self, symbol: str, now_ms: int) -> dict[str, Any]:
-        if self.lchi_store is None or not hasattr(self.lchi_store, "symbol_flow"):
+        if self.lchi_store is None:
             return {}
         try:
-            return dict(self.lchi_store.symbol_flow(symbol, since_ms=now_ms - 60 * MINUTE_MS) or {})
+            if hasattr(self.lchi_store, "symbol_flow"):
+                return dict(self.lchi_store.symbol_flow(symbol, since_ms=now_ms - 60 * MINUTE_MS) or {})
+            needle = str(symbol or "").upper().strip()
+            root = needle.split("-")[0]
+            since_ms = now_ms - 60 * MINUTE_MS
+            with self.lchi_store._lock:
+                rows = self.lchi_store._con.execute(
+                    """select event_type, previous_qty, current_qty, delta_qty, user_id
+                       from lchi_position_events
+                       where ts_ms>=? and (upper(seccode)=? or upper(seccode) like ?)
+                       order by ts_ms desc""",
+                    [since_ms, needle, root + "-%"],
+                ).fetchall()
+            changed = set()
+            long_inc = set()
+            short_inc = set()
+            delta = 0.0
+            for row in rows:
+                event_type = str(row[0] or "")
+                prev = float(row[1] or 0.0)
+                cur = float(row[2] or 0.0)
+                d = float(row[3] or 0.0)
+                uid = str(row[4] or "")
+                if uid:
+                    changed.add(uid)
+                delta += d
+                # Count accounts that materially increased directional exposure.
+                if cur > 0 and (prev <= 0 or cur > prev):
+                    long_inc.add(uid)
+                if cur < 0 and (prev >= 0 or cur < prev):
+                    short_inc.add(uid)
+                if event_type == "flipped":
+                    (long_inc if cur > 0 else short_inc).add(uid)
+            return {
+                "changed_accounts": len(changed),
+                "long_increase_accounts": len(long_inc),
+                "short_increase_accounts": len(short_inc),
+                "net_delta_qty": delta,
+                "events": len(rows),
+                "since_ms": since_ms,
+                "evidence_time": "TQS observation time; not exact trade time",
+            }
         except Exception:
             return {}
 
