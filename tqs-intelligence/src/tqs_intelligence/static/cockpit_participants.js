@@ -1,0 +1,79 @@
+(()=>{
+  let participantQuery='';
+  let symbolQuery='';
+
+  const pMetric=(a,b,c)=>'<div class="metric"><span>'+esc(a)+'</span><b>'+esc(b)+'</b><small>'+esc(c||'')+'</small></div>';
+
+  async function loadParticipants(){
+    try{
+      const [status,participants]=await Promise.all([
+        api('/api/moex/participants/lchi/status'),
+        api('/api/moex/participants/lchi?limit=200'+(participantQuery?'&q='+encodeURIComponent(participantQuery):''))
+      ]);
+      $('#participantMetrics').innerHTML=[
+        pMetric('ЛЧИ найдено',compact(status.participants_discovered||0),'публичный каталог'),
+        pMetric('Портфели прочитаны',compact(status.participants_with_portfolio||0),'публичные снимки'),
+        pMetric('Изменений позиции',compact(status.position_events||0),'между наблюдениями TQS'),
+        pMetric('Каталог',status.catalog_pages_total?((status.catalog_page||0)+' / '+status.catalog_pages_total):'запуск','страницы по 20 участников'),
+        pMetric('Сбор',status.running?'Работает':'Ожидает',status.last_action||''),
+        pMetric('Качество','Публичный счёт','ЛЧИ ≠ FUTOI ≠ Пульс')
+      ].join('');
+      renderParticipantList(participants);
+      if(symbolQuery)await loadSymbolPositions(symbolQuery);
+    }catch(e){
+      toast('Участники: '+esc(e.message),10000);
+    }
+  }
+
+  function renderParticipantList(rows){
+    const box=$('#lchiParticipants');
+    if(!rows.length){box.innerHTML='<div class="empty">В локальном каталоге пока нет совпадений.</div>';return}
+    box.innerHTML='<table class="table"><thead><tr><th>Участник</th><th>Брокер</th><th>Ранг</th><th>Доходность</th><th>Сделок</th><th>Портфель</th></tr></thead><tbody>'+
+      rows.map(p=>'<tr class="click lchiAccount" data-user="'+esc(p.user_id)+'"><td><b>'+esc(p.login||p.user_id)+'</b><small>'+esc(p.user_id)+'</small></td><td>'+esc(p.broker_code||'—')+'</td><td>'+num(p.ranking,0)+'</td><td>'+pct(p.total_yield,2)+'</td><td>'+compact(p.total_deals)+'</td><td>'+compact(p.total_start_assets)+'</td></tr>').join('')+
+      '</tbody></table>';
+    $$('.lchiAccount').forEach(r=>r.onclick=()=>openParticipant(r.dataset.user));
+  }
+
+  async function loadSymbolPositions(symbol){
+    symbolQuery=String(symbol||'').trim();
+    const box=$('#lchiSymbolPositions');
+    if(!symbolQuery){box.innerHTML='<div class="empty">Введи SBER, BR, Si или конкретный контракт.</div>';return}
+    box.innerHTML='<div class="empty">Ищу публичные позиции ЛЧИ…</div>';
+    try{
+      const rows=await api('/api/moex/participants/lchi/positions?symbol='+encodeURIComponent(symbolQuery)+'&limit=1000');
+      if(!rows.length){box.innerHTML='<div class="empty"><b>Пока нет наблюдаемых позиций.</b>Это означает только отсутствие в уже прочитанных публичных портфелях, а не отсутствие позиций на рынке.</div>';return}
+      const long=rows.filter(x=>Number(x.quantity||0)>0),short=rows.filter(x=>Number(x.quantity||0)<0);
+      box.innerHTML='<div class="participantInstrumentSummary"><span>Наблюдаемых счетов <b>'+rows.length+'</b></span><span>LONG <b class="sideLong">'+long.length+'</b></span><span>SHORT <b class="sideShort">'+short.length+'</b></span></div>'+
+        '<table class="table"><thead><tr><th>Участник</th><th>Инструмент</th><th>Направление</th><th>Количество</th><th>Публичная цена</th><th>Оценка</th><th>Наблюдал TQS</th></tr></thead><tbody>'+
+        rows.map(p=>{const qty=Number(p.quantity||0);return '<tr class="click lchiAccount" data-user="'+esc(p.user_id)+'"><td><b>'+esc(p.login||p.user_id)+'</b><small>'+esc(p.broker_code||'')+' · rank '+(p.ranking??'—')+'</small></td><td><b>'+esc(p.seccode)+'</b></td><td><b class="'+(qty>=0?'sideLong':'sideShort')+'">'+(qty>=0?'LONG':'SHORT')+'</b></td><td>'+num(Math.abs(qty),2)+'</td><td>'+num(p.price,4)+'</td><td>'+compact(p.estimated_value)+'</td><td>'+ts(p.observed_at_ms,true)+'</td></tr>'}).join('')+
+        '</tbody></table>';
+      $$('#lchiSymbolPositions .lchiAccount').forEach(r=>r.onclick=()=>openParticipant(r.dataset.user));
+    }catch(e){box.innerHTML='<div class="empty">Ошибка: '+esc(e.message)+'</div>'}
+  }
+
+  async function openParticipant(userId){
+    const box=$('#lchiAccountDetail');box.innerHTML='<div class="empty">Загружаю публичный профиль…</div>';
+    try{
+      const d=await api('/api/moex/participants/lchi/account/'+encodeURIComponent(userId));
+      const p=d.participant||{},positions=d.positions||[],events=d.events||[];
+      box.innerHTML='<div class="participantHeader"><div><span class="eyebrow">ПУБЛИЧНЫЙ СЧЁТ · ЛЧИ</span><h3>'+esc(p.login||p.user_id)+'</h3><small>'+esc(p.broker_code||'')+' · ранг '+(p.ranking??'—')+' · доходность '+num(p.total_yield,2)+'% · сделок '+compact(p.total_deals)+'</small></div><a class="btn small" target="_blank" rel="noopener" href="'+esc(p.source_url||'#')+'">Источник</a></div>'+
+        '<div class="participantCaution">Это публичное наблюдение конкурса. TQS не приписывает участнику мотивы. Время snapshot — время нашего наблюдения; реальное время сделки подтверждается только публичной историей сделок.</div>'+
+        '<h4>Текущие наблюдаемые позиции</h4>'+
+        (positions.length?'<div class="positionRows">'+positions.map(x=>{const qty=Number(x.quantity||0);return '<div class="positionRow click participantPosition" data-symbol="'+esc(x.seccode)+'"><div class="acct"><b>'+esc(x.seccode)+'</b><small>'+esc(x.market||'')+' · '+ts(x.observed_at_ms,true)+'</small></div><b class="'+(qty>=0?'sideLong':'sideShort')+'">'+(qty>=0?'LONG':'SHORT')+'</b><span>'+num(Math.abs(qty),2)+' шт.</span><span>@ '+num(x.price,4)+'</span><span>'+compact(x.estimated_value)+'</span></div>'}).join('')+'</div>':'<div class="empty">Открытых позиций в последнем публичном snapshot нет.</div>')+
+        '<h4>Изменения, которые увидел TQS</h4>'+
+        (events.length?'<div class="participantEvents">'+events.slice(0,100).map(e=>'<div><time>'+ts(e.ts_ms,true)+'</time><b>'+esc(e.seccode)+' · '+esc(e.event_type)+'</b><span>'+num(e.previous_qty,2)+' → '+num(e.current_qty,2)+' · Δ '+num(e.delta_qty,2)+'</span></div>').join('')+'</div>':'<div class="empty">Для истории изменений нужно минимум два наблюдения.</div>');
+      $$('.participantPosition').forEach(r=>r.onclick=()=>{setView('instrument');$('#instrumentSearch').value=r.dataset.symbol;searchInstrument(r.dataset.symbol)});
+    }catch(e){box.innerHTML='<div class="empty">Не удалось открыть участника: '+esc(e.message)+'</div>'}
+  }
+
+  function wireParticipants(){
+    const find=$('#participantFind'),input=$('#participantSearch'),sf=$('#participantSymbolFind'),si=$('#participantSymbol');
+    if(find)find.onclick=()=>{participantQuery=input.value.trim();loadParticipants()};
+    if(input)input.addEventListener('keydown',e=>{if(e.key==='Enter'){participantQuery=input.value.trim();loadParticipants()}});
+    if(sf)sf.onclick=()=>loadSymbolPositions(si.value);
+    if(si)si.addEventListener('keydown',e=>{if(e.key==='Enter')loadSymbolPositions(si.value)});
+  }
+
+  window.loadParticipants=loadParticipants;
+  setTimeout(wireParticipants,0);
+})();
