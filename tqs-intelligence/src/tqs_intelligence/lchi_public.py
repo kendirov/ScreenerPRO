@@ -336,8 +336,10 @@ class LchiPublicStore:
         params: list[Any] = []
         symbol_filter = ""
         if symbol.strip():
-            symbol_filter = "and upper(p.seccode)=?"
-            params.append(symbol.upper().strip())
+            needle = symbol.upper().strip()
+            root = needle.split("-")[0]
+            symbol_filter = "and (upper(p.seccode)=? or upper(p.base_contract_code)=? or upper(p.seccode) like ?)"
+            params.extend([needle, root, root + "-%"])
         params.append(int(limit))
         with self._lock:
             rows = self._con.execute(
@@ -361,8 +363,10 @@ class LchiPublicStore:
         params: list[Any] = []
         where = ""
         if symbol.strip():
-            where = "where upper(e.seccode)=?"
-            params.append(symbol.upper().strip())
+            needle = symbol.upper().strip()
+            root = needle.split("-")[0]
+            where = "where (upper(e.seccode)=? or upper(e.seccode) like ?)"
+            params.extend([needle, root + "-%"])
         params.append(int(limit))
         with self._lock:
             rows = self._con.execute(
