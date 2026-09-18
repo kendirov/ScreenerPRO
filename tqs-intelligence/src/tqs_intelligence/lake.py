@@ -79,6 +79,27 @@ class DataLake:
         except Exception:
             return pl.DataFrame()
 
+    def candle_bounds(self, canonical_id: str, interval: str) -> dict[str, int | None]:
+        pattern = str(self.history_root / 'provider=*' / f'instrument={_safe(canonical_id)}' / f'interval={_safe(interval)}' / 'year=*' / 'month=*' / 'candles.parquet')
+        try:
+            row = (
+                pl.scan_parquet(pattern)
+                .select(
+                    pl.col('ts_ms').min().alias('first_ms'),
+                    pl.col('ts_ms').max().alias('last_ms'),
+                    pl.len().alias('rows'),
+                )
+                .collect()
+                .to_dicts()[0]
+            )
+            return {
+                'first_ms': int(row['first_ms']) if row.get('first_ms') is not None else None,
+                'last_ms': int(row['last_ms']) if row.get('last_ms') is not None else None,
+                'rows': int(row.get('rows') or 0),
+            }
+        except Exception:
+            return {'first_ms': None, 'last_ms': None, 'rows': 0}
+
     def verify(self) -> dict[str, object]:
         files = list(self.history_root.glob('**/*.parquet'))
         bad: list[str] = []

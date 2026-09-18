@@ -50,7 +50,14 @@ class HistoricalBackfiller:
         futures = market_type != 'spot'
         url = 'https://fapi.binance.com/fapi/v1/klines' if futures else 'https://data-api.binance.vision/api/v3/klines'
         canonical_id = f"binance:{'usdt-futures' if futures else 'spot'}:{symbol}"
-        cursor = start_ms; rows_total = 0; pages = 0; step = _interval_ms(interval)
+        requested_start_ms = int(start_ms); step = _interval_ms(interval)
+        bounds = await asyncio.to_thread(self.lake.candle_bounds, canonical_id, interval)
+        first_ms = bounds.get('first_ms'); last_ms = bounds.get('last_ms')
+        # Resume only when the existing series really reaches the requested start.
+        # A recent-only cache must never make us skip the older historical gap.
+        if first_ms is not None and last_ms is not None and int(first_ms) <= requested_start_ms + 2 * step:
+            start_ms = max(requested_start_ms, int(last_ms) - step)
+        cursor = start_ms; rows_total = 0; pages = 0
         while cursor <= end_ms:
             payload = await self.http.get_json(url, {'symbol': symbol, 'interval': interval, 'startTime': cursor, 'endTime': end_ms, 'limit': 1000})
             if not isinstance(payload, list) or not payload: break
@@ -69,7 +76,8 @@ class HistoricalBackfiller:
             await _progress(progress, (cursor - start_ms) / max(1, end_ms - start_ms), f'Binance {symbol}: {rows_total:,} свечей')
             await asyncio.sleep(0.05)
         await _progress(progress, 1.0, f'Binance {symbol}: готово, {rows_total:,} свечей')
-        return {'provider':'binance','canonical_id':canonical_id,'interval':interval,'rows':rows_total,'pages':pages,'start_ms':start_ms,'end_ms':end_ms}
+        return {'provider':'binance','canonical_id':canonical_id,'interval':interval,'rows':rows_total,'pages':pages,
+                'start_ms':start_ms,'requested_start_ms':requested_start_ms,'resumed':start_ms>requested_start_ms,'end_ms':end_ms}
 
     @staticmethod
     def _moex_interval(interval: str) -> int:
@@ -87,9 +95,18 @@ class HistoricalBackfiller:
     async def backfill_moex(self, *, symbol: str, engine: str, market: str, market_type: str,
                             interval: str, start_ms: int, end_ms: int, progress: Progress | None = None) -> dict[str, Any]:
         iv = self._moex_interval(interval)
+        canonical_id = f'moex:{market_type}:{symbol}'
+        requested_start_ms = int(start_ms)
+        try:
+            step = _interval_ms(interval)
+        except Exception:
+            step = 10 * 60_000
+        bounds = await asyncio.to_thread(self.lake.candle_bounds, canonical_id, interval)
+        first_ms = bounds.get('first_ms'); last_ms = bounds.get('last_ms')
+        if first_ms is not None and last_ms is not None and int(first_ms) <= requested_start_ms + 2 * step:
+            start_ms = max(requested_start_ms, int(last_ms) - step)
         start_date = datetime.fromtimestamp(start_ms/1000, timezone.utc).date().isoformat()
         end_date = datetime.fromtimestamp(end_ms/1000, timezone.utc).date().isoformat()
-        canonical_id = f'moex:{market_type}:{symbol}'
         url = f'https://iss.moex.com/iss/engines/{engine}/markets/{market}/securities/{symbol}/candles.json'
         offset = 0; rows_total = 0; pages = 0
         while True:
@@ -123,7 +140,8 @@ class HistoricalBackfiller:
             await asyncio.sleep(0.08)
         await _progress(progress, 1.0, f'MOEX {symbol}: готово, {rows_total:,} свечей')
         return {'provider':'moex','canonical_id':canonical_id,'interval':interval,'rows':rows_total,'pages':pages,
-                'engine':engine,'market':market,'start_ms':start_ms,'end_ms':end_ms}
+                'engine':engine,'market':market,'start_ms':start_ms,'requested_start_ms':requested_start_ms,
+                'resumed':start_ms>requested_start_ms,'end_ms':end_ms}
 
     def _metric_start(self, canonical_id: str, metric: str, requested_start: int, *, overlap_ms: int = 0) -> int:
         bounds = self.metric_lake.bounds(canonical_id, metric)
