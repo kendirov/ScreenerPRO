@@ -104,7 +104,7 @@ jobs:
           from tqs_intelligence import __version__
           from tqs_intelligence.api import app
           paths = {route.path for route in app.routes}
-          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary'}
+          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary', '/api/moex/participants/lchi/status', '/api/moex/participants/lchi/positions', '/api/moex/participants/lchi/events'}
           missing = required - paths
           assert not missing, missing
           assert app.version == __version__, (app.version, __version__)
@@ -118,15 +118,19 @@ jobs:
           node --check src/tqs_intelligence/static/cockpit_activity.js
           node --check src/tqs_intelligence/static/cockpit_ai.js
           node --check src/tqs_intelligence/static/cockpit_moex.js
+          node --check src/tqs_intelligence/static/cockpit_participants.js
           node --check src/tqs_intelligence/static/v07.js
           node --check src/tqs_intelligence/static/app.js
       - name: Instrument-first cockpit HTML contract
         run: |
           grep -q 'TQS Cockpit' src/tqs_intelligence/static/index.html
           grep -q 'data-view="moex"' src/tqs_intelligence/static/index.html
+          grep -q 'data-view="participants"' src/tqs_intelligence/static/index.html
+          grep -q 'Кто что держит и как меняет позицию' src/tqs_intelligence/static/index.html
           grep -q 'Покрытие данных MOEX' src/tqs_intelligence/static/index.html
           grep -q 'ЛЧИ 2026' src/tqs_intelligence/static/cockpit_moex.js
           grep -q 'Пульс' src/tqs_intelligence/static/cockpit_moex.js
+          grep -q 'ПУБЛИЧНЫЙ СЧЁТ · ЛЧИ' src/tqs_intelligence/static/cockpit_participants.js
           grep -q 'UNIVERSAL INSTRUMENT WORKSPACE' src/tqs_intelligence/static/index.html
           grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
           grep -q 'cockpit_metrics.css' src/tqs_intelligence/static/index.html
