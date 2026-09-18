@@ -126,6 +126,25 @@ class LabStore:
             rows = self._con.execute('select * from research_jobs order by created_at_ms desc limit ?', [limit]).fetchall()
         return [self._job_from_row(r) for r in rows]
 
+    def recent_job_activity(self, since_ms: int, limit: int = 2000) -> list[dict[str, Any]]:
+        """Durable job ledger for owner-facing overnight/activity summaries."""
+        with self._lock:
+            rows = self._con.execute(
+                """select * from research_jobs
+                   where coalesce(finished_at_ms, updated_at_ms, created_at_ms) >= ?
+                   order by coalesce(finished_at_ms, updated_at_ms, created_at_ms) desc
+                   limit ?""",
+                [int(since_ms), max(1, min(int(limit), 10000))],
+            ).fetchall()
+        return [{
+            'id': r['id'], 'kind': r['kind'], 'status': r['status'],
+            'created_at_ms': r['created_at_ms'], 'updated_at_ms': r['updated_at_ms'],
+            'started_at_ms': r['started_at_ms'], 'finished_at_ms': r['finished_at_ms'],
+            'progress': float(r['progress'] or 0), 'title_ru': r['title_ru'],
+            'payload': _loads(r['payload_json'], {}), 'result': _loads(r['result_json'], {}),
+            'error': r['error'],
+        } for r in rows]
+
     def claim_next_job(self) -> ResearchJob | None:
         with self._lock:
             row = self._con.execute("select * from research_jobs where status='queued' order by created_at_ms limit 1").fetchone()

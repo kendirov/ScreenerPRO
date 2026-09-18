@@ -451,6 +451,59 @@ async def create_backfill(request:BackfillCreate):
 async def jobs(limit:int=Query(300,ge=1,le=2000)): return [x.model_dump(mode='json') for x in lab.list_jobs(limit)]
 
 
+def _metric_points_from_result(result: dict[str, Any]) -> int:
+    written = result.get('points_written')
+    if isinstance(written, dict):
+        return int(sum(float(v or 0) for v in written.values()))
+    if isinstance(written, (int, float)):
+        return int(written)
+    return int(result.get('points') or 0)
+
+
+@app.get('/api/activity-summary')
+async def activity_summary(hours:int=Query(24,ge=1,le=168)):
+    since_ms = int(time.time()*1000) - int(hours)*3_600_000
+    rows = lab.recent_job_activity(since_ms, 5000)
+    status_counts = {key: 0 for key in ('queued','running','done','failed','cancelled')}
+    kind_counts: dict[str, int] = {}
+    candles = metric_points = replay_runs = strategy_runs = 0
+    recent_errors = []
+    for row in rows:
+        status = str(row.get('status') or '')
+        status_counts[status] = status_counts.get(status, 0) + 1
+        kind = str(row.get('kind') or '')
+        kind_counts[kind] = kind_counts.get(kind, 0) + 1
+        result = row.get('result') or {}
+        if status == 'done' and kind == 'historical_backfill':
+            candles += int(result.get('rows') or 0)
+            nested = result.get('derivative_metrics') or {}
+            if isinstance(nested, dict):
+                metric_points += _metric_points_from_result(nested)
+        elif status == 'done' and kind == 'derivative_metric_backfill':
+            metric_points += _metric_points_from_result(result)
+        elif status == 'done' and kind == 'historical_replay':
+            replay_runs += 1
+        elif status == 'done' and kind == 'strategy_run':
+            strategy_runs += 1
+        if status == 'failed':
+            recent_errors.append({
+                'id': row.get('id'), 'title_ru': row.get('title_ru'),
+                'error': str(row.get('error') or '').splitlines()[0][:500],
+                'finished_at_ms': row.get('finished_at_ms') or row.get('updated_at_ms'),
+            })
+    current = [row for row in rows if row.get('status') in {'queued','running'}][:30]
+    recent_done = [row for row in rows if row.get('status') == 'done'][:20]
+    return {
+        'window_hours': hours, 'since_ms': since_ms, 'generated_at_ms': int(time.time()*1000),
+        'jobs_touched': len(rows), 'status': status_counts, 'kinds': kind_counts,
+        'candles_added': candles, 'metric_points_added': metric_points,
+        'replay_runs_done': replay_runs, 'strategy_runs_done': strategy_runs,
+        'unfinished': status_counts.get('queued',0) + status_counts.get('running',0),
+        'failed': status_counts.get('failed',0),
+        'current': current, 'recent_done': recent_done, 'recent_errors': recent_errors[:10],
+    }
+
+
 @app.get('/api/strategies')
 async def strategies(): return [x.model_dump(mode='json') for x in lab.list_strategies()]
 
