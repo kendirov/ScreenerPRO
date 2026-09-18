@@ -20,6 +20,7 @@
     <nav class="nav">
       <button data-view="overview" class="active">Пульт</button>
       <button data-view="moex">Мосбиржа</button>
+      <button data-view="participants">Участники</button>
       <button data-view="instrument">Инструмент</button>
       <button data-view="research" class="research">Исследования</button>
       <button data-view="data">Данные и покрытие</button>
@@ -40,6 +41,15 @@
         <button id="saveSnapshot" class="btn small">Снимок</button><button id="refreshMarket" class="btn small primary">Обновить рынок</button>
       </div>
     </header>
+    <section id="participants" class="view">
+      <div class="hero"><div><span class="eyebrow">PUBLIC PARTICIPANT INTELLIGENCE</span><h2>Кто что держит и как меняет позицию.</h2><p>ЛЧИ — публичные индивидуальные счета. FUTOI — агрегат физлиц/юрлиц. Пульс — публичные профили с ограниченной детализацией. TQS хранит эти уровни отдельно и не выдаёт наблюдение за мотив трейдера.</p></div></div>
+      <div id="participantMetrics" class="metrics"></div>
+      <div class="grid2">
+        <div class="panel"><div class="panelHead"><div><b>Участники ЛЧИ</b><small>поиск по нику / ID · текущий локальный каталог</small></div><div class="searchBar compactSearch"><input id="participantSearch" placeholder="ник или ID"><button id="participantFind" class="btn small">Найти</button></div></div><div id="lchiParticipants" class="tableWrap"></div></div>
+        <div class="panel"><div class="panelHead"><div><b>Позиции по инструменту</b><small>SBER, BR, Si или конкретный контракт</small></div><div class="searchBar compactSearch"><input id="participantSymbol" placeholder="SBER / BR / Si"><button id="participantSymbolFind" class="btn small primary">Показать</button></div></div><div id="lchiSymbolPositions" class="tableWrap"><div class="empty">Введи инструмент.</div></div></div>
+      </div>
+      <div class="panel" style="margin-top:10px"><div class="panelHead"><div><b>Карточка публичного участника</b><small>портфель + изменения, которые реально наблюдал TQS</small></div></div><div id="lchiAccountDetail" class="panelBody"><div class="empty">Выбери участника из таблицы.</div></div></div>
+    </section>
     <section id="instrument" class="view">
       <div class="hero"><div><span class="eyebrow">UNIVERSAL INSTRUMENT WORKSPACE</span><h2>Цена, позиции, события и исследования<br>на одной временной оси.</h2><p>Не отдельный скринер и не набор AI-карточек. Это рабочее место для конкретного инструмента: свечи и объём, OI, funding, basis, аномалии, эпизоды, публичные позиции/fills, MOEX FUTOI, новости, связанные рынки и результаты Strategy Machine.</p></div><div><div class="searchBar"><input id="instrumentSearch" placeholder="BTC, ETH, BR, SBER, Si…" autocomplete="off"><button id="instrumentFind" class="btn primary">Открыть</button></div><div class="quickSymbols"><span class="muted">Быстро:</span><button data-symbol="BTC">BTC</button><button data-symbol="ETH">ETH</button><button data-symbol="BR">BR</button><button data-symbol="SBER">SBER</button><button data-symbol="Si">Si</button></div></div></div>
       <div id="searchResults" class="searchResults"></div><div id="instrumentWorkspace"><div class="empty"><b>Выбери инструмент.</b>TQS соберёт в одном месте всё, что уже знает, и честно покажет отсутствующие слои.</div></div>
@@ -64,6 +74,6 @@
   </main>
 </div>
 <div id="toast" class="toast"></div>
-<script src="/static/cockpit.js"></script><script src="/static/cockpit_moex.js"></script><script src="/static/cockpit_metrics.js"></script><script src="/static/cockpit_context.js"></script><script src="/static/cockpit_activity.js"></script><script src="/static/cockpit_ai.js"></script><script src="/static/cockpit_runtime.js"></script>
+<script src="/static/cockpit.js"></script><script src="/static/cockpit_moex.js"></script><script src="/static/cockpit_participants.js"></script><script src="/static/cockpit_metrics.js"></script><script src="/static/cockpit_context.js"></script><script src="/static/cockpit_activity.js"></script><script src="/static/cockpit_ai.js"></script><script src="/static/cockpit_runtime.js"></script>
 </body>
 </html>
