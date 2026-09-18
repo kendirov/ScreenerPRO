@@ -1,6 +1,6 @@
 """TQS Platform local intelligence and research engine."""
 
-__version__ = "0.13.10"
+__version__ = "0.13.11"
 
 # Keep the broad source module stable while transparently upgrading MOEX semantics.
 # This avoids corrupting live/history data when ISS CHANGE/LASTCHANGE represents

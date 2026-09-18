@@ -218,22 +218,44 @@ class DuckStore:
     def persist_candles(self, candles: list[Candle]) -> None:
         if not candles:
             return
+        import pyarrow as pa
+
         groups: dict[tuple[str, str], list[Candle]] = {}
         for candle in candles:
             groups.setdefault((candle.canonical_id, candle.interval), []).append(candle)
+
+        batch = pa.table({
+            "canonical_id": [x.canonical_id for x in candles],
+            "provider": [x.provider for x in candles],
+            "interval": [x.interval for x in candles],
+            "ts_ms": [x.ts_ms for x in candles],
+            "open": [x.open for x in candles],
+            "high": [x.high for x in candles],
+            "low": [x.low for x in candles],
+            "close": [x.close for x in candles],
+            "volume": [x.volume for x in candles],
+            "turnover": [x.turnover for x in candles],
+            "source": [x.source for x in candles],
+        })
         with self._lock:
-            for (canonical_id, interval), rows in groups.items():
-                lo = min(x.ts_ms for x in rows)
-                hi = max(x.ts_ms for x in rows)
-                self._con.execute(
-                    "delete from candles where canonical_id=? and interval=? and ts_ms between ? and ?",
-                    [canonical_id, interval, lo, hi],
-                )
-                self._con.executemany(
-                    "insert into candles values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [(x.canonical_id, x.provider, x.interval, x.ts_ms, x.open, x.high, x.low, x.close,
-                      x.volume, x.turnover, x.source) for x in rows],
-                )
+            self._con.execute("begin transaction")
+            try:
+                for (canonical_id, interval), rows in groups.items():
+                    lo = min(x.ts_ms for x in rows)
+                    hi = max(x.ts_ms for x in rows)
+                    self._con.execute(
+                        "delete from candles where canonical_id=? and interval=? and ts_ms between ? and ?",
+                        [canonical_id, interval, lo, hi],
+                    )
+                self._con.register("_tqs_candle_batch", batch)
+                try:
+                    self._con.execute("insert into candles select * from _tqs_candle_batch")
+                finally:
+                    self._con.unregister("_tqs_candle_batch")
+                self._con.execute("commit")
+            except Exception:
+                self._con.execute("rollback")
+                raise
 
     def episode_series(self, episode_id: str, before_ms: int = 24 * 3600_000,
                        after_ms: int = 24 * 3600_000, max_points: int = 1800) -> dict[str, list[dict[str, float | int | str]]]:

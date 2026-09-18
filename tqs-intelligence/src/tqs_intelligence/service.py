@@ -146,6 +146,11 @@ class IntelligenceService:
             name="tqs-moex-features-background",
         )
 
+    def _spawn_background(self, awaitable: object, name: str) -> None:
+        task = asyncio.create_task(awaitable, name=name)
+        self._manual_tasks.add(task)
+        task.add_done_callback(self._manual_tasks.discard)
+
     async def refresh(self, force: bool = False) -> Snapshot | None:
         if not force and self.mode()=='stop':
             return self.state.snapshot
@@ -172,14 +177,21 @@ class IntelligenceService:
                 mode=self.mode(); heavy=mode=='max'
                 if created:
                     self.log("info","episodes","Открыты новые эпизоды аномалий",count=len(created),ids=[x.id for x in created[:20]])
-                    await self._backfill_created(created,quotes,None if heavy else 1)
                 next_count=self.state.refresh_count+1
-                if heavy and next_count % self.history_refresh_every == 0: await self._refresh_active_history(quotes)
-                if heavy and next_count % self.research_every_refreshes == 0:
-                    await asyncio.to_thread(self._run_research)
+                schedule_active_history = heavy and next_count % self.history_refresh_every == 0
+                schedule_research = heavy and next_count % self.research_every_refreshes == 0
                 self.state.snapshot=snapshot; self.state.refresh_count=next_count; duration=_now_ms()-started; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=duration
                 online=sum(1 for x in health if x.status in (SourceStatus.OK,SourceStatus.DEGRADED))
                 self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),new_episodes=len(created),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode)
+                if created:
+                    self._spawn_background(
+                        self._backfill_created(created, quotes, None if heavy else 1),
+                        "tqs-history-new-episodes",
+                    )
+                if schedule_active_history:
+                    self._spawn_background(self._refresh_active_history(quotes), "tqs-history-active")
+                if schedule_research:
+                    self._spawn_background(asyncio.to_thread(self._run_research), "tqs-research-auto")
                 self._start_moex_features(quotes)
                 return snapshot
             except Exception as exc:
