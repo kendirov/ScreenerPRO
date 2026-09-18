@@ -10,6 +10,17 @@ from typing import Any
 from .remote_node import server_mode_enabled
 
 
+_SAFE_UNTRACKED_PREFIXES = (
+    'tqs-intelligence/data-lake/',
+    'tqs-intelligence/.hatch/',
+    'tqs-intelligence/.pytest_cache/',
+    'tqs-intelligence/.ruff_cache/',
+    'tqs-intelligence/.mypy_cache/',
+)
+_SAFE_UNTRACKED_PARTS = ('.egg-info/', '.dist-info/', '/__pycache__/')
+_SAFE_UNTRACKED_FILES = {'.coverage'}
+
+
 class UpdateManager:
     def __init__(self, request_path: str = './data/update-request.json') -> None:
         self.request_path = Path(request_path)
@@ -56,13 +67,55 @@ class UpdateManager:
         except Exception:
             return None
 
+    @staticmethod
+    def _parse_porcelain(raw: str) -> list[dict[str, str]]:
+        rows: list[dict[str, str]] = []
+        for line in (raw or '').splitlines():
+            if len(line) < 4:
+                continue
+            code = line[:2]
+            path = line[3:].strip().replace('\\', '/')
+            if ' -> ' in path:
+                path = path.split(' -> ', 1)[1].strip()
+            rows.append({'code': code, 'path': path})
+        return rows
+
+    @staticmethod
+    def _safe_generated_untracked(entry: dict[str, str]) -> bool:
+        if entry.get('code') != '??':
+            return False
+        path = str(entry.get('path') or '').lstrip('./')
+        if path in _SAFE_UNTRACKED_FILES:
+            return True
+        if any(path.startswith(prefix) for prefix in _SAFE_UNTRACKED_PREFIXES):
+            return True
+        wrapped = '/' + path
+        if any(part in wrapped for part in _SAFE_UNTRACKED_PARTS):
+            return True
+        return False
+
+    def dirty_state(self) -> dict[str, Any]:
+        raw = self._git('status', '--porcelain=v1', '--untracked-files=all')
+        entries = self._parse_porcelain(raw)
+        safe = [x for x in entries if self._safe_generated_untracked(x)]
+        blocking = [x for x in entries if not self._safe_generated_untracked(x)]
+        return {
+            'dirty': bool(entries),
+            'entries': entries[:200],
+            'safe_generated': safe[:200],
+            'blocking': blocking[:200],
+            'safe_generated_only': bool(entries) and not blocking,
+        }
+
     def status(self, fetch: bool = False) -> dict[str, Any]:
         try:
             inside = self._git('rev-parse', '--is-inside-work-tree') == 'true'
             if not inside:
                 return {'available': False, 'reason': 'not a git worktree', 'execution': self.execution_state()}
 
-            dirty = bool(self._git('status', '--porcelain'))
+            dirty_info = self.dirty_state()
+            dirty = bool(dirty_info['dirty'])
+            blocking_dirty = bool(dirty_info['blocking'])
             branch = self._git('branch', '--show-current')
             head = self._git('rev-parse', 'HEAD')
 
@@ -97,13 +150,17 @@ class UpdateManager:
                 'branch': branch,
                 'head': head,
                 'dirty': dirty,
+                'dirty_paths': dirty_info['entries'],
+                'safe_generated_dirty': dirty_info['safe_generated'],
+                'blocking_dirty_paths': dirty_info['blocking'],
+                'safe_generated_only': dirty_info['safe_generated_only'],
                 'upstream': remote_ref,
                 'remote_ref': remote_ref,
                 'ahead': ahead,
                 'behind': behind,
                 'remote_head': remote_head,
                 'update_available': bool(remote_head and remote_head != head and behind > 0),
-                'can_update': bool(branch and remote_ref and not dirty),
+                'can_update': bool(branch and remote_ref and not blocking_dirty),
                 'reason': reason,
                 'requested': self.request_path.exists(),
                 'execution': self.execution_state(),
