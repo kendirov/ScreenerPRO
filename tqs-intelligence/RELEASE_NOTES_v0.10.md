@@ -119,3 +119,8 @@ v0.10 does not claim the full end-state. High-value next extensions remain:
 - larger automated event-study library over the new v0.10 signals.
 
 Runtime/UI acceptance still requires updating the Windows node and proving the new build against real local accumulated data.
+
+
+## Verification checkpoint
+
+GitHub TQS Intelligence CI passed the v0.10 code/test/API/JavaScript contracts on the integration PR. A new CI run is expected for this final release-note checkpoint before merge.
