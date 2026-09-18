@@ -288,7 +288,7 @@ def build_runtime_audit(
     add(
         "resource_governor",
         "Resource governor / process telemetry",
-        "warn" if load_warn else "ok" if resource_state else "fail",
+        "warn" if resource_state and load_warn else "ok" if resource_state else "not_configured",
         (
             f"CPU={system_load.get('cpu_percent','?')}%; RAM={system_load.get('ram_percent','?')}%; "
             f"workers={effective_state.get('research_active_jobs',0)}/{policy_state.get('heavy_workers','?')}; "
@@ -296,6 +296,7 @@ def build_runtime_audit(
             f"TQS processes={len(resource_state.get('tqs_processes') or [])}"
         ),
         evidence=resource_state,
+        required=bool(resource_state),
     )
 
     control_bridge = ai_control or {}
