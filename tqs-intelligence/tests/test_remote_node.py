@@ -124,7 +124,6 @@ def test_ai_bridge_state_reports_fresh_drive_publish(tmp_path, monkeypatch):
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr(remote_node.__import__("time") if False else remote_node, "__name__", remote_node.__name__)
     # ai_bridge_state uses the real clock; make the saved timestamp current enough.
     import time
     payload = json.loads((data / "ai-bridge-state.json").read_text(encoding="utf-8"))
