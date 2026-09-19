@@ -46,18 +46,29 @@ public final class ApkInstaller {
             PackageInstaller pi=c.getPackageManager().getPackageInstaller();
             PackageInstaller.SessionParams p=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
             if(Build.VERSION.SDK_INT>=31) p.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+            if(Build.VERSION.SDK_INT>=26) p.setAppPackageName(c.getPackageName());
             int id=pi.createSession(p);
-            try(PackageInstaller.Session s=pi.openSession(id)) {
+
+            // Write and close the session completely before commit. Some Lenovo/ZUI
+            // PackageInstaller builds report "Files still open" if commit happens on
+            // the same Session object that previously owned openWrite().
+            try(PackageInstaller.Session writeSession=pi.openSession(id)) {
                 try(InputStream in=new FileInputStream(apk);
-                    OutputStream out=s.openWrite("base.apk",0,apk.length())) {
+                    OutputStream out=writeSession.openWrite("base.apk",0,apk.length())) {
                     byte[] buf=new byte[65536]; int n;
                     while((n=in.read(buf))>0) out.write(buf,0,n);
-                    s.fsync(out);
+                    out.flush();
+                    writeSession.fsync(out);
                 }
-                Intent result=new Intent(c,InstallResultReceiver.class).setAction("com.kendirov.kidsdevicehub.INSTALL_RESULT");
-                PendingIntent pending=PendingIntent.getBroadcast(c,id,result,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_MUTABLE);
-                status="committing";
-                s.commit(pending.getIntentSender());
+            }
+
+            Intent result=new Intent(c,InstallResultReceiver.class)
+                    .setAction("com.kendirov.kidsdevicehub.INSTALL_RESULT");
+            PendingIntent pending=PendingIntent.getBroadcast(
+                    c,id,result,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_MUTABLE);
+            status="committing";
+            try(PackageInstaller.Session commitSession=pi.openSession(id)) {
+                commitSession.commit(pending.getIntentSender());
             }
         } catch(Exception e){ status="error:"+e.getClass().getSimpleName()+":"+String.valueOf(e.getMessage()); }
     }
