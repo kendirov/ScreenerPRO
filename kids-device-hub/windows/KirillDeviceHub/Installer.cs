@@ -45,7 +45,30 @@ internal static class Installer
 
         var source = Environment.ProcessPath!;
         if (!string.Equals(Path.GetFullPath(source), Path.GetFullPath(InstalledExe), StringComparison.OrdinalIgnoreCase))
+        {
+            // Upgrade path: stop the currently installed agent before replacing its executable.
+            Run("schtasks", $"/End /TN \"{TaskName}\"");
+            try
+            {
+                foreach (var p in Process.GetProcessesByName("Kirill-Family-Device-Hub"))
+                {
+                    try
+                    {
+                        if (string.Equals(Path.GetFullPath(p.MainModule?.FileName ?? ""), Path.GetFullPath(InstalledExe), StringComparison.OrdinalIgnoreCase))
+                        {
+                            p.Kill(true);
+                            p.WaitForExit(5000);
+                        }
+                    }
+                    catch { }
+                    finally { p.Dispose(); }
+                }
+            }
+            catch { }
+
+            Thread.Sleep(700);
             File.Copy(source, InstalledExe, true);
+        }
 
         Run("netsh", $"advfirewall firewall delete rule name=\"{TaskName}\"");
         Run("netsh", $"advfirewall firewall add rule name=\"{TaskName}\" dir=in action=allow protocol=TCP localport={AgentServer.Port} profile=any");
