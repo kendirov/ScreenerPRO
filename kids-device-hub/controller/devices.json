@@ -65,7 +65,7 @@
       "kind": "windows_agent",
       "transport": "tailscale",
       "profile": "child-laptop",
-      "state": "planned",
+      "state": "online",
       "capabilities": [],
       "aliases": [
         "KIRILL",
@@ -76,7 +76,12 @@
         "ноутбук Кирилла",
         "Kirill laptop"
       ],
-      "controller_host": "office-windows"
+      "controller_host": "office-windows",
+      "host": "100.67.97.86",
+      "port": 8772,
+      "machine_name": "honor",
+      "token_file": "pair-token-kirill.txt",
+      "agent_version": "1.0.2"
     }
   }
 }
