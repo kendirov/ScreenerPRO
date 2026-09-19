@@ -67,12 +67,10 @@ public class HubApiServer {
                 }
                 URI u=URI.create(raw);
                 Map<String,String> q=query(u.getRawQuery());
-                String remoteIp=client.getInetAddress().getHostAddress();
-                String localIp=client.getLocalAddress().getHostAddress();
-                boolean trustedController=isTailscaleIp(localIp);
+                boolean signedController=ControllerAuth.verify(method,u.getPath(),u.getRawQuery(),headers);
                 String supplied=headers.getOrDefault("x-hub-token",q.getOrDefault("token",""));
                 boolean tokenOk=MainActivity.token(context).equals(supplied);
-                if(!trustedController && !tokenOk) {
+                if(!signedController && !tokenOk) {
                     send(client,403,"application/json","{\"error\":\"forbidden\"}".getBytes(StandardCharsets.UTF_8)); return;
                 }
                 route(client,method,u.getPath(),q);
