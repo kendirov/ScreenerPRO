@@ -54,6 +54,7 @@ internal static class Installer
         Run("schtasks", $"/Create /F /SC ONLOGON /RL HIGHEST /TN \"{TaskName}\" /TR \"{tr}\"");
         Run("schtasks", $"/Run /TN \"{TaskName}\"");
 
+        EnsureTailscale();
         var tailscale = NetworkUtil.GetTailscaleIpv4();
         var msg = "Установка завершена.\n\n" +
                   $"Agent: {InstalledExe}\n" +
@@ -92,6 +93,23 @@ internal static class Installer
         Run("schtasks", $"/End /TN \"{TaskName}\"");
         Thread.Sleep(500);
         Run("schtasks", $"/Run /TN \"{TaskName}\"");
+    }
+
+    private static void EnsureTailscale()
+    {
+        if (NetworkUtil.GetTailscaleIpv4()!=null) return;
+        try
+        {
+            Run("winget", "install --id Tailscale.Tailscale --exact --silent --accept-package-agreements --accept-source-agreements");
+            Thread.Sleep(1500);
+            var candidates=new[]{
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"Tailscale","tailscale-ipn.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),"Tailscale","tailscale.exe")
+            };
+            var exe=candidates.FirstOrDefault(File.Exists);
+            if(exe!=null) Process.Start(new ProcessStartInfo{FileName=exe,UseShellExecute=true});
+        }
+        catch { }
     }
 
     private static void Run(string file, string args)
