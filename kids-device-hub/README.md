@@ -1,69 +1,80 @@
-# Kendirov Kids Device Hub
+# Kendirov Family Device Hub
 
-Private family device-control platform. First target: Roma's Lenovo Android tablet. Next target: Kirill's Windows laptop.
+Private family device-control platform.
 
-## Product goal
-Allow an authorized parent to ask ChatGPT in natural language to inspect a managed child device, understand the current UI, take screenshots, launch apps, operate the UI, inspect real app usage, run bounded macros, and later apply family screen-time policies.
+## Architecture
+ChatGPT -> Windows Controller -> Tailscale -> Device Agent
 
-Core loop: OBSERVE -> UNDERSTAND -> ACT -> VERIFY -> LEARN.
+The child device remains deliberately lightweight. It does not continuously stream video, run vision models, poll apps, or analyze the screen. The agent waits for a command and performs work only on demand.
 
-## Android v1 capabilities
-- foreground agent on port 8766
-- per-install random pair token
-- accessibility UI tree
-- accessibility screenshot
-- tap, swipe, text, Home, Back, Recents, notifications
-- click visible UI by text
-- launch installed apps
-- list launchable apps
-- UsageStats report for 1-30 days
-- Device Admin lock
-- Device Owner package suspend/unsuspend when provisioned
-- bounded repeat-tap macro with stop command
-- boot receiver
-- works through LAN or an Android Tailscale address
+## Devices
+- roma — Lenovo Android tablet — active
+- kirill — Windows laptop — next adapter
 
-## Privacy and safety
-This is an explicit parent-managed family tool. It does not implement hidden keylogging, microphone recording, camera recording, clipboard collection, password extraction, or arbitrary remote shell. The persistent notification indicates that the agent is active. Protected Android windows may intentionally block screenshots or UI inspection.
+## Android stable agent
+Capabilities:
+- status / health / battery / storage / memory
+- screenshot on demand
+- accessibility UI tree on demand
+- tap / long-press / swipe / text / click by visible text
+- Home / Back / wake / lock
+- launch apps and inspect installed apps
+- UsageStats for screen-time analysis
+- bounded repeat-tap macro
+- bounded JSON scenario runner (max 100 steps)
+- remote URL opening
+- remote APK download + PackageInstaller flow
+- uninstall flow and app settings
+- shared-storage file list / mkdir / move / safe trash when All Files Access is enabled
+- Device Owner-aware package suspension
+- boot start
+- Tailscale-first trust, pair-token fallback for non-Tailscale LAN access
 
-## Pairing
-Install APK. Open it once. Enable:
-1. Accessibility -> Kids Device Hub
-2. Usage Access -> Kids Device Hub
-3. Device Admin (optional)
-4. Tailscale on the tablet if remote control is needed outside the home LAN
+## Low-load design
+No continuous screenshots. No video stream. No OCR on the tablet. No LLM on the tablet. Accessibility subscribes only to window changes. Usage and file scans run only when requested. The foreground service blocks on a socket while idle.
 
-The app displays tablet IPv4 addresses and a random Pair Token.
+## Remote scripting
+The controller can send bounded JSON steps such as:
+[
+  {"action":"launch","package":"com.roblox.client"},
+  {"action":"wait","ms":1500},
+  {"action":"tap","x":100,"y":100},
+  {"action":"swipe","x1":500,"y1":900,"x2":500,"y2":300,"ms":300}
+]
 
-Every HTTP request must include:
-X-Hub-Token: <pair-token>
+Supported actions: wait, tap, longPress, swipe, text, clickText, home, back, launch.
 
-Examples:
-GET /status
-GET /screenshot
-GET /ui
-GET /usage?days=1
-GET /apps
-POST /launch?package=com.roblox.client
-POST /tap?x=500&y=800
-POST /swipe?x1=500&y1=900&x2=500&y2=300&ms=350
-POST /click-text?text=Play
-POST /global?action=home
-POST /repeat-tap?x=500&y=800&intervalMs=1000&count=60
-POST /stop-macro
-POST /lock
-POST /suspend?package=com.roblox.client&value=true  (Device Owner only)
+This is the main extension mechanism: most new mini-bots and child experiments do not require rebuilding the APK.
 
-## Maximum managed mode / Device Owner
-Device Owner must be provisioned on a fresh/reset Android device before normal setup. It cannot normally be silently granted to an already configured tablet. V1 includes DeviceAdminReceiver and Device Owner-aware controls so this mode can be activated during dedicated provisioning.
+## Updates
+CI builds an unsigned stable release. The office Windows controller owns the persistent signing key and signs the family distribution with Android apksigner. It then serves:
+- Kendirov-Kids-Device-Hub-stable.apk
+- manifest.json
 
-## Chat integration
-Preferred topology:
-ChatGPT -> Remote Desktop Commander on Kendirov Windows -> Kids Device Hub bridge -> Lenovo over LAN/Tailscale.
+over the private Tailscale address on port 8770.
 
-The existing Windows ArtemDeviceHub project is the bridge starting point. Do not store the pair token in public GitHub or Google Docs.
+Future updates use the same package and signing key. The Android agent can request its own update. Android may show a system install confirmation in ordinary mode; the controller can operate that UI remotely through Accessibility. Device Owner mode can provide stronger managed-device installation capabilities.
 
-## Product family
-- Roma / Lenovo Tab: Android agent first
-- Kirill / Windows laptop: Windows guardian second
-- future: shared parent dashboard, policies, usage analytics, scenario catalog
+## File and launcher organization
+Shared-storage folders can be managed through file commands after optional All Files Access is granted. Launcher folders and icon organization are visual UI tasks: screenshot -> understand -> long-press/drag -> verify.
+
+## Security boundaries
+No hidden microphone recording, camera recording, keylogger, password extraction, or covert message collection. Protected Android windows may block screenshots. Full arbitrary Android shell/root access is not claimed; that requires root/privileged tooling and is intentionally separate from the normal lightweight agent.
+
+## Controller examples
+hub roma status
+hub roma screenshot
+hub roma apps
+hub roma usage --days 1
+hub roma tap 100 100
+hub roma long-press 500 500 --ms 900
+hub roma launch com.roblox.client
+hub roma files Download
+hub roma mkdir Kids/Projects
+hub roma update
+hub roma script --file my-script.json
+
+## Core operating loop
+OBSERVE -> UNDERSTAND -> ACT -> VERIFY -> LEARN
+
+For visual actions, capture before and after whenever practical.
