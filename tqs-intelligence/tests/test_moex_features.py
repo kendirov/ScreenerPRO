@@ -90,3 +90,28 @@ def test_lchi_flow_is_batched_and_preserves_root_family_semantics(tmp_path):
     assert flows["RI-9.26"]["changed_accounts"] == 2
     assert flows["RI-9.26"]["long_increase_accounts"] == 1
     assert flows["RI-9.26"]["short_increase_accounts"] == 1
+
+
+
+def test_moex_history_reader_does_not_wait_for_primary_writer_lock(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    store = DuckStore(str(tmp_path / "mvcc.duckdb"))
+    now = 1_800_000_000_000
+    store.persist_snapshot(
+        [quote(now - 15 * 60_000, turnover=100, volume=100, trades=100)],
+        [], [],
+    )
+    engine = MoexFeatureEngine(store)
+    current = quote(now, turnover=110, volume=110, trades=110)
+
+    store._lock.acquire()
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(engine.analyze, [current])
+            result = future.result(timeout=1.0)
+    finally:
+        store._lock.release()
+
+    assert isinstance(result, list)
+    assert engine.snapshot()["count"] == 1
