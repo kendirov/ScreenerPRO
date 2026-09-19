@@ -134,13 +134,20 @@ public class HubApiServer {
         if(path.equals("/apps")) { sendJson(c,apps()); return; }
         if(path.equals("/usage")) { sendJson(c,usage((int)lng(q,"days",1))); return; }
         if(path.equals("/device-info")) { sendJson(c,deviceInfo()); return; }
-        if(path.equals("/open-url") || path.equals("/install-url")) {
+        if(path.equals("/open-url")) {
             String url=q.getOrDefault("url","");
             if(url.isEmpty()){sendJson(c,"{\"ok\":false,\"error\":\"url_required\"}");return;}
-            Intent i=new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(i);
-            sendJson(c,"{\"ok\":true,\"mode\":\"guided\"}"); return;
+            Intent i=new Intent(Intent.ACTION_VIEW,Uri.parse(url));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); context.startActivity(i); sendOk(c,true); return;
+        }
+        if(path.equals("/install-url") || path.equals("/update")) {
+            String url=q.getOrDefault("url","");
+            if(url.isEmpty()){sendJson(c,"{\"ok\":false,\"error\":\"url_required\"}");return;}
+            ApkInstaller.installFromUrl(context,url);
+            sendJson(c,"{\"ok\":true,\"installer\":\""+esc(ApkInstaller.status())+"\"}"); return;
+        }
+        if(path.equals("/install-status")) {
+            sendJson(c,"{\"status\":\""+esc(ApkInstaller.status())+"\"}"); return;
         }
         if(path.equals("/uninstall")) {
             String pkg=q.getOrDefault("package","");
@@ -155,6 +162,38 @@ public class HubApiServer {
             Intent i=new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+pkg));
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(i); sendOk(c,true); return;
+        }
+        if(path.equals("/files")) {
+            try { sendJson(c,FileOps.list(q.getOrDefault("path",""))); }
+            catch(Exception e){ sendJson(c,"{\"ok\":false,\"error\":\""+esc(e.getMessage())+"\"}"); }
+            return;
+        }
+        if(path.equals("/mkdir")) {
+            try { sendOk(c,FileOps.mkdir(q.getOrDefault("path",""))); }
+            catch(Exception e){ sendJson(c,"{\"ok\":false,\"error\":\""+esc(e.getMessage())+"\"}"); }
+            return;
+        }
+        if(path.equals("/move")) {
+            try { sendOk(c,FileOps.move(q.getOrDefault("src",""),q.getOrDefault("dst",""))); }
+            catch(Exception e){ sendJson(c,"{\"ok\":false,\"error\":\""+esc(e.getMessage())+"\"}"); }
+            return;
+        }
+        if(path.equals("/trash")) {
+            try { sendJson(c,"{\"ok\":true,\"path\":\""+esc(FileOps.trash(q.getOrDefault("path","")))+"\"}"); }
+            catch(Exception e){ sendJson(c,"{\"ok\":false,\"error\":\""+esc(e.getMessage())+"\"}"); }
+            return;
+        }
+        if(path.equals("/script")) {
+            try { ScriptRunner.start(context,q.getOrDefault("spec","[]")); sendJson(c,"{\"ok\":true,\"status\":\"running\"}"); }
+            catch(Exception e){ sendJson(c,"{\"ok\":false,\"error\":\""+esc(e.getMessage())+"\"}"); }
+            return;
+        }
+        if(path.equals("/script-status")) { sendJson(c,"{\"status\":\""+esc(ScriptRunner.status())+"\"}"); return; }
+        if(path.equals("/stop-script")) { ScriptRunner.stop(); sendOk(c,true); return; }
+        if(path.equals("/wake")) { sendOk(c,wake()); return; }
+        if(path.equals("/long-press")) {
+            need(a,c); if(a==null)return;
+            boolean ok=a.swipe(f(q,"x"),f(q,"y"),f(q,"x"),f(q,"y"),lng(q,"ms",800)); sendOk(c,ok); return;
         }
         if(path.equals("/lock")) {
             DevicePolicyManager dpm=context.getSystemService(DevicePolicyManager.class);
