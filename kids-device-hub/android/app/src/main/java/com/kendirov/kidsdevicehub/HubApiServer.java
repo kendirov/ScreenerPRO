@@ -135,6 +135,17 @@ public class HubApiServer {
                     x.equals("notifications")?android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS:-1;
             sendOk(c,action>0 && a.performGlobalAction(action)); return;
         }
+        if(path.equals("/message")) {
+            need(a,c); if(a==null)return;
+            String title=q.getOrDefault("title","Сообщение");
+            String body=q.getOrDefault("body","");
+            int seconds=(int)Math.max(0,Math.min(3600,lng(q,"seconds",600)));
+            sendOk(c,a.showMessage(title,body,seconds)); return;
+        }
+        if(path.equals("/hide-message")) {
+            need(a,c); if(a==null)return;
+            a.removeMessageOverlay(); sendOk(c,true); return;
+        }
         if(path.equals("/launch")) {
             String pkg=q.getOrDefault("package","");
             Intent i=context.getPackageManager().getLaunchIntentForPackage(pkg);
