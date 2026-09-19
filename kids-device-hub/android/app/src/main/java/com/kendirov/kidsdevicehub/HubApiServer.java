@@ -67,10 +67,13 @@ public class HubApiServer {
                 }
                 URI u=URI.create(raw);
                 Map<String,String> q=query(u.getRawQuery());
-                boolean signedController=ControllerAuth.verify(method,u.getPath(),u.getRawQuery(),headers);
+                String remoteIp=client.getInetAddress().getHostAddress();
+                String localIp=client.getLocalAddress().getHostAddress();
+                boolean tailscalePath=isTailscaleIp(localIp)||isTailscaleIp(remoteIp)||
+                        (isLoopback(remoteIp)&&hasTailscaleInterface());
                 String supplied=headers.getOrDefault("x-hub-token",q.getOrDefault("token",""));
                 boolean tokenOk=MainActivity.token(context).equals(supplied);
-                if(!signedController && !tokenOk) {
+                if(!tailscalePath && !tokenOk) {
                     send(client,403,"application/json","{\"error\":\"forbidden\"}".getBytes(StandardCharsets.UTF_8)); return;
                 }
                 route(client,method,u.getPath(),q);
@@ -264,6 +267,23 @@ public class HubApiServer {
             if(wl.isHeld()) wl.release();
             return true;
         } catch(Exception e){ return false; }
+    }
+
+    private static boolean isLoopback(String ip) {
+        return "127.0.0.1".equals(ip)||"::1".equals(ip)||"0:0:0:0:0:0:0:1".equals(ip);
+    }
+
+    private static boolean hasTailscaleInterface() {
+        try {
+            for(NetworkInterface n:Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if(!n.isUp()) continue;
+                for(InetAddress a:Collections.list(n.getInetAddresses())) {
+                    String ip=a.getHostAddress();
+                    if(ip!=null&&isTailscaleIp(ip)) return true;
+                }
+            }
+        } catch(Exception ignored){}
+        return false;
     }
 
     private static boolean isTailscaleIp(String ip) {
