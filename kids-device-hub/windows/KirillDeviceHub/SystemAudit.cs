@@ -1,6 +1,5 @@
 using Microsoft.Win32;
 using System.Diagnostics;
-using System.Management;
 using System.Text.Json;
 
 namespace Kendirov.KirillDeviceHub;
