@@ -33,5 +33,3 @@ async def test_health_is_independent_from_heavy_database_stats(monkeypatch):
     assert payload["lab"]["deferred"] is True
     assert "last_action" in payload["research_runtime"]
     assert "last_action" in payload["account_intelligence"]
-
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
