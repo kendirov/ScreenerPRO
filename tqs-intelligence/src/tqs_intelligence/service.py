@@ -55,6 +55,8 @@ class IntelligenceService:
         self._moex_cached: list[Anomaly] = []
         self._moex_feature_last_finished_ms: int | None = None
         self._moex_feature_last_error: str | None = None
+        self._episode_task: asyncio.Task | None = None
+        self._episode_pending: tuple[list[Anomaly], int, list[Quote], bool] | None = None
 
     def mode(self) -> str:
         return self.control.get().mode if self.control else 'max'
@@ -89,7 +91,9 @@ class IntelligenceService:
                 "moex_features":{"running":bool(self._moex_task and not self._moex_task.done()),
                                  "cached_anomalies":len(self._moex_cached),
                                  "last_finished_ms":self._moex_feature_last_finished_ms,
-                                 "last_error":self._moex_feature_last_error}}
+                                 "last_error":self._moex_feature_last_error},
+                "episode_postprocess":{"running":bool(self._episode_task and not self._episode_task.done()),
+                                       "pending":self._episode_pending is not None}}
 
     async def _fetch_history(self, episode: AnomalyEpisode, quote: Quote) -> int:
         source = self._sources_by_provider.get(episode.provider)
@@ -157,6 +161,39 @@ class IntelligenceService:
         self._manual_tasks.add(task)
         task.add_done_callback(self._manual_tasks.discard)
 
+    async def _episode_postprocess_loop(self) -> None:
+        try:
+            while self._episode_pending is not None:
+                anomalies, now_ms, quotes, heavy = self._episode_pending
+                self._episode_pending = None
+                try:
+                    created = await asyncio.to_thread(
+                        self.store.update_episodes,
+                        anomalies, now_ms, self.episode_threshold, self.episode_close_grace_ms,
+                    )
+                    if created:
+                        self.log("info","episodes","Открыты новые эпизоды аномалий",
+                                 count=len(created),ids=[x.id for x in created[:20]])
+                        await self._backfill_created(created, quotes, None if heavy else 1)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    self.log("error","episodes","Фоновая обработка эпизодов завершилась ошибкой",
+                             error=str(exc)[:1000])
+        finally:
+            self._episode_task = None
+
+    def _queue_episode_postprocess(self, anomalies: list[Anomaly], now_ms: int,
+                                   quotes: list[Quote], heavy: bool) -> None:
+        # Keep at most one pending payload. If persistence is slower than market
+        # refresh, the newest market state supersedes stale intermediate states.
+        self._episode_pending = (list(anomalies), int(now_ms), list(quotes), bool(heavy))
+        if self._episode_task is None or self._episode_task.done():
+            self._episode_task = asyncio.create_task(
+                self._episode_postprocess_loop(),
+                name="tqs-episode-postprocess",
+            )
+
     async def refresh(self, force: bool = False) -> Snapshot | None:
         if not force and self.mode()=='stop':
             return self.state.snapshot
@@ -183,21 +220,14 @@ class IntelligenceService:
                 # look empty while fresh quotes are already available in memory.
                 self.state.snapshot=snapshot
                 await asyncio.to_thread(self.store.persist_snapshot, quotes, anomalies, news)
-                created=await asyncio.to_thread(self.store.update_episodes, anomalies, now, self.episode_threshold, self.episode_close_grace_ms)
                 mode=self.mode(); heavy=mode=='max'
-                if created:
-                    self.log("info","episodes","Открыты новые эпизоды аномалий",count=len(created),ids=[x.id for x in created[:20]])
                 next_count=self.state.refresh_count+1
                 schedule_active_history = heavy and next_count % self.history_refresh_every == 0
                 schedule_research = heavy and next_count % self.research_every_refreshes == 0
-                self.state.snapshot=snapshot; self.state.refresh_count=next_count; duration=_now_ms()-started; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=duration
+                self.state.refresh_count=next_count; duration=_now_ms()-started; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=duration
                 online=sum(1 for x in health if x.status in (SourceStatus.OK,SourceStatus.DEGRADED))
-                self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),new_episodes=len(created),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode)
-                if created:
-                    self._spawn_background(
-                        self._backfill_created(created, quotes, None if heavy else 1),
-                        "tqs-history-new-episodes",
-                    )
+                self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode,episode_postprocess="background")
+                self._queue_episode_postprocess(anomalies, now, quotes, heavy)
                 if schedule_active_history:
                     self._spawn_background(self._refresh_active_history(quotes), "tqs-history-active")
                 if schedule_research:
