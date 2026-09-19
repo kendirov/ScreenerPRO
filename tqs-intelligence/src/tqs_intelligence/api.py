@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import asyncio
 import os
@@ -248,8 +249,7 @@ ai_control = AiControlBridge(
     service=service,
     poll_seconds=settings.ai_control_poll_seconds,
 )
-
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
+RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
 RUNTIME_INSTANCE_ID = f'{RUNTIME_STARTED_AT_MS}-{os.getpid()}'
 
 
@@ -499,8 +499,7 @@ async def _build_audit_payload() -> dict[str, Any]:
         remote=remote_state,
         update=update_state,
         recent_logs=logs,
-
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]        ai_control=ai_control.status(),
+        ai_control=ai_control.status(),
         resources=resources_state,
     )
 
@@ -751,7 +750,6 @@ def logs(limit:int=Query(200,ge=1,le=2000),level:str='',component:str=''):
     return [x.model_dump(mode='json') for x in store.list_logs(limit,level,component)]
 
 
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
 @app.post('/api/hypotheses')
 def create_hypothesis(request:HypothesisCreate): return store.create_hypothesis(request,int(time.time()*1000)).model_dump(mode='json')
 
@@ -955,5 +953,3 @@ def main()->None:
 
 
 if __name__=='__main__': main()
-
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
