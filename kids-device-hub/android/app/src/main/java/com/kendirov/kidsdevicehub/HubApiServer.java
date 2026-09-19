@@ -68,7 +68,7 @@ public class HubApiServer {
                 URI u=URI.create(raw);
                 Map<String,String> q=query(u.getRawQuery());
                 String remoteIp=client.getInetAddress().getHostAddress();
-                boolean trustedController="100.95.246.112".equals(remoteIp);
+                boolean trustedController=isTailscaleIp(remoteIp);
                 String supplied=headers.getOrDefault("x-hub-token",q.getOrDefault("token",""));
                 boolean tokenOk=MainActivity.token(context).equals(supplied);
                 if(!trustedController && !tokenOk) {
@@ -86,8 +86,8 @@ public class HubApiServer {
             boolean admin=dpm.isAdminActive(new ComponentName(context,HubDeviceAdminReceiver.class));
             boolean owner=dpm.isDeviceOwnerApp(context.getPackageName());
             String app=a==null?"":a.currentPackage();
-            String s="{\"ok\":true,\"accessibility\":"+(a!=null)+",\"deviceAdmin\":"+admin+
-                    ",\"deviceOwner\":"+owner+",\"currentPackage\":\""+esc(app)+"\",\"port\":"+port+"}";
+            String s="{\"ok\":true,\"version\":\""+BuildConfig.VERSION_NAME+"\",\"accessibility\":"+(a!=null)+",\"deviceAdmin\":"+admin+
+                    ",\"deviceOwner\":"+owner+",\"filesAccess\":"+FileOps.hasAccess()+",\"currentPackage\":\""+esc(app)+"\",\"script\":\""+esc(ScriptRunner.status())+"\",\"installer\":\""+esc(ApkInstaller.status())+"\",\"port\":"+port+"}";
             sendJson(c,s); return;
         }
         if(path.equals("/ui")) {
