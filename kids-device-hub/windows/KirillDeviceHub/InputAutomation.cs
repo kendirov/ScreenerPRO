@@ -35,8 +35,15 @@ internal static class InputAutomation
     public static void Text(string value)
     {
         if(string.IsNullOrEmpty(value)) return;
-        Clipboard.SetText(value);
-        Key(0x11); // harmless pulse before paste sequence is handled below
+        Exception? error=null;
+        var t=new Thread(()=>{
+            try { Clipboard.SetText(value); }
+            catch(Exception e){ error=e; }
+        });
+        t.SetApartmentState(ApartmentState.STA);
+        t.Start(); t.Join();
+        if(error!=null) throw error;
+
         Native.keybd_event(0x11,0,0,UIntPtr.Zero);
         Native.keybd_event(0x56,0,0,UIntPtr.Zero);
         Native.keybd_event(0x56,0,Native.KEYEVENTF_KEYUP,UIntPtr.Zero);
