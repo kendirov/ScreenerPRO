@@ -46,6 +46,22 @@ public class MainActivity extends Activity {
         Button b=new Button(this); b.setText(text); b.setAllCaps(false); b.setOnClickListener(listener); return b;
     }
 
+    private boolean hasUsageAccess() {
+        try {
+            android.app.AppOpsManager ops=(android.app.AppOpsManager)getSystemService(Context.APP_OPS_SERVICE);
+            int mode=ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),getPackageName());
+            return mode==android.app.AppOpsManager.MODE_ALLOWED;
+        } catch(Exception e){ return false; }
+    }
+
+    private boolean batteryUnrestricted() {
+        try {
+            android.os.PowerManager pm=(android.os.PowerManager)getSystemService(Context.POWER_SERVICE);
+            return pm!=null && pm.isIgnoringBatteryOptimizations(getPackageName());
+        } catch(Exception e){ return false; }
+    }
+
     private String infoText() {
         DevicePolicyManager dpm=getSystemService(DevicePolicyManager.class);
         boolean admin=dpm.isAdminActive(new ComponentName(this,HubDeviceAdminReceiver.class));
@@ -54,8 +70,10 @@ public class MainActivity extends Activity {
         return "Roma Lenovo Tab\nVersion: "+BuildConfig.VERSION_NAME+
                 "\nAgent port: "+PORT+"\nMode: low-load / on-demand / Tailscale-first\n\n"+ips()+
                 "\n\nAccessibility: "+(HubAccessibilityService.INSTANCE!=null?"ON":"check settings")+
+                "\nUsage access: "+(hasUsageAccess()?"ON":"permission needed")+
                 "\nInstall apps: "+(install?"ON":"permission needed")+
                 "\nAll files: "+(FileOps.hasAccess()?"ON":"optional permission needed")+
+                "\nBattery unrestricted: "+(batteryUnrestricted()?"ON":"check settings")+
                 "\nDevice Admin: "+admin+"\nDevice Owner: "+owner;
     }
 
