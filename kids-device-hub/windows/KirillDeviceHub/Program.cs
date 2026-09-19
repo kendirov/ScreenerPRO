@@ -71,6 +71,7 @@ internal sealed class AgentApplicationContext : ApplicationContext
 
     public AgentApplicationContext()
     {
+        OverlayManager.Initialize();
         usage = new UsageTracker();
         server = new AgentServer(usage);
         server.Start();
