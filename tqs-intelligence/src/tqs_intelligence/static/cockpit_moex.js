@@ -36,7 +36,10 @@
       const counts={shares:0,forts:0,index:0,selt:0,bonds:0};
       quotes.forEach(q=>{counts[q.market_type]=(counts[q.market_type]||0)+1});
       const src=(o.sources||[]).find(x=>x.provider==='moex');
+      const session=m.session||{};
+      const sessionLabel=session.status==='open'?'ОТКРЫТА':'ЗАКРЫТА / НЕАКТИВНА';
       const metricRows=[
+        ['Сессия',sessionLabel,session.note||'статус основной торговой сессии'],
         ['Всего MOEX сейчас',m.count||quotes.length,'инструментов в свежем universe'],
         ['Акции',counts.shares||0,'живой поиск и котировки'],
         ['Фьючерсы',counts.forts||0,'FORTS'],
@@ -83,7 +86,9 @@
           return '<tr class="click moexIntelRow" data-cid="'+esc(x.canonical_id)+'"><td><b>'+esc(x.name||x.symbol)+'</b><small class="mono">'+esc(x.symbol||'')+'</small></td><td>'+reasons+'</td><td>'+pct(x.ret_15m_pct,2)+'</td><td>'+esc(tod)+'</td><td>'+oi+'</td><td><b>'+num(x.attention_score,0)+'</b><small>'+(x.baseline_days||0)+' дн. baseline</small></td></tr>';
         }).join('')+'</tbody></table>';
       }else{
-        $('#moexIntelligence').innerHTML='<div class="empty"><b>Сильных собственно-исторических аномалий сейчас нет.</b>TQS сравнивает текущий оборот/объём/сделки с нормой к этому времени дня и отслеживает 15-минутные price/OI/liquidity/LCHI-сдвиги.</div>';
+        const warm=(intel.rows||[]).filter(x=>x.history_status==='warming').length;
+        const sessionText=session.status==='open'?'Сильных собственно-исторических аномалий сейчас нет.':'Основная торговая сессия сейчас закрыта или неактивна — TQS не выдумывает In Play.';
+        $('#moexIntelligence').innerHTML='<div class="empty"><b>'+esc(sessionText)+'</b>'+esc(session.note||'')+' · исторический слой '+(warm?'прогревается для '+warm+' инструментов':'готов')+'. Во время сессии здесь появляются WHY NOW по обороту, 15м price/OI, ликвидности и участникам.</div>';
       }
 
       const mj=jobs.filter(j=>provider(j)==='moex'||/MOEX|FUTOI/i.test(j.title_ru||j.title||'')).slice(0,80);
