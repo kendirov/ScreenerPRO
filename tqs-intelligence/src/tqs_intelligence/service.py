@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import asyncio
 import time
@@ -234,5 +235,3 @@ class IntelligenceService:
             self._task.cancel()
             try: await self._task
             except asyncio.CancelledError: pass
-
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
