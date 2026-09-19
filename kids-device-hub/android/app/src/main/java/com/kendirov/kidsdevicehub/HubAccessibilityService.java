@@ -146,9 +146,7 @@ public class HubAccessibilityService extends AccessibilityService {
                 messageOverlay=card;
                 card.animate().alpha(1f).translationY(0f).setDuration(280).start();
 
-                steam.animate().translationY(-dp(10)).alpha(0.25f)
-                        .setDuration(1200).setRepeatMode(android.animation.ValueAnimator.REVERSE)
-                        .setRepeatCount(android.animation.ValueAnimator.INFINITE).start();
+                steam.animate().translationY(-dp(10)).alpha(0.25f).setDuration(1200).start();
 
                 if(seconds>0) {
                     removeOverlayTask=this::removeMessageOverlay;
