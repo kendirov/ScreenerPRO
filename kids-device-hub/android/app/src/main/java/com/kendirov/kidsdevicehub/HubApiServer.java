@@ -133,6 +133,29 @@ public class HubApiServer {
         }
         if(path.equals("/apps")) { sendJson(c,apps()); return; }
         if(path.equals("/usage")) { sendJson(c,usage((int)lng(q,"days",1))); return; }
+        if(path.equals("/device-info")) { sendJson(c,deviceInfo()); return; }
+        if(path.equals("/open-url") || path.equals("/install-url")) {
+            String url=q.getOrDefault("url","");
+            if(url.isEmpty()){sendJson(c,"{\"ok\":false,\"error\":\"url_required\"}");return;}
+            Intent i=new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(i);
+            sendJson(c,"{\"ok\":true,\"mode\":\"guided\"}"); return;
+        }
+        if(path.equals("/uninstall")) {
+            String pkg=q.getOrDefault("package","");
+            if(pkg.isEmpty()){sendJson(c,"{\"ok\":false,\"error\":\"package_required\"}");return;}
+            Intent i=new Intent(Intent.ACTION_DELETE,Uri.parse("package:"+pkg));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(i); sendOk(c,true); return;
+        }
+        if(path.equals("/app-settings")) {
+            String pkg=q.getOrDefault("package","");
+            if(pkg.isEmpty()){sendJson(c,"{\"ok\":false,\"error\":\"package_required\"}");return;}
+            Intent i=new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+pkg));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(i); sendOk(c,true); return;
+        }
         if(path.equals("/lock")) {
             DevicePolicyManager dpm=context.getSystemService(DevicePolicyManager.class);
             ComponentName admin=new ComponentName(context,HubDeviceAdminReceiver.class);
@@ -174,6 +197,20 @@ public class HubApiServer {
             macroStop.set(true);
         },"kids-device-hub-macro");
         macroThread.start();
+    }
+
+    private String deviceInfo() {
+        android.os.BatteryManager bm=(android.os.BatteryManager)context.getSystemService(Context.BATTERY_SERVICE);
+        int battery=bm==null?-1:bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        android.os.StatFs fs=new android.os.StatFs(context.getFilesDir().getAbsolutePath());
+        long total=fs.getTotalBytes(), free=fs.getAvailableBytes();
+        return "{\"manufacturer\":\""+esc(android.os.Build.MANUFACTURER)+"\","
+                +"\"model\":\""+esc(android.os.Build.MODEL)+"\","
+                +"\"android\":\""+esc(android.os.Build.VERSION.RELEASE)+"\","
+                +"\"sdk\":"+android.os.Build.VERSION.SDK_INT+","
+                +"\"battery\":"+battery+","
+                +"\"storageTotal\":"+total+","
+                +"\"storageFree\":"+free+"}";
     }
 
     private String apps() {
