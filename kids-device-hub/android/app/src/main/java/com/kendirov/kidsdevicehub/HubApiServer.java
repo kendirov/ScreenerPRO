@@ -135,10 +135,17 @@ public class HubApiServer {
                     x.equals("notifications")?android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS:-1;
             sendOk(c,action>0 && a.performGlobalAction(action)); return;
         }
-        if(path.equals("/message")) {
+        if(path.equals("/message") || path.equals("/overlay")) {
             need(a,c); if(a==null)return;
-            String title=q.getOrDefault("title","Сообщение");
+            String title=q.getOrDefault("title","");
             String body=q.getOrDefault("body","");
+            String text=q.getOrDefault("text","");
+            if(title.isEmpty() && !text.isEmpty()) {
+                String[] lines=text.split("\\n",2);
+                title=lines.length>0?lines[0]:"Сообщение";
+                body=lines.length>1?lines[1]:"";
+            }
+            if(title.isEmpty()) title="Сообщение";
             int seconds=(int)Math.max(0,Math.min(3600,lng(q,"seconds",600)));
             sendOk(c,a.showMessage(title,body,seconds)); return;
         }
