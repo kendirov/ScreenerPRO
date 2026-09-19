@@ -6,6 +6,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
@@ -20,79 +22,73 @@ public class MainActivity extends Activity {
     public static final int PORT = 8766;
 
     public static String token(Context c) {
-        var p = c.getSharedPreferences("hub", MODE_PRIVATE);
-        String t = p.getString("token", null);
-        if (t == null) {
-            t = UUID.randomUUID().toString().replace("-", "");
-            p.edit().putString("token", t).apply();
-        }
+        var p=c.getSharedPreferences("hub",MODE_PRIVATE);
+        String t=p.getString("token",null);
+        if(t==null){t=UUID.randomUUID().toString().replace("-","");p.edit().putString("token",t).apply();}
         return t;
     }
 
     public static String ips() {
-        StringBuilder b = new StringBuilder();
+        StringBuilder b=new StringBuilder();
         try {
-            for (NetworkInterface n : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (!n.isUp() || n.isLoopback()) continue;
-                for (var a : Collections.list(n.getInetAddresses())) {
-                    String s = a.getHostAddress();
-                    if (s != null && s.indexOf(':') < 0) b.append(n.getName()).append(": ").append(s).append("\n");
+            for(NetworkInterface n:Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                if(!n.isUp()||n.isLoopback()) continue;
+                for(var a:Collections.list(n.getInetAddresses())) {
+                    String s=a.getHostAddress();
+                    if(s!=null&&s.indexOf(':')<0) b.append(n.getName()).append(": ").append(s).append("\n");
                 }
             }
-        } catch (Exception ignored) {}
-        return b.length() == 0 ? "No network address yet" : b.toString().trim();
+        } catch(Exception ignored){}
+        return b.length()==0?"No network address yet":b.toString().trim();
     }
 
-    private Button button(String text, View.OnClickListener listener) {
-        Button b = new Button(this);
-        b.setText(text);
-        b.setAllCaps(false);
-        b.setOnClickListener(listener);
-        return b;
+    private Button button(String text,View.OnClickListener listener) {
+        Button b=new Button(this); b.setText(text); b.setAllCaps(false); b.setOnClickListener(listener); return b;
+    }
+
+    private String infoText() {
+        DevicePolicyManager dpm=getSystemService(DevicePolicyManager.class);
+        boolean admin=dpm.isAdminActive(new ComponentName(this,HubDeviceAdminReceiver.class));
+        boolean owner=dpm.isDeviceOwnerApp(getPackageName());
+        boolean install=Build.VERSION.SDK_INT<26||getPackageManager().canRequestPackageInstalls();
+        return "Roma Lenovo Tab\nVersion: "+BuildConfig.VERSION_NAME+
+                "\nAgent port: "+PORT+"\nMode: low-load / on-demand / Tailscale-first\n\n"+ips()+
+                "\n\nAccessibility: "+(HubAccessibilityService.INSTANCE!=null?"ON":"check settings")+
+                "\nInstall apps: "+(install?"ON":"permission needed")+
+                "\nAll files: "+(FileOps.hasAccess()?"ON":"optional permission needed")+
+                "\nDevice Admin: "+admin+"\nDevice Owner: "+owner;
     }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        startForegroundService(new Intent(this, HubService.class));
+        token(this);
+        startForegroundService(new Intent(this,HubService.class));
+        LinearLayout l=new LinearLayout(this);
+        l.setOrientation(LinearLayout.VERTICAL); l.setPadding(36,42,36,24); l.setBackgroundColor(Color.rgb(244,246,250));
 
-        LinearLayout l = new LinearLayout(this);
-        l.setOrientation(LinearLayout.VERTICAL);
-        l.setPadding(36, 42, 36, 24);
-        l.setBackgroundColor(Color.rgb(244,246,250));
+        TextView title=new TextView(this);
+        title.setText("Kendirov Family Device Hub"); title.setTextSize(25); title.setTextColor(Color.rgb(20,24,32)); l.addView(title);
 
-        TextView title = new TextView(this);
-        title.setText("Kendirov Kids Device Hub\nRoma Lenovo Tab");
-        title.setTextSize(25);
-        title.setTextColor(Color.rgb(20,24,32));
-        title.setPadding(0,0,0,18);
-        l.addView(title);
+        TextView info=new TextView(this);
+        info.setText(infoText()); info.setTextSize(15); info.setTextColor(Color.DKGRAY); info.setPadding(0,18,0,20); l.addView(info);
 
-        TextView info = new TextView(this);
-        info.setText("Agent: http://<tablet-ip>:" + PORT + "\n\n" + ips() +
-                "\n\nPair token:\n" + token(this) +
-                "\n\nEnable Accessibility + Usage Access. Device Admin is optional. " +
-                "For maximum managed-device controls, provision Device Owner during dedicated setup.");
-        info.setTextSize(16);
-        info.setTextColor(Color.DKGRAY);
-        info.setTextIsSelectable(true);
-        info.setPadding(0,0,0,20);
-        l.addView(info);
-
-        l.addView(button("Open Accessibility settings", v ->
-                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))));
-        l.addView(button("Open Usage Access settings", v ->
-                startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))));
-        l.addView(button("Enable Device Admin", v -> {
-            ComponentName admin = new ComponentName(this, HubDeviceAdminReceiver.class);
-            Intent i = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-            i.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin);
-            i.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                    "Allows parent-authorized lock and future managed-device policies.");
+        l.addView(button("1. Accessibility",v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))));
+        l.addView(button("2. Usage access",v->startActivity(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))));
+        l.addView(button("3. Allow app installs",v->{
+            if(Build.VERSION.SDK_INT>=26) startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())));
+        }));
+        l.addView(button("4. All files access (optional)",v->{
+            if(Build.VERSION.SDK_INT>=30) startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,Uri.parse("package:"+getPackageName())));
+        }));
+        l.addView(button("5. Device Admin",v->{
+            ComponentName admin=new ComponentName(this,HubDeviceAdminReceiver.class);
+            Intent i=new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+            i.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN,admin);
+            i.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,"Parent-authorized family device management.");
             startActivity(i);
         }));
-        l.addView(button("Refresh addresses", v -> info.setText(
-                "Agent: http://<tablet-ip>:" + PORT + "\n\n" + ips() +
-                "\n\nPair token:\n" + token(this))));
+        l.addView(button("6. Battery optimization",v->startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))));
+        l.addView(button("Refresh status",v->info.setText(infoText())));
         setContentView(l);
     }
 }
