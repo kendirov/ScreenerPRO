@@ -10,6 +10,7 @@ $LocalDir = Join-Path $DataDir "ai-bridge"
 $StatePath = Join-Path $DataDir "ai-bridge-state.json"
 $NodeConfigPath = Join-Path $DataDir "server-node.json"
 $AuditUrl = "http://127.0.0.1:8787/api/audit"
+$HealthUrl = "http://127.0.0.1:8787/api/health"
 
 New-Item -ItemType Directory -Force -Path $LocalDir | Out-Null
 
@@ -54,13 +55,50 @@ function Publish-Audit {
         drive_connected = $false
         audit_overall = $null
         version = $null
+        health_ok = $false
+        health_error = $null
+        last_health_publish_ms = 0
         last_error = $null
         local_path = (Join-Path $LocalDir "TQS_LIVE_AUDIT.json")
         interval_seconds = $IntervalSeconds
     }
 
+    $target = Get-TargetPath
+    if ($target) {
+        $state.target_path = $target
+        $state.drive_connected = $true
+    }
+
     try {
-        $audit = Invoke-RestMethod -Uri $AuditUrl -Method Get -TimeoutSec 30
+        $health = Invoke-RestMethod -Uri $HealthUrl -Method Get -TimeoutSec 8
+        $state.health_ok = [bool]$health.ok
+        $state.version = [string]$health.version
+        $healthLines = @(
+            "TQS LIVE HEALTH",
+            "generated_at_ms: $($health.generated_at_ms)",
+            "version: $($health.version)",
+            "ok: $($health.ok)",
+            "mode: $($health.control.mode)",
+            "data_lake_root: $($health.control.data_lake_root)",
+            "refresh_count: $($health.runtime.refresh_count)",
+            "runtime_error: $($health.runtime.last_error)"
+        )
+        $healthText = ($healthLines -join [Environment]::NewLine) + [Environment]::NewLine
+        Write-JsonAtomic -Path (Join-Path $LocalDir "TQS_LIVE_HEALTH.json") -Value $health
+        Write-TextAtomic -Path (Join-Path $LocalDir "TQS_LIVE_HEALTH.txt") -Text $healthText
+        $state.last_health_publish_ms = $now
+        if ($target) {
+            Write-JsonAtomic -Path (Join-Path $target "TQS_LIVE_HEALTH.json") -Value $health
+            Write-TextAtomic -Path (Join-Path $target "TQS_LIVE_HEALTH.txt") -Text $healthText
+            $state.last_drive_publish_ms = $now
+        }
+    } catch {
+        $state.health_error = "$($_.Exception.GetType().Name): $($_.Exception.Message)"
+        if (-not $target) { $state.drive_connected = $false }
+    }
+
+    try {
+        $audit = Invoke-RestMethod -Uri $AuditUrl -Method Get -TimeoutSec 20
         $state.audit_overall = [string]$audit.overall
         $state.version = [string]$audit.version
 
@@ -81,9 +119,7 @@ function Publish-Audit {
         Write-TextAtomic -Path (Join-Path $LocalDir "TQS_LIVE_AUDIT.txt") -Text $text
         $state.last_publish_ms = $now
 
-        $target = Get-TargetPath
         if ($target) {
-            $state.target_path = $target
             Write-JsonAtomic -Path (Join-Path $target "TQS_LIVE_AUDIT.json") -Value $audit
             Write-TextAtomic -Path (Join-Path $target "TQS_LIVE_AUDIT.txt") -Text $text
             $state.drive_connected = $true
@@ -103,7 +139,8 @@ function Publish-Audit {
             $state.last_error = "Configured Google Drive target was not found."
         }
     } catch {
-        $state.last_error = "$($_.Exception.GetType().Name): $($_.Exception.Message)"
+        $auditError = "$($_.Exception.GetType().Name): $($_.Exception.Message)"
+        $state.last_error = "audit: $auditError"
     }
 
     try { Write-JsonAtomic -Path $StatePath -Value $state } catch {}
