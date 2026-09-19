@@ -32,6 +32,7 @@ public final class ScriptRunner {
                 else if(a.equals("tap")&&h!=null) h.tap((float)s.getDouble("x"),(float)s.getDouble("y"));
                 else if(a.equals("longPress")&&h!=null) h.swipe((float)s.getDouble("x"),(float)s.getDouble("y"),(float)s.getDouble("x"),(float)s.getDouble("y"),Math.min(3000,s.optLong("ms",800)));
                 else if(a.equals("swipe")&&h!=null) h.swipe((float)s.getDouble("x1"),(float)s.getDouble("y1"),(float)s.getDouble("x2"),(float)s.getDouble("y2"),Math.min(5000,s.optLong("ms",300)));
+                else if(a.equals("drag")&&h!=null) h.drag((float)s.getDouble("x1"),(float)s.getDouble("y1"),(float)s.getDouble("x2"),(float)s.getDouble("y2"),Math.min(3000,s.optLong("holdMs",700)),Math.min(5000,s.optLong("moveMs",600)));
                 else if(a.equals("text")&&h!=null) h.setFocusedText(s.optString("value",""));
                 else if(a.equals("clickText")&&h!=null) h.clickText(s.optString("text",""));
                 else if(a.equals("home")&&h!=null) h.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME);
