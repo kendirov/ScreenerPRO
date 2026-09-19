@@ -67,6 +67,7 @@ internal sealed class AgentApplicationContext : ApplicationContext
     private readonly NotifyIcon tray;
     private readonly AgentServer server;
     private readonly UsageTracker usage;
+    private readonly ReverseControlClient reverse;
 
     public AgentApplicationContext()
     {
@@ -74,6 +75,8 @@ internal sealed class AgentApplicationContext : ApplicationContext
         server = new AgentServer(usage);
         server.Start();
         usage.Start();
+        reverse = new ReverseControlClient(usage);
+        reverse.Start();
 
         tray = new NotifyIcon
         {
@@ -93,6 +96,7 @@ internal sealed class AgentApplicationContext : ApplicationContext
     {
         tray.Visible = false;
         tray.Dispose();
+        reverse.Dispose();
         server.Dispose();
         usage.Dispose();
         base.ExitThreadCore();
