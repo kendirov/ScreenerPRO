@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "devices": {
     "roma": {
       "name": "Roma Lenovo Tab",
@@ -7,12 +7,19 @@
       "host": "100.97.19.59",
       "port": 8766,
       "transport": "tailscale",
-      "capabilities": ["status","info","screenshot","ui","tap","swipe","text","home","back","launch","apps","usage","lock","open-url","install-url","uninstall","app-settings"]
+      "profile": "child-tablet",
+      "capabilities": [
+        "status","info","screenshot","ui","tap","long-press","swipe","text","click-text",
+        "home","back","wake","launch","apps","usage","lock",
+        "open-url","install-url","update","install-status","uninstall","app-settings",
+        "files","mkdir","move","trash","script","script-status","stop-script"
+      ]
     },
     "kirill": {
       "name": "Kirill Windows Laptop",
       "kind": "windows_agent",
       "transport": "tailscale",
+      "profile": "child-laptop",
       "state": "planned",
       "capabilities": []
     }
