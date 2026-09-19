@@ -68,7 +68,8 @@ public class HubApiServer {
                 URI u=URI.create(raw);
                 Map<String,String> q=query(u.getRawQuery());
                 String remoteIp=client.getInetAddress().getHostAddress();
-                boolean trustedController=isTailscaleIp(remoteIp);
+                String localIp=client.getLocalAddress().getHostAddress();
+                boolean trustedController=isTailscaleIp(localIp);
                 String supplied=headers.getOrDefault("x-hub-token",q.getOrDefault("token",""));
                 boolean tokenOk=MainActivity.token(context).equals(supplied);
                 if(!trustedController && !tokenOk) {
@@ -86,7 +87,7 @@ public class HubApiServer {
             boolean admin=dpm.isAdminActive(new ComponentName(context,HubDeviceAdminReceiver.class));
             boolean owner=dpm.isDeviceOwnerApp(context.getPackageName());
             String app=a==null?"":a.currentPackage();
-            String s="{\"ok\":true,\"version\":\""+BuildConfig.VERSION_NAME+"\",\"accessibility\":"+(a!=null)+",\"deviceAdmin\":"+admin+
+            String s="{\"ok\":true,\"version\":\""+BuildConfig.VERSION_NAME+"\",\"accessibility\":"+(a!=null)+",\"usageAccess\":"+hasUsageAccess()+",\"batteryUnrestricted\":"+batteryUnrestricted()+",\"deviceAdmin\":"+admin+
                     ",\"deviceOwner\":"+owner+",\"filesAccess\":"+FileOps.hasAccess()+",\"currentPackage\":\""+esc(app)+"\",\"script\":\""+esc(ScriptRunner.status())+"\",\"installer\":\""+esc(ApkInstaller.status())+"\",\"port\":"+port+"}";
             sendJson(c,s); return;
         }
@@ -236,6 +237,22 @@ public class HubApiServer {
             macroStop.set(true);
         },"kids-device-hub-macro");
         macroThread.start();
+    }
+
+    private boolean hasUsageAccess() {
+        try {
+            android.app.AppOpsManager ops=(android.app.AppOpsManager)context.getSystemService(Context.APP_OPS_SERVICE);
+            int mode=ops.checkOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),context.getPackageName());
+            return mode==android.app.AppOpsManager.MODE_ALLOWED;
+        } catch(Exception e){ return false; }
+    }
+
+    private boolean batteryUnrestricted() {
+        try {
+            android.os.PowerManager pm=(android.os.PowerManager)context.getSystemService(Context.POWER_SERVICE);
+            return pm!=null && pm.isIgnoringBatteryOptimizations(context.getPackageName());
+        } catch(Exception e){ return false; }
     }
 
     private boolean wake() {
