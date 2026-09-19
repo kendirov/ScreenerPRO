@@ -69,7 +69,7 @@ internal sealed class ReverseControlClient : IDisposable
             "move" => Do(()=>Native.SetCursorPos((int)L(args,"x",0),(int)L(args,"y",0))),
             "key" => Do(()=>InputAutomation.Key((byte)L(args,"vk",0),(int)L(args,"repeats",1),(int)L(args,"delayMs",80))),
             "text" => Do(()=>InputAutomation.Text(S(args,"value",""))),
-            "overlay" => Do(()=>OverlayManager.Show(S(args,"text",""),(int)L(args,"seconds",10),S(args,"mode","card"))),
+            "overlay" => Do(()=>OverlayManager.Show(S(args,"text",""),(int)L(args,"seconds",10),S(args,"mode","card"),S(args,"position","top-right"))),
             "timer" => Do(()=>OverlayManager.StartTimer((int)L(args,"minutes",60),S(args,"text",""),S(args,"endAction","none"))),
             "lock" => Do(()=>Native.LockWorkStation()),
             "launch" => SoftwareManager.Launch(S(args,"file",""),S(args,"arguments","")),
