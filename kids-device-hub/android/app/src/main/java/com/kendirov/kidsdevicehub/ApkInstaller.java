@@ -47,12 +47,13 @@ public final class ApkInstaller {
             PackageInstaller.SessionParams p=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
             if(Build.VERSION.SDK_INT>=31) p.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
             int id=pi.createSession(p);
-            try(PackageInstaller.Session s=pi.openSession(id);
-                InputStream in=new FileInputStream(apk);
-                OutputStream out=s.openWrite("base.apk",0,apk.length())){
-                byte[] buf=new byte[65536]; int n;
-                while((n=in.read(buf))>0) out.write(buf,0,n);
-                s.fsync(out);
+            try(PackageInstaller.Session s=pi.openSession(id)) {
+                try(InputStream in=new FileInputStream(apk);
+                    OutputStream out=s.openWrite("base.apk",0,apk.length())) {
+                    byte[] buf=new byte[65536]; int n;
+                    while((n=in.read(buf))>0) out.write(buf,0,n);
+                    s.fsync(out);
+                }
                 Intent result=new Intent(c,InstallResultReceiver.class).setAction("com.kendirov.kidsdevicehub.INSTALL_RESULT");
                 PendingIntent pending=PendingIntent.getBroadcast(c,id,result,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_MUTABLE);
                 status="committing";
