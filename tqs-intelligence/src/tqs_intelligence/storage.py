@@ -25,7 +25,8 @@ class DuckStore:
     def __init__(self, path: str) -> None:
         db = Path(path)
         db.parent.mkdir(parents=True, exist_ok=True)
-        self._con = duckdb.connect(str(db))
+        self.path = str(db.resolve())
+        self._con = duckdb.connect(self.path)
         self._lock = threading.Lock()
         self._con.execute("""
             create table if not exists quote_snapshots (
@@ -64,6 +65,14 @@ class DuckStore:
                 status varchar, payload_json varchar
             );
         """)
+
+    def reader_connection(self):
+        """Independent DuckDB connection for analytical reads.
+
+        DuckDB MVCC lets this reader observe the last committed state while the
+        primary connection is writing. The caller owns and must close it.
+        """
+        return duckdb.connect(self.path)
 
     def persist_snapshot(self, quotes: list[Quote], anomalies: list[Anomaly], news: list[NewsItem]) -> None:
         """Persist a full market snapshot using DuckDB Arrow bulk inserts.
