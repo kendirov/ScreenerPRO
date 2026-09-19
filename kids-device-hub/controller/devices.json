@@ -9,7 +9,7 @@
       "transport": "tailscale",
       "profile": "child-tablet",
       "capabilities": [
-        "status","info","screenshot","ui","tap","long-press","swipe","text","click-text",
+        "status","info","screenshot","ui","tap","long-press","swipe","drag","text","click-text",
         "home","back","wake","launch","apps","usage","lock",
         "open-url","install-url","update","install-status","uninstall","app-settings",
         "files","mkdir","move","trash","script","script-status","stop-script"
