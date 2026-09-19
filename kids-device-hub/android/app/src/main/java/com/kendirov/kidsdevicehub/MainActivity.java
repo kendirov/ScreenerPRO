@@ -19,7 +19,7 @@ import java.util.Collections;
 import java.util.UUID;
 
 public class MainActivity extends Activity {
-    public static final int PORT = 8766;
+    public static final int PORT = 8767;
     public static final String STABLE_APK_URL = "http://100.95.246.112:8770/Kendirov-Kids-Device-Hub-stable.apk";
 
     public static String token(Context c) {
