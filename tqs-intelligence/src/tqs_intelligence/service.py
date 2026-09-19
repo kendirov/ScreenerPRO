@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from .control import ControlCenter
 from .engine import IntelligenceEngine
-from .models import AnomalyEpisode, Quote, RuntimeLog, Snapshot, SourceHealth, SourceStatus
+from .models import Anomaly, AnomalyEpisode, NewsItem, Quote, RuntimeLog, Snapshot, SourceHealth, SourceStatus
 from .moex_features import merge_anomalies
 from .news import NewsCollector
 from .research import build_research_findings
@@ -55,7 +55,9 @@ class IntelligenceService:
         self._moex_cached: list[Anomaly] = []
         self._moex_feature_last_finished_ms: int | None = None
         self._moex_feature_last_error: str | None = None
-        self._episode_task: asyncio.Task | None = None
+        self._postprocess_task: asyncio.Task | None = None
+        self._snapshot_pending: deque[tuple[list[Quote], list[Anomaly], list[NewsItem]]] = deque()
+        self._postprocess_dropped = 0
         self._episode_pending: tuple[list[Anomaly], int, list[Quote], bool] | None = None
 
     def mode(self) -> str:
@@ -92,8 +94,10 @@ class IntelligenceService:
                                  "cached_anomalies":len(self._moex_cached),
                                  "last_finished_ms":self._moex_feature_last_finished_ms,
                                  "last_error":self._moex_feature_last_error},
-                "episode_postprocess":{"running":bool(self._episode_task and not self._episode_task.done()),
-                                       "pending":self._episode_pending is not None}}
+                "postprocess":{"running":bool(self._postprocess_task and not self._postprocess_task.done()),
+                               "snapshot_queue":len(self._snapshot_pending),
+                               "dropped_snapshots":self._postprocess_dropped,
+                               "episode_pending":self._episode_pending is not None}}
 
     async def _fetch_history(self, episode: AnomalyEpisode, quote: Quote) -> int:
         source = self._sources_by_provider.get(episode.provider)
@@ -161,9 +165,22 @@ class IntelligenceService:
         self._manual_tasks.add(task)
         task.add_done_callback(self._manual_tasks.discard)
 
-    async def _episode_postprocess_loop(self) -> None:
+    async def _postprocess_loop(self) -> None:
         try:
-            while self._episode_pending is not None:
+            while self._snapshot_pending or self._episode_pending is not None:
+                if self._snapshot_pending:
+                    quotes, anomalies, news = self._snapshot_pending.popleft()
+                    try:
+                        await asyncio.to_thread(self.store.persist_snapshot, quotes, anomalies, news)
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as exc:
+                        self.log("error","snapshot","Фоновая запись market snapshot завершилась ошибкой",
+                                 error=str(exc)[:1000])
+                    # Snapshot durability has priority. Episode state can safely
+                    # collapse to the newest market state while the DB catches up.
+                    continue
+
                 anomalies, now_ms, quotes, heavy = self._episode_pending
                 self._episode_pending = None
                 try:
@@ -181,17 +198,24 @@ class IntelligenceService:
                     self.log("error","episodes","Фоновая обработка эпизодов завершилась ошибкой",
                              error=str(exc)[:1000])
         finally:
-            self._episode_task = None
+            self._postprocess_task = None
 
-    def _queue_episode_postprocess(self, anomalies: list[Anomaly], now_ms: int,
-                                   quotes: list[Quote], heavy: bool) -> None:
-        # Keep at most one pending payload. If persistence is slower than market
-        # refresh, the newest market state supersedes stale intermediate states.
+    def _queue_postprocess(self, quotes: list[Quote], anomalies: list[Anomaly],
+                           news: list[NewsItem], now_ms: int, heavy: bool) -> None:
+        # Preserve several durable market snapshots during transient DB pressure.
+        # If persistence falls far behind, drop the oldest queued snapshot rather
+        # than blocking live collection or growing memory without bound.
+        if len(self._snapshot_pending) >= 4:
+            self._snapshot_pending.popleft()
+            self._postprocess_dropped += 1
+            self.log("warning","snapshot","Durable snapshot queue overflow; dropped oldest queued snapshot",
+                     dropped_total=self._postprocess_dropped)
+        self._snapshot_pending.append((list(quotes), list(anomalies), list(news)))
         self._episode_pending = (list(anomalies), int(now_ms), list(quotes), bool(heavy))
-        if self._episode_task is None or self._episode_task.done():
-            self._episode_task = asyncio.create_task(
-                self._episode_postprocess_loop(),
-                name="tqs-episode-postprocess",
+        if self._postprocess_task is None or self._postprocess_task.done():
+            self._postprocess_task = asyncio.create_task(
+                self._postprocess_loop(),
+                name="tqs-durable-postprocess",
             )
 
     async def refresh(self, force: bool = False) -> Snapshot | None:
@@ -219,15 +243,14 @@ class IntelligenceService:
                 # writes may be expensive on a cold start and must not make health/UI
                 # look empty while fresh quotes are already available in memory.
                 self.state.snapshot=snapshot
-                await asyncio.to_thread(self.store.persist_snapshot, quotes, anomalies, news)
                 mode=self.mode(); heavy=mode=='max'
                 next_count=self.state.refresh_count+1
                 schedule_active_history = heavy and next_count % self.history_refresh_every == 0
                 schedule_research = heavy and next_count % self.research_every_refreshes == 0
                 self.state.refresh_count=next_count; duration=_now_ms()-started; self.state.last_refresh_finished_ms=_now_ms(); self.state.last_refresh_duration_ms=duration
                 online=sum(1 for x in health if x.status in (SourceStatus.OK,SourceStatus.DEGRADED))
-                self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode,episode_postprocess="background")
-                self._queue_episode_postprocess(anomalies, now, quotes, heavy)
+                self.log("info","refresh","Сбор рынка завершён",instruments=len(quotes),anomalies=len(anomalies),news=len(news),sources_online=online,sources_total=len(health),duration_ms=duration,mode=mode,durable_postprocess="background")
+                self._queue_postprocess(quotes, anomalies, news, now, heavy)
                 if schedule_active_history:
                     self._spawn_background(self._refresh_active_history(quotes), "tqs-history-active")
                 if schedule_research:
