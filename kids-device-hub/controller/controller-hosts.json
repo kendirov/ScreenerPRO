@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "active_controller": "office-windows",
+  "controllers": {
+    "office-windows": {
+      "name": "Kendirov Office Windows",
+      "role": "primary",
+      "tailscale_ip": "100.95.246.112",
+      "update_port": 8770,
+      "root_hint_windows": "C:\\Users\\Admin\\Documents\\ArtemDeviceHub",
+      "state": "active"
+    },
+    "home-mini-pc": {
+      "name": "Home Mini-PC",
+      "role": "standby",
+      "tailscale_ip": null,
+      "update_port": 8770,
+      "root_hint_linux": "/opt/kendirov-device-hub",
+      "state": "planned"
+    }
+  }
+}
