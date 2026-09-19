@@ -9,7 +9,18 @@ import android.graphics.Path;
 import android.hardware.HardwareBuffer;
 import android.os.SystemClock;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.graphics.Color;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Display;
+import android.view.Gravity;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import java.io.ByteArrayOutputStream;
@@ -18,11 +29,149 @@ import java.util.concurrent.TimeUnit;
 
 public class HubAccessibilityService extends AccessibilityService {
     public static volatile HubAccessibilityService INSTANCE;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private View messageOverlay;
+    private Runnable removeOverlayTask;
 
     @Override protected void onServiceConnected() { INSTANCE = this; }
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {}
     @Override public void onInterrupt() {}
-    @Override public void onDestroy() { if (INSTANCE == this) INSTANCE = null; super.onDestroy(); }
+    @Override public void onDestroy() {
+        removeMessageOverlay();
+        if (INSTANCE == this) INSTANCE = null;
+        super.onDestroy();
+    }
+
+    private int dp(int v) {
+        return (int)(v * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    public boolean showMessage(String titleText, String bodyText, int seconds) {
+        mainHandler.post(() -> {
+            try {
+                removeMessageOverlay();
+
+                WindowManager wm=(WindowManager)getSystemService(WINDOW_SERVICE);
+                int screenW=getResources().getDisplayMetrics().widthPixels;
+                int width=Math.min(dp(620),screenW-dp(32));
+
+                LinearLayout card=new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(dp(24),dp(20),dp(24),dp(18));
+                GradientDrawable bg=new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{Color.rgb(36,19,55),Color.rgb(20,35,67)});
+                bg.setCornerRadius(dp(24));
+                bg.setStroke(dp(2),Color.rgb(255,166,52));
+                card.setBackground(bg);
+                card.setElevation(dp(18));
+
+                TextView steam=new TextView(this);
+                steam.setText("♨   ♨   ♨");
+                steam.setTextColor(Color.rgb(255,231,166));
+                steam.setTextSize(20);
+                steam.setGravity(Gravity.CENTER);
+                card.addView(steam,new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,dp(30)));
+
+                TextView title=new TextView(this);
+                title.setText("🥟  "+titleText);
+                title.setTextColor(Color.WHITE);
+                title.setTextSize(26);
+                title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                title.setGravity(Gravity.CENTER);
+                card.addView(title);
+
+                TextView body=new TextView(this);
+                body.setText(bodyText);
+                body.setTextColor(Color.rgb(255,226,158));
+                body.setTextSize(17);
+                body.setGravity(Gravity.CENTER);
+                body.setPadding(0,dp(8),0,dp(12));
+                card.addView(body);
+
+                TextView bonus=new TextView(this);
+                bonus.setText("🔥 горячо   •   ⚡ энергия +100   •   🎮 игра подождёт");
+                bonus.setTextColor(Color.rgb(224,229,255));
+                bonus.setTextSize(13);
+                bonus.setGravity(Gravity.CENTER);
+                bonus.setPadding(0,0,0,dp(14));
+                card.addView(bonus);
+
+                LinearLayout row=new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER);
+
+                Button ok=new Button(this);
+                ok.setText("🥟  ОК, ИДУ!");
+                ok.setAllCaps(false);
+                ok.setTextColor(Color.WHITE);
+                ok.setTextSize(15);
+                GradientDrawable okBg=new GradientDrawable();
+                okBg.setColor(Color.rgb(55,214,122)); okBg.setCornerRadius(dp(14));
+                ok.setBackground(okBg);
+                ok.setOnClickListener(v->removeMessageOverlay());
+
+                Button later=new Button(this);
+                later.setText("Ещё 5 минут");
+                later.setAllCaps(false);
+                later.setTextColor(Color.WHITE);
+                later.setTextSize(14);
+                GradientDrawable laterBg=new GradientDrawable();
+                laterBg.setColor(Color.rgb(67,61,92)); laterBg.setCornerRadius(dp(14));
+                later.setBackground(laterBg);
+                later.setOnClickListener(v->{
+                    body.setText("Хорошо 🙂 Напомню ещё раз через 5 минут");
+                    if(removeOverlayTask!=null) mainHandler.removeCallbacks(removeOverlayTask);
+                    removeOverlayTask=this::removeMessageOverlay;
+                    mainHandler.postDelayed(removeOverlayTask,5*60*1000L);
+                });
+
+                LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,dp(48),1f);
+                bp.setMargins(dp(4),0,dp(4),0);
+                row.addView(ok,bp); row.addView(later,bp);
+                card.addView(row);
+
+                WindowManager.LayoutParams lp=new WindowManager.LayoutParams(
+                        width,WindowManager.LayoutParams.WRAP_CONTENT,
+                        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                        PixelFormat.TRANSLUCENT);
+                lp.gravity=Gravity.TOP|Gravity.END;
+                lp.x=dp(16); lp.y=dp(28);
+
+                card.setAlpha(0f); card.setTranslationY(-dp(18));
+                wm.addView(card,lp);
+                messageOverlay=card;
+                card.animate().alpha(1f).translationY(0f).setDuration(280).start();
+
+                steam.animate().translationY(-dp(10)).alpha(0.25f)
+                        .setDuration(1200).setRepeatMode(android.animation.ValueAnimator.REVERSE)
+                        .setRepeatCount(android.animation.ValueAnimator.INFINITE).start();
+
+                if(seconds>0) {
+                    removeOverlayTask=this::removeMessageOverlay;
+                    mainHandler.postDelayed(removeOverlayTask,Math.max(5,seconds)*1000L);
+                }
+            } catch(Exception ignored) {}
+        });
+        return true;
+    }
+
+    public void removeMessageOverlay() {
+        mainHandler.post(() -> {
+            try {
+                if(removeOverlayTask!=null) mainHandler.removeCallbacks(removeOverlayTask);
+                removeOverlayTask=null;
+                if(messageOverlay!=null) {
+                    WindowManager wm=(WindowManager)getSystemService(WINDOW_SERVICE);
+                    wm.removeView(messageOverlay);
+                    messageOverlay=null;
+                }
+            } catch(Exception ignored) {}
+        });
+    }
 
     public boolean tap(float x, float y) {
         Path p = new Path(); p.moveTo(x,y);
