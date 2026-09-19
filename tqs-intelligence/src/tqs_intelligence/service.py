@@ -1,7 +1,7 @@
-from __future__ import annotations
 
 import asyncio
 import time
+from collections import deque
 from dataclasses import dataclass
 
 from .control import ControlCenter
@@ -49,6 +49,7 @@ class IntelligenceService:
         self.engine = IntelligenceEngine(); self.state = RuntimeState(); self._task: asyncio.Task | None = None
         self._lock = asyncio.Lock(); self._manual_tasks: set[asyncio.Task] = set(); self._source_status: dict[str, str] = {}
         self._sources_by_provider = {source.provider: source for source in sources}
+        self._recent_logs: deque[RuntimeLog] = deque(maxlen=300)
         self._moex_task: asyncio.Task | None = None
         self._moex_cached: list[Anomaly] = []
         self._moex_feature_last_finished_ms: int | None = None
@@ -59,8 +60,12 @@ class IntelligenceService:
 
     def log(self, level: str, component: str, message: str, **details: object) -> None:
         item = RuntimeLog(ts_ms=_now_ms(), level=level, component=component, message=message, details=dict(details))
+        self._recent_logs.append(item)
         try: self.store.append_log(item)
         except Exception: pass
+
+    def recent_logs(self) -> list[RuntimeLog]:
+        return list(reversed(self._recent_logs))
 
     def current_health(self) -> list[SourceHealth]:
         if self.state.snapshot: return self.state.snapshot.source_health
@@ -229,3 +234,5 @@ class IntelligenceService:
             self._task.cancel()
             try: await self._task
             except asyncio.CancelledError: pass
+
+[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
