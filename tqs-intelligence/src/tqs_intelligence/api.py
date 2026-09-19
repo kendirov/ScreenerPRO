@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import asyncio
 import os
@@ -249,7 +248,8 @@ ai_control = AiControlBridge(
     service=service,
     poll_seconds=settings.ai_control_poll_seconds,
 )
-RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
+
+[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]RUNTIME_STARTED_AT_MS = int(time.time() * 1000)
 RUNTIME_INSTANCE_ID = f'{RUNTIME_STARTED_AT_MS}-{os.getpid()}'
 
 
@@ -360,11 +360,11 @@ async def dashboard(): return FileResponse(STATIC / 'index.html', headers={'Cach
 
 @app.get('/api/health')
 async def health():
-    # Liveness must never wait for analytical COUNT(*) queries or Parquet work.
+    # Liveness must never wait for analytical DB queries, Parquet work, or
+    # background collector locks. Detailed counters belong to /api/system/audit.
     snapshot=_snapshot()
-    pulse_status = await asyncio.to_thread(pulse_service.status)
     return {'ok':True,'initializing':snapshot is None,'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_status,'ai_control':ai_control.status(),
+            'research_runtime':research_runtime.quick_status(),'account_intelligence':account_service.quick_status(),'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.quick_status(),'ai_control':ai_control.status(),
             'control':control.status(),'resources':_resources(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
             'sources':[x.model_dump(mode='json') for x in service.current_health()],
             'storage':{'deferred':True},'lab':{'deferred':True}}
@@ -447,15 +447,18 @@ def ai_control_status():
 async def _build_audit_payload() -> dict[str, Any]:
     runtime = service.runtime_status()
     snapshot = _snapshot()
-    storage, lake_state, lab_state, lchi_state, pulse_state, remote_state, update_state, logs = await asyncio.gather(
-        asyncio.to_thread(store.stats),
+    # Monitoring must stay responsive even while DuckDB is busy with MOEX
+    # history/features. Live truth comes from the in-memory snapshot/runtime;
+    # heavy storage counters are intentionally deferred here.
+    storage = {"deferred": True, "stats_mode": "runtime_audit_fast"}
+    lab_state = {"deferred": True, "stats_mode": "runtime_audit_fast"}
+    logs = service.recent_logs()
+    lchi_state = lchi_service.quick_status()
+    lake_state, pulse_state, remote_state, update_state = await asyncio.gather(
         asyncio.to_thread(lake.quick_stats),
-        asyncio.to_thread(lab.stats),
-        asyncio.to_thread(lchi_service.status),
         asyncio.to_thread(pulse_service.status),
         asyncio.to_thread(remote_node_status),
         asyncio.to_thread(updater.status, False),
-        asyncio.to_thread(store.list_logs, 300),
     )
     resource_base = _resources()
     control_state = control.get()
@@ -496,7 +499,8 @@ async def _build_audit_payload() -> dict[str, Any]:
         remote=remote_state,
         update=update_state,
         recent_logs=logs,
-        ai_control=ai_control.status(),
+
+[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]        ai_control=ai_control.status(),
         resources=resources_state,
     )
 
@@ -747,6 +751,7 @@ def logs(limit:int=Query(200,ge=1,le=2000),level:str='',component:str=''):
     return [x.model_dump(mode='json') for x in store.list_logs(limit,level,component)]
 
 
+[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
 @app.post('/api/hypotheses')
 def create_hypothesis(request:HypothesisCreate): return store.create_hypothesis(request,int(time.time()*1000)).model_dump(mode='json')
 
@@ -950,3 +955,5 @@ def main()->None:
 
 
 if __name__=='__main__': main()
+
+[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
