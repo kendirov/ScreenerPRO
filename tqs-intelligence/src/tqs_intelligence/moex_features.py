@@ -124,6 +124,8 @@ class MoexFeatureEngine:
     position changes. It intentionally does not treat delayed FUTOI as live.
     """
 
+    HISTORY_CANDIDATE_LIMIT = 180
+
     def __init__(self, store: Any, lchi_store: Any | None = None, metric_lake: Any | None = None) -> None:
         self.store = store
         self.lchi_store = lchi_store
@@ -475,7 +477,7 @@ class MoexFeatureEngine:
 
     def analyze(self, quotes: list[Quote]) -> list[Anomaly]:
         now_ms = max((int(q.observed_at_ms) for q in quotes if q.provider == "moex"), default=_now_ms())
-        candidates = self._candidate_quotes(quotes)
+        candidates = self._candidate_quotes(quotes, limit=self.HISTORY_CANDIDATE_LIMIT)
         ids = [q.canonical_id for q in candidates]
         baselines = self._same_time_baselines(ids, now_ms)
         recent = self._recent_history(ids, now_ms)
@@ -681,6 +683,7 @@ class MoexFeatureEngine:
             "rows": rows,
             "signals": by_signal,
             "count": len(rows),
+            "history_candidate_limit": self.HISTORY_CANDIDATE_LIMIT,
             "definition": "MOEX own-history attention layer: same-time-of-day activity + short-horizon price/OI/liquidity + public participant context",
         }
 
