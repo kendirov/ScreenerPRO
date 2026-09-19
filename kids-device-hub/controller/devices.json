@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "devices": {
     "roma": {
       "name": "Roma Lenovo Tab",
@@ -9,11 +9,56 @@
       "transport": "tailscale",
       "profile": "child-tablet",
       "capabilities": [
-        "status","info","screenshot","ui","tap","long-press","swipe","drag","text","click-text",
-        "home","back","wake","launch","apps","usage","lock",
-        "open-url","install-url","update","install-status","uninstall","app-settings",
-        "files","mkdir","move","trash","script","script-status","stop-script"
-      ]
+        "status",
+        "info",
+        "screenshot",
+        "ui",
+        "tap",
+        "long-press",
+        "swipe",
+        "drag",
+        "text",
+        "click-text",
+        "home",
+        "back",
+        "wake",
+        "launch",
+        "apps",
+        "usage",
+        "lock",
+        "open-url",
+        "install-url",
+        "update",
+        "install-status",
+        "uninstall",
+        "app-settings",
+        "files",
+        "mkdir",
+        "move",
+        "trash",
+        "script",
+        "script-status",
+        "stop-script"
+      ],
+      "aliases": [
+        "ROOMA",
+        "Roma",
+        "roma",
+        "Рома",
+        "рома",
+        "планшет Ромы",
+        "Ромин планшет",
+        "Roma tablet",
+        "Lenovo Ромы"
+      ],
+      "stable_version": "3.2.3",
+      "legacy": {
+        "package": "com.kendirov.kidsdevicehub.debug",
+        "port": 8766,
+        "state": "fallback"
+      },
+      "package": "com.kendirov.kidsdevicehub",
+      "controller_host": "office-windows"
     },
     "kirill": {
       "name": "Kirill Windows Laptop",
@@ -21,7 +66,17 @@
       "transport": "tailscale",
       "profile": "child-laptop",
       "state": "planned",
-      "capabilities": []
+      "capabilities": [],
+      "aliases": [
+        "KIRILL",
+        "Kirill",
+        "kirill",
+        "Кирилл",
+        "кирилл",
+        "ноутбук Кирилла",
+        "Kirill laptop"
+      ],
+      "controller_host": "office-windows"
     }
   }
 }
