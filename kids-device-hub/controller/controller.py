@@ -1,6 +1,8 @@
 from __future__ import annotations
-import argparse, json, time, urllib.parse, urllib.request
+import argparse, base64, json, time, urllib.parse, urllib.request
 from pathlib import Path
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 ROOT = Path(__file__).resolve().parent
 REGISTRY = ROOT / "devices.json"
@@ -8,6 +10,14 @@ AUDIT = ROOT / "audit.jsonl"
 SHOT_DIR = ROOT / "screenshots"
 SHOT_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_UPDATE_URL = "http://100.95.246.112:8770/Kendirov-Kids-Device-Hub-stable.apk"
+PRIVATE_KEY = ROOT.parent / "signing" / "controller-private.pem"
+_CONTROLLER_KEY = None
+
+def controller_key():
+    global _CONTROLLER_KEY
+    if _CONTROLLER_KEY is None:
+        _CONTROLLER_KEY=serialization.load_pem_private_key(PRIVATE_KEY.read_bytes(),password=None)
+    return _CONTROLLER_KEY
 
 def load_registry():
     return json.loads(REGISTRY.read_text(encoding="utf-8"))
@@ -21,8 +31,16 @@ def base_url(d):
     return f"http://{d['host']}:{d.get('port',8766)}"
 
 def request(d,path,params=None,binary=False,timeout=30):
-    q="?" + urllib.parse.urlencode(params) if params else ""
-    req=urllib.request.Request(base_url(d)+path+q,method="GET")
+    raw_query=urllib.parse.urlencode(params) if params else ""
+    q="?" + raw_query if raw_query else ""
+    ts=str(int(time.time()*1000))
+    canonical=f"{ts}\nGET\n{path}\n{raw_query}".encode("utf-8")
+    sig=controller_key().sign(canonical,padding.PKCS1v15(),hashes.SHA256())
+    headers={
+        "X-Hub-Time":ts,
+        "X-Hub-Signature":base64.b64encode(sig).decode("ascii"),
+    }
+    req=urllib.request.Request(base_url(d)+path+q,headers=headers,method="GET")
     with urllib.request.urlopen(req,timeout=timeout) as r:
         body=r.read()
         return body if binary else body.decode("utf-8")
