@@ -78,7 +78,7 @@ public class HubApiServer {
                 String supplied=headers.getOrDefault("x-hub-token",q.getOrDefault("token",""));
                 boolean tokenOk=MainActivity.token(context).equals(supplied);
                 if(!tailscalePath && !tokenOk) {
-                    send(client,403,"application/json","{\"error\":\"forbidden\",\"remote\":\""+esc(remoteIp)+"\",\"local\":\""+esc(localIp)+"\",\"tailscale\":"+hasTailscaleInterface()+"}".getBytes(StandardCharsets.UTF_8)); return;
+                    send(client,403,"application/json",("{\"error\":\"forbidden\",\"remote\":\""+esc(remoteIp)+"\",\"local\":\""+esc(localIp)+"\",\"tailscale\":"+hasTailscaleInterface()+"}").getBytes(StandardCharsets.UTF_8)); return;
                 }
                 route(client,method,u.getPath(),q);
             } catch(Exception ignored) {}
