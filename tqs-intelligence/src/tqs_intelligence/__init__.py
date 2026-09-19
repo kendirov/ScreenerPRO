@@ -9,5 +9,3 @@ from . import sources as _sources
 from .moex_source import MoexSourceV04
 
 _sources.MoexSource = MoexSourceV04
-
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
