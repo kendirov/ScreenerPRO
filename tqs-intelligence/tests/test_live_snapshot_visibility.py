@@ -30,6 +30,7 @@ class SlowEpisodeStore:
     def __init__(self, entered, release):
         self.entered = entered
         self.release = release
+        self.calls = 0
 
     def append_log(self, item):
         return None
@@ -38,8 +39,10 @@ class SlowEpisodeStore:
         return None
 
     def update_episodes(self, anomalies, now_ms, threshold, close_after_ms):
-        self.entered.set()
-        self.release.wait(timeout=5)
+        self.calls += 1
+        if self.calls == 1:
+            self.entered.set()
+            self.release.wait(timeout=5)
         return []
 
 
@@ -52,18 +55,27 @@ def test_live_snapshot_is_visible_before_slow_episode_postprocessing():
     )
 
     async def scenario():
-        task = asyncio.create_task(service.refresh(force=True))
+        store = service.store
+        await asyncio.wait_for(service.refresh(force=True), timeout=2)
         reached = await asyncio.to_thread(entered.wait, 2)
         assert reached is True
-        assert task.done() is False
-        assert service.state.refreshing is True
-        assert service.state.refresh_count == 0
+        assert service.state.refreshing is False
+        assert service.state.refresh_count == 1
         assert service.state.snapshot is not None
         assert service.state.snapshot.quotes[0].canonical_id == "test:shares:ABC"
         assert service.current_health()[0].status == SourceStatus.OK
+        assert service.runtime_status()["episode_postprocess"]["running"] is True
+
+        await asyncio.wait_for(service.refresh(force=True), timeout=2)
+        assert service.state.refresh_count == 2
+        assert service.runtime_status()["episode_postprocess"]["pending"] is True
+
         release.set()
-        await asyncio.wait_for(task, timeout=2)
-        assert service.state.refresh_count == 1
-        assert service.state.refreshing is False
+        for _ in range(100):
+            if not service.runtime_status()["episode_postprocess"]["running"]:
+                break
+            await asyncio.sleep(0.02)
+        assert store.calls == 2
+        assert service.runtime_status()["episode_postprocess"]["running"] is False
 
     asyncio.run(scenario())
