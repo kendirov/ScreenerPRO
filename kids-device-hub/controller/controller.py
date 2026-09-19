@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, json, os, time, urllib.parse, urllib.request
+import argparse, json, time, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -7,108 +7,103 @@ REGISTRY = ROOT / "devices.json"
 AUDIT = ROOT / "audit.jsonl"
 SHOT_DIR = ROOT / "screenshots"
 SHOT_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_UPDATE_URL = "http://100.95.246.112:8770/Kendirov-Kids-Device-Hub-stable.apk"
 
 def load_registry():
     return json.loads(REGISTRY.read_text(encoding="utf-8"))
 
 def device(name):
-    data = load_registry()["devices"]
-    if name not in data:
-        raise SystemExit(f"Unknown device: {name}")
+    data=load_registry()["devices"]
+    if name not in data: raise SystemExit(f"Unknown device: {name}")
     return data[name]
 
 def base_url(d):
-    return f"http://{d['host']}:{d.get('port', 8766)}"
+    return f"http://{d['host']}:{d.get('port',8766)}"
 
-def request(d, path, params=None, binary=False, timeout=15):
-    q = ""
-    if params:
-        q = "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(base_url(d) + path + q, method="GET")
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        body = r.read()
+def request(d,path,params=None,binary=False,timeout=30):
+    q="?" + urllib.parse.urlencode(params) if params else ""
+    req=urllib.request.Request(base_url(d)+path+q,method="GET")
+    with urllib.request.urlopen(req,timeout=timeout) as r:
+        body=r.read()
         return body if binary else body.decode("utf-8")
 
-def log(device_name, command, ok, detail=""):
-    row = {
-        "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-        "device": device_name,
-        "command": command,
-        "ok": bool(ok),
-        "detail": str(detail)[:1000],
-    }
-    with AUDIT.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+def audit(device_name,command,ok,detail=""):
+    row={"ts":time.strftime("%Y-%m-%dT%H:%M:%S%z"),"device":device_name,"command":command,"ok":bool(ok),"detail":str(detail)[:1500]}
+    with AUDIT.open("a",encoding="utf-8") as f:
+        f.write(json.dumps(row,ensure_ascii=False)+"\n")
 
-def run(name, command, args):
-    d = device(name)
+def save_shot(name,data):
+    p=SHOT_DIR/f"{name}-{time.strftime('%Y%m%d-%H%M%S')}.png"
+    latest=SHOT_DIR/f"{name}-latest.png"
+    p.write_bytes(data); latest.write_bytes(data)
+    return str(latest)
+
+def run(name,cmd,a):
+    d=device(name)
     try:
-        if command == "status":
-            out = request(d, "/status")
-        elif command == "info":
-            out = request(d, "/device-info")
-        elif command == "ui":
-            out = request(d, "/ui")
-        elif command == "apps":
-            out = request(d, "/apps")
-        elif command == "usage":
-            out = request(d, "/usage", {"days": args.days})
-        elif command == "screenshot":
-            data = request(d, "/screenshot", binary=True)
-            p = SHOT_DIR / f"{name}-{time.strftime('%Y%m%d-%H%M%S')}.png"
-            p.write_bytes(data)
-            latest = SHOT_DIR / f"{name}-latest.png"
-            latest.write_bytes(data)
-            out = str(latest)
-        elif command == "tap":
-            out = request(d, "/tap", {"x": args.x, "y": args.y})
-        elif command == "swipe":
-            out = request(d, "/swipe", {"x1": args.x1, "y1": args.y1, "x2": args.x2, "y2": args.y2, "ms": args.ms})
-        elif command == "text":
-            out = request(d, "/text", {"value": args.value})
-        elif command == "home":
-            out = request(d, "/global", {"action": "home"})
-        elif command == "back":
-            out = request(d, "/global", {"action": "back"})
-        elif command == "launch":
-            out = request(d, "/launch", {"package": args.package})
-        elif command == "lock":
-            out = request(d, "/lock")
-        elif command == "open-url":
-            out = request(d, "/open-url", {"url": args.url})
-        elif command == "install-url":
-            out = request(d, "/install-url", {"url": args.url})
-        elif command == "uninstall":
-            out = request(d, "/uninstall", {"package": args.package})
-        elif command == "app-settings":
-            out = request(d, "/app-settings", {"package": args.package})
-        else:
-            raise SystemExit("Unsupported command")
-        log(name, command, True, out)
+        if cmd in ("status","health"): out=request(d,"/status")
+        elif cmd=="info": out=request(d,"/device-info")
+        elif cmd=="ui": out=request(d,"/ui")
+        elif cmd=="apps": out=request(d,"/apps")
+        elif cmd=="usage": out=request(d,"/usage",{"days":a.days})
+        elif cmd=="screenshot": out=save_shot(name,request(d,"/screenshot",binary=True))
+        elif cmd=="tap": out=request(d,"/tap",{"x":a.x,"y":a.y})
+        elif cmd=="long-press": out=request(d,"/long-press",{"x":a.x,"y":a.y,"ms":a.ms})
+        elif cmd=="swipe": out=request(d,"/swipe",{"x1":a.x1,"y1":a.y1,"x2":a.x2,"y2":a.y2,"ms":a.ms})
+        elif cmd=="text": out=request(d,"/text",{"value":a.value})
+        elif cmd=="click-text": out=request(d,"/click-text",{"text":a.text})
+        elif cmd in ("home","back"): out=request(d,"/global",{"action":cmd})
+        elif cmd=="wake": out=request(d,"/wake")
+        elif cmd=="launch": out=request(d,"/launch",{"package":a.package})
+        elif cmd=="lock": out=request(d,"/lock")
+        elif cmd=="open-url": out=request(d,"/open-url",{"url":a.url})
+        elif cmd=="install-url": out=request(d,"/install-url",{"url":a.url},timeout=60)
+        elif cmd=="update": out=request(d,"/update",{"url":a.url or DEFAULT_UPDATE_URL},timeout=60)
+        elif cmd=="install-status": out=request(d,"/install-status")
+        elif cmd=="uninstall": out=request(d,"/uninstall",{"package":a.package})
+        elif cmd=="app-settings": out=request(d,"/app-settings",{"package":a.package})
+        elif cmd=="files": out=request(d,"/files",{"path":a.path})
+        elif cmd=="mkdir": out=request(d,"/mkdir",{"path":a.path})
+        elif cmd=="move": out=request(d,"/move",{"src":a.src,"dst":a.dst})
+        elif cmd=="trash": out=request(d,"/trash",{"path":a.path})
+        elif cmd=="script":
+            spec=Path(a.file).read_text(encoding="utf-8") if a.file else a.json
+            out=request(d,"/script",{"spec":spec},timeout=30)
+        elif cmd=="script-status": out=request(d,"/script-status")
+        elif cmd=="stop-script": out=request(d,"/stop-script")
+        else: raise SystemExit("Unsupported command")
+        audit(name,cmd,True,out)
         print(out)
     except Exception as e:
-        log(name, command, False, repr(e))
+        audit(name,cmd,False,repr(e))
         raise
 
 def main():
-    p = argparse.ArgumentParser()
+    p=argparse.ArgumentParser(prog="hub",description="Kendirov Family Device Hub controller")
     p.add_argument("device")
-    sp = p.add_subparsers(dest="command", required=True)
-    for c in ["status","info","ui","apps","screenshot","home","back","lock"]:
+    sp=p.add_subparsers(dest="command",required=True)
+    for c in ["status","health","info","ui","apps","screenshot","home","back","wake","lock","install-status","script-status","stop-script"]:
         sp.add_parser(c)
-    u=sp.add_parser("usage"); u.add_argument("--days", type=int, default=1)
-    t=sp.add_parser("tap"); t.add_argument("x",type=int); t.add_argument("y",type=int)
+    u=sp.add_parser("usage"); u.add_argument("--days",type=int,default=1)
+    for c in ["tap","long-press"]:
+        x=sp.add_parser(c); x.add_argument("x",type=int); x.add_argument("y",type=int); x.add_argument("--ms",type=int,default=800)
     s=sp.add_parser("swipe")
     for n in ["x1","y1","x2","y2"]: s.add_argument(n,type=int)
     s.add_argument("--ms",type=int,default=300)
-    tx=sp.add_parser("text"); tx.add_argument("value")
-    la=sp.add_parser("launch"); la.add_argument("package")
+    x=sp.add_parser("text"); x.add_argument("value")
+    x=sp.add_parser("click-text"); x.add_argument("text")
+    x=sp.add_parser("launch"); x.add_argument("package")
     for c in ["open-url","install-url"]:
         x=sp.add_parser(c); x.add_argument("url")
+    x=sp.add_parser("update"); x.add_argument("url",nargs="?")
     for c in ["uninstall","app-settings"]:
         x=sp.add_parser(c); x.add_argument("package")
+    for c in ["files","mkdir","trash"]:
+        x=sp.add_parser(c); x.add_argument("path",nargs="?",default="")
+    x=sp.add_parser("move"); x.add_argument("src"); x.add_argument("dst")
+    x=sp.add_parser("script"); g=x.add_mutually_exclusive_group(required=True); g.add_argument("--json"); g.add_argument("--file")
     a=p.parse_args()
     run(a.device,a.command,a)
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
