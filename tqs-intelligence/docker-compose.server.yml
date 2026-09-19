@@ -1,0 +1,21 @@
+services:
+  intelligence:
+    build: .
+    container_name: tqs-intelligence
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TQS_DATA_LAKE_ROOT: /app/data-lake
+    ports:
+      - "${TQS_SERVER_BIND:-127.0.0.1}:8787:8787"
+    volumes:
+      - ./data:/app/data
+      - ${TQS_SERVER_DATA_LAKE:-./data-lake}:/app/data-lake
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/api/health', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s

@@ -1,0 +1,225 @@
+name: TQS Intelligence CI
+
+on:
+  push:
+    branches:
+      - codex/tqs-research-strategy-machine-v0-4-2026-09-17
+      - codex/tqs-intelligence-engine-v0-1-2026-09-17
+    paths:
+      - 'tqs-intelligence/**'
+      - '.github/workflows/tqs-intelligence-ci.yml'
+  pull_request:
+    paths:
+      - 'tqs-intelligence/**'
+      - '.github/workflows/tqs-intelligence-ci.yml'
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tqs-intelligence
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: tqs-intelligence/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+      - name: Windows PowerShell syntax
+        shell: pwsh
+        run: |
+          foreach ($file in @('./update-windows.ps1','./install-windows.ps1','./start-windows.ps1','./setup-server-windows.ps1','./server-start-windows.ps1','./ai-bridge-windows.ps1')) {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error "$file : $($_.Message)" }; exit 1 }
+          }
+          Write-Host 'PowerShell scripts syntax PASS'
+      - name: Python tests
+        id: pytest
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q 2>&1 | tee /tmp/tqs-pytest.log
+          code=${PIPESTATUS[0]}
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Publish pytest failure to PR
+        if: github.event_name == 'pull_request' && steps.pytest.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const raw = fs.readFileSync('/tmp/tqs-pytest.log', 'utf8');
+            const body = `### TQS CI pytest failure\n\n\`\`\`text\n${raw.slice(-12000)}\n\`\`\``;
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body});
+      - name: Enforce pytest result
+        if: steps.pytest.outputs.exit_code != '0'
+        run: exit 1
+      - name: Compile
+        run: python -m compileall -q src
+      - name: Version contract
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          from tqs_intelligence import __version__
+          assert version('tqs-intelligence') == __version__ == '0.13.3', (version('tqs-intelligence'), __version__)
+          print('Version contract PASS', __version__)
+          PY
+      - name: Launcher and watchdog contract
+        run: |
+          python -m py_compile src/tqs_intelligence/launcher.py src/tqs_intelligence/launcher_entry.py src/tqs_intelligence/watchdog_policy.py src/tqs_intelligence/supervisor.py
+          grep -q 'TQS Launcher' TQS-Launcher.cmd
+          grep -q 'launcher_entry' TQS-Launcher.cmd
+          grep -q 'TQS-Launcher.cmd' start-windows.cmd
+          grep -q 'launcher_entry:main' pyproject.toml
+          grep -q 'LOCAL BUILD' src/tqs_intelligence/launcher.py
+          grep -q 'REMOTE BUILD' src/tqs_intelligence/launcher.py
+          grep -q 'АКТУАЛЬНАЯ ВЕРСИЯ' src/tqs_intelligence/launcher.py
+          grep -q 'SetThreadExecutionState' src/tqs_intelligence/launcher_entry.py
+          grep -q 'WatchdogPolicy' src/tqs_intelligence/launcher_entry.py
+          grep -q 'supervisor-heartbeat.json' src/tqs_intelligence/launcher_entry.py
+          grep -q 'hard_recover_after_s=180' src/tqs_intelligence/launcher_entry.py
+          grep -q 'supervisor-heartbeat.json' src/tqs_intelligence/supervisor.py
+          grep -q '_health_loop' src/tqs_intelligence/launcher.py
+          grep -q 'text="ЗАНЯТ"' src/tqs_intelligence/launcher.py
+          grep -q 'Скопировать для ChatGPT' src/tqs_intelligence/launcher.py
+          grep -q 'TQS-DIAGNOSTICS-' src/tqs_intelligence/launcher.py
+          grep -q 'TQS SERVER / УДАЛЁННЫЙ ДОСТУП' src/tqs_intelligence/launcher.py
+          grep -q 'setup-server-windows.ps1' src/tqs_intelligence/launcher.py
+          grep -q 'AI→Drive' src/tqs_intelligence/launcher.py
+          grep -q 'heavy_workers' src/tqs_intelligence/control.py
+          grep -q 'resource_monitor' src/tqs_intelligence/api.py
+          grep -q 'AiControlBridge' src/tqs_intelligence/api.py
+          grep -q 'CREATE_NO_WINDOW' src/tqs_intelligence/remote_node.py
+          grep -q 'CREATE_NO_WINDOW' src/tqs_intelligence/update_manager.py
+          grep -q 'server_mode_enabled' src/tqs_intelligence/supervisor.py
+          grep -q 'auto_update_interval_seconds' src/tqs_intelligence/supervisor.py
+          grep -q '_browser_url' src/tqs_intelligence/supervisor.py
+          grep -q 'asyncio.to_thread(self.store.persist_snapshot' src/tqs_intelligence/service.py
+          grep -q 'asyncio.to_thread(self.store.update_episodes' src/tqs_intelligence/service.py
+          echo 'Launcher/watchdog contract PASS'
+      - name: API import and trader surface contract
+        run: |
+          python - <<'PY'
+          import inspect
+          from tqs_intelligence import __version__
+          from tqs_intelligence.api import app
+          routes = {route.path: route for route in app.routes}
+          required = {'/api/instrument/{canonical_id:path}', '/api/overview', '/api/anomalies', '/api/accounts', '/api/strategies', '/api/research/findings', '/api/briefing', '/api/activity-summary', '/api/node/remote', '/api/audit', '/api/audit/text', '/api/resources', '/api/ai-control', '/api/moex/intelligence', '/api/moex/participants/lchi/status', '/api/moex/participants/lchi/positions', '/api/moex/participants/lchi/events', '/api/moex/participants/lchi/trades', '/api/moex/participants/pulse/status', '/api/moex/participants/pulse/events'}
+          missing = required - set(routes)
+          assert not missing, missing
+          assert app.version == __version__, (app.version, __version__)
+          assert inspect.iscoroutinefunction(routes['/api/health'].endpoint), 'health must stay on the fast async control plane'
+          for path in ('/api/overview','/api/episodes','/api/logs','/api/jobs','/api/activity-summary'):
+              assert not inspect.iscoroutinefunction(routes[path].endpoint), f'{path} must run in FastAPI threadpool'
+          print('API/trader surface PASS', app.version)
+          PY
+      - name: Cockpit JavaScript syntax
+        run: |
+          node --check src/tqs_intelligence/static/cockpit.js
+          node --check src/tqs_intelligence/static/cockpit_metrics.js
+          node --check src/tqs_intelligence/static/cockpit_context.js
+          node --check src/tqs_intelligence/static/cockpit_activity.js
+          node --check src/tqs_intelligence/static/cockpit_ai.js
+          node --check src/tqs_intelligence/static/cockpit_moex.js
+          node --check src/tqs_intelligence/static/cockpit_participants.js
+          node --check src/tqs_intelligence/static/v07.js
+          node --check src/tqs_intelligence/static/app.js
+      - name: Instrument-first cockpit HTML contract
+        run: |
+          grep -q 'TQS Cockpit' src/tqs_intelligence/static/index.html
+          grep -q 'data-view="moex"' src/tqs_intelligence/static/index.html
+          grep -q 'data-view="participants"' src/tqs_intelligence/static/index.html
+          grep -q 'Кто что держит и как меняет позицию' src/tqs_intelligence/static/index.html
+          grep -q 'Покрытие данных MOEX' src/tqs_intelligence/static/index.html
+          grep -q 'ЛЧИ 2026' src/tqs_intelligence/static/cockpit_moex.js
+          grep -q 'Пульс' src/tqs_intelligence/static/cockpit_moex.js
+          grep -q 'ПУБЛИЧНЫЙ СЧЁТ · ЛЧИ' src/tqs_intelligence/static/cockpit_participants.js
+          grep -q 'Что необычно сейчас' src/tqs_intelligence/static/index.html
+          grep -q 'Точные публичные сделки' src/tqs_intelligence/static/cockpit_participants.js
+          grep -q 'UNIVERSAL INSTRUMENT WORKSPACE' src/tqs_intelligence/static/index.html
+          grep -q 'Цена, позиции, события и исследования' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_metrics.css' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_activity.css' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_ai.css' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_metrics.js' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_context.js' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_activity.js' src/tqs_intelligence/static/index.html
+          grep -q 'cockpit_ai.js' src/tqs_intelligence/static/index.html
+          grep -q 'researchJobs' src/tqs_intelligence/static/index.html
+          grep -q 'systemLogs' src/tqs_intelligence/static/index.html
+          grep -q 'Remote node' src/tqs_intelligence/static/cockpit.js
+          grep -q 'LOOPBACK + TAILSCALE' src/tqs_intelligence/static/cockpit.js
+          grep -q 'Самопроверка TQS' src/tqs_intelligence/static/index.html
+          grep -q '/api/audit' src/tqs_intelligence/static/cockpit.js
+          grep -q 'Ресурсы и управление' src/tqs_intelligence/static/index.html
+          grep -q '/api/resources' src/tqs_intelligence/static/cockpit.js
+          grep -q 'Публичные позиции' src/tqs_intelligence/static/cockpit.js
+          grep -q 'Open Interest' src/tqs_intelligence/static/cockpit.js
+          grep -q 'MOEX FUTOI' src/tqs_intelligence/static/cockpit_metrics.js
+          grep -q 'basis' src/tqs_intelligence/static/cockpit_metrics.js
+          grep -q 'EXIT' src/tqs_intelligence/static/cockpit_context.js
+          grep -q 'metricLakePanel' src/tqs_intelligence/static/cockpit_context.js
+          grep -q 'Что машина сделала' src/tqs_intelligence/static/cockpit_activity.js
+          grep -q '/api/activity-summary?hours=' src/tqs_intelligence/static/cockpit_activity.js
+          grep -q 'AUTO METRICS' src/tqs_intelligence/static/cockpit_activity.js
+          grep -q 'TQS_INSTRUMENT_AI_PACK_V1' src/tqs_intelligence/static/cockpit_ai.js
+          grep -q 'AI ПАКЕТ' src/tqs_intelligence/static/cockpit_ai.js
+          ! grep -q 'MARKET RESEARCH OS · v0.7' src/tqs_intelligence/static/index.html
+          echo 'Instrument-first cockpit contract PASS'
+      - name: Derivative metric contract
+        run: |
+          python - <<'PY'
+          from tqs_intelligence.bybit_metrics import BybitLongHistoryBackfiller
+          from tqs_intelligence.derivative_metrics import parse_binance_funding, parse_bybit_funding, parse_bybit_open_interest, parse_moex_futoi
+          assert BybitLongHistoryBackfiller.OI_INTERVAL == '1h'
+          assert 1 <= BybitLongHistoryBackfiller.MAX_OI_PAGES <= 500
+          assert 1 <= BybitLongHistoryBackfiller.MAX_FUNDING_PAGES <= 250
+          pts=parse_binance_funding([{'symbol':'BTCUSDT','fundingRate':'0.0001','fundingTime':1700000000000}], 'binance:usdt-futures:BTCUSDT')
+          assert pts and pts[0].metric=='funding_rate'
+          b=parse_bybit_open_interest([{'symbol':'BTCUSDT','openInterest':'100','timestamp':'1700000000000','intervalTime':'1h'}], 'bybit:linear:BTCUSDT')
+          assert b and b[0].provider=='bybit' and b[0].metric=='open_interest'
+          f=parse_bybit_funding([{'symbol':'BTCUSDT','fundingRate':'0.0001','fundingRateTimestamp':'1700000000000'}], 'bybit:linear:BTCUSDT')
+          assert f and f[0].metric=='funding_rate'
+          block={'columns':['ticker','clgroup','pos','pos_long','pos_short','pos_long_num','pos_short_num','tradedate','tradetime'],'data':[['BR','FIZ',10,20,-10,2,1,'2026-09-01','12:00:00']]}
+          m=parse_moex_futoi(block,'moex:futoi:BR')
+          assert any(x.metric=='futoi_fiz_short_contracts' and x.value==10 for x in m)
+          print('Derivative metric contract PASS')
+          PY
+      - name: Account discovery contract
+        run: |
+          python - <<'PY'
+          from tqs_intelligence.account_discovery import score_leaderboard_row, HyperliquidLeaderboardDiscovery
+          assert 'hyperliquid.xyz' in HyperliquidLeaderboardDiscovery.URL
+          score, reasons, metrics = score_leaderboard_row({
+              'accountValue':'100000','windowPerformances':[
+                  ['day', {'pnl':'100','roi':'0.01','vlm':'10000'}],['week', {'pnl':'1000','roi':'0.05','vlm':'100000'}],
+                  ['month', {'pnl':'5000','roi':'0.1','vlm':'500000'}],['allTime', {'pnl':'10000','roi':'0.5','vlm':'1000000'}],]})
+          assert score > 0 and reasons and metrics['equity'] == 100000
+          print('Account discovery contract PASS')
+          PY
+      - name: History and metric autopilot contract
+        run: |
+          python - <<'PY'
+          from tqs_intelligence.history_autopilot import START_2021_MS, BUCKET_QUOTAS
+          from tqs_intelligence.metric_autopilot import METRIC_QUOTAS
+          assert START_2021_MS == 1609459200000
+          assert ('binance','usdt-futures') in BUCKET_QUOTAS
+          assert ('moex','forts') in BUCKET_QUOTAS
+          assert METRIC_QUOTAS[('binance','usdt-futures')] >= 20
+          assert METRIC_QUOTAS[('bybit','linear')] >= 20
+          assert METRIC_QUOTAS[('moex','forts')] >= 1
+          print('Autopilot contract PASS')
+          PY

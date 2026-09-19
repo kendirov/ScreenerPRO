@@ -1,86 +1,195 @@
-# AI_SESSION_STATE — Лаборатория рынка
+# AI_SESSION_STATE — TQS PLATFORM
 
----
+Status: ACTIVE RESUME STATE — 2026-09-18
 
-## Текущая задача
+> Do not treat a hardcoded SHA in a state file as fresher than Git itself. On every new session verify the current branch/PR/CI/runtime first.
 
-**Bitget private read-only bridge v1** (2026-08-18)
+## 1. Current product
 
-Цель: добавить к существующему Bitget public terminal безопасный server-only доступ к личному UTA аккаунту без торговых POST-запросов.
+TQS (Trading QS) is the umbrella platform. The GitHub repository is still named `kendirov/ScreenerPRO` for historical reasons and currently acts as the TQS monorepo.
 
-Ветка: `codex/bitget-private-readonly-v1-2026-08-18`.
+Canonical module map: `TQS_PLATFORM.md`.
+AI front door: `START_HERE_FOR_AI.md`.
+Product vision: `PRODUCT_VISION.md`.
 
-Сделано:
+## 2. Active TQS development line
 
-- `frontend/lib/server/services/bitget-private.ts` — HMAC-SHA256/Base64 signing по UTA v3;
-- `GET /api/bitget/private/account` — preview-only read snapshot;
-- читаются account info, account assets, funding assets, open orders и текущие позиции USDT/USDC/COIN futures;
-- секреты берутся только из server env: `BITGET_API_KEY`, `BITGET_API_SECRET`, `BITGET_API_PASSPHRASE`;
-- значения секретов не записываются в GitHub;
-- production route намеренно возвращает 403 до отдельного auth/security слоя;
-- никаких place/cancel/modify order endpoints в этом срезе нет.
+Branch: `codex/tqs-intelligence-engine-v0-1-2026-09-17`
+PR: `#11 — TQS Intelligence Engine v0.1 — multi-market anomaly and research core`
 
-Ограничение текущего инструментария ChatGPT/Vercel: доступный Vercel connector умеет читать проекты/деплои/логи, но не умеет создавать или изменять Environment Variables. Поэтому код и preview можно собрать автоматически, а server env нужно добавить через Vercel Settings либо другим secret-capable deployment channel.
+The PR is intentionally stacked on the older TraderQuest TQ-004 branch rather than current `main`; integration to `main` must be deliberate. Do not assume a blind merge is safe.
 
----
+Package/product version on the current integration candidate: **v0.13.0**. The owner's Windows runtime remains whatever version it last updated to until the local Supervisor/Launcher applies the merged Git state.
 
-## Bitget Global Screener + Interactive Market Map
+## 3. What exists now
 
-Реализовано в ветке `feature/bitget-global-screener-v1`:
+### TQS Intelligence / local machine
+Under `tqs-intelligence/`:
+- FastAPI local API and Russian cockpit;
+- Windows TQS Launcher + supervisor;
+- STOP / LIGHT / MAX control;
+- version/Git/update/rollback path;
+- process + supervisor heartbeat watchdog with hysteresis;
+- Bitget, Binance, Bybit, OKX and MOEX public market sources;
+- optional Twelve Data adapter;
+- GDELT/RSS news layer;
+- DuckDB operational store;
+- Parquet Data Lake;
+- live anomalies and anomaly episodes;
+- history backfill (Binance + MOEX priority universe from 2021);
+- Historical Replay;
+- Research Runtime / auto-history planner;
+- Strategy Machine and StrategySpec runs;
+- Universal Instrument Lab;
+- Hyperliquid public account discovery/intelligence;
+- Briefing builder;
+- relationships miner;
+- portable TQS diagnostic/support snapshot;
+- MOEX own-history attention engine: same-time-of-day turnover/volume/trade baselines, short-horizon price/OI/liquidity features and explainable anomalies;
+- LCHI public participant catalog, portfolio diffs and exact public deals CSV ingestion with distinct timestamp semantics;
+- T-Bank Pulse public-profile observer with hidden operation size kept explicitly unknown;
+- TQS Remote Node: Windows autostart task, private Tailscale Serve access, loopback-only backend, server-mode keep-awake and five-minute safe auto-update checks;
+- TQS Runtime Audit + AI Bridge: deterministic proof of live source/data/update coverage and a sanitized two-minute Google Drive truth packet that another ChatGPT session can inspect.
 
-- `/screener/bitget` — Terminal v3;
-- `/screener/bitget/map` — интерактивная карта рынков;
-- public UTA v3 adapter;
-- cached 7d enrichment;
-- TradingView inline workspace;
-- docs/BITGET_GLOBAL_SCREENER.md.
+### TQS Launcher
+Operator/control surface, not the trading UI:
+- start/stop/restart;
+- MAX/LIGHT/STOP;
+- product version + local/remote Git state;
+- one-click update with rollback path;
+- runtime log;
+- resource telemetry;
+- Windows keep-awake in MAX;
+- one-click **Настроить сервер** flow for Windows + Tailscale;
+- remote URL/status visible and copyable for Mac;
+- watchdog that must not kill healthy heavy work after one HTTP timeout.
 
-### Terminal v3
+Launcher is not required to remain open after Remote Node setup. The Windows scheduled task + Supervisor become the always-on runtime.
 
-- весь подключённый public universe;
-- crypto spot/futures, margin, rToken, stock perps, commodity perps;
-- единый page scroll;
-- briefing strip;
-- 24h + cached 7d;
-- turnover, spread, funding;
-- ticker copy;
-- inline TradingView chart;
-- favorite + notes;
-- local persistence.
+### TQS Screener / Cockpit
+Existing web/frontend/ScreenerPRO surfaces are the future trader-facing TQS Screener/Cockpit module. They are not the canonical market compute engine. New integration should consume TQS Intelligence/Knowledge contracts rather than duplicate collection/research.
 
-### Следующие adapters
+### TQS Knowledge / Drive
+Google Drive `Trading QS` is human-readable canon for owner decisions, observations, cases, research/product knowledge and content. It is not a raw market database.
 
-1. Stock+ securities/quotes.
-2. U.S. options: underlyings → expiries → option chains.
-3. TradFi / CFD.
-4. Historical feature cache: RSI/ATR/relative volume/momentum.
-5. Private account UI поверх read-only bridge.
-6. Cloud user workspace.
+## 4. Current reliability lessons already converted to code/contracts
 
----
+- One failed `/api/health` probe must not trigger destructive restart.
+- Supervisor heartbeat + process evidence + hysteresis are separate from HTTP responsiveness.
+- MAX should generate useful background work when explicit research queue is empty.
+- Cached browser data/CPU/RAM do not prove the backend is alive.
+- Every autonomous loop should expose action/progress/last success/next due/error.
+- Repeated owner terminal intervention is a defect signal for the harness.
 
-## Что нельзя сломать
+See:
+- `tqs-intelligence/MACHINE_ACTIVITY_CONTRACT.md`
+- `tqs-intelligence/OVERNIGHT_RUNBOOK.md`
+- `tqs-intelligence/TQS_DIAGNOSTICS_CONTRACT.md`
+- `tqs-intelligence/METRIC_CATALOG.md`
 
-| Маршрут | Статус |
-|---------|--------|
-| `/screener` | стабилен |
-| `/screener/stocks` | стабилен |
-| `/screener/futures` | стабилен |
-| `/screener/strategies` | Strategy Scanner v0 demo-ready |
-| `/screener/bitget` | Bitget Terminal v3 |
-| `/screener/bitget/map` | Interactive Bitget Market Map |
+## 5. Diagnostic snapshot v3
 
----
+Default `Сохранить TQS` / `POST /api/export/snapshot` with `full=false` is intended as **SUPPORT_REDACTED**:
+- product/runtime/Git identity;
+- market/research/source/Data Lake state;
+- jobs/results/logs;
+- deterministic `diagnosis.json`;
+- redacted account profile summary;
+- AI_READ_ME.
 
-## Dev commands
+`full=true` is **FULL_PRIVATE** and may include raw account data/database copy. Never commit snapshot exports into public GitHub.
 
-```bash
-pnpm -C frontend dev:live
-pnpm -C frontend build
-```
+## 6. Version identity
 
-**Bitget terminal:** `/screener/bitget`
+`pyproject.toml`, package `__version__` and FastAPI `app.version` should be the same semantic version. API `/api/health`, `/api/overview` and `/api/system` expose runtime identity including module/version/runtime instance/PID/start time.
 
-**Bitget map:** `/screener/bitget/map`
+Launcher also shows local/remote Git state; runtime and Git identity are related but not interchangeable.
 
-**Bitget private preview API:** `/api/bitget/private/account`
+## 7. Current architecture decision
+
+**Conceptual separation now, physical split later only if justified.**
+
+TQS modules:
+1. Platform/Core
+2. Intelligence
+3. Launcher
+4. Screener/Cockpit
+5. Knowledge
+6. Research/Strategy Lab
+7. Briefing/Publishing
+8. Connectors/Data
+9. Remote Node / private access (implemented for the Windows primary node via Tailscale Serve);
+10. optional future Cloud/Sync
+
+Keep modular monorepo while contracts evolve rapidly. A separate repo/service requires a concrete deployment/security/toolchain/scale boundary.
+
+## 8. Truth boundaries
+
+- Drive = human/product/knowledge truth.
+- GitHub = public-safe technical truth.
+- Data Lake/DB = market/research operational truth.
+- Runtime heartbeat/process/API/job state = liveness truth.
+- Primary external provider = current external truth.
+
+The repository is public: secrets/private Drive contents/private account payloads/raw private support snapshots must not be committed.
+
+## 9. Current product focus — MOEX reference vertical
+
+The current blocker is no longer “can TQS collect data?” but **can a trader understand and use what TQS collected?**
+
+Until proven end-to-end, MOEX is the reference vertical. Read `tqs-intelligence/MOEX_REFERENCE_VERTICAL.md` before substantial market/UI work.
+
+v0.10 established the first usable MOEX reference slice. v0.11 adds the owner-access layer: the office Windows machine can be an always-on TQS server, auto-start after Windows boot, update itself without Launcher, and expose only a private Tailscale HTTPS URL to the owner's Mac/phone.
+
+Read `tqs-intelligence/REMOTE_NODE.md` before modifying server/autostart/update/remote-access behavior. v0.12 adds `/api/audit` and `ai-bridge-windows.ps1`; do not claim live-node visibility from ChatGPT until a fresh `TQS_LIVE_AUDIT.json` has actually been read from Drive.
+
+Next priority:
+1. prove v0.12 on the real office node: `/api/audit`, System -> Самопроверка TQS, no recurring console flashes, AI Bridge task installed, Google Drive audit fresh;
+2. read the fresh Drive audit from ChatGPT and use that as the first true remote AI inspection of the node;
+3. prove auto-update by observing a later Git commit move through local HEAD/health without an owner click;
+4. then inspect MOEX data coverage gaps from the audit and expand the missing highest-value layers;
+3. expand time-of-day baselines from locally accumulated quote snapshots into richer candle/session baselines;
+4. add an explicit stock ↔ future ↔ sector/index mapping registry and linked-divergence features;
+5. scale exact LCHI trade-history ingestion/cohort research while respecting source limits;
+6. add licensed realtime FUTOI only when entitlement exists; never merge it silently with delayed public history;
+7. expand MOEX microstructure/trades/L2 where lawful/provider access supports it;
+8. continuously feed new anomaly episodes into existing replay/OOS/Strategy Machine research;
+9. only after the MOEX reference slice proves useful, replicate the pattern to crypto.
+
+Do not add another generic technical screen. Every new object must end in a visible trader-facing answer or an explicit coverage/gap row.
+
+## 10. New-session algorithm
+
+1. Read `START_HERE_FOR_AI.md`.
+2. Read `TQS_PLATFORM.md`.
+3. Read this file.
+4. Fetch current branch/PR/CI and determine latest HEAD.
+5. If local runtime evidence is needed, ask for/use TQS SUPPORT snapshot rather than generic terminal screenshots.
+6. Read only affected module `AGENTS.md` + relevant files/contracts.
+7. Continue existing product Chat-first.
+8. Checkpoint after each stable logical slice.
+9. Finish only with objective evidence or a precise real blocker.
+
+Owner can simply say:
+
+`Продолжай TQS: <цель>.`
+
+
+## TQS Operations Control / AI Control Bridge — v0.13
+
+v0.13 adds the operator layer needed for the always-on office node:
+- update starvation fix: MAX research is cooperatively quiesced to LIGHT, active job is re-queued, update installs, then previous mode is restored;
+- 1..4 real heavy research worker slots;
+- dynamic history/metric planning batch sizes;
+- dynamic live refresh override;
+- CPU/RAM soft resource governor;
+- `GET /api/resources` process/CPU/RAM/disk/network/worker telemetry;
+- Cockpit System -> **Ресурсы и управление** with ТИХО / БАЛАНС / ТУРБО presets and live controls;
+- `AiControlBridge` polling the public `tqs-control` GitHub branch;
+- allow-listed AI actions only: set_control, refresh_market, request_update, noop;
+- no arbitrary shell, process kill or order placement;
+- AI-control status/results are returned through Runtime Audit / Google Drive.
+
+The owner screenshot showed v0.11 update blocked at preflight because a heavy research task was running continuously. v0.13 is specifically designed so that condition can no longer starve updates forever.
+
+After v0.13 is on the office node, a ChatGPT session can change TQS resource policy through GitHub and verify the applied result from the Drive Runtime Audit. This is the supported remote AI operations loop. It is intentionally narrower than direct shell access.

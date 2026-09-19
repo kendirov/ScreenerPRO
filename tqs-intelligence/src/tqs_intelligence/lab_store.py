@@ -1,0 +1,375 @@
+from __future__ import annotations
+
+import json
+import sqlite3
+import threading
+import time
+from pathlib import Path
+from typing import Any
+from uuid import uuid4
+
+from .strategy_models import PaperBot, PaperSignal, PaperTrade, ResearchJob, ResearchProject, ResearchRunResult, StrategyRunResult, StrategySpec
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def _loads(value: str | None, default: Any) -> Any:
+    if not value:
+        return default
+    try:
+        return json.loads(value)
+    except Exception:
+        return default
+
+
+class LabStore:
+    def __init__(self, path: str = './data/tqs-lab.sqlite3') -> None:
+        db = Path(path)
+        db.parent.mkdir(parents=True, exist_ok=True)
+        self.path = db
+        self._lock = threading.RLock()
+        self._con = sqlite3.connect(str(db), check_same_thread=False)
+        self._con.row_factory = sqlite3.Row
+        with self._lock:
+            self._con.executescript('''
+                pragma journal_mode=WAL;
+                create table if not exists ideas (
+                    id text primary key, created_at_ms integer, updated_at_ms integer,
+                    origin text, title text, text text, kind text, status text, priority integer,
+                    tags_json text, links_json text, result_json text
+                );
+                create table if not exists research_projects (
+                    id text primary key, created_at_ms integer, updated_at_ms integer,
+                    title text, status text, project_json text
+                );
+                create table if not exists research_runs (
+                    run_id text primary key, research_id text, canonical_id text,
+                    created_at_ms integer, status text, result_json text
+                );
+                create table if not exists research_jobs (
+                    id text primary key, kind text, created_at_ms integer, updated_at_ms integer,
+                    status text, progress real, title_ru text, payload_json text,
+                    result_json text, error text, started_at_ms integer, finished_at_ms integer
+                );
+                create table if not exists strategy_specs (
+                    id text primary key, created_at_ms integer, updated_at_ms integer,
+                    name_ru text, status text, version integer, spec_json text
+                );
+                create table if not exists strategy_runs (
+                    run_id text primary key, strategy_id text, canonical_id text,
+                    created_at_ms integer, status text, result_json text
+                );
+                create table if not exists paper_bots (
+                    id text primary key, strategy_id text, strategy_run_id text, canonical_id text,
+                    status text, created_at_ms integer, updated_at_ms integer, bot_json text
+                );
+                create table if not exists paper_signals (
+                    id text primary key, bot_id text, ts_ms integer, canonical_id text,
+                    kind text, side text, price real, signal_json text
+                );
+                create table if not exists paper_trades (
+                    id text primary key, bot_id text, canonical_id text, status text,
+                    entry_ts_ms integer, exit_ts_ms integer, trade_json text
+                );
+                create index if not exists idx_paper_signals_bot_time on paper_signals(bot_id,ts_ms);
+                create index if not exists idx_paper_trades_bot_status on paper_trades(bot_id,status);
+            ''')
+            self._con.commit()
+
+    def add_idea(self, title: str, text: str, origin: str = 'artem', kind: str = 'research',
+                 priority: int = 50, tags: list[str] | None = None) -> dict[str, Any]:
+        now = _now_ms()
+        item = {
+            'id': f'I-{uuid4().hex[:10].upper()}', 'created_at_ms': now, 'updated_at_ms': now,
+            'origin': origin, 'title': title.strip() or 'Новая идея', 'text': text.strip(),
+            'kind': kind, 'status': 'inbox', 'priority': max(0, min(int(priority), 100)),
+            'tags': tags or [], 'links': [], 'result': {},
+        }
+        with self._lock:
+            self._con.execute(
+                'insert into ideas values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [item['id'], now, now, item['origin'], item['title'], item['text'], item['kind'], item['status'],
+                 item['priority'], json.dumps(item['tags'], ensure_ascii=False), '[]', '{}'],
+            )
+            self._con.commit()
+        return item
+
+    def list_ideas(self, limit: int = 500, status: str = '') -> list[dict[str, Any]]:
+        sql = 'select * from ideas'
+        params: list[Any] = []
+        if status:
+            sql += ' where status=?'; params.append(status)
+        sql += ' order by priority desc, created_at_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows = self._con.execute(sql, params).fetchall()
+        return [{
+            'id': r['id'], 'created_at_ms': r['created_at_ms'], 'updated_at_ms': r['updated_at_ms'],
+            'origin': r['origin'], 'title': r['title'], 'text': r['text'], 'kind': r['kind'],
+            'status': r['status'], 'priority': r['priority'], 'tags': _loads(r['tags_json'], []),
+            'links': _loads(r['links_json'], []), 'result': _loads(r['result_json'], {}),
+        } for r in rows]
+
+    def update_idea(self, idea_id: str, **changes: Any) -> dict[str, Any] | None:
+        rows = self.list_ideas(10000)
+        current = next((x for x in rows if x['id'] == idea_id), None)
+        if current is None: return None
+        current.update({k: v for k, v in changes.items() if k in {'title','text','kind','status','priority','tags','links','result'}})
+        current['updated_at_ms'] = _now_ms()
+        with self._lock:
+            self._con.execute(
+                '''update ideas set updated_at_ms=?,title=?,text=?,kind=?,status=?,priority=?,tags_json=?,links_json=?,result_json=? where id=?''',
+                [current['updated_at_ms'], current['title'], current['text'], current['kind'], current['status'],
+                 int(current['priority']), json.dumps(current['tags'], ensure_ascii=False),
+                 json.dumps(current['links'], ensure_ascii=False), json.dumps(current['result'], ensure_ascii=False), idea_id],
+            )
+            self._con.commit()
+        return current
+
+    def save_research_project(self, project: ResearchProject) -> ResearchProject:
+        project.updated_at_ms = _now_ms()
+        with self._lock:
+            row = self._con.execute('select id from research_projects where id=?', [project.id]).fetchone()
+            if row:
+                self._con.execute(
+                    'update research_projects set updated_at_ms=?,title=?,status=?,project_json=? where id=?',
+                    [project.updated_at_ms, project.title, project.status, project.model_dump_json(), project.id],
+                )
+            else:
+                self._con.execute(
+                    'insert into research_projects values (?, ?, ?, ?, ?, ?)',
+                    [project.id, project.created_at_ms, project.updated_at_ms, project.title, project.status, project.model_dump_json()],
+                )
+            self._con.commit()
+        return project
+
+    def list_research_projects(self, limit: int = 500, status: str = '') -> list[ResearchProject]:
+        sql = 'select project_json from research_projects'
+        params: list[Any] = []
+        if status:
+            sql += ' where status=?'; params.append(status)
+        sql += ' order by updated_at_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows = self._con.execute(sql, params).fetchall()
+        return [ResearchProject.model_validate_json(r[0]) for r in rows]
+
+    def get_research_project(self, project_id: str) -> ResearchProject | None:
+        with self._lock:
+            row = self._con.execute('select project_json from research_projects where id=?', [project_id]).fetchone()
+        return ResearchProject.model_validate_json(row[0]) if row else None
+
+    def save_research_run(self, result: ResearchRunResult) -> None:
+        with self._lock:
+            self._con.execute(
+                'insert or replace into research_runs values (?, ?, ?, ?, ?, ?)',
+                [result.run_id, result.research_id, result.canonical_id,
+                 result.generated_at_ms, result.status, result.model_dump_json()],
+            )
+            self._con.commit()
+
+    def list_research_runs(self, research_id: str = '', canonical_id: str = '', limit: int = 300) -> list[ResearchRunResult]:
+        sql = 'select result_json from research_runs'
+        where = []; params: list[Any] = []
+        if research_id:
+            where.append('research_id=?'); params.append(research_id)
+        if canonical_id:
+            where.append('canonical_id=?'); params.append(canonical_id)
+        if where:
+            sql += ' where ' + ' and '.join(where)
+        sql += ' order by created_at_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows = self._con.execute(sql, params).fetchall()
+        return [ResearchRunResult.model_validate_json(r[0]) for r in rows]
+
+    def enqueue_job(self, kind: str, title_ru: str, payload: dict[str, Any]) -> ResearchJob:
+        item = ResearchJob(id=f'J-{uuid4().hex[:10].upper()}', kind=kind, created_at_ms=_now_ms(), title_ru=title_ru, payload=payload)
+        with self._lock:
+            self._con.execute(
+                'insert into research_jobs values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [item.id, item.kind, item.created_at_ms, item.created_at_ms, item.status, item.progress, item.title_ru,
+                 json.dumps(item.payload, ensure_ascii=False), '{}', None, None, None],
+            )
+            self._con.commit()
+        return item
+
+    def _job_from_row(self, r: sqlite3.Row) -> ResearchJob:
+        return ResearchJob(id=r['id'], kind=r['kind'], created_at_ms=r['created_at_ms'], status=r['status'],
+                           progress=float(r['progress'] or 0), title_ru=r['title_ru'], payload=_loads(r['payload_json'], {}),
+                           result=_loads(r['result_json'], {}), error=r['error'])
+
+    def list_jobs(self, limit: int = 300) -> list[ResearchJob]:
+        with self._lock:
+            rows = self._con.execute('select * from research_jobs order by created_at_ms desc limit ?', [limit]).fetchall()
+        return [self._job_from_row(r) for r in rows]
+
+    def recent_job_activity(self, since_ms: int, limit: int = 2000) -> list[dict[str, Any]]:
+        """Durable job ledger for owner-facing overnight/activity summaries."""
+        with self._lock:
+            rows = self._con.execute(
+                """select * from research_jobs
+                   where coalesce(finished_at_ms, updated_at_ms, created_at_ms) >= ?
+                   order by coalesce(finished_at_ms, updated_at_ms, created_at_ms) desc
+                   limit ?""",
+                [int(since_ms), max(1, min(int(limit), 10000))],
+            ).fetchall()
+        return [{
+            'id': r['id'], 'kind': r['kind'], 'status': r['status'],
+            'created_at_ms': r['created_at_ms'], 'updated_at_ms': r['updated_at_ms'],
+            'started_at_ms': r['started_at_ms'], 'finished_at_ms': r['finished_at_ms'],
+            'progress': float(r['progress'] or 0), 'title_ru': r['title_ru'],
+            'payload': _loads(r['payload_json'], {}), 'result': _loads(r['result_json'], {}),
+            'error': r['error'],
+        } for r in rows]
+
+    def claim_next_job(self) -> ResearchJob | None:
+        with self._lock:
+            rows = self._con.execute("select * from research_jobs where status='queued' order by created_at_ms limit 200").fetchall()
+            if not rows: return None
+            def priority(r: sqlite3.Row) -> tuple[int, int]:
+                payload = _loads(r['payload_json'], {})
+                kind = str(r['kind'] or '')
+                if kind == 'research_project_run':
+                    p = 0
+                elif payload.get('research_project_id'):
+                    p = 1
+                elif kind == 'strategy_run':
+                    p = 2
+                elif kind == 'historical_replay':
+                    p = 3
+                else:
+                    p = 4
+                return (p, int(r['created_at_ms'] or 0))
+            row = min(rows, key=priority)
+            now = _now_ms()
+            self._con.execute("update research_jobs set status='running',progress=0.01,started_at_ms=?,updated_at_ms=? where id=?", [now, now, row['id']])
+            self._con.commit()
+            row = self._con.execute('select * from research_jobs where id=?', [row['id']]).fetchone()
+        return self._job_from_row(row)
+
+    def update_job(self, job_id: str, *, status: str | None = None, progress: float | None = None,
+                   result: dict[str, Any] | None = None, error: str | None = None) -> None:
+        fields = ['updated_at_ms=?']; params: list[Any] = [_now_ms()]
+        if status is not None: fields.append('status=?'); params.append(status)
+        if progress is not None: fields.append('progress=?'); params.append(max(0.0, min(float(progress), 1.0)))
+        if result is not None: fields.append('result_json=?'); params.append(json.dumps(result, ensure_ascii=False, default=str))
+        if error is not None: fields.append('error=?'); params.append(error[:4000])
+        if status in {'done','failed','cancelled'}: fields.append('finished_at_ms=?'); params.append(_now_ms())
+        params.append(job_id)
+        with self._lock:
+            self._con.execute(f"update research_jobs set {','.join(fields)} where id=?", params)
+            self._con.commit()
+
+    def save_strategy(self, spec: StrategySpec) -> StrategySpec:
+        now = _now_ms()
+        with self._lock:
+            row = self._con.execute('select id from strategy_specs where id=?', [spec.id]).fetchone()
+            if row:
+                self._con.execute('update strategy_specs set updated_at_ms=?,name_ru=?,status=?,version=?,spec_json=? where id=?',
+                                  [now, spec.name_ru, spec.status, spec.version, spec.model_dump_json(), spec.id])
+            else:
+                self._con.execute('insert into strategy_specs values (?, ?, ?, ?, ?, ?, ?)',
+                                  [spec.id, now, now, spec.name_ru, spec.status, spec.version, spec.model_dump_json()])
+            self._con.commit()
+        return spec
+
+    def list_strategies(self, limit: int = 500) -> list[StrategySpec]:
+        with self._lock:
+            rows = self._con.execute('select spec_json from strategy_specs order by updated_at_ms desc limit ?', [limit]).fetchall()
+        return [StrategySpec.model_validate_json(r[0]) for r in rows]
+
+    def get_strategy(self, strategy_id: str) -> StrategySpec | None:
+        with self._lock:
+            row = self._con.execute('select spec_json from strategy_specs where id=?', [strategy_id]).fetchone()
+        return StrategySpec.model_validate_json(row[0]) if row else None
+
+    def save_strategy_run(self, result: StrategyRunResult) -> None:
+        with self._lock:
+            self._con.execute('insert or replace into strategy_runs values (?, ?, ?, ?, ?, ?)',
+                              [result.run_id, result.strategy_id, result.canonical_id, result.generated_at_ms, result.status, result.model_dump_json()])
+            self._con.commit()
+
+    def list_strategy_runs(self, strategy_id: str = '', limit: int = 300) -> list[StrategyRunResult]:
+        sql = 'select result_json from strategy_runs'; params: list[Any] = []
+        if strategy_id: sql += ' where strategy_id=?'; params.append(strategy_id)
+        sql += ' order by created_at_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows = self._con.execute(sql, params).fetchall()
+        return [StrategyRunResult.model_validate_json(r[0]) for r in rows]
+
+    def get_strategy_run(self, run_id: str) -> StrategyRunResult | None:
+        with self._lock:
+            row=self._con.execute('select result_json from strategy_runs where run_id=?',[run_id]).fetchone()
+        return StrategyRunResult.model_validate_json(row[0]) if row else None
+
+    def save_paper_bot(self, bot: PaperBot) -> PaperBot:
+        bot.updated_at_ms=_now_ms()
+        with self._lock:
+            self._con.execute(
+                'insert or replace into paper_bots values (?, ?, ?, ?, ?, ?, ?, ?)',
+                [bot.id,bot.strategy_id,bot.strategy_run_id,bot.canonical_id,bot.status,
+                 bot.created_at_ms,bot.updated_at_ms,bot.model_dump_json()],
+            )
+            self._con.commit()
+        return bot
+
+    def get_paper_bot(self, bot_id: str) -> PaperBot | None:
+        with self._lock:
+            row=self._con.execute('select bot_json from paper_bots where id=?',[bot_id]).fetchone()
+        return PaperBot.model_validate_json(row[0]) if row else None
+
+    def list_paper_bots(self, limit: int = 300) -> list[PaperBot]:
+        with self._lock:
+            rows=self._con.execute('select bot_json from paper_bots order by updated_at_ms desc limit ?',[limit]).fetchall()
+        return [PaperBot.model_validate_json(r[0]) for r in rows]
+
+    def append_paper_signal(self, signal: PaperSignal) -> None:
+        with self._lock:
+            self._con.execute(
+                'insert or ignore into paper_signals values (?, ?, ?, ?, ?, ?, ?, ?)',
+                [signal.id,signal.bot_id,signal.ts_ms,signal.canonical_id,signal.kind,
+                 signal.side,signal.price,signal.model_dump_json()],
+            )
+            self._con.commit()
+
+    def list_paper_signals(self, bot_id: str = '', limit: int = 500) -> list[PaperSignal]:
+        sql='select signal_json from paper_signals'; params: list[Any]=[]
+        if bot_id: sql+=' where bot_id=?'; params.append(bot_id)
+        sql+=' order by ts_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows=self._con.execute(sql,params).fetchall()
+        return [PaperSignal.model_validate_json(r[0]) for r in rows]
+
+    def save_paper_trade(self, trade: PaperTrade) -> PaperTrade:
+        with self._lock:
+            self._con.execute(
+                'insert or replace into paper_trades values (?, ?, ?, ?, ?, ?, ?)',
+                [trade.id,trade.bot_id,trade.canonical_id,trade.status,
+                 trade.entry_ts_ms,trade.exit_ts_ms,trade.model_dump_json()],
+            )
+            self._con.commit()
+        return trade
+
+    def list_paper_trades(self, bot_id: str = '', status: str = '', limit: int = 500) -> list[PaperTrade]:
+        sql='select trade_json from paper_trades'; where=[]; params: list[Any]=[]
+        if bot_id: where.append('bot_id=?'); params.append(bot_id)
+        if status: where.append('status=?'); params.append(status)
+        if where: sql+=' where '+' and '.join(where)
+        sql+=' order by entry_ts_ms desc limit ?'; params.append(limit)
+        with self._lock:
+            rows=self._con.execute(sql,params).fetchall()
+        return [PaperTrade.model_validate_json(r[0]) for r in rows]
+
+    def stats(self) -> dict[str, int]:
+        with self._lock:
+            return {
+                'ideas': self._con.execute('select count(*) from ideas').fetchone()[0],
+                'research_projects': self._con.execute('select count(*) from research_projects').fetchone()[0],
+                'research_runs': self._con.execute('select count(*) from research_runs').fetchone()[0],
+                'queued_jobs': self._con.execute("select count(*) from research_jobs where status='queued'").fetchone()[0],
+                'running_jobs': self._con.execute("select count(*) from research_jobs where status='running'").fetchone()[0],
+                'strategies': self._con.execute('select count(*) from strategy_specs').fetchone()[0],
+                'strategy_runs': self._con.execute('select count(*) from strategy_runs').fetchone()[0],
+                'paper_bots': self._con.execute('select count(*) from paper_bots').fetchone()[0],
+                'paper_trades': self._con.execute('select count(*) from paper_trades').fetchone()[0],
+            }
