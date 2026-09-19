@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 import asyncio
 import hashlib
@@ -246,8 +247,7 @@ class PulsePublicStore:
                    values(?,?,?,?,?,?,?,?,?)
                    on conflict(handle) do update set
                      display_name=excluded.display_name,followers=excluded.followers,posts_count=excluded.posts_count,
-                     last_sync_ms=excluded.last_sync_ms,last_error=null,source_url=excluded.source_url,raw_json=excluded.raw_json""",
-                [
+                     last_sync_ms=excluded.last_sync_ms,last_error=null,source_url=excluded.source_url,raw_json=excluded.raw_json""",                [
                     handle,
                     profile.get("display_name"),
                     profile.get("followers"),
@@ -418,5 +418,3 @@ class PulsePublicService:
             **self.quick_status(),
             **self.store.stats(),
         }
-
-[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
