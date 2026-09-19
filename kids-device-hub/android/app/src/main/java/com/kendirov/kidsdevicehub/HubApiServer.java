@@ -69,12 +69,16 @@ public class HubApiServer {
                 Map<String,String> q=query(u.getRawQuery());
                 String remoteIp=client.getInetAddress().getHostAddress();
                 String localIp=client.getLocalAddress().getHostAddress();
-                boolean tailscalePath=isTailscaleIp(localIp)||isTailscaleIp(remoteIp)||
-                        (isLoopback(remoteIp)&&hasTailscaleInterface());
+                // Android VPN/Tailscale can proxy accepted TCP sockets through loopback or the
+                // physical LAN address. In that case neither socket endpoint is necessarily
+                // 100.64/10. The service is intentionally reachable without a token only while
+                // a live Tailscale interface/address exists on this device. LAN-only operation
+                // still requires the per-device token.
+                boolean tailscalePath=hasTailscaleInterface();
                 String supplied=headers.getOrDefault("x-hub-token",q.getOrDefault("token",""));
                 boolean tokenOk=MainActivity.token(context).equals(supplied);
                 if(!tailscalePath && !tokenOk) {
-                    send(client,403,"application/json","{\"error\":\"forbidden\"}".getBytes(StandardCharsets.UTF_8)); return;
+                    send(client,403,"application/json","{\"error\":\"forbidden\",\"remote\":\""+esc(remoteIp)+"\",\"local\":\""+esc(localIp)+"\",\"tailscale\":"+hasTailscaleInterface()+"}".getBytes(StandardCharsets.UTF_8)); return;
                 }
                 route(client,method,u.getPath(),q);
             } catch(Exception ignored) {}
