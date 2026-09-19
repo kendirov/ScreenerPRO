@@ -8,6 +8,7 @@ import android.graphics.ColorSpace;
 import android.graphics.Path;
 import android.hardware.HardwareBuffer;
 import android.os.SystemClock;
+import android.os.Bundle;
 import android.view.Display;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -35,6 +36,16 @@ public class HubAccessibilityService extends AccessibilityService {
         GestureDescription g = new GestureDescription.Builder()
                 .addStroke(new GestureDescription.StrokeDescription(p,0,Math.max(80,ms))).build();
         return dispatchGesture(g, null, null);
+    }
+
+    public boolean setFocusedText(String text) {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) return false;
+        AccessibilityNodeInfo focus = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+        if (focus == null) return false;
+        Bundle args = new Bundle();
+        args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text);
+        return focus.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
     }
 
     public boolean clickText(String text) {
