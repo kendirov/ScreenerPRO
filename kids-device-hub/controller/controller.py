@@ -8,6 +8,14 @@ AUDIT = ROOT / "audit.jsonl"
 SHOT_DIR = ROOT / "screenshots"
 SHOT_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_UPDATE_URL = "http://100.95.246.112:8770/Kendirov-Kids-Device-Hub-stable.apk"
+TOKEN_FILE = ROOT.parent / "pair-token.txt"
+
+def auth_headers():
+    try:
+        token=TOKEN_FILE.read_text(encoding="utf-8").strip()
+        return {"X-Hub-Token":token} if token else {}
+    except Exception:
+        return {}
 
 def load_registry():
     return json.loads(REGISTRY.read_text(encoding="utf-8"))
@@ -22,7 +30,7 @@ def base_url(d):
 
 def request(d,path,params=None,binary=False,timeout=30):
     q="?" + urllib.parse.urlencode(params) if params else ""
-    req=urllib.request.Request(base_url(d)+path+q,method="GET")
+    req=urllib.request.Request(base_url(d)+path+q,headers=auth_headers(),method="GET")
     with urllib.request.urlopen(req,timeout=timeout) as r:
         body=r.read()
         return body if binary else body.decode("utf-8")
