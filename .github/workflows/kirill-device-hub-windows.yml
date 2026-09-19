@@ -1,0 +1,62 @@
+name: Kirill Family Device Hub Windows
+
+on:
+  push:
+    paths:
+      - 'kids-device-hub/windows/**'
+      - '.github/workflows/kirill-device-hub-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore kids-device-hub/windows/KirillDeviceHub/KirillDeviceHub.csproj
+
+      - name: Publish single-file Windows x64
+        run: >
+          dotnet publish kids-device-hub/windows/KirillDeviceHub/KirillDeviceHub.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:PublishTrimmed=false
+          -o artifacts/kirill
+
+      - name: Rename installer
+        run: |
+          Copy-Item "artifacts/kirill/Kirill-Family-Device-Hub.exe" "artifacts/Kirill-Family-Device-Hub-Setup.exe"
+          Get-FileHash "artifacts/Kirill-Family-Device-Hub-Setup.exe" -Algorithm SHA256
+          Get-Item "artifacts/Kirill-Family-Device-Hub-Setup.exe" | Select-Object Name,Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kirill-Family-Device-Hub-Setup
+          path: artifacts/Kirill-Family-Device-Hub-Setup.exe
+          if-no-files-found: error
+
+      - name: Publish release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag="kirill-device-hub-v1"
+          $asset="artifacts/Kirill-Family-Device-Hub-Setup.exe"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --title "Kirill Family Device Hub v1" --notes "Windows x64 single-file family device agent."
+          }
+          gh release upload $tag "$asset#Kirill-Family-Device-Hub-Setup.exe" --clobber --repo $env:GITHUB_REPOSITORY
