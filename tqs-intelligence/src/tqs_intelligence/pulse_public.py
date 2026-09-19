@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import asyncio
 import hashlib
@@ -404,13 +403,20 @@ class PulsePublicService:
         finally:
             self.running = False
 
-    def status(self) -> dict[str, Any]:
+    def quick_status(self) -> dict[str, Any]:
         return {
             "running": self.running,
             "last_action": self.last_action,
             "last_error": self.last_error,
-            **self.store.stats(),
             "evidence_level": "public_profile",
             "size_policy": "operation quantity is unknown unless a public source explicitly exposes it; TQS never estimates it",
             "source": "T-Bank Pulse public profile SSR / best effort",
         }
+
+    def status(self) -> dict[str, Any]:
+        return {
+            **self.quick_status(),
+            **self.store.stats(),
+        }
+
+[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
