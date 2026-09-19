@@ -1,5 +1,5 @@
 from tqs_intelligence import __version__
-from tqs_intelligence.api import RUNTIME_INSTANCE_ID, _identity, account_service, app, health, lab, research_runtime, store
+from tqs_intelligence.api import RUNTIME_INSTANCE_ID, _identity, account_service, app, health, lab, pulse_service, research_runtime, store
 
 
 def test_api_version_matches_package():
@@ -25,6 +25,7 @@ async def test_health_is_independent_from_heavy_database_stats(monkeypatch):
     monkeypatch.setattr(lab, "stats", fail)
     monkeypatch.setattr(research_runtime, "status", fail)
     monkeypatch.setattr(account_service, "status", fail)
+    monkeypatch.setattr(pulse_service, "status", fail)
 
     payload = await health()
     assert payload["ok"] is True
@@ -32,3 +33,5 @@ async def test_health_is_independent_from_heavy_database_stats(monkeypatch):
     assert payload["lab"]["deferred"] is True
     assert "last_action" in payload["research_runtime"]
     assert "last_action" in payload["account_intelligence"]
+
+[executed on device: Kendirov (dbeba00d-0e72-4d4e-b51c-17d1d4fb9e1f)]
