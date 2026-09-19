@@ -420,6 +420,59 @@ class MoexFeatureEngine:
                 out[f"{label}_delta"] = _f(rows[-1].get("value")) - _f(rows[-2].get("value")) if _f(rows[-1].get("value")) is not None and _f(rows[-2].get("value")) is not None else None
         return out
 
+    def publish_live(self, quotes: list[Quote], anomalies: list[Anomaly]) -> None:
+        """Publish an immediate trader-facing MOEX view before history enrichment.
+
+        Historical own-time baselines can be expensive on a large DuckDB. The
+        cockpit must still show the current canonical market state immediately.
+        Existing enriched rows are retained and only their live fields are
+        refreshed; new instruments get generic anomaly evidence as a warm-up.
+        """
+        current={row.get("canonical_id"):dict(row) for row in self.last_rows}
+        anomaly_by_id={a.canonical_id:a for a in anomalies if a.provider=="moex"}
+        rows_out:list[dict[str,Any]]=[]
+        for q in self._candidate_quotes(quotes):
+            row=current.get(q.canonical_id,{})
+            generic=anomaly_by_id.get(q.canonical_id)
+            generic_score=float(generic.score) if generic is not None else 0.0
+            enriched=bool(row.get("history_status")=="ready" or int(row.get("baseline_days") or 0)>0)
+            reasons=list(row.get("reasons") or []) if enriched else list(generic.reasons if generic else [])
+            signals=list(row.get("signals") or []) if enriched else list(generic.signals if generic else [])
+            if not reasons and str(q.meta.get("trading_status") or "").upper()!="T":
+                board=str(q.meta.get("board") or "")
+                reasons=[f"основная доска {board or 'MOEX'} сейчас не в активной торговой сессии"]
+            row.update({
+                "canonical_id":q.canonical_id,
+                "symbol":q.symbol,
+                "name":q.display_symbol or q.symbol,
+                "market_type":q.market_type,
+                "price":q.last,
+                "turnover":q.turnover_24h,
+                "open_interest":q.open_interest,
+                "board":q.meta.get("board"),
+                "trading_status":q.meta.get("trading_status"),
+                "attention_score":max(float(row.get("attention_score") or 0.0),generic_score) if enriched else generic_score,
+                "reasons":reasons,
+                "signals":signals,
+                "baseline_days":int(row.get("baseline_days") or 0),
+                "history_status":"ready" if enriched else "warming",
+            })
+            row.setdefault("ret_5m_pct",None)
+            row.setdefault("ret_15m_pct",None)
+            row.setdefault("ret_60m_pct",None)
+            row.setdefault("oi_15m_pct",None)
+            row.setdefault("oi_60m_pct",None)
+            row.setdefault("turnover_tod_ratio",None)
+            row.setdefault("volume_tod_ratio",None)
+            row.setdefault("trades_tod_ratio",None)
+            row.setdefault("ret_15m_percentile",None)
+            row.setdefault("oi_15m_percentile",None)
+            row.setdefault("spread_ratio",None)
+            row.setdefault("lchi",{})
+            row.setdefault("futoi",{})
+            rows_out.append(row)
+        self.last_rows=sorted(rows_out,key=lambda x:float(x.get("attention_score") or 0.0),reverse=True)
+
     def analyze(self, quotes: list[Quote]) -> list[Anomaly]:
         now_ms = max((int(q.observed_at_ms) for q in quotes if q.provider == "moex"), default=_now_ms())
         candidates = self._candidate_quotes(quotes)
@@ -573,6 +626,9 @@ class MoexFeatureEngine:
                 "reasons": reasons,
                 "signals": signals,
                 "baseline_days": len(base),
+                "board": q.meta.get("board"),
+                "trading_status": q.meta.get("trading_status"),
+                "history_status": "ready",
             }
             rows_out.append(feature_row)
 

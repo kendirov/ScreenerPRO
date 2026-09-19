@@ -41,6 +41,22 @@ class MoexSourceV04(MoexSource):
         "цена", "bid/ask", "изменение %", "объём/оборот", "NUMTRADES", "OI FORTS",
         "open/prev/settle", "торговый статус", "свечи ISS", "quality/provenance",
     )
+    PREFERRED_BOARDS = {
+        "shares": ("TQBR", "TQTF", "TQPI", "TQTD"),
+        "forts": ("RFUD",),
+        "selt": ("CETS",),
+        "index": ("SNDX",),
+        "bonds": ("TQCB", "TQOB"),
+    }
+
+    @classmethod
+    def _board_priority(cls, market_type: str, board: object) -> int:
+        board_id = str(board or "").upper()
+        preferred = cls.PREFERRED_BOARDS.get(str(market_type or "").lower(), ())
+        try:
+            return 1000 - preferred.index(board_id)
+        except ValueError:
+            return 0
 
     async def _fetch_market(self, engine: str, market: str, asset_class: AssetClass, market_type: str) -> list[Quote]:
         payload = await self.http.get_json(
@@ -48,14 +64,25 @@ class MoexSourceV04(MoexSource):
             {"iss.meta": "off", "iss.only": "securities,marketdata"},
         )
         observed = _now_ms()
-        securities = {str(x.get("SECID")): x for x in self._section(payload, "securities") if x.get("SECID")}
+        security_rows = self._section(payload, "securities")
+        securities_by_board = {
+            (str(x.get("SECID") or ""), str(x.get("BOARDID") or "")): x
+            for x in security_rows if x.get("SECID")
+        }
+        securities_by_symbol: dict[str, dict[str, Any]] = {}
+        for item in security_rows:
+            secid = str(item.get("SECID") or "")
+            if secid and secid not in securities_by_symbol:
+                securities_by_symbol[secid] = item
         best: dict[str, Quote] = {}
+        best_key: dict[str, tuple[float, ...]] = {}
 
         for row in self._section(payload, "marketdata"):
             symbol = str(row.get("SECID") or "")
             if not symbol:
                 continue
-            sec = securities.get(symbol, {})
+            board = str(row.get("BOARDID") or "")
+            sec = securities_by_board.get((symbol, board), securities_by_symbol.get(symbol, {}))
             last = _first_number(row.get("LAST"), row.get("SETTLEPRICE"), row.get("MARKETPRICE"), row.get("CURRENTVALUE"))
             pct, pct_source = _pct_change(row, sec, last)
             turnover = _first_number(row.get("VALTODAY"), row.get("VALTODAY_RUR"), row.get("VALUE"))
@@ -97,7 +124,7 @@ class MoexSourceV04(MoexSource):
                 ts_ms=observed,
                 observed_at_ms=observed,
                 meta={
-                    "board": row.get("BOARDID"),
+                    "board": board,
                     "trading_status": row.get("TRADINGSTATUS"),
                     "shortname": sec.get("SHORTNAME"),
                     "secname": sec.get("SECNAME"),
@@ -116,10 +143,20 @@ class MoexSourceV04(MoexSource):
                     "short_name": sec.get("SHORTNAME"),
                     "lotsize": _i(sec.get("LOTSIZE")),
                     "minstep": _f(sec.get("MINSTEP")),
+                    "update_time": row.get("UPDATETIME"),
+                    "system_time": row.get("SYSTIME"),
+                    "board_priority": self._board_priority(market_type, board),
                 },
             )
-            old = best.get(symbol)
-            if old is None or (quote.turnover_24h or -1) > (old.turnover_24h or -1):
+            key = (
+                float(self._board_priority(market_type, board)),
+                1.0 if str(row.get("TRADINGSTATUS") or "").upper() == "T" else 0.0,
+                1.0 if quote.last is not None else 0.0,
+                float(quote.turnover_24h or 0.0),
+                float(quote.volume_24h or 0.0),
+            )
+            if symbol not in best_key or key > best_key[symbol]:
                 best[symbol] = quote
+                best_key[symbol] = key
 
         return list(best.values())

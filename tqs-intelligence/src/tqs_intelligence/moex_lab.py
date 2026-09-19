@@ -66,8 +66,14 @@ class MoexLab:
         for row in rows: groups[row['asset_class']]=groups.get(row['asset_class'],0)+1
         futures=sorted([r for r in rows if r['asset_class']=='future'],key=lambda r:(r['turnover'] or 0),reverse=True)
         stocks=sorted([r for r in rows if r['asset_class']=='stock'],key=lambda r:(r['turnover'] or 0),reverse=True)
+        active=[r for r in rows if str(r.get('trading_status') or '').upper()=='T']
+        main_active=[r for r in active if r.get('market_type')!='shares' or r.get('board') in {'TQBR','TQTF','TQPI','TQTD'}]
+        session_status='open' if main_active else 'closed_or_inactive'
         return {
             'count':len(rows),'segments':groups,'top_stocks':stocks[:50],'top_futures':futures[:50],
+            'session':{'status':session_status,'active_instruments':len(main_active),
+                       'observed_at_ms':snapshot.generated_at_ms if snapshot else None,
+                       'note':'Основные доски имеют активные торги' if main_active else 'Основные доски сейчас не показывают активную торговую сессию'},
             'premium_contract':{
                 'status':'ready_for_credentials','fields':['individual_long','individual_short','legal_long','legal_short','participant_counts','delta_positions','5m updates'],
                 'derived':['individual_net','legal_net','participant_divergence','participant_acceleration','price/OI/participant divergence']

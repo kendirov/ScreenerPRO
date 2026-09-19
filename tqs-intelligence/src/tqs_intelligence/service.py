@@ -238,6 +238,7 @@ class IntelligenceService:
                     self._consume_moex_features()
                     if self._moex_cached:
                         anomalies = merge_anomalies(anomalies, self._moex_cached)
+                    self.moex_feature_engine.publish_live(quotes, anomalies)
                 now=_now_ms(); snapshot=Snapshot(generated_at_ms=now,quotes=quotes,anomalies=anomalies,source_health=health,news=news)
                 # Publish the live market view immediately. Durable snapshot/episode
                 # writes may be expensive on a cold start and must not make health/UI
