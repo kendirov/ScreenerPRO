@@ -238,18 +238,46 @@ public class HubApiServer {
         macroThread.start();
     }
 
+    private boolean wake() {
+        try {
+            android.os.PowerManager pm=(android.os.PowerManager)context.getSystemService(Context.POWER_SERVICE);
+            if(pm==null||pm.isInteractive()) return true;
+            android.os.PowerManager.WakeLock wl=pm.newWakeLock(
+                    android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK|android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "KidsDeviceHub:RemoteWake");
+            wl.acquire(2000);
+            if(wl.isHeld()) wl.release();
+            return true;
+        } catch(Exception e){ return false; }
+    }
+
+    private static boolean isTailscaleIp(String ip) {
+        try {
+            String[] p=ip.split("\\.");
+            if(p.length!=4) return false;
+            int a=Integer.parseInt(p[0]), b=Integer.parseInt(p[1]);
+            return a==100 && b>=64 && b<=127;
+        } catch(Exception e){ return false; }
+    }
+
     private String deviceInfo() {
         android.os.BatteryManager bm=(android.os.BatteryManager)context.getSystemService(Context.BATTERY_SERVICE);
         int battery=bm==null?-1:bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
         android.os.StatFs fs=new android.os.StatFs(context.getFilesDir().getAbsolutePath());
         long total=fs.getTotalBytes(), free=fs.getAvailableBytes();
+        android.app.ActivityManager am=(android.app.ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
+        android.app.ActivityManager.MemoryInfo mi=new android.app.ActivityManager.MemoryInfo();
+        if(am!=null) am.getMemoryInfo(mi);
         return "{\"manufacturer\":\""+esc(android.os.Build.MANUFACTURER)+"\","
                 +"\"model\":\""+esc(android.os.Build.MODEL)+"\","
                 +"\"android\":\""+esc(android.os.Build.VERSION.RELEASE)+"\","
                 +"\"sdk\":"+android.os.Build.VERSION.SDK_INT+","
                 +"\"battery\":"+battery+","
                 +"\"storageTotal\":"+total+","
-                +"\"storageFree\":"+free+"}";
+                +"\"storageFree\":"+free+","
+                +"\"memoryTotal\":"+mi.totalMem+","
+                +"\"memoryFree\":"+mi.availMem+","
+                +"\"lowMemory\":"+mi.lowMemory+"}";
     }
 
     private String apps() {
