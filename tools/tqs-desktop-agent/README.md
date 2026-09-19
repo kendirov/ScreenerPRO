@@ -2,6 +2,8 @@
 
 Local Windows "eyes and hands" bridge for Trading QS and ChatGPT.
 
+For operating rules, verification, scenario lifecycle, and the continuous learning loop, see [PLAYBOOK.md](./PLAYBOOK.md).
+
 ## Status
 
 Version 0.1.0 is installed and smoke-tested on the Windows workstation:
