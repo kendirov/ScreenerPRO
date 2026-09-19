@@ -19,11 +19,13 @@ def active_controller():
 def default_update_url():
     host=active_controller()
     return f"http://{host['tailscale_ip']}:{host.get('update_port',8770)}/Kendirov-Kids-Device-Hub-stable.apk"
-TOKEN_FILE = ROOT.parent / "pair-token.txt"
+def token_file_for(device_key, d):
+    name=d.get("token_file") or ("pair-token.txt" if device_key=="roma" else f"pair-token-{device_key}.txt")
+    return ROOT.parent / name
 
-def auth_headers():
+def auth_headers(device_key,d):
     try:
-        token=TOKEN_FILE.read_text(encoding="utf-8").strip()
+        token=token_file_for(device_key,d).read_text(encoding="utf-8").strip()
         return {"X-Hub-Token":token} if token else {}
     except Exception:
         return {}
@@ -31,23 +33,26 @@ def auth_headers():
 def load_registry():
     return json.loads(REGISTRY.read_text(encoding="utf-8"))
 
-def device(name):
+def resolve_device_key(name):
     data=load_registry()["devices"]
     if name in data:
-        return data[name]
+        return name
     needle=name.casefold()
     for key,item in data.items():
         aliases=[key]+item.get("aliases",[])
         if any(str(a).casefold()==needle for a in aliases):
-            return item
+            return key
     raise SystemExit(f"Unknown device alias: {name}")
+
+def device(name):
+    return load_registry()["devices"][resolve_device_key(name)]
 
 def base_url(d):
     return f"http://{d['host']}:{d.get('port',8766)}"
 
-def request(d,path,params=None,binary=False,timeout=30):
+def request(device_key,d,path,params=None,binary=False,timeout=30):
     q="?" + urllib.parse.urlencode(params) if params else ""
-    req=urllib.request.Request(base_url(d)+path+q,headers=auth_headers(),method="GET")
+    req=urllib.request.Request(base_url(d)+path+q,headers=auth_headers(device_key,d),method="GET")
     with urllib.request.urlopen(req,timeout=timeout) as r:
         body=r.read()
         return body if binary else body.decode("utf-8")
@@ -66,37 +71,37 @@ def save_shot(name,data):
 def run(name,cmd,a):
     d=device(name)
     try:
-        if cmd in ("status","health"): out=request(d,"/status")
-        elif cmd=="info": out=request(d,"/device-info")
-        elif cmd=="ui": out=request(d,"/ui")
-        elif cmd=="apps": out=request(d,"/apps")
-        elif cmd=="usage": out=request(d,"/usage",{"days":a.days})
-        elif cmd=="screenshot": out=save_shot(name,request(d,"/screenshot",binary=True))
-        elif cmd=="tap": out=request(d,"/tap",{"x":a.x,"y":a.y})
-        elif cmd=="long-press": out=request(d,"/long-press",{"x":a.x,"y":a.y,"ms":a.ms})
-        elif cmd=="swipe": out=request(d,"/swipe",{"x1":a.x1,"y1":a.y1,"x2":a.x2,"y2":a.y2,"ms":a.ms})
-        elif cmd=="drag": out=request(d,"/drag",{"x1":a.x1,"y1":a.y1,"x2":a.x2,"y2":a.y2,"holdMs":a.hold_ms,"moveMs":a.move_ms})
-        elif cmd=="text": out=request(d,"/text",{"value":a.value})
-        elif cmd=="click-text": out=request(d,"/click-text",{"text":a.text})
-        elif cmd in ("home","back"): out=request(d,"/global",{"action":cmd})
-        elif cmd=="wake": out=request(d,"/wake")
-        elif cmd=="launch": out=request(d,"/launch",{"package":a.package})
-        elif cmd=="lock": out=request(d,"/lock")
-        elif cmd=="open-url": out=request(d,"/open-url",{"url":a.url})
-        elif cmd=="install-url": out=request(d,"/install-url",{"url":a.url},timeout=60)
-        elif cmd=="update": out=request(d,"/update",{"url":a.url or default_update_url()},timeout=60)
-        elif cmd=="install-status": out=request(d,"/install-status")
-        elif cmd=="uninstall": out=request(d,"/uninstall",{"package":a.package})
-        elif cmd=="app-settings": out=request(d,"/app-settings",{"package":a.package})
-        elif cmd=="files": out=request(d,"/files",{"path":a.path})
-        elif cmd=="mkdir": out=request(d,"/mkdir",{"path":a.path})
-        elif cmd=="move": out=request(d,"/move",{"src":a.src,"dst":a.dst})
-        elif cmd=="trash": out=request(d,"/trash",{"path":a.path})
+        if cmd in ("status","health"): out=request(device_key,d,"/status")
+        elif cmd=="info": out=request(device_key,d,"/device-info")
+        elif cmd=="ui": out=request(device_key,d,"/ui")
+        elif cmd=="apps": out=request(device_key,d,"/apps")
+        elif cmd=="usage": out=request(device_key,d,"/usage",{"days":a.days})
+        elif cmd=="screenshot": out=save_shot(name,request(device_key,d,"/screenshot",binary=True))
+        elif cmd=="tap": out=request(device_key,d,"/tap",{"x":a.x,"y":a.y})
+        elif cmd=="long-press": out=request(device_key,d,"/long-press",{"x":a.x,"y":a.y,"ms":a.ms})
+        elif cmd=="swipe": out=request(device_key,d,"/swipe",{"x1":a.x1,"y1":a.y1,"x2":a.x2,"y2":a.y2,"ms":a.ms})
+        elif cmd=="drag": out=request(device_key,d,"/drag",{"x1":a.x1,"y1":a.y1,"x2":a.x2,"y2":a.y2,"holdMs":a.hold_ms,"moveMs":a.move_ms})
+        elif cmd=="text": out=request(device_key,d,"/text",{"value":a.value})
+        elif cmd=="click-text": out=request(device_key,d,"/click-text",{"text":a.text})
+        elif cmd in ("home","back"): out=request(device_key,d,"/global",{"action":cmd})
+        elif cmd=="wake": out=request(device_key,d,"/wake")
+        elif cmd=="launch": out=request(device_key,d,"/launch",{"package":a.package})
+        elif cmd=="lock": out=request(device_key,d,"/lock")
+        elif cmd=="open-url": out=request(device_key,d,"/open-url",{"url":a.url})
+        elif cmd=="install-url": out=request(device_key,d,"/install-url",{"url":a.url},timeout=60)
+        elif cmd=="update": out=request(device_key,d,"/update",{"url":a.url or default_update_url()},timeout=60)
+        elif cmd=="install-status": out=request(device_key,d,"/install-status")
+        elif cmd=="uninstall": out=request(device_key,d,"/uninstall",{"package":a.package})
+        elif cmd=="app-settings": out=request(device_key,d,"/app-settings",{"package":a.package})
+        elif cmd=="files": out=request(device_key,d,"/files",{"path":a.path})
+        elif cmd=="mkdir": out=request(device_key,d,"/mkdir",{"path":a.path})
+        elif cmd=="move": out=request(device_key,d,"/move",{"src":a.src,"dst":a.dst})
+        elif cmd=="trash": out=request(device_key,d,"/trash",{"path":a.path})
         elif cmd=="script":
             spec=Path(a.file).read_text(encoding="utf-8") if a.file else a.json
-            out=request(d,"/script",{"spec":spec},timeout=30)
-        elif cmd=="script-status": out=request(d,"/script-status")
-        elif cmd=="stop-script": out=request(d,"/stop-script")
+            out=request(device_key,d,"/script",{"spec":spec},timeout=30)
+        elif cmd=="script-status": out=request(device_key,d,"/script-status")
+        elif cmd=="stop-script": out=request(device_key,d,"/stop-script")
         else: raise SystemExit("Unsupported command")
         audit(name,cmd,True,out)
         print(out)
