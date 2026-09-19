@@ -1,0 +1,20 @@
+{
+  "schema_version": 2,
+  "devices": {
+    "roma": {
+      "name": "Roma Lenovo Tab",
+      "kind": "android_http",
+      "host": "100.97.19.59",
+      "port": 8766,
+      "transport": "tailscale",
+      "capabilities": ["status","info","screenshot","ui","tap","swipe","text","home","back","launch","apps","usage","lock","open-url","install-url","uninstall","app-settings"]
+    },
+    "kirill": {
+      "name": "Kirill Windows Laptop",
+      "kind": "windows_agent",
+      "transport": "tailscale",
+      "state": "planned",
+      "capabilities": []
+    }
+  }
+}
