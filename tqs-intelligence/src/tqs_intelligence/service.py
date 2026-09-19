@@ -178,6 +178,10 @@ class IntelligenceService:
                     if self._moex_cached:
                         anomalies = merge_anomalies(anomalies, self._moex_cached)
                 now=_now_ms(); snapshot=Snapshot(generated_at_ms=now,quotes=quotes,anomalies=anomalies,source_health=health,news=news)
+                # Publish the live market view immediately. Durable snapshot/episode
+                # writes may be expensive on a cold start and must not make health/UI
+                # look empty while fresh quotes are already available in memory.
+                self.state.snapshot=snapshot
                 await asyncio.to_thread(self.store.persist_snapshot, quotes, anomalies, news)
                 created=await asyncio.to_thread(self.store.update_episodes, anomalies, now, self.episode_threshold, self.episode_close_grace_ms)
                 mode=self.mode(); heavy=mode=='max'
