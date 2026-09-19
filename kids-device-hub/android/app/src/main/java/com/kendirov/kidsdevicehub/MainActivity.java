@@ -20,6 +20,7 @@ import java.util.UUID;
 
 public class MainActivity extends Activity {
     public static final int PORT = 8766;
+    public static final String STABLE_APK_URL = "http://100.95.246.112:8770/Kendirov-Kids-Device-Hub-stable.apk";
 
     public static String token(Context c) {
         var p=c.getSharedPreferences("hub",MODE_PRIVATE);
@@ -106,7 +107,11 @@ public class MainActivity extends Activity {
             startActivity(i);
         }));
         l.addView(button("6. Battery optimization",v->startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))));
-        l.addView(button("Refresh status",v->info.setText(infoText())));
+        l.addView(button("7. Update Family Device Hub",v->{
+            ApkInstaller.installFromUrl(this,STABLE_APK_URL);
+            android.widget.Toast.makeText(this,"Update started. Android may show an install confirmation.",android.widget.Toast.LENGTH_LONG).show();
+        }));
+        l.addView(button("Refresh status",v->info.setText(infoText()+"\nUpdater: "+ApkInstaller.status())));
         setContentView(l);
     }
 }
