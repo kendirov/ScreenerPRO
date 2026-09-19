@@ -4,10 +4,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 REGISTRY = ROOT / "devices.json"
+HOSTS_REGISTRY = ROOT / "controller-hosts.json"
 AUDIT = ROOT / "audit.jsonl"
 SHOT_DIR = ROOT / "screenshots"
 SHOT_DIR.mkdir(parents=True, exist_ok=True)
-DEFAULT_UPDATE_URL = "http://100.95.246.112:8770/Kendirov-Kids-Device-Hub-stable.apk"
+def controller_hosts():
+    return json.loads(HOSTS_REGISTRY.read_text(encoding="utf-8"))
+
+def active_controller():
+    cfg=controller_hosts()
+    key=cfg["active_controller"]
+    return cfg["controllers"][key]
+
+def default_update_url():
+    host=active_controller()
+    return f"http://{host['tailscale_ip']}:{host.get('update_port',8770)}/Kendirov-Kids-Device-Hub-stable.apk"
 TOKEN_FILE = ROOT.parent / "pair-token.txt"
 
 def auth_headers():
@@ -22,8 +33,14 @@ def load_registry():
 
 def device(name):
     data=load_registry()["devices"]
-    if name not in data: raise SystemExit(f"Unknown device: {name}")
-    return data[name]
+    if name in data:
+        return data[name]
+    needle=name.casefold()
+    for key,item in data.items():
+        aliases=[key]+item.get("aliases",[])
+        if any(str(a).casefold()==needle for a in aliases):
+            return item
+    raise SystemExit(f"Unknown device alias: {name}")
 
 def base_url(d):
     return f"http://{d['host']}:{d.get('port',8766)}"
@@ -67,7 +84,7 @@ def run(name,cmd,a):
         elif cmd=="lock": out=request(d,"/lock")
         elif cmd=="open-url": out=request(d,"/open-url",{"url":a.url})
         elif cmd=="install-url": out=request(d,"/install-url",{"url":a.url},timeout=60)
-        elif cmd=="update": out=request(d,"/update",{"url":a.url or DEFAULT_UPDATE_URL},timeout=60)
+        elif cmd=="update": out=request(d,"/update",{"url":a.url or default_update_url()},timeout=60)
         elif cmd=="install-status": out=request(d,"/install-status")
         elif cmd=="uninstall": out=request(d,"/uninstall",{"package":a.package})
         elif cmd=="app-settings": out=request(d,"/app-settings",{"package":a.package})
