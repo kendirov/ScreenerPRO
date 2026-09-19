@@ -110,6 +110,10 @@ public class HubApiServer {
             need(a,c); if(a==null)return;
             boolean ok=a.swipe(f(q,"x1"),f(q,"y1"),f(q,"x2"),f(q,"y2"),lng(q,"ms",300)); sendOk(c,ok); return;
         }
+        if(path.equals("/drag")) {
+            need(a,c); if(a==null)return;
+            boolean ok=a.drag(f(q,"x1"),f(q,"y1"),f(q,"x2"),f(q,"y2"),lng(q,"holdMs",700),lng(q,"moveMs",600)); sendOk(c,ok); return;
+        }
         if(path.equals("/click-text")) {
             need(a,c); if(a==null)return;
             sendOk(c,a.clickText(q.getOrDefault("text",""))); return;
