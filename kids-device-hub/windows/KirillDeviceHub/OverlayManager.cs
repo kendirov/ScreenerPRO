@@ -12,12 +12,12 @@ internal static class OverlayManager
 
     public static void Initialize() => EnsureUiThread();
 
-    public static void Show(string text, int seconds, string mode = "card")
+    public static void Show(string text, int seconds, string mode = "card", string position = "top-right")
     {
         EnsureUiThread();
         dispatcher!.BeginInvoke(new Action(() =>
         {
-            var form = new FancyOverlayForm(text, Math.Clamp(seconds, 1, 24 * 60 * 60), mode);
+            var form = new FancyOverlayForm(text, Math.Clamp(seconds, 1, 24 * 60 * 60), mode, "none", position);
             form.Show();
         }));
     }
@@ -73,7 +73,7 @@ internal sealed class FancyOverlayForm : Form
     private readonly string endAction;
     private float steamPhase;
 
-    public FancyOverlayForm(string text, int seconds, string mode, string endAction = "none")
+    public FancyOverlayForm(string text, int seconds, string mode, string endAction = "none", string position = "top-right")
     {
         remaining = seconds;
         this.endAction = endAction;
@@ -91,7 +91,14 @@ internal sealed class FancyOverlayForm : Form
         var wa = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
         Location = mode.Equals("fullscreen", StringComparison.OrdinalIgnoreCase)
             ? new Point(wa.Left + (wa.Width - Width) / 2, wa.Top + (wa.Height - Height) / 2)
-            : new Point(wa.Right - Width - 28, wa.Top + 28);
+            : position.ToLowerInvariant() switch
+            {
+                "top-left" => new Point(wa.Left + 28, wa.Top + 28),
+                "bottom-left" => new Point(wa.Left + 28, wa.Bottom - Height - 28),
+                "bottom-right" => new Point(wa.Right - Width - 28, wa.Bottom - Height - 28),
+                "center" => new Point(wa.Left + (wa.Width - Width) / 2, wa.Top + (wa.Height - Height) / 2),
+                _ => new Point(wa.Right - Width - 28, wa.Top + 28)
+            };
 
         title = new Label
         {
