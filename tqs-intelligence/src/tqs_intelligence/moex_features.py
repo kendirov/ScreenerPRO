@@ -349,17 +349,24 @@ class MoexFeatureEngine:
         since_ms = now_ms - 60 * MINUTE_MS
         wanted = {str(symbol or "").upper().strip() for symbol in symbols if str(symbol or "").strip()}
         roots = {symbol.split("-")[0] for symbol in wanted}
+        lock = self.lchi_store._lock
+        acquired = False
         try:
-            with self.lchi_store._lock:
-                rows = self.lchi_store._con.execute(
-                    """select upper(seccode), event_type, previous_qty, current_qty, delta_qty, user_id
-                       from lchi_position_events
-                       where ts_ms>=?
-                       order by ts_ms desc""",
-                    [since_ms],
-                ).fetchall()
+            acquired = lock.acquire(blocking=False)
+            if not acquired:
+                return {}
+            rows = self.lchi_store._con.execute(
+                """select upper(seccode), event_type, previous_qty, current_qty, delta_qty, user_id
+                   from lchi_position_events
+                   where ts_ms>=?
+                   order by ts_ms desc""",
+                [since_ms],
+            ).fetchall()
         except Exception:
             return {}
+        finally:
+            if acquired:
+                lock.release()
 
         exact: dict[str, dict[str, Any]] = {}
         families: dict[str, dict[str, Any]] = {}
