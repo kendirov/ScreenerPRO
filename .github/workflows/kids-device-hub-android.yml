@@ -47,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ASSET="app/build/outputs/apk/debug/app-debug.apk"
-          TAG="kids-device-hub-v1"
-          NAME="Kendirov-Kids-Device-Hub-Roma-v1.apk"
-          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Kids Device Hub Android v1" --notes "Roma Lenovo Tab Android agent."
+          TAG="kids-device-hub-v2"
+          NAME="Kendirov-Kids-Device-Hub-Roma-v2.apk"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Kids Device Hub Android v2" --notes "Roma Lenovo Tab Android agent v2 with Tailscale-first controller."
           gh release upload "$TAG" "$ASSET#$NAME" --clobber --repo "$GITHUB_REPOSITORY"
