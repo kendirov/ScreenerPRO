@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Kids Device Hub</string>
+    <string name="accessibility_description">Parent-authorized control for screenshots, UI inspection and gestures.</string>
+</resources>
