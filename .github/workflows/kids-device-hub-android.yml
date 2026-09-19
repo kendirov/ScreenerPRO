@@ -19,10 +19,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - name: Android SDK check
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" | tail
+          ls "$ANDROID_HOME/build-tools" | tail
       - name: Build debug APK
         run: gradle --stacktrace assembleDebug
       - name: Verify APK
