@@ -3,45 +3,29 @@ namespace Kendirov.KirillDeviceHub;
 internal static class OverlayManager
 {
     private static readonly object Gate=new();
-    private static OverlayForm? current;
 
     public static void Show(string text,int seconds,string mode="card")
-    {
-        seconds=Math.Clamp(seconds,1,24*60*60);
-        if(Application.OpenForms.Count==0) return;
-
-        void Create()
-        {
-            lock(Gate)
-            {
-                try{ current?.Close(); }catch{}
-                current=new OverlayForm(text,seconds,mode);
-                current.Show();
-            }
-        }
-
-        var form=Application.OpenForms.Cast<Form>().FirstOrDefault();
-        if(form!=null && form.InvokeRequired) form.BeginInvoke((Action)Create); else Create();
-    }
+        => StartOverlay(()=>new OverlayForm(text,Math.Clamp(seconds,1,24*60*60),mode));
 
     public static void StartTimer(int minutes,string text,string endAction)
     {
         minutes=Math.Clamp(minutes,1,24*60);
-        var seconds=minutes*60;
         var label=string.IsNullOrWhiteSpace(text)?"Осталось времени":"Осталось времени — "+text;
+        StartOverlay(()=>new OverlayForm(label,minutes*60,"timer",endAction));
+    }
 
-        void Create()
+    private static void StartOverlay(Func<Form> factory)
+    {
+        lock(Gate)
         {
-            lock(Gate)
-            {
-                try{ current?.Close(); }catch{}
-                current=new OverlayForm(label,seconds,"timer",endAction);
-                current.Show();
-            }
+            var t=new Thread(()=>{
+                Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+                Application.Run(factory());
+            });
+            t.SetApartmentState(ApartmentState.STA);
+            t.IsBackground=true;
+            t.Start();
         }
-
-        var form=Application.OpenForms.Cast<Form>().FirstOrDefault();
-        if(form!=null && form.InvokeRequired) form.BeginInvoke((Action)Create); else Create();
     }
 }
 
@@ -68,7 +52,7 @@ internal sealed class OverlayForm:Form
         if(mode.Equals("fullscreen",StringComparison.OrdinalIgnoreCase))
         {
             Bounds=SystemInformation.VirtualScreen;
-            Opacity=0.96;
+            Opacity=0.97;
         }
         else
         {
@@ -104,7 +88,11 @@ internal sealed class OverlayForm:Form
         timer.Stop();
 
         if(endAction.Equals("lock",StringComparison.OrdinalIgnoreCase))
+        {
             Native.LockWorkStation();
+            Close();
+            return;
+        }
 
         if(endAction.Equals("fullscreen",StringComparison.OrdinalIgnoreCase))
         {
