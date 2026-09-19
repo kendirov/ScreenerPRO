@@ -14,7 +14,7 @@
 
     <application
         android:allowBackup="false"
-        android:label="Kids Device Hub"
+        android:label="Family Device Hub"
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
