@@ -5,10 +5,18 @@ namespace Kendirov.KirillDeviceHub;
 
 internal static class Program
 {
+    private static Mutex? SingleInstanceMutex;
+
     [STAThread]
     static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
+
+        if (args.Contains("--agent", StringComparer.OrdinalIgnoreCase) || Installer.IsInstalledPath())
+        {
+            SingleInstanceMutex = new Mutex(true, @"Global\KendirovFamilyDeviceHubKirill", out var createdNew);
+            if (!createdNew) return;
+        }
 
         if (args.Contains("--install", StringComparer.OrdinalIgnoreCase))
         {
