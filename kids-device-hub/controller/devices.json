@@ -5,7 +5,7 @@
       "name": "Roma Lenovo Tab",
       "kind": "android_http",
       "host": "100.97.19.59",
-      "port": 8766,
+      "port": 8767,
       "transport": "tailscale",
       "profile": "child-tablet",
       "capabilities": [
