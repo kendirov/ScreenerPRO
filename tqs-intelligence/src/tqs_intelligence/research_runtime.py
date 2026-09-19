@@ -40,6 +40,7 @@ class ResearchRuntime:
         self._worker_states: dict[int,dict[str,Any]] = {}
         self._active_jobs: dict[int,dict[str,Any]] = {}
         self._planner_lock: asyncio.Lock | None = None
+        self._planner_task: asyncio.Task | None = None
         self._resource_snapshot: dict[str,Any] = {'cpu_percent':0.0,'ram_percent':0.0,'throttled':False}
         self._auto_history: dict[str,Any] = {
             'enabled': True, 'target_total': 0, 'known_total': 0, 'done': 0,
@@ -388,6 +389,21 @@ class ResearchRuntime:
             'ts_ms':int(time.time()*1000),
         }
 
+    async def _planner_loop(self) -> None:
+        while True:
+            try:
+                state=self.control.get()
+                if state.heavy_allowed:
+                    assert self._planner_lock is not None
+                    async with self._planner_lock:
+                        await self._autoplan_idle()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self.last_error=f'auto planner: {exc}'
+                self.last_action=f'Автопилот: ошибка планировщика — {str(exc)[:180]}'
+            await asyncio.sleep(5)
+
     async def _worker_loop(self, worker_id: int) -> None:
         while True:
             state=self.control.get()
@@ -463,11 +479,21 @@ class ResearchRuntime:
             asyncio.create_task(self._worker_loop(i),name=f'tqs-research-worker-{i+1}')
             for i in range(self._max_worker_slots)
         ]
+        self._planner_task=asyncio.create_task(self._planner_loop(),name='tqs-research-planner')
         try:
             while True:
                 self._refresh_resource_snapshot()
                 await asyncio.sleep(2)
         finally:
+            if self._planner_task and not self._planner_task.done():
+                self._planner_task.cancel()
+                try:
+                    await self._planner_task
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    pass
+            self._planner_task=None
             for task in self._worker_tasks:
                 if not task.done():
                     task.cancel()
