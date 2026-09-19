@@ -69,7 +69,8 @@ def save_shot(name,data):
     return str(latest)
 
 def run(name,cmd,a):
-    d=device(name)
+    device_key=resolve_device_key(name)
+    d=load_registry()["devices"][device_key]
     try:
         if cmd in ("status","health"): out=request(device_key,d,"/status")
         elif cmd=="info": out=request(device_key,d,"/device-info")
