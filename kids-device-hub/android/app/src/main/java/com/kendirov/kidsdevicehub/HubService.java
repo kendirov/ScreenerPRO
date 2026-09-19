@@ -5,7 +5,6 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
-import androidx.annotation.Nullable;
 
 public class HubService extends Service {
     private HubApiServer server;
@@ -26,5 +25,5 @@ public class HubService extends Service {
     }
 
     @Override public void onDestroy() { if(server!=null) server.close(); super.onDestroy(); }
-    @Nullable @Override public IBinder onBind(Intent intent) { return null; }
+    @Override public IBinder onBind(Intent intent) { return null; }
 }
