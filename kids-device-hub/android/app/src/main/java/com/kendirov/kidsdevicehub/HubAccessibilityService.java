@@ -38,6 +38,31 @@ public class HubAccessibilityService extends AccessibilityService {
         return dispatchGesture(g, null, null);
     }
 
+    public boolean drag(float x1,float y1,float x2,float y2,long holdMs,long moveMs) {
+        Path hold = new Path(); hold.moveTo(x1,y1);
+        GestureDescription.StrokeDescription first =
+                new GestureDescription.StrokeDescription(hold,0,Math.max(300,holdMs),true);
+        final boolean[] ok={false};
+        CountDownLatch done=new CountDownLatch(1);
+        GestureDescription g1=new GestureDescription.Builder().addStroke(first).build();
+        boolean started=dispatchGesture(g1,new GestureResultCallback(){
+            @Override public void onCompleted(GestureDescription gestureDescription) {
+                Path move=new Path(); move.moveTo(x1,y1); move.lineTo(x2,y2);
+                GestureDescription.StrokeDescription second=
+                        first.continueStroke(move,0,Math.max(150,moveMs),false);
+                GestureDescription g2=new GestureDescription.Builder().addStroke(second).build();
+                dispatchGesture(g2,new GestureResultCallback(){
+                    @Override public void onCompleted(GestureDescription g){ok[0]=true;done.countDown();}
+                    @Override public void onCancelled(GestureDescription g){done.countDown();}
+                },null);
+            }
+            @Override public void onCancelled(GestureDescription gestureDescription){done.countDown();}
+        },null);
+        if(!started) return false;
+        try { done.await(5,TimeUnit.SECONDS); } catch(InterruptedException ignored) {}
+        return ok[0];
+    }
+
     public boolean setFocusedText(String text) {
         AccessibilityNodeInfo root = getRootInActiveWindow();
         if (root == null) return false;
