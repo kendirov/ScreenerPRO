@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import time
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,6 +29,56 @@ class DataLake:
         self.manifests_root = self.root / 'manifests'
         for p in (self.history_root, self.exports_root, self.manifests_root):
             p.mkdir(parents=True, exist_ok=True)
+        self.quick_stats_cache_path = self.manifests_root / 'quick-stats.json'
+        self._quick_stats_cache = self._load_quick_stats_cache()
+
+    def _empty_quick_stats(self) -> dict[str, object]:
+        usage = shutil.disk_usage(self.root)
+        metric_root = self.root / 'metrics'
+        return {
+            'root': str(self.root.resolve()),
+            'files': None,
+            'rows': None,
+            'row_count_known': False,
+            'bad_files': [],
+            'metrics': {
+                'root': str(metric_root.resolve()),
+                'files': None,
+                'rows': None,
+                'row_count_known': False,
+                'metrics': {},
+                'metric_files': {},
+                'bad_files': [],
+                'stats_mode': 'cached-empty',
+            },
+            'all_rows': None,
+            'free_gb': round(usage.free / (1024**3), 2),
+            'total_gb': round(usage.total / (1024**3), 2),
+            'stats_mode': 'cached-empty',
+            'cached_at_ms': None,
+        }
+
+    def _load_quick_stats_cache(self) -> dict[str, object]:
+        try:
+            payload = json.loads(self.quick_stats_cache_path.read_text(encoding='utf-8'))
+            if isinstance(payload, dict):
+                payload['stats_mode'] = 'cached'
+                return payload
+        except Exception:
+            pass
+        return self._empty_quick_stats()
+
+    def cached_quick_stats(self) -> dict[str, object]:
+        return dict(self._quick_stats_cache)
+
+    def _save_quick_stats_cache(self, payload: dict[str, object]) -> None:
+        self._quick_stats_cache = dict(payload)
+        try:
+            tmp = self.quick_stats_cache_path.with_suffix('.tmp.json')
+            tmp.write_text(json.dumps(payload, ensure_ascii=False, default=str), encoding='utf-8')
+            tmp.replace(self.quick_stats_cache_path)
+        except Exception:
+            pass
 
     def candle_path(self, provider: str, canonical_id: str, interval: str, year: int, month: int) -> Path:
         return self.history_root / f'provider={_safe(provider)}' / f'instrument={_safe(canonical_id)}' / f'interval={_safe(interval)}' / f'year={year:04d}' / f'month={month:02d}' / 'candles.parquet'
@@ -101,12 +152,22 @@ class DataLake:
             return {'first_ms': None, 'last_ms': None, 'rows': 0}
 
     def quick_stats(self) -> dict[str, object]:
-        """Cheap operational stats for frequent runtime health checks.
+        """Return cached operational stats without recursively scanning the lake."""
+        payload = self.cached_quick_stats()
+        try:
+            usage = shutil.disk_usage(self.root)
+            payload['free_gb'] = round(usage.free / (1024**3), 2)
+            payload['total_gb'] = round(usage.total / (1024**3), 2)
+        except Exception:
+            pass
+        payload['stats_mode'] = 'cached'
+        return payload
 
-        This deliberately avoids reading every Parquet footer/row group. Full
-        verification remains available through verify() for explicit deep
-        diagnostics. Runtime Audit runs every few minutes and must never scan
-        the entire historical lake just to prove that the node is alive.
+    def refresh_quick_stats(self) -> dict[str, object]:
+        """Refresh the cached file-count summary.
+
+        This may scan a large Data Lake and is intentionally designed for a
+        background worker, never for a request critical path.
         """
         history_files = list(self.history_root.glob('**/*.parquet'))
         usage = shutil.disk_usage(self.root)
@@ -125,9 +186,9 @@ class DataLake:
             'metrics': {},
             'metric_files': metric_files,
             'bad_files': [],
-            'stats_mode': 'quick',
+            'stats_mode': 'cached',
         }
-        return {
+        payload = {
             'root': str(self.root.resolve()),
             'files': len(history_files),
             'rows': None,
@@ -137,8 +198,11 @@ class DataLake:
             'all_rows': None,
             'free_gb': round(usage.free / (1024**3), 2),
             'total_gb': round(usage.total / (1024**3), 2),
-            'stats_mode': 'quick',
+            'stats_mode': 'cached',
+            'cached_at_ms': int(time.time() * 1000),
         }
+        self._save_quick_stats_cache(payload)
+        return dict(payload)
 
     def verify(self) -> dict[str, object]:
         files = list(self.history_root.glob('**/*.parquet'))

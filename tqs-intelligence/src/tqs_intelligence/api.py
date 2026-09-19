@@ -274,10 +274,22 @@ async def lifespan(_: FastAPI):
         except Exception as exc:
             service.log("warning", "remote-node", "Post-update server contract repair error", error=str(exc)[:500])
 
+    async def refresh_lake_stats_cache() -> None:
+        while True:
+            try:
+                await asyncio.to_thread(lake.refresh_quick_stats)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                service.log("warning", "lake-stats", "Data Lake quick-stats refresh failed", error=str(exc)[:500])
+            await asyncio.sleep(600)
+
     repair_task = asyncio.create_task(repair_remote_contract(), name="tqs-remote-contract-repair")
+    lake_stats_task = asyncio.create_task(refresh_lake_stats_cache(), name="tqs-lake-stats-cache")
     yield
-    if not repair_task.done():
-        repair_task.cancel()
+    for task in (repair_task, lake_stats_task):
+        if not task.done():
+            task.cancel()
     await ai_control.stop(); await pulse_service.stop(); await lchi_service.stop(); await account_service.stop(); await paper_service.stop(); await research_runtime.stop(); await service.stop(); await http.aclose()
 
 
