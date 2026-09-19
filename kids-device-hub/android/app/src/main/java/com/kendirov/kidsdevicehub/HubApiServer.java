@@ -144,6 +144,7 @@ public class HubApiServer {
         }
         if(path.equals("/install-url") || path.equals("/update")) {
             String url=q.getOrDefault("url","");
+            if(path.equals("/update") && url.isEmpty()) url=MainActivity.STABLE_APK_URL;
             if(url.isEmpty()){sendJson(c,"{\"ok\":false,\"error\":\"url_required\"}");return;}
             ApkInstaller.installFromUrl(context,url);
             sendJson(c,"{\"ok\":true,\"installer\":\""+esc(ApkInstaller.status())+"\"}"); return;
