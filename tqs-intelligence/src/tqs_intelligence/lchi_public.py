@@ -442,7 +442,9 @@ class LchiPublicService:
         self.catalog_cycles = 0
         self.portfolio_cycles = 0
         self._stats_cache = store.stats()
-        self._deals_stats_cache = deals_collector.stats() if deals_collector is not None else {}
+        # Do not scan the potentially very large public-trades table on API import.
+        # The collector refreshes this cache asynchronously after the server is listening.
+        self._deals_stats_cache = {}
 
     @property
     def results_url(self) -> str:
