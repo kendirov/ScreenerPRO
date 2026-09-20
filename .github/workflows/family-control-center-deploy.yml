@@ -1,0 +1,39 @@
+name: Family Control Center Deploy
+
+on:
+  push:
+    branches: [chatgpt/family-control-center-2026-09-20]
+    paths:
+      - "family-control-center/**"
+      - ".github/workflows/family-control-center-deploy.yml"
+
+concurrency:
+  group: family-control-center-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Ensure Vercel project
+        working-directory: family-control-center
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel@59.23.2 project add family-control-center --scope artem-kendirovs-projects --token "$VERCEL_TOKEN" || true
+
+      - name: Deploy production
+        working-directory: family-control-center
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel@59.23.2 deploy --prod --yes --project family-control-center --scope artem-kendirovs-projects --token "$VERCEL_TOKEN" \
+            -b NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co \
+            -b NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh \
+            -e NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co \
+            -e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh
