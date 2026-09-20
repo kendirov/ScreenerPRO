@@ -104,16 +104,22 @@ function aggregateIntradayBars(bars: NormalizedIntradayBar[], bucketSize: number
 }
 
 async function fetchRawIntradayBars(secid: string, moexInterval: 1 | 10 | 60): Promise<NormalizedIntradayBar[]> {
-  const today = moscowDateKey();
-  const payload = moexPayloadSchema.parse(
-    await moexGetJson(stockCandlesUrl(secid, today, today, moexInterval), 60),
-  );
-  const table = payload.candles;
-  if (!table?.data?.length) return [];
+  // Weekend / holiday safe: walk backwards until the latest session with candles.
+  // This keeps the instrument workspace useful even when the market is closed.
+  for (let daysBack = 0; daysBack <= 7; daysBack += 1) {
+    const d = new Date(Date.now() - daysBack * 24 * 3600 * 1000);
+    const day = moscowDateKey(d);
+    const payload = moexPayloadSchema.parse(
+      await moexGetJson(stockCandlesUrl(secid, day, day, moexInterval), 60),
+    );
+    const table = payload.candles;
+    if (!table?.data?.length) continue;
 
-  return mapIntradayCandlesBars(table.columns, table.data)
-    .filter((bar) => bar.close != null && Number.isFinite(bar.close))
-    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    return mapIntradayCandlesBars(table.columns, table.data)
+      .filter((bar) => bar.close != null && Number.isFinite(bar.close))
+      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  }
+  return [];
 }
 
 async function fetchIntradayExpandedSeries(

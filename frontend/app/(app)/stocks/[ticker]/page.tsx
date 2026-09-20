@@ -1,35 +1,13 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { InstrumentLayout } from "@/components/instrument/instrument-layout";
-import { instrumentDetails } from "@/lib/mock/screener";
-import { tickerSchema } from "@/lib/validation/schemas";
+import { InstrumentResearchChart } from "@/components/tqs/instrument-research-chart";
 import { getInstrumentDetail } from "@/lib/server/services/screener-query";
-import type { InstrumentDetail } from "@/lib/types/market";
+import { tickerSchema } from "@/lib/validation/schemas";
+import { tradingFormat } from "@/lib/formatters/trading";
 
-export default async function StockTickerPage({
-  params,
-}: {
-  params: Promise<{ ticker: string }>;
-}) {
-  const { ticker } = await params;
-  const parsed = tickerSchema.safeParse(ticker.toUpperCase());
-  if (!parsed.success) notFound();
-
-  const backendDetail = await getInstrumentDetail(parsed.data);
-  const detail: InstrumentDetail | undefined = backendDetail
-    ? {
-        ticker: backendDetail.ticker,
-        market: backendDetail.assetClass,
-        title: backendDetail.shortName,
-        description: `Инструмент MOEX (${backendDetail.assetClass === "stock" ? "акция" : "фьючерс"}) из нормализованного backend-потока.`,
-        metrics: [
-          { label: "Цена", value: backendDetail.snapshot?.lastPrice ?? 0, suffix: "", delta: backendDetail.snapshot?.percentChange ?? undefined },
-          { label: "Объем", value: backendDetail.snapshot?.volume ?? 0 },
-          { label: "Оборот", value: backendDetail.snapshot?.turnover ?? 0 },
-          { label: "In-Play Score", value: backendDetail.metrics?.inPlayScore ?? 0 },
-        ],
-      }
-    : instrumentDetails[parsed.data];
-  if (!detail) notFound();
-
-  return <InstrumentLayout detail={detail} />;
+export default async function StockTickerPage({params}:{params:Promise<{ticker:string}>}){
+ const {ticker}=await params; const parsed=tickerSchema.safeParse(ticker.toUpperCase()); if(!parsed.success)notFound(); const d=await getInstrumentDetail(parsed.data); if(!d)notFound(); const s=d.snapshot;
+ return <div className="space-y-3"><div className="flex flex-wrap items-end justify-between gap-3"><div><div className="flex items-baseline gap-3"><h1 className="lab-type-display text-2xl">{d.ticker}</h1><span className="text-sm text-lab-muted">{d.shortName}</span></div><p className="mt-1 text-xs text-lab-dim">MOEX · исследовательский workspace · цена + объём + аномалии</p></div><Link href="/anomalies" className="rounded-md border border-lab-border px-2.5 py-1.5 text-[10px] text-lab-cyan">Все аномалии →</Link></div>
+ <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">{[["Цена",s?.lastPrice!=null?tradingFormat.formatDynamicPrice(s.lastPrice):"—"],["Изменение",s?.percentChange!=null?tradingFormat.formatSignedPercent(s.percentChange):"—"],["Объём",s?.volume!=null?tradingFormat.formatInteger(s.volume):"—"],["Оборот",s?.turnover!=null?tradingFormat.formatTurnoverRub(s.turnover):"—"],["In Play",d.metrics?.inPlayScore!=null?String(Math.round(d.metrics.inPlayScore)):"—"]].map(([a,b])=><div key={a} className="rounded-xl border border-lab-border/50 bg-lab-surface-1/40 p-3"><div className="font-mono text-lg">{b}</div><div className="text-[9px] uppercase tracking-wider text-lab-dim">{a}</div></div>)}</div>
+ <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]"><div className="rounded-xl border border-lab-border/50 bg-lab-surface-1/25 p-3"><InstrumentResearchChart ticker={d.ticker}/></div><aside className="space-y-2"><div className="rounded-xl border border-lab-border/50 bg-lab-surface-1/35 p-3"><h2 className="text-[10px] uppercase tracking-wider text-lab-muted">Слои исследования</h2><div className="mt-3 space-y-2 text-xs"><p>✓ Свечи MOEX</p><p>✓ Объём</p><p>✓ Автоаномалии объёма ≥2× baseline</p><p className="text-lab-dim">OI/FUTOI, участники, новости и strategy events подключаются по мере появления данных.</p></div></div><div className="rounded-xl border border-lab-border/50 bg-lab-surface-1/35 p-3"><h2 className="text-[10px] uppercase tracking-wider text-lab-muted">Исследовательский цикл</h2><p className="mt-2 text-xs leading-relaxed text-lab-dim">Увидеть аномалию → открыть эпизод → сравнить аналоги → сформировать гипотезу → отправить в Strategy Lab.</p></div></aside></div></div>
 }

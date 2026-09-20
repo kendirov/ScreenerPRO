@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   BookOpen,
   CalendarDays,
   CandlestickChart,
@@ -17,6 +18,7 @@ import {
   ArrowLeftRight,
   Newspaper,
   NotebookPen,
+  Microscope,
   Percent,
   TrendingUp,
   UserCircle2,
@@ -71,7 +73,10 @@ export const sidebarMainNavGroups: SidebarNavGroup[] = [
     id: "market",
     title: "Рынок",
     items: [
+      { href: "/system", label: "Система", icon: Activity, visibility: "visible" },
       { href: "/screener", label: "Рынок", icon: ChartColumn, visibility: "visible" },
+      { href: "/anomalies", label: "Аномалии", icon: AlertTriangle, visibility: "visible" },
+      { href: "/episodes", label: "Исследования", icon: Microscope, visibility: "visible" },
       { href: "/screener/stocks", label: "Акции", icon: CandlestickChart, visibility: "visible" },
       { href: "/screener/futures", label: "Фьючерсы", icon: ChartCandlestick, visibility: "visible" },
       { href: "/screener/bitget", label: "Bitget", icon: CircleDollarSign, visibility: "visible" },
