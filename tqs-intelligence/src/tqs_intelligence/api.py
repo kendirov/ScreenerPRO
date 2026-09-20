@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import mimetypes
 import os
 import time
 from uuid import uuid4
@@ -11,8 +12,7 @@ from typing import Any, Literal
 import psutil
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -294,8 +294,37 @@ async def lifespan(_: FastAPI):
 
 
 STATIC = Path(__file__).with_name('static')
+_STATIC_ASSETS: dict[str, tuple[bytes, str]] = {}
+for _asset in STATIC.rglob('*'):
+    if _asset.is_file():
+        _key = _asset.relative_to(STATIC).as_posix()
+        _STATIC_ASSETS[_key] = (
+            _asset.read_bytes(),
+            mimetypes.guess_type(_asset.name)[0] or 'application/octet-stream',
+        )
+
 app = FastAPI(title='TQS Intelligence & Strategy Machine', version=__version__, lifespan=lifespan)
-app.mount('/static', StaticFiles(directory=str(STATIC)), name='static')
+
+
+def _static_response(asset_path: str) -> Response:
+    item = _STATIC_ASSETS.get(asset_path)
+    if item is None:
+        raise HTTPException(status_code=404, detail='Static asset not found')
+    body, media_type = item
+    return Response(
+        content=body,
+        media_type=media_type,
+        headers={
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+        },
+    )
+
+
+@app.get('/static/{asset_path:path}', include_in_schema=False)
+async def static_asset(asset_path: str):
+    return _static_response(asset_path)
 
 
 @app.middleware('http')
@@ -367,7 +396,8 @@ def _capabilities() -> list[dict[str, object]]:
 
 
 @app.get('/', include_in_schema=False)
-async def dashboard(): return FileResponse(STATIC / 'index.html', headers={'Cache-Control':'no-store, no-cache, must-revalidate, max-age=0'})
+async def dashboard():
+    return _static_response('index.html')
 
 
 @app.get('/api/health')
