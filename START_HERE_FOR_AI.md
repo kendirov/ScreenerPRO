@@ -13,7 +13,7 @@ Current conceptual modules:
 - **TQS Launcher** — Windows control/update/health/log/diagnostic surface for the local engine plus one-click Remote Node setup;
 - **TQS Remote Node** — office Windows as an always-on private server: boot autostart, Supervisor recovery, safe auto-update and Tailscale Serve access for Mac/phone;
 - **TQS Runtime Audit / AI Bridge** — `/api/audit` plus a sanitized Google Drive heartbeat so an AI session can verify what the private node is actually collecting without joining the tailnet;
-- **TQS Screener / Cockpit** — trader-facing web/UI layer; existing ScreenerPRO frontend evolves into this role;
+- **TQS Screener / Cockpit** — trader-facing web/UI layer. CURRENT PRIMARY owner-facing UI is the TQS Cockpit bundled with `tqs-intelligence` and served at `http://127.0.0.1:8787/`. The separate ScreenerPRO/Next.js frontend on `:3000` remains a development/secondary surface and may evolve into or contribute to the cockpit, but must not be treated as the current primary UI without an explicit owner decision;
 - **TQS Knowledge** — human-readable Google Drive knowledge + future structured index/graph;
 - **TQS Research / Strategy Lab** — reproducible hypotheses, replay, validation and strategies;
 - **TQS Briefing / Publishing** — briefings, streams, course/material outputs over the same canonical intelligence;

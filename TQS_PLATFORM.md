@@ -39,8 +39,8 @@ Purpose: give the owner and future ChatGPT sessions a verifiable view of source 
 A ChatGPT session must not claim live-node visibility until it has actually read a fresh Drive audit.
 
 ### TQS Screener / Cockpit
-Trader-facing visual/action layer. The existing ScreenerPRO frontend evolves into this module.
-Responsibilities: market pulse, In Play, universal instrument drill-down, anomalies/episodes, accounts/positions, research/strategy results, briefings and operator actions. It should consume canonical TQS APIs/objects rather than re-implementing collection or research logic.
+Trader-facing visual/action layer. CURRENT PRIMARY owner-facing UI is the TQS Cockpit bundled in `tqs-intelligence/src/tqs_intelligence/static` and served by the TQS Intelligence runtime at `http://127.0.0.1:8787/`; the same origin exposes canonical `/api/*` endpoints. The separate ScreenerPRO/Next.js frontend on `http://127.0.0.1:3000` is a development/secondary surface inside the monorepo. It may contribute future UI work, but it must not replace or be presented as the primary TQS Trading Intelligence interface without an explicit owner decision.
+Responsibilities: market pulse, In Play, universal instrument drill-down, anomalies/episodes, accounts/positions, research/strategy results, briefings and operator actions. All UI surfaces must consume canonical TQS APIs/objects rather than re-implementing collection or research logic.
 
 ### TQS Knowledge
 Human-readable and structured memory layer.
