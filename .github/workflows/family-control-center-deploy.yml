@@ -6,6 +6,11 @@ on:
     paths:
       - "family-control-center/**"
       - ".github/workflows/family-control-center-deploy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "family-control-center/**"
+      - ".github/workflows/family-control-center-deploy.yml"
 
 concurrency:
   group: family-control-center-production
