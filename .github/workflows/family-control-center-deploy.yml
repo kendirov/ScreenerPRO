@@ -1,4 +1,4 @@
-name: Family Control Center Deploy
+name: Family Control Center Production
 
 on:
   push:
@@ -14,6 +14,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_UlcqTRuXrJX6nnzszbKGT3QD
+      VERCEL_PROJECT_ID: prj_GPr75GrSb7Hqc7LvnUdBxl07Y5Jo
     steps:
       - uses: actions/checkout@v4
 
@@ -21,19 +25,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Ensure Vercel project
-        working-directory: family-control-center
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx vercel@59.23.2 project add family-control-center --scope artem-kendirovs-projects --token "$VERCEL_TOKEN" || true
-
-      - name: Deploy production
-        working-directory: family-control-center
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Configure Family production project
         run: |
-          npx vercel@59.23.2 deploy --prod --yes --project family-control-center --scope artem-kendirovs-projects --token "$VERCEL_TOKEN" \
-            -b NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co \
-            -b NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh \
-            -e NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co \
-            -e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh
+          curl --fail --silent --show-error -X PATCH             "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN"             -H "Content-Type: application/json"             --data '{"framework":"nextjs"}' > /dev/null
+
+      - name: Deploy Family Control Center
+        working-directory: family-control-center
+        run: |
+          npx vercel@59.23.2 deploy --prod --yes --force --token "$VERCEL_TOKEN"             -b NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co             -b NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh             -e NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co             -e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh
