@@ -1,0 +1,51 @@
+"use client";
+
+import * as React from "react";
+import { Copy, Download, RefreshCw } from "lucide-react";
+import type { AiDataExport, AiDataOptions } from "@/lib/ai-data/contracts";
+
+const STORAGE = "screenerpro.ai-data.options.v1";
+const defaults: AiDataOptions = { mode:"market", universe:"all", depth:"compact", history:"current", shortlist:10, format:"ai-text", tickers:[] };
+const choices = {
+  mode: [["market","Рынок сейчас"],["pumps","Пампы и импульсы"],["weakness","Падения и слабость"],["technical","Техничность"],["briefing","Брифинг"],["close","Итоги сессии"]],
+  universe: [["all","Все акции"],["liquid","Ликвидные"],["in-play","В игре"],["money","Где деньги"],["shots","Прострелы"],["selected","Выбранные"]],
+  depth: [["compact","Компактно"],["detailed","Подробно"],["maximum","Максимум"]],
+  history: [["current","Текущая сессия"],["previous","+ 1 прошлая"],["five","+ 5 прошлых"],["profile20","20-дневный профиль"]],
+} as const;
+
+function download(content: string, name: string, mime: string) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([content],{type:mime})); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+
+export function AiDataTerminalPage() {
+  const [options,setOptions] = React.useState<AiDataOptions>(() => { try { const raw = typeof window === "undefined" ? null : localStorage.getItem(STORAGE); return raw ? { ...defaults, ...JSON.parse(raw) } : defaults; } catch { return defaults; } }); const [data,setData] = React.useState<AiDataExport | null>(null); const [tab,setTab] = React.useState<"overview"|"table"|"text"|"json">("overview"); const [loading,setLoading] = React.useState(true); const [notice,setNotice] = React.useState<string | null>(null);
+  const generate = React.useCallback(async (next = options) => { setLoading(true); try { const r=await fetch("/api/ai-data/export",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(next)}); const body=await r.json(); if(!r.ok) throw new Error(body.error ?? "Экспорт недоступен"); setData(body); } catch(e) { setNotice(e instanceof Error ? e.message : "Ошибка экспорта"); } finally { setLoading(false); } },[options]);
+  React.useEffect(()=>{ fetch("/api/ai-data/export",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(options)}).then(async (r)=>{const body=await r.json(); if(!r.ok) throw new Error(body.error ?? "Экспорт недоступен"); return body;}).then(setData).catch((e:unknown)=>setNotice(e instanceof Error ? e.message : "Ошибка экспорта")).finally(()=>setLoading(false)); },[options]);
+  const set = <K extends keyof AiDataOptions>(key:K,value:AiDataOptions[K]) => setOptions((prev)=>{const next={...prev,[key]:value}; localStorage.setItem(STORAGE,JSON.stringify(next)); return next;});
+  const copy = async (text:string) => { try { await navigator.clipboard.writeText(text); setNotice("Скопировано"); } catch { const el=document.createElement("textarea"); el.value=text; document.body.append(el); el.select(); document.execCommand("copy"); el.remove(); setNotice("Скопировано"); } setTimeout(()=>setNotice(null),1800); };
+  const content = data ? (tab === "text" ? data.formats.aiText : tab === "json" ? data.formats.json : "") : "";
+  const size = data ? data.formats.aiText.length : 0;
+  return <main className="mx-auto w-full max-w-[1500px] space-y-4 px-3 py-4 sm:px-5 lg:px-7">
+    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.07] pb-3">
+      <div><h1 className="font-mono text-base font-medium tracking-wide text-zinc-100">AI Data</h1><p className="mt-1 text-xs text-zinc-500">Экспорт рынка для анализа в ChatGPT</p></div>
+      <div className="font-mono text-[10px] text-zinc-500">{data ? `${data.source.toUpperCase()} · ${new Intl.DateTimeFormat("ru-RU",{timeZone:"Europe/Moscow",dateStyle:"short",timeStyle:"medium"}).format(new Date(data.generatedAt))} МСК` : "Загрузка…"}</div>
+    </header>
+    {data?.stale ? <div className="border border-amber-800/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">Данные из stale cache: не используйте как live-снимок.</div> : null}
+    <section className="grid gap-3 lg:grid-cols-[310px_minmax(0,1fr)]">
+      <aside className="space-y-3 rounded-lg border border-white/[0.08] bg-zinc-950/45 p-3">
+        {(Object.entries(choices) as Array<[keyof typeof choices, readonly (readonly [string,string])[]]>).map(([key,items])=><label key={key} className="block"><span className="mb-1 block text-[10px] uppercase tracking-[.12em] text-zinc-600">{{mode:"Режим",universe:"Universe",depth:"Глубина",history:"История"}[key]}</span><select value={String(options[key])} disabled={key === "history"} onChange={(e)=>set(key,e.target.value as never)} className="w-full rounded border border-white/[.1] bg-zinc-900 px-2 py-2 text-xs text-zinc-200 disabled:cursor-not-allowed disabled:opacity-45">{key === "history" ? <option>Только live · история v2</option> : items.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>{key === "history" ? <span className="mt-1 block text-[10px] leading-snug text-zinc-600">5m/часовая история и deep candles появятся после durable storage.</span> : null}</label>)}
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-[.12em] text-zinc-600">Shortlist кандидатов</span><select value={options.shortlist} onChange={e=>set("shortlist",Number(e.target.value) as 0|10|20|30)} className="w-full rounded border border-white/[.1] bg-zinc-900 px-2 py-2 text-xs text-zinc-200"><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={0}>Отключено</option></select></label>
+        <button onClick={()=>void generate()} disabled={loading} className="flex w-full items-center justify-center gap-2 rounded border border-cyan-800/45 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-200 hover:bg-cyan-950/35 disabled:opacity-50"><RefreshCw className="h-3.5 w-3.5"/>Обновить</button>
+      </aside>
+      <section className="min-w-0 rounded-lg border border-white/[0.08] bg-zinc-950/45">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.07] px-3 py-2"><div className="flex gap-1">{[["overview","Обзор"],["table","Таблица"],["text","AI Text"],["json","JSON"]].map(([id,label])=><button key={id} onClick={()=>setTab(id as typeof tab)} className={`rounded px-2 py-1 text-xs ${tab===id?"bg-zinc-800 text-zinc-100":"text-zinc-500 hover:text-zinc-300"}`}>{label}</button>)}</div><span className="font-mono text-[10px] text-zinc-600">{size.toLocaleString("ru-RU")} символов · ≈ {Math.ceil(size/4).toLocaleString("ru-RU")} токенов</span></div>
+        {loading ? <div className="p-6 text-sm text-zinc-500">Собираю live-снимок MOEX…</div> : null}
+        {!loading && data && tab === "overview" ? <div className="grid gap-3 p-3 sm:grid-cols-3"><Metric label="Покрытие" value={`${data.quality.covered} акций`}/><Metric label="История" value="v1: live"/><Metric label="Shortlist" value={`${data.shortlist.length} тикеров`}/><div className="sm:col-span-3 rounded border border-white/[.06] bg-black/15 p-2 text-xs leading-relaxed text-zinc-500">{data.quality.notes[0]} Deep candles и 5m/часовые агрегаты появятся только после durable snapshots v2: текущий проект не хранит их надёжно.</div></div> : null}
+        {!loading && data && tab === "table" ? <div className="max-h-[560px] overflow-auto"><table className="w-full min-w-[760px] text-left text-xs"><thead className="sticky top-0 bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-600"><tr>{["Тикер","День","Vol x","Оборот","Bucket","Ситуация","Качество"].map(x=><th key={x} className="px-3 py-2 font-medium">{x}</th>)}</tr></thead><tbody>{data.stocks.map(s=><tr key={s.ticker} className="border-t border-white/[.04] text-zinc-300"><td className="px-3 py-2 font-mono text-zinc-100">{s.ticker}</td><td className="px-3 py-2">{s.percentChangeDay?.toFixed(2) ?? "—"}%</td><td className="px-3 py-2">{s.volumeRatioNow?.toFixed(2) ?? "—"}</td><td className="px-3 py-2">{s.currentTurnoverRub ? `${(s.currentTurnoverRub/1e6).toFixed(0)}m` : "—"}</td><td className="px-3 py-2">{s.marketPriorityBucket}</td><td className="px-3 py-2">{s.situation ?? "—"}</td><td className="px-3 py-2 text-zinc-500">{s.dataQuality}</td></tr>)}</tbody></table></div> : null}
+        {!loading && data && (tab === "text" || tab === "json") ? <textarea readOnly value={content} className="h-[560px] w-full resize-none bg-black/10 p-3 font-mono text-[11px] leading-relaxed text-zinc-300 outline-none"/> : null}
+      </section>
+    </section>
+    <section className="flex flex-wrap gap-2"><button onClick={()=>data && void copy(data.formats.aiText)} disabled={!data} className="action"><Copy className="h-3.5 w-3.5"/>Скопировать запрос + данные</button><button onClick={()=>data && void copy(data.formats[data.options.format === "ai-text" ? "aiText" : data.options.format])} disabled={!data} className="action-muted"><Copy className="h-3.5 w-3.5"/>Скопировать только данные</button><button onClick={()=>data && download(data.formats.json,"screenerpro-ai-data.json","application/json")} disabled={!data} className="action-muted"><Download className="h-3.5 w-3.5"/>Скачать JSON</button><button onClick={()=>data && download(data.formats.csv,"screenerpro-ai-data.csv","text/csv")} disabled={!data} className="action-muted"><Download className="h-3.5 w-3.5"/>Скачать CSV</button></section>
+    {notice ? <div className="fixed bottom-5 right-5 rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 shadow-xl">{notice}</div> : null}
+    <style jsx>{`.action,.action-muted{display:flex;align-items:center;gap:.45rem;border-radius:.375rem;padding:.55rem .7rem;font-size:.75rem}.action{border:1px solid rgb(21 94 117 / .7);background:rgb(8 47 73 / .35);color:#bae6fd}.action-muted{border:1px solid rgb(63 63 70);color:#a1a1aa}.action:disabled,.action-muted:disabled{opacity:.4}`}</style>
+  </main>;
+}
+function Metric({label,value}:{label:string;value:string}) { return <div className="rounded border border-white/[.06] bg-black/10 p-3"><p className="text-[10px] uppercase tracking-wider text-zinc-600">{label}</p><p className="mt-1 font-mono text-sm text-zinc-200">{value}</p></div>; }

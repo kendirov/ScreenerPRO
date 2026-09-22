@@ -59,6 +59,7 @@
 | `/screener` | `app/(app)/screener/page.tsx` → `MarketCommandCenter` | **Пульт рынка** — cockpit: главный сигнал, фьючерс в фокусе, лента аномалий, пульс сессии (placeholder), радары, запуск лабораторий |
 | `/screener/stocks` | `app/(app)/screener/stocks/page.tsx` | Скринер акций |
 | `/screener/futures` | `app/(app)/screener/futures/page.tsx` | Скринер фьючерсов |
+| `/screener/ai-data` | `app/(app)/screener/ai-data/page.tsx` | AI Data Terminal: честный live-export MOEX для внешних AI; v1 без durable intraday history, см. `docs/AI_DATA_TERMINAL.md` |
 | `/stocks/[ticker]` | `app/(app)/stocks/[ticker]/page.tsx` | Карточка акции |
 | `/futures/[ticker]` | `app/(app)/futures/[ticker]/page.tsx` | Карточка фьючерса |
 | `/academy` | `app/(app)/academy/page.tsx` | Каталог академии (mock) |
