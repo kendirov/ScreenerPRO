@@ -1,64 +1,21 @@
-# AI_SESSION_STATE — Лаборатория рынка
+# AI_SESSION_STATE — ScreenerPRO
 
----
+**Дата:** 2026-08-13  
+**Ветка:** codex/screeneros-source-of-truth-audit-2026-08-13  
+**Статус:** document audit / draft PR; production не изменён.
 
-## Текущая задача
+## Сделано
 
-**Strategy Scanner v0 — round-levels small universe** (2026-07-08)
+- Зафиксирована модель Trading OS: ScreenerPRO + Knowledge/Training + отдельный Presentation OS.
+- Устаревшая ссылка на отсутствующую `feature/trading-os-platform` отмечена как invalid.
+- Подготовлены source-of-truth, architecture, data contracts, security rotation plan, Stocks Core slice и P0–P9 roadmap.
+- Зафиксирован ранее найденный Drive-сигнал о plaintext API key; значение не раскрывается. GitHub content search текущих файлов по ключевым именам совпадений не дал; full history scan ещё не выполнен.
+- Код, production, Drive-структура и секреты в этой ветке не менялись.
 
-- Цель: первый batch scan `round-levels` по small universe 5–10 тикеров
-- `frontend/lib/strategies/strategy-runner-types.ts` ✅
-- `frontend/lib/strategies/round-levels-strategy-runner.ts` ✅
-- `frontend/scripts/scan-round-levels-strategy.ts` ✅
-- JSON snapshot: `frontend/public/strategy-runs/round-levels-stocks-5m-10d.json` ✅
-- verify script: `frontend/scripts/verify-strategy-scan-result.ts` ✅
-- docs updated: `docs/STRATEGY_SCANNER_ARCHITECTURE.md`, `AI_SESSION_STATE.md` ✅
+## Следующий минимальный проверяемый slice
 
-**Фокус:** `/screener/strategies` only
+20 акций из Instrument Master → 10m cumulative turnover/NUMTRADES snapshot → same-time coverage fixture → deterministic Activity/Setup reasons → один inspector readback. До прохождения acceptance не добавлять DOM и не расширять universe.
 
-**Изменённые файлы:**
-- `frontend/lib/screener/strategies/strategy-candle-range.ts` (new)
-- `frontend/lib/server/services/strategy-candles.ts` (new)
-- `frontend/lib/hooks/use-strategy-candles.ts`
-- `frontend/lib/screener/strategies/strategy-candles.ts`
-- `frontend/app/api/screener/stocks/candles/route.ts`
-- `frontend/components/screener/strategies/strategy-lab-page.tsx`
-- `frontend/components/strategies/strategy-candlestick-chart.tsx`
-- `frontend/scripts/verify-strategy-candle-range.ts` (new)
-- `frontend/package.json`
-- `docs/STRATEGY_LAB_TARGET.md`
-- `docs/ROUND_LEVELS_STRATEGY.md`
-- `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
-- `frontend/lib/strategies/strategy-runner-types.ts`
-- `frontend/lib/strategies/round-levels-strategy-runner.ts`
-- `frontend/scripts/scan-round-levels-strategy.ts`
-- `frontend/scripts/verify-strategy-scan-result.ts`
-- `AI_SESSION_STATE.md`
+## Ограничения
 
----
-
-## Фокус продукта
-
-| Маршрут | Роль | Статус |
-|---------|------|--------|
-| `/screener/strategies` | **Strategy Lab** | v0 demo-ready |
-| `/screener/stocks` | Главный рабочий скринер | стабилен |
-| `/screener/futures` | Фьючерсы | не трогать |
-
-Документация: `docs/STRATEGY_LAB_TARGET.md`, `docs/ROUND_LEVELS_STRATEGY.md`, `docs/ZIGZAG_LITE_STRATEGY_LAYER.md`, `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
-
----
-
-## Dev commands
-
-```bash
-pnpm -C frontend dev:live
-pnpm -C frontend verify:round-levels
-pnpm -C frontend verify:round-buffer-direction
-pnpm -C frontend verify:zigzag-lite
-pnpm -C frontend strategy:scan:round-levels:v0
-pnpm -C frontend verify:strategy-scan-result
-pnpm -C frontend build
-```
-
-**Debug URL:** `/screener/strategies?screenerChartDebug=1`
+Локальное зеркало ChatGPT project не содержит Git checkout и sources; код проверен через GitHub connector. Preview/browser QA и live provider connectivity не запускались. Google Drive документы подготовлены как канонические кандидаты; их запись требует отдельного Drive write/readback шага.
