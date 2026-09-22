@@ -62,3 +62,8 @@ pnpm -C frontend build
 ```
 
 **Debug URL:** `/screener/strategies?screenerChartDebug=1`
+# 2026-07-21 — Design Foundation + Navigation Shell
+
+- Добавлены semantic design tokens с совместимыми `lab-*` aliases, desktop shell и mobile bottom navigation.
+- Создан `/relationships` как честный каталог market/event labs; данные и формулы скринеров не менялись.
+- AI Data link controlled by `NEXT_PUBLIC_AI_DATA_AVAILABLE=true`, потому что маршрут пока живёт в отдельной ветке.

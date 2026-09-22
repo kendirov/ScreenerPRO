@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Database, FlaskConical, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -11,7 +11,7 @@ import {
   type DraftNavBadge,
   type SidebarNavItem,
 } from "@/lib/constants/navigation";
-import { isDraftNavVisible, isDevLabLinkVisible } from "@/lib/constants/nav-visibility";
+import { isAiDataNavVisible, isDraftNavVisible, isDevLabLinkVisible } from "@/lib/constants/nav-visibility";
 import { cn } from "@/lib/utils/cn";
 
 const SIDEBAR_PINNED_KEY = "screenerpro.sidebar.pinned";
@@ -246,10 +246,10 @@ export function AppSidebar() {
         >
           {isExpanded ? (
             <span className="text-[10px] font-bold uppercase leading-tight tracking-[0.12em] text-lab-text">
-              Лаборатория рынка
+              ScreenerPRO
             </span>
           ) : (
-            <span className="text-[11px] font-bold tracking-wider text-lab-cyan">ЛР</span>
+            <span className="text-[11px] font-bold tracking-wider text-lab-cyan">SP</span>
           )}
         </Link>
         {!isExpanded ? (
@@ -279,19 +279,20 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      <div className="ui-mode-hide-focus mt-1.5 shrink-0 border-t border-lab-border-violet/20 pt-1.5">
+      <div className="ui-mode-hide-focus mt-1.5 shrink-0 border-t border-lab-border pt-1.5">
         {isDevLabLinkVisible() ? (
           <Link
             href="/lab"
             className={cn(
-              "mb-1 flex w-full items-center rounded-md border border-dashed border-lab-border-violet/30 px-2 py-1.5 text-[10px] text-lab-dim transition hover:border-lab-violet/40 hover:text-lab-violet",
+              "mb-1 flex w-full items-center rounded-md border border-transparent px-2 py-1.5 text-[10px] text-lab-dim transition hover:bg-lab-surface-1/70 hover:text-lab-violet",
               isExpanded ? "justify-start gap-1.5" : "justify-center",
             )}
-            title="Каталог экспериментальных lab-страниц (только dev)"
+            title="Черновики"
           >
-            <span className="font-mono uppercase tracking-wide">{isExpanded ? "Черновики /lab" : "LAB"}</span>
+            <FlaskConical className="h-3.5 w-3.5" /><span className="font-mono uppercase tracking-wide">{isExpanded ? "Черновики" : "LAB"}</span>
           </Link>
         ) : null}
+        {isAiDataNavVisible() ? <Link href="/screener/ai-data" className={cn("mb-1 flex w-full items-center rounded-md border border-transparent px-2 py-1.5 text-[10px] text-lab-dim transition hover:bg-lab-surface-1/70 hover:text-lab-cyan", isExpanded ? "justify-start gap-1.5" : "justify-center")} title="AI Data"><Database className="h-3.5 w-3.5"/><span className="font-mono uppercase tracking-wide">{isExpanded ? "AI Data" : "AI"}</span></Link> : null}
         {isDraftNavVisible() ? (
           <SidebarNavGroup
             title={sidebarDraftsNav.title}
