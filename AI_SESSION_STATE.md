@@ -2,6 +2,16 @@
 
 ---
 
+## 2026-07-21 — Stocks Command Center Lab
+
+- Ветка: `feature/stocks-command-center-lab` от `08ebab0` (Design Foundation + Navigation Shell).
+- Новый изолированный маршрут: `/lab/stocks-command-center`; production-скринеры не менялись.
+- Один существующий live snapshot, без candle batch-запросов.
+- Доступны: цена, изменение дня, high/low, оборот, сделки, IMOEX, baseline где он есть. Нет стакана, ленты, агрессора и universe-wide 5/15/60m истории.
+- Проверки: `verify:stocks-command-center`, targeted lint, TypeScript, production build.
+
+---
+
 ## Текущая задача
 
 **Strategy Scanner v0 — round-levels small universe** (2026-07-08)
@@ -62,3 +72,8 @@ pnpm -C frontend build
 ```
 
 **Debug URL:** `/screener/strategies?screenerChartDebug=1`
+# 2026-07-21 — Design Foundation + Navigation Shell
+
+- Добавлены semantic design tokens с совместимыми `lab-*` aliases, desktop shell и mobile bottom navigation.
+- Создан `/relationships` как честный каталог market/event labs; данные и формулы скринеров не менялись.
+- AI Data link controlled by `NEXT_PUBLIC_AI_DATA_AVAILABLE=true`, потому что маршрут пока живёт в отдельной ветке.

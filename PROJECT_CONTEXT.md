@@ -40,6 +40,8 @@
 
 **Deployment:** в репозитории **нет** `vercel.json`, CI workflow или README с инструкцией деплоя. В `.gitignore` есть `.vercel` — признак возможного деплоя на Vercel, но конфигурация в коде **не зафиксирована** (см. §12).
 
+> UI foundation: global semantic tokens and shell contracts are documented in `docs/DESIGN_FOUNDATION_AND_NAVIGATION.md`; legacy `lab-*` tokens are intentionally supported during migration.
+
 ---
 
 ## 3. Главные страницы и маршруты
@@ -59,6 +61,7 @@
 | `/screener` | `app/(app)/screener/page.tsx` → `MarketCommandCenter` | **Пульт рынка** — cockpit: главный сигнал, фьючерс в фокусе, лента аномалий, пульс сессии (placeholder), радары, запуск лабораторий |
 | `/screener/stocks` | `app/(app)/screener/stocks/page.tsx` | Скринер акций |
 | `/screener/futures` | `app/(app)/screener/futures/page.tsx` | Скринер фьючерсов |
+| `/lab/stocks-command-center` | `app/(app)/lab/stocks-command-center/page.tsx` | Изолированная лаборатория вариантов intraday stock workspace |
 | `/stocks/[ticker]` | `app/(app)/stocks/[ticker]/page.tsx` | Карточка акции |
 | `/futures/[ticker]` | `app/(app)/futures/[ticker]/page.tsx` | Карточка фьючерса |
 | `/academy` | `app/(app)/academy/page.tsx` | Каталог академии (mock) |
