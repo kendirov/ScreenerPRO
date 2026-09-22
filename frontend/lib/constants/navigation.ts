@@ -77,6 +77,13 @@ export const sidebarMainNavGroups: SidebarNavGroup[] = [
       { href: "/screener/strategies", label: "Стратегии", icon: Layers, visibility: "visible" },
     ],
   },
+  {
+    id: "learning",
+    title: "Обучение",
+    items: [
+      { href: "/academy", label: "Академия", icon: BookOpen, visibility: "visible" },
+    ],
+  },
 ];
 
 /**
@@ -195,7 +202,6 @@ export const sidebarNavGroups = sidebarMainNavGroups;
 /** Скрытые маршруты — не в публичном sidebar, прямые URL сохранены */
 export const hiddenDevNavConfig: SidebarNavItem[] = [
   { href: "/materials", label: "Материалы", icon: Library, visibility: "hidden" },
-  { href: "/academy", label: "Академия", icon: BookOpen, visibility: "hidden" },
   { href: "/sandbox", label: "Песочница", icon: Activity, visibility: "hidden" },
   { href: "/login", label: "Вход", icon: UserCircle2, visibility: "hidden" },
   { href: "/pricing", label: "Тарифы", icon: CircleDollarSign, visibility: "hidden" },
