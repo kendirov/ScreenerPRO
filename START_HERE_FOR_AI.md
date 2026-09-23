@@ -1,112 +1,88 @@
-# START_HERE_FOR_AI — ScreenerPRO
+# START_HERE_FOR_AI — TQS / ScreenerPRO
 
-Первая точка входа для ChatGPT, Cursor и других AI-ассистентов. Читай этот файл, затем углубляйся по ссылкам ниже.
+This is the public-safe technical front door for AI agents working in this repository.
 
----
+> **Important:** `ScreenerPRO` is the historical repository name. The product is part of the broader **Trading QS / TQS** platform. Never choose this repo merely because it is familiar.
 
-## Что читать первым
+## Read first
 
-1. **`PRODUCT_VISION.md`** — зачем существует продукт и какой UX/вау-эффект нужен.
-2. **`PROJECT_CONTEXT.md`** — техническая архитектура, маршруты, API, источники данных.
-3. **`AI_SESSION_STATE.md`** — текущее состояние последней итерации.
-4. **`docs/CHATGPT_PROMPT_GUIDE.md`** — **для ChatGPT**: как продумывать логику, чек-листы и готовые шаблоны промптов для Cursor (с учётом текущей итерации).
-5. **`docs/CURSOR_WORKFLOW.md`** — правила работы Cursor.
-6. **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** — **продуктовая доктрина** intraday decision terminal: North Star, сценарий трейдера, блоки (Market Pulse, In Play, Situation, Table, Inspector), UI direction, антипаттерны. **Обязательно** для продуктовых и UX-задач по скринеру.
-7. **`docs/UI_NUMBERS_MINIMALISM.md`** — стандарт «минимализм цифр» в UI (новые экраны и правки таблиц/карточек).
-8. **`docs/MARKET_RADAR_FORMULAS.md`** — **источник истины** по формулам Market Radar (Vol x, In Play, Active, Shots, baseline); читать перед правкой порогов и объяснением «В игре» ученикам.
+1. **`AGENTS.md`** — execution and routing rules.
+2. **`TQS_PLATFORM.md`** — platform/module boundaries and sources of truth.
+3. **`AI_SESSION_STATE.md`** — compact current repository checkpoint.
+4. **`PRODUCT_VISION.md`** — product/UX intent when relevant.
+5. **`PROJECT_CONTEXT.md`** — deeper legacy technical context only when needed.
+6. Module-specific docs for the affected surface.
 
----
+For Screener/Cockpit UX:
+- `docs/INTRADAY_SCREENER_TERMINAL_VISION.md`
+- `docs/UI_NUMBERS_MINIMALISM.md`
+- `docs/MARKET_RADAR_FORMULAS.md`
 
-## Роли
+For Strategy Lab:
+- `docs/STRATEGY_LAB_TARGET.md`
+- `docs/ROUND_LEVELS_STRATEGY.md`
+- `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
 
-| Участник | Роль |
-|----------|------|
-| **Пользователь** | Владелец продукта и трейдерская логика |
-| **ChatGPT** | Продуктовый, аналитический и UX-напарник; готовит промпты для Cursor |
-| **Cursor** | Исполнитель изменений в коде |
+## Roles
 
----
+- **Owner**: product intent and trader logic.
+- **Current ChatGPT/AI agent**: architect + researcher + default executor when connected tools can implement and verify the task.
+- **Cursor/Codex/other workers**: optional execution/escalation tools, never mandatory memory or routing layers.
 
-## Главная идея продукта
+Do not end a normal development task by merely writing a prompt for another worker when the current connected agent can implement and verify it.
 
-**ScreenerPRO** — интерактивный трейдерский терминал и обучающая платформа по **MOEX**.
+## Repository ownership
 
-**Ядро** — скринер акций и фьючерсов: активность, ликвидность, спред, оборот, in-play, торговые ситуации.
+This repo currently owns:
+- TQS Screener/Cockpit code;
+- Strategy Lab surfaces implemented here;
+- Academy/material surfaces implemented here.
 
-**Материалы** и **Академия** — интерактивные, визуальные и современные, **не** статичные статьи.
+This repo does **not** own generic device/computer automation. Historical TQS Desktop Agent material is reference only; current generic persistent execution is Artem OS in `kendirov/tqs-development-factory`.
 
-Данные сейчас в основном из **MOEX ISS** (бесплатно) + локальные расчёты; при сбое — fallback/mock. Платный MOEX API — в планах.
+## Before changing code
 
----
+1. Confirm current branch/HEAD.
+2. Read `AI_SESSION_STATE.md`.
+3. Identify the owning TQS module in `TQS_PLATFORM.md`.
+4. Reuse an existing code path before creating a new app/service.
+5. Define observable acceptance.
+6. If the task depends on live market/runtime state, inspect that state instead of trusting old docs.
 
-## Перед любой задачей
+## Verification
 
-AI должен:
+Never equate "commit/build succeeded" with product PASS.
 
-1. Прочитать **`AI_SESSION_STATE.md`**.
-2. При необходимости свериться с **`PROJECT_CONTEXT.md`**.
-3. Если задача продуктовая или UX — свериться с **`PRODUCT_VISION.md`** и **`docs/INTRADAY_SCREENER_TERMINAL_VISION.md`** (для скринера и терминала).
-4. **Не менять код** без понимания, что именно хочет пользователь.
-5. После изменений **обновить `AI_SESSION_STATE.md`** (крупные итерации — по `docs/CURSOR_WORKFLOW.md`).
+Minimum code gate:
+```
+pnpm -C frontend build
+```
 
----
+Also run targeted verification relevant to the affected module, then inspect actual runtime/UI for user-visible changes.
 
-## Что важно не сломать
+## Important routes to protect
 
 - `/screener`
 - `/screener/stocks`
 - `/screener/futures`
-- `/materials/technical-characteristics`
-- MOEX ISS live/fallback
-- `ValueWithStatus` в технических характеристиках
-- sidebar/layout
-- build перед деплоем (`pnpm -C frontend build`)
+- `/screener/strategies`
+- Academy/material routes currently linked from the product
+- MOEX live/fallback behavior
+- shared layout/navigation
 
----
+## Local development
 
-## Формат отчёта Cursor после задачи
-
-Cursor **всегда** пишет:
-
-- **что изменил** — простыми словами (что увидит пользователь);
-- **какие файлы** изменил;
-- **какие команды** запускал;
-- **прошёл ли build**;
-- **что проверить в браузере** (URL + действия);
-- **обновлён ли** `AI_SESSION_STATE.md`.
-
-Подробный шаблон — в **`docs/CURSOR_WORKFLOW.md`**.
-
----
-
-## Быстрый старт локально
-
-```bash
+```
 pnpm install
 pnpm -C frontend dev
 ```
 
-→ http://localhost:3000/screener  
+Full setup and legacy cross-platform helpers remain documented in `PROJECT_CONTEXT.md` and `docs/WORKFLOW.md`. Load them only when the current task needs them.
 
-Полная настройка:
-- **Windows:** `run-dev-full.cmd`
-- **macOS / Linux:** `./run-dev-full.sh`
-- Подробности — `PROJECT_CONTEXT.md` §11.
+## Persistence
 
-## Работа на двух машинах (Win + Mac)
-
-| Машина | Начало сессии | Конец сессии | Аварийная остановка |
-|--------|---------------|--------------|---------------------|
-| **Windows** | `sync.cmd pull` | `sync.cmd save` | `stop.cmd` |
-| **macOS** | `./sync.sh pull` | `./sync.sh save` | `./stop.sh` |
-
-Точки отката (любая машина):
-
-```
-./checkpoint.sh "label"   # запомнить
-./restore.sh              # показать список
-./restore.sh <tag|hash>   # откатить
-```
-
-- **Для не-программиста, как организовать день:** `docs/WORKFLOW.md` ← начинай отсюда.
-- **Глубокий разбор git-синхронизации:** `docs/CROSS_PLATFORM_SYNC.md`.
+After a meaningful change:
+- commit the technical delta;
+- run verification;
+- update `AI_SESSION_STATE.md` with only durable current state;
+- keep private Drive content/secrets out of this public repository.

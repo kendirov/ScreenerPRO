@@ -1,64 +1,43 @@
-# AI_SESSION_STATE — Лаборатория рынка
+# AI_SESSION_STATE — TQS / ScreenerPRO
 
----
+## Canonical status
 
-## Текущая задача
+- Default branch: `main`
+- Current observed HEAD before this front-door repair: `6a7d89d41e31a8a2f3e6798cfd1e24c26e10e30f`
+- Latest user-facing repository change: **TQS Academy v1**
+- This file is a compact recovery checkpoint, not a chronological log.
 
-**Strategy Scanner v0 — round-levels small universe** (2026-07-08)
+## Current product surfaces in this repo
 
-- Цель: первый batch scan `round-levels` по small universe 5–10 тикеров
-- `frontend/lib/strategies/strategy-runner-types.ts` ✅
-- `frontend/lib/strategies/round-levels-strategy-runner.ts` ✅
-- `frontend/scripts/scan-round-levels-strategy.ts` ✅
-- JSON snapshot: `frontend/public/strategy-runs/round-levels-stocks-5m-10d.json` ✅
-- verify script: `frontend/scripts/verify-strategy-scan-result.ts` ✅
-- docs updated: `docs/STRATEGY_SCANNER_ARCHITECTURE.md`, `AI_SESSION_STATE.md` ✅
+- **Screener/Cockpit**: stocks/futures selection, Market Radar/In Play and related decision UI.
+- **Strategy Lab**: round-level and related strategy/research surfaces remain implemented; July scanner work is historical state, not the global current task.
+- **Academy**: dashboard, learning path and live lessons were added in the latest main commit.
+- **Materials**: interactive educational surfaces remain part of this codebase.
 
-**Фокус:** `/screener/strategies` only
+## Architecture boundary
 
-**Изменённые файлы:**
-- `frontend/lib/screener/strategies/strategy-candle-range.ts` (new)
-- `frontend/lib/server/services/strategy-candles.ts` (new)
-- `frontend/lib/hooks/use-strategy-candles.ts`
-- `frontend/lib/screener/strategies/strategy-candles.ts`
-- `frontend/app/api/screener/stocks/candles/route.ts`
-- `frontend/components/screener/strategies/strategy-lab-page.tsx`
-- `frontend/components/strategies/strategy-candlestick-chart.tsx`
-- `frontend/scripts/verify-strategy-candle-range.ts` (new)
-- `frontend/package.json`
-- `docs/STRATEGY_LAB_TARGET.md`
-- `docs/ROUND_LEVELS_STRATEGY.md`
-- `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
-- `frontend/lib/strategies/strategy-runner-types.ts`
-- `frontend/lib/strategies/round-levels-strategy-runner.ts`
-- `frontend/scripts/scan-round-levels-strategy.ts`
-- `frontend/scripts/verify-strategy-scan-result.ts`
-- `AI_SESSION_STATE.md`
+TQS is broader than this repository. See `TQS_PLATFORM.md`.
 
----
+Generic desktop/device automation is no longer owned here. The historical `TQS Desktop Agent` implementation/docs are reference only; current generic execution belongs to Artem OS / `kendirov/tqs-development-factory`.
 
-## Фокус продукта
+## Current repair / priority
 
-| Маршрут | Роль | Статус |
-|---------|------|--------|
-| `/screener/strategies` | **Strategy Lab** | v0 demo-ready |
-| `/screener/stocks` | Главный рабочий скринер | стабилен |
-| `/screener/futures` | Фьючерсы | не трогать |
+AI front door is being normalized so new ChatGPT/AI sessions:
+- enter through `AGENTS.md -> START_HERE_FOR_AI.md -> TQS_PLATFORM.md -> AI_SESSION_STATE.md`;
+- use Chat-first execution when available;
+- do not assume Cursor is mandatory;
+- do not use ScreenerPRO as the default repo for unrelated projects.
 
-Документация: `docs/STRATEGY_LAB_TARGET.md`, `docs/ROUND_LEVELS_STRATEGY.md`, `docs/ZIGZAG_LITE_STRATEGY_LAYER.md`, `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
+## Stable verification
 
----
+Use targeted module verification first, then:
 
-## Dev commands
-
-```bash
-pnpm -C frontend dev:live
-pnpm -C frontend verify:round-levels
-pnpm -C frontend verify:round-buffer-direction
-pnpm -C frontend verify:zigzag-lite
-pnpm -C frontend strategy:scan:round-levels:v0
-pnpm -C frontend verify:strategy-scan-result
+```
 pnpm -C frontend build
 ```
 
-**Debug URL:** `/screener/strategies?screenerChartDebug=1`
+For user-visible changes, build success alone is not PASS: inspect the actual relevant runtime/browser state.
+
+## Next task rule
+
+There is intentionally no permanent "next feature" in this file. The next task comes from the owner's current goal + private TQS canon + current Git/runtime state. Update this file only when durable technical current state materially changes.
