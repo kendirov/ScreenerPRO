@@ -24,6 +24,8 @@
     "verify:situation-engine": "tsx scripts/verify-situation-engine.ts",
     "verify:market-priority": "tsx scripts/verify-market-priority-engine.ts",
     "verify:stock-universe": "tsx scripts/verify-stock-universe-filter.ts",
+    "verify:trading-workspace-stocks": "tsx scripts/verify-trading-workspace-stocks.ts",
+    "verify:trading-workspace-futures": "tsx scripts/verify-trading-workspace-futures.ts",
     "verify:round-levels": "tsx scripts/verify-round-levels-engine.ts",
     "verify:round-reactions": "tsx scripts/verify-round-level-reactions.ts",
     "verify:round-approaches": "tsx scripts/verify-round-level-approaches.ts",
@@ -46,7 +48,8 @@
     "verify:moex-instrument-resolver": "tsx scripts/verify-moex-instrument-resolver.ts",
     "verify:fetch-moex-candles": "tsx scripts/verify-fetch-moex-candles.ts",
     "verify:moex-data-mode": "tsx scripts/verify-moex-data-mode.ts",
-    "verify:calculate-cbr-reaction": "tsx scripts/verify-calculate-cbr-reaction.ts"
+    "verify:calculate-cbr-reaction": "tsx scripts/verify-calculate-cbr-reaction.ts",
+    "verify:sector-k": "tsx scripts/verify-sector-k.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
