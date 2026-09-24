@@ -1,0 +1,48 @@
+name: Kids Device Hub Android
+
+on:
+  pull_request:
+    paths:
+      - 'kids-device-hub/android/**'
+      - '.github/workflows/kids-device-hub-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kids-device-hub/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build release APK
+        run: gradle --stacktrace assembleRelease
+      - name: Verify unsigned release APK
+        run: |
+          test -f app/build/outputs/apk/release/app-release-unsigned.apk
+          sha256sum app/build/outputs/apk/release/app-release-unsigned.apk
+          ls -lh app/build/outputs/apk/release/app-release-unsigned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kendirov-Kids-Device-Hub-v3-unsigned
+          path: kids-device-hub/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+      - name: Publish unsigned build asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ASSET="app/build/outputs/apk/release/app-release-unsigned.apk"
+          TAG="kids-device-hub-v3-build"
+          NAME="Kendirov-Kids-Device-Hub-v3-unsigned.apk"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Kids Device Hub v3 build" --notes "Unsigned CI build. Final family distribution is signed by the persistent offline key on the controller."
+          gh release upload "$TAG" "$ASSET#$NAME" --clobber --repo "$GITHUB_REPOSITORY"
