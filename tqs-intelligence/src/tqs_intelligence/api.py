@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import mimetypes
@@ -44,7 +44,7 @@ from .service import IntelligenceService
 from .snapshot_export import SnapshotExporter
 from .sources import BinanceSource, BitgetSource, BybitSource, MoexSource, OkxSource, TwelveDataSource
 from .storage import DuckStore
-from .strategy_machine import StrategyMachine, default_round_buffer_spec
+from .strategy_machine import StrategyMachine, default_round_buffer_spec, default_scheduled_entry_spec
 from .strategy_models import ResearchProject, StrategySpec
 from .update_manager import UpdateManager
 
@@ -263,6 +263,8 @@ RUNTIME_INSTANCE_ID = f'{RUNTIME_STARTED_AT_MS}-{os.getpid()}'
 async def lifespan(_: FastAPI):
     if lab.get_strategy('TQS-STRAT-ROUND-BUFFER-001') is None:
         lab.save_strategy(default_round_buffer_spec())
+    if lab.get_strategy('TQS-STRAT-SCHEDULED-ENTRY-001') is None:
+        lab.save_strategy(default_scheduled_entry_spec())
     for wallet in [x.strip() for x in settings.hyperliquid_wallets.split(',') if x.strip()]:
         account_store.track('hyperliquid', wallet, 'env')
     service.start(); research_runtime.start(); paper_service.start(); account_service.start(); lchi_service.start(); pulse_service.start(); ai_control.start()
@@ -382,30 +384,30 @@ def _capabilities() -> list[dict[str, object]]:
     enabled = {s.provider: s for s in sources}; rows = [s.capability(True) for s in sources]
     if 'twelvedata' not in enabled: rows.append(twelve.capability(False))
     rows.extend([
-        {'provider':'news','name':'Новости: GDELT + RSS + future Telegram','enabled':True,'markets':['Все'],'asset_classes':[],
-         'data_fields':['заголовки','ссылки','время','тикеры','темы','реакция рынка'],'access':'GDELT без ключа; RSS настраивается; Telegram adapter зарезервирован',
-         'description':'Новость — отдельное событие; совпадение по времени не считается доказанной причиной движения.'},
-        {'provider':'episodes','name':'Anomaly Episode Engine','enabled':True,'markets':['Все подключённые рынки'],'asset_classes':[],
-         'data_fields':['жизненный цикл','график до/после','MFE/MAE','5м/15м/1ч/4ч/24ч','похожие случаи'],'access':'Локальный CPU',
-         'description':'Аномалия хранится как воспроизводимый эпизод и рассматривается как кандидат места потенциального движения.'},
+        {'provider':'news','name':'РќРѕРІРѕСЃС‚Рё: GDELT + RSS + future Telegram','enabled':True,'markets':['Р’СЃРµ'],'asset_classes':[],
+         'data_fields':['Р·Р°РіРѕР»РѕРІРєРё','СЃСЃС‹Р»РєРё','РІСЂРµРјСЏ','С‚РёРєРµСЂС‹','С‚РµРјС‹','СЂРµР°РєС†РёСЏ СЂС‹РЅРєР°'],'access':'GDELT Р±РµР· РєР»СЋС‡Р°; RSS РЅР°СЃС‚СЂР°РёРІР°РµС‚СЃСЏ; Telegram adapter Р·Р°СЂРµР·РµСЂРІРёСЂРѕРІР°РЅ',
+         'description':'РќРѕРІРѕСЃС‚СЊ вЂ” РѕС‚РґРµР»СЊРЅРѕРµ СЃРѕР±С‹С‚РёРµ; СЃРѕРІРїР°РґРµРЅРёРµ РїРѕ РІСЂРµРјРµРЅРё РЅРµ СЃС‡РёС‚Р°РµС‚СЃСЏ РґРѕРєР°Р·Р°РЅРЅРѕР№ РїСЂРёС‡РёРЅРѕР№ РґРІРёР¶РµРЅРёСЏ.'},
+        {'provider':'episodes','name':'Anomaly Episode Engine','enabled':True,'markets':['Р’СЃРµ РїРѕРґРєР»СЋС‡С‘РЅРЅС‹Рµ СЂС‹РЅРєРё'],'asset_classes':[],
+         'data_fields':['Р¶РёР·РЅРµРЅРЅС‹Р№ С†РёРєР»','РіСЂР°С„РёРє РґРѕ/РїРѕСЃР»Рµ','MFE/MAE','5Рј/15Рј/1С‡/4С‡/24С‡','РїРѕС…РѕР¶РёРµ СЃР»СѓС‡Р°Рё'],'access':'Р›РѕРєР°Р»СЊРЅС‹Р№ CPU',
+         'description':'РђРЅРѕРјР°Р»РёСЏ С…СЂР°РЅРёС‚СЃСЏ РєР°Рє РІРѕСЃРїСЂРѕРёР·РІРѕРґРёРјС‹Р№ СЌРїРёР·РѕРґ Рё СЂР°СЃСЃРјР°С‚СЂРёРІР°РµС‚СЃСЏ РєР°Рє РєР°РЅРґРёРґР°С‚ РјРµСЃС‚Р° РїРѕС‚РµРЅС†РёР°Р»СЊРЅРѕРіРѕ РґРІРёР¶РµРЅРёСЏ.'},
         {'provider':'accounts','name':'Account / Position Intelligence','enabled':True,'markets':['Hyperliquid public accounts','MOEX participant aggregates later'],'asset_classes':[],
-         'data_fields':['open positions','fills','PnL samples','long/short bias','instrument concentration','execution style'],'access':'Публичные данные / разрешённые feeds',
-         'description':'Публичные счета анализируются описательно; мотив/стоп/логика не объявляются фактами без синхронизации с рыночными данными.'},
+         'data_fields':['open positions','fills','PnL samples','long/short bias','instrument concentration','execution style'],'access':'РџСѓР±Р»РёС‡РЅС‹Рµ РґР°РЅРЅС‹Рµ / СЂР°Р·СЂРµС€С‘РЅРЅС‹Рµ feeds',
+         'description':'РџСѓР±Р»РёС‡РЅС‹Рµ СЃС‡РµС‚Р° Р°РЅР°Р»РёР·РёСЂСѓСЋС‚СЃСЏ РѕРїРёСЃР°С‚РµР»СЊРЅРѕ; РјРѕС‚РёРІ/СЃС‚РѕРї/Р»РѕРіРёРєР° РЅРµ РѕР±СЉСЏРІР»СЏСЋС‚СЃСЏ С„Р°РєС‚Р°РјРё Р±РµР· СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё СЃ СЂС‹РЅРѕС‡РЅС‹РјРё РґР°РЅРЅС‹РјРё.'},
         {'provider':'pulse-public','name':'T-Bank Pulse public profiles','enabled':True,'markets':['MOEX / Russian retail context'],'asset_classes':[],
          'data_fields':['public profile','public trade markers when present in SSR','side/time/price','size_known=false'],'access':'Public profile pages; client-side/auth-only operations remain unavailable',
          'description':'Public profile evidence only. Exact operation quantity is never estimated when hidden by Pulse.'},
-        {'provider':'instrument-lab','name':'Universal Instrument Lab','enabled':True,'markets':['Все подключённые рынки'],'asset_classes':[],
-         'data_fields':['candles','live snapshots','anomaly overlay','OI','funding','episodes','news','strategy runs','related instruments'],'access':'Локальный terminal',
-         'description':'Один инструмент → максимум накопленного контекста и дозагрузка истории из того же интерфейса.'},
+        {'provider':'instrument-lab','name':'Universal Instrument Lab','enabled':True,'markets':['Р’СЃРµ РїРѕРґРєР»СЋС‡С‘РЅРЅС‹Рµ СЂС‹РЅРєРё'],'asset_classes':[],
+         'data_fields':['candles','live snapshots','anomaly overlay','OI','funding','episodes','news','strategy runs','related instruments'],'access':'Р›РѕРєР°Р»СЊРЅС‹Р№ terminal',
+         'description':'РћРґРёРЅ РёРЅСЃС‚СЂСѓРјРµРЅС‚ в†’ РјР°РєСЃРёРјСѓРј РЅР°РєРѕРїР»РµРЅРЅРѕРіРѕ РєРѕРЅС‚РµРєСЃС‚Р° Рё РґРѕР·Р°РіСЂСѓР·РєР° РёСЃС‚РѕСЂРёРё РёР· С‚РѕРіРѕ Р¶Рµ РёРЅС‚РµСЂС„РµР№СЃР°.'},
         {'provider':'lake','name':'Historical Parquet Data Lake','enabled':True,'markets':['MOEX','Crypto','Global later'],'asset_classes':[],
-         'data_fields':['2021–2026+ history','partitioning','zstd','verification'],'access':control.get().data_lake_root,
-         'description':'Тяжёлая история живёт на большом диске, а не в системном каталоге.'},
-        {'provider':'strategy','name':'Strategy Machine v2','enabled':True,'markets':['Все с историей'],'asset_classes':[],
+         'data_fields':['2021вЂ“2026+ history','partitioning','zstd','verification'],'access':control.get().data_lake_root,
+         'description':'РўСЏР¶С‘Р»Р°СЏ РёСЃС‚РѕСЂРёСЏ Р¶РёРІС‘С‚ РЅР° Р±РѕР»СЊС€РѕРј РґРёСЃРєРµ, Р° РЅРµ РІ СЃРёСЃС‚РµРјРЅРѕРј РєР°С‚Р°Р»РѕРіРµ.'},
+        {'provider':'strategy','name':'Strategy Machine v2','enabled':True,'markets':['Р’СЃРµ СЃ РёСЃС‚РѕСЂРёРµР№'],'asset_classes':[],
          'data_fields':['StrategySpec','parameter sweeps','controls','OOS','walk-forward','costs','profit/loss diagnostics'],'access':'MAX mode',
-         'description':'Round/buffer + buy-the-dip grids; новые идеи добавляются как воспроизводимые StrategySpec.'},
+         'description':'Round/buffer + buy-the-dip grids; РЅРѕРІС‹Рµ РёРґРµРё РґРѕР±Р°РІР»СЏСЋС‚СЃСЏ РєР°Рє РІРѕСЃРїСЂРѕРёР·РІРѕРґРёРјС‹Рµ StrategySpec.'},
         {'provider':'moex-premium','name':'MOEX Premium / participant positions','enabled':settings.moex_premium_enabled,'markets':['MOEX derivatives'],'asset_classes':['future','option'],
-         'data_fields':['OI','физлица long/short','юрлица long/short','число участников','intraday deltas'],'access':'Подписка/credentials позже',
-         'description':'Агрегированные participant данные будут частью общей feature machine; не подменяются индивидуальными счетами.'},
+         'data_fields':['OI','С„РёР·Р»РёС†Р° long/short','СЋСЂР»РёС†Р° long/short','С‡РёСЃР»Рѕ СѓС‡Р°СЃС‚РЅРёРєРѕРІ','intraday deltas'],'access':'РџРѕРґРїРёСЃРєР°/credentials РїРѕР·Р¶Рµ',
+         'description':'РђРіСЂРµРіРёСЂРѕРІР°РЅРЅС‹Рµ participant РґР°РЅРЅС‹Рµ Р±СѓРґСѓС‚ С‡Р°СЃС‚СЊСЋ РѕР±С‰РµР№ feature machine; РЅРµ РїРѕРґРјРµРЅСЏСЋС‚СЃСЏ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹РјРё СЃС‡РµС‚Р°РјРё.'},
     ])
     return rows
 
@@ -445,14 +447,14 @@ def get_resources():
 def set_control(request: ControlPatch):
     old=control.get(); changes=request.model_dump(exclude_none=True); changes['changed_by']='ui'
     state=control.update(**changes); restart_required=state.data_lake_root!=old.data_lake_root
-    service.log('info','control',f'Режим/настройки изменены: {state.mode.upper()}',restart_required=restart_required)
+    service.log('info','control',f'Р РµР¶РёРј/РЅР°СЃС‚СЂРѕР№РєРё РёР·РјРµРЅРµРЅС‹: {state.mode.upper()}',restart_required=restart_required)
     return {'ok':True,'control':control.status(),'restart_required':restart_required,
-            'message':'Путь Data Lake изменён; нажми Обновить/перезапусти TQS, чтобы тяжёлые workers использовали новый путь.' if restart_required else 'Применено сразу.'}
+            'message':'РџСѓС‚СЊ Data Lake РёР·РјРµРЅС‘РЅ; РЅР°Р¶РјРё РћР±РЅРѕРІРёС‚СЊ/РїРµСЂРµР·Р°РїСѓСЃС‚Рё TQS, С‡С‚РѕР±С‹ С‚СЏР¶С‘Р»С‹Рµ workers РёСЃРїРѕР»СЊР·РѕРІР°Р»Рё РЅРѕРІС‹Р№ РїСѓС‚СЊ.' if restart_required else 'РџСЂРёРјРµРЅРµРЅРѕ СЃСЂР°Р·Сѓ.'}
 
 
 @app.post('/api/refresh')
 async def refresh():
-    accepted=service.request_refresh(); return {'ok':True,'accepted':accepted,'message':'Сбор запущен' if accepted else 'Сбор уже выполняется'}
+    accepted=service.request_refresh(); return {'ok':True,'accepted':accepted,'message':'РЎР±РѕСЂ Р·Р°РїСѓС‰РµРЅ' if accepted else 'РЎР±РѕСЂ СѓР¶Рµ РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ'}
 
 
 @app.get('/api/overview')
@@ -888,7 +890,7 @@ def create_backfill(request:BackfillCreate):
         payload.setdefault('engine','futures' if 'future' in request.market_type or request.market_type=='forts' else 'stock')
         payload.setdefault('market','forts' if payload['engine']=='futures' else 'shares')
         if request.interval=='5m': payload['interval']='10m'
-    job=lab.enqueue_job('historical_backfill',f"История {request.provider.upper()} {request.symbol}",payload)
+    job=lab.enqueue_job('historical_backfill',f"РСЃС‚РѕСЂРёСЏ {request.provider.upper()} {request.symbol}",payload)
     return job.model_dump(mode='json')
 
 
@@ -989,7 +991,7 @@ def strategy_runs(strategy_id:str='',limit:int=Query(200,ge=1,le=2000),full:bool
 def run_strategy(strategy_id:str,request:StrategyRunCreate):
     spec=lab.get_strategy(strategy_id)
     if spec is None: raise HTTPException(404,'strategy not found')
-    job=lab.enqueue_job('strategy_run',f"Стратегия: {spec.name_ru} / {request.canonical_id}",{'strategy_id':strategy_id,'canonical_id':request.canonical_id})
+    job=lab.enqueue_job('strategy_run',f"РЎС‚СЂР°С‚РµРіРёСЏ: {spec.name_ru} / {request.canonical_id}",{'strategy_id':strategy_id,'canonical_id':request.canonical_id})
     return job.model_dump(mode='json')
 
 
@@ -1035,7 +1037,7 @@ async def data_lake_status():
 
 
 @app.post('/api/data-lake/verify')
-def verify_data_lake(): return lab.enqueue_job('verify_lake','Проверка Data Lake',{}).model_dump(mode='json')
+def verify_data_lake(): return lab.enqueue_job('verify_lake','РџСЂРѕРІРµСЂРєР° Data Lake',{}).model_dump(mode='json')
 
 
 @app.get('/api/briefing')
@@ -1060,3 +1062,5 @@ def main()->None:
 
 
 if __name__=='__main__': main()
+
+

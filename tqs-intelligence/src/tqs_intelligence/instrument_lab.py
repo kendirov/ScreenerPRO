@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import math
@@ -15,25 +15,31 @@ def economic_key(symbol: str, provider: str = "", market_type: str = "") -> str:
     raw = str(symbol or "").upper().strip()
     if not raw:
         return ""
+    provider = str(provider or "").lower().strip()
+    market_type = str(market_type or "").lower().strip()
     parts = [x for x in re.split(r"[-_/]", raw) if x]
+    compact = "".join(ch for ch in raw if ch.isalnum())
+
+    if provider == "moex":
+        if market_type == "forts" or "future" in market_type:
+            match = re.match(r"^([A-Z]{1,8})([FGHJKMNQUVXZ])(\d{1,2})$", compact)
+            if match:
+                return match.group(1)
+            match = re.match(r"^([A-Z]{1,8})\d", compact)
+            if match:
+                return match.group(1)
+        return compact
+
     if provider == "okx" and parts:
         return parts[0]
-    compact = "".join(ch for ch in raw if ch.isalnum())
+
     for suffix in ("PERPETUAL", "PERP", "SWAP"):
         if compact.endswith(suffix) and len(compact) > len(suffix):
             compact = compact[:-len(suffix)]
     for quote in _STABLE_QUOTES:
         if compact.endswith(quote) and len(compact) > len(quote) + 1:
             return compact[:-len(quote)]
-    if provider == "moex" or "future" in str(market_type).lower() or market_type == "forts":
-        m = re.match(r"^([A-ZА-Я]{1,8})([FGHJKMNQUVXZ])(\d{1,2})$", compact)
-        if m and m.group(2) in _MOEX_MONTH:
-            return m.group(1)
-        m = re.match(r"^([A-ZА-Я]{1,8})\d", compact)
-        if m:
-            return m.group(1)
     return compact
-
 
 def _series_span(rows: list[dict[str, Any]]) -> int:
     if len(rows) < 2:
@@ -239,7 +245,7 @@ class InstrumentLab:
                         "ts_ms": int(candle.get("ts_ms") or 0),
                         "score": round(score, 2),
                         "severity": "high" if ratio >= 3.0 else "medium",
-                        "reasons": [f"Объём {ratio:.1f}x медианы предыдущих 20 свечей"],
+                        "reasons": [f"РћР±СЉС‘Рј {ratio:.1f}x РјРµРґРёР°РЅС‹ РїСЂРµРґС‹РґСѓС‰РёС… 20 СЃРІРµС‡РµР№"],
                         "signals": ["volume_spike"],
                     })
             volumes.append(volume)
@@ -370,4 +376,7 @@ class InstrumentLab:
         elif price_history_provider=="binance" and not candles:
             fq=next((x for x in venue_context if x.get("canonical_id")==price_history_cid),None)
             if fq: backfill={"provider":"binance","symbol":fq.get("symbol"),"market_type":fq.get("market_type") or "usdt-futures","interval":"5m"}
-        return {"canonical_id":canonical_id,"economic_key":key,"quote":quote,"latest_live":latest,"coverage":coverage,"interval":interval,"price_history_source":{"canonical_id":price_history_cid,"provider":price_history_provider,"fallback":price_history_cid!=canonical_id},"candles":candles,"live":live,"metrics":metrics,"metric_sources":metric_sources,"participant_context":participant_context,"scores":scores,"episodes":episode_rows,"news":news[:100],"strategy_runs":runs,"venue_context":venue_context,"related":related,"suggested_backfill":backfill,"suggested_metrics_backfill":metric_backfills[0] if metric_backfills else None,"suggested_metric_backfills":metric_backfills}
+        diagnostics=build_instrument_diagnostics(episode_rows=episode_rows,scores=scores,strategy_runs=runs)
+        return {"canonical_id":canonical_id,"economic_key":key,"quote":quote,"latest_live":latest,"coverage":coverage,"interval":interval,"price_history_source":{"canonical_id":price_history_cid,"provider":price_history_provider,"fallback":price_history_cid!=canonical_id},"candles":candles,"live":live,"metrics":metrics,"metric_sources":metric_sources,"participant_context":participant_context,"scores":scores,"episodes":episode_rows,"news":news[:100],"strategy_runs":runs,"diagnostics":diagnostics,"venue_context":venue_context,"related":related,"suggested_backfill":backfill,"suggested_metrics_backfill":metric_backfills[0] if metric_backfills else None,"suggested_metric_backfills":metric_backfills}
+
+

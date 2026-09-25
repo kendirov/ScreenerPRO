@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import time
@@ -18,7 +18,7 @@ from .replay import HistoricalReplayEngine
 from .research_experiments import ResearchExperimentEngine
 from .sources import BinanceSource, BybitSource, MoexSource
 from .strategy_extensions import default_buy_dip_bps_spec, default_buy_dip_points_spec, run_buy_dip_grid
-from .strategy_machine import StrategyMachine, default_round_buffer_spec
+from .strategy_machine import StrategyMachine, default_round_buffer_spec, default_scheduled_entry_spec
 from .strategy_models import ResearchProject
 
 
@@ -33,7 +33,7 @@ class ResearchRuntime:
         self.replay=HistoricalReplayEngine(lake)
         self.experiments=ResearchExperimentEngine(lake, backfiller.metric_lake, lab, machine)
         self.bybit_metrics=BybitLongHistoryBackfiller(backfiller.http, backfiller.metric_lake)
-        self._task: asyncio.Task|None=None; self._running=False; self.last_action='Ожидание'; self.last_error: str|None=None
+        self._task: asyncio.Task|None=None; self._running=False; self.last_action='РћР¶РёРґР°РЅРёРµ'; self.last_error: str|None=None
         self._last_auto_plan_s=0.0
         self._max_worker_slots=4
         self._worker_tasks: list[asyncio.Task] = []
@@ -45,12 +45,12 @@ class ResearchRuntime:
         self._auto_history: dict[str,Any] = {
             'enabled': True, 'target_total': 0, 'known_total': 0, 'done': 0,
             'queued_running': 0, 'failed': 0, 'remaining': 0,
-            'scope': 'ожидаем первый MAX discovery',
+            'scope': 'РѕР¶РёРґР°РµРј РїРµСЂРІС‹Р№ MAX discovery',
         }
         self._auto_metrics: dict[str,Any] = {
             'enabled': True, 'target_total': 0, 'known_total': 0, 'done': 0,
             'queued_running': 0, 'failed': 0, 'remaining': 0,
-            'scope': 'Binance/Bybit derivatives + MOEX FUTOI ждут MAX',
+            'scope': 'Binance/Bybit derivatives + MOEX FUTOI Р¶РґСѓС‚ MAX',
         }
         self._planner_sources = [BinanceSource(backfiller.http), MoexSource(backfiller.http), BybitSource(backfiller.http)]
         try:
@@ -61,9 +61,11 @@ class ResearchRuntime:
             pass
         base=default_round_buffer_spec()
         if self.lab.get_strategy(base.id) is None: self.lab.save_strategy(base)
+        scheduled=default_scheduled_entry_spec()
+        if self.lab.get_strategy(scheduled.id) is None: self.lab.save_strategy(scheduled)
         crypto=base.model_copy(deep=True)
-        crypto.id='TQS-STRAT-ROUND-BUFFER-CRYPTO-001'; crypto.name_ru='Крипто: отскок от круглых / буферных зон'; crypto.interval='5m'; crypto.costs={'round_trip_bps':10.0}
-        crypto.notes=list(crypto.notes)+['Отдельная 5m версия для crypto perpetuals; репликация между биржами обязательна перед promotion.']
+        crypto.id='TQS-STRAT-ROUND-BUFFER-CRYPTO-001'; crypto.name_ru='РљСЂРёРїС‚Рѕ: РѕС‚СЃРєРѕРє РѕС‚ РєСЂСѓРіР»С‹С… / Р±СѓС„РµСЂРЅС‹С… Р·РѕРЅ'; crypto.interval='5m'; crypto.costs={'round_trip_bps':10.0}
+        crypto.notes=list(crypto.notes)+['РћС‚РґРµР»СЊРЅР°СЏ 5m РІРµСЂСЃРёСЏ РґР»СЏ crypto perpetuals; СЂРµРїР»РёРєР°С†РёСЏ РјРµР¶РґСѓ Р±РёСЂР¶Р°РјРё РѕР±СЏР·Р°С‚РµР»СЊРЅР° РїРµСЂРµРґ promotion.']
         if self.lab.get_strategy(crypto.id) is None: self.lab.save_strategy(crypto)
         for spec in (default_buy_dip_bps_spec(), default_buy_dip_points_spec()):
             if self.lab.get_strategy(spec.id) is None: self.lab.save_strategy(spec)
@@ -74,8 +76,8 @@ class ResearchRuntime:
         seeds=[
             ResearchProject(
                 id='TQS-RESEARCH-ROUND-LEVELS-001',
-                title='Круглые уровни: clustering / barrier / breakout',
-                hypothesis='Круглые цены меняют поведение рынка относительно matched pseudo-level controls; эффект зависит от first touch, acceptance, режима и ликвидности.',
+                title='РљСЂСѓРіР»С‹Рµ СѓСЂРѕРІРЅРё: clustering / barrier / breakout',
+                hypothesis='РљСЂСѓРіР»С‹Рµ С†РµРЅС‹ РјРµРЅСЏСЋС‚ РїРѕРІРµРґРµРЅРёРµ СЂС‹РЅРєР° РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ matched pseudo-level controls; СЌС„С„РµРєС‚ Р·Р°РІРёСЃРёС‚ РѕС‚ first touch, acceptance, СЂРµР¶РёРјР° Рё Р»РёРєРІРёРґРЅРѕСЃС‚Рё.',
                 origin='artem+drive',status='exploratory',market='multi',
                 data_requirements=['OHLCV','tick size','spread','volume','session','volatility','matched pseudo-level controls'],
                 event={'family':'round_level','states':['approach','touch','rejection','acceptance','breakout','retest']},
@@ -87,9 +89,9 @@ class ResearchRuntime:
             ),
             ResearchProject(
                 id='TQS-RESEARCH-PRICE-OI-DIVERGENCE-001',
-                title='Цена стоит, OI растёт',
+                title='Р¦РµРЅР° СЃС‚РѕРёС‚, OI СЂР°СЃС‚С‘С‚',
                 version=2,
-                hypothesis='Рост OI при слабом движении цены формирует состояния накопления/борьбы, после которых распределение будущего движения отличается от matched controls.',
+                hypothesis='Р РѕСЃС‚ OI РїСЂРё СЃР»Р°Р±РѕРј РґРІРёР¶РµРЅРёРё С†РµРЅС‹ С„РѕСЂРјРёСЂСѓРµС‚ СЃРѕСЃС‚РѕСЏРЅРёСЏ РЅР°РєРѕРїР»РµРЅРёСЏ/Р±РѕСЂСЊР±С‹, РїРѕСЃР»Рµ РєРѕС‚РѕСЂС‹С… СЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ Р±СѓРґСѓС‰РµРіРѕ РґРІРёР¶РµРЅРёСЏ РѕС‚Р»РёС‡Р°РµС‚СЃСЏ РѕС‚ matched controls.',
                 origin='artem',status='exploratory',market='multi',
                 data_requirements=['price','open_interest','delta OI','volume','spread','FUTOI where available'],
                 event={'family':'price_oi_divergence','price_abs_return_max_bps':20,'oi_change_percentile':0.80,'lookback_bars':3,'reset_bars':3},
@@ -101,8 +103,8 @@ class ResearchRuntime:
             ),
             ResearchProject(
                 id='TQS-RESEARCH-MOEX-EXPIRY-001',
-                title='MOEX квартальная экспирация и ролловер',
-                hypothesis='Вблизи квартальной экспирации меняются ликвидность, basis, OI split и intraday response; эффекты должны измеряться относительно non-expiry controls.',
+                title='MOEX РєРІР°СЂС‚Р°Р»СЊРЅР°СЏ СЌРєСЃРїРёСЂР°С†РёСЏ Рё СЂРѕР»Р»РѕРІРµСЂ',
+                hypothesis='Р’Р±Р»РёР·Рё РєРІР°СЂС‚Р°Р»СЊРЅРѕР№ СЌРєСЃРїРёСЂР°С†РёРё РјРµРЅСЏСЋС‚СЃСЏ Р»РёРєРІРёРґРЅРѕСЃС‚СЊ, basis, OI split Рё intraday response; СЌС„С„РµРєС‚С‹ РґРѕР»Р¶РЅС‹ РёР·РјРµСЂСЏС‚СЊСЃСЏ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ non-expiry controls.',
                 origin='artem+drive',status='exploratory',market='MOEX',
                 data_requirements=['current/next futures','expiry metadata','OI','volume','basis','underlying/index','FUTOI when available'],
                 event={'family':'expiry','windows':['T-10','T-5','T-3','T-1','T0','T+1']},
@@ -183,7 +185,7 @@ class ResearchRuntime:
         for spec in self.lab.list_strategies():
             key=('strategy_run',spec.id,canonical_id)
             if spec.interval==interval and key not in existing:
-                self.lab.enqueue_job('strategy_run',f'Автотест: {spec.name_ru} / {canonical_id}',{'strategy_id':spec.id,'canonical_id':canonical_id}); count+=1
+                self.lab.enqueue_job('strategy_run',f'РђРІС‚РѕС‚РµСЃС‚: {spec.name_ru} / {canonical_id}',{'strategy_id':spec.id,'canonical_id':canonical_id}); count+=1
         return count
 
     async def _execute(self, job) -> dict[str,Any]:
@@ -193,7 +195,7 @@ class ResearchRuntime:
             if float(value) < 0.999 and bool(job_control.get('paused')):
                 raise ResearchPaused('job paused by owner')
             if float(value) < 0.999 and not self.control.get().heavy_allowed:
-                raise ResearchPaused(f"режим {self.control.get().mode.upper()}")
+                raise ResearchPaused(f"СЂРµР¶РёРј {self.control.get().mode.upper()}")
             self.last_action=message
             self.lab.update_job(job.id,progress=value)
         if job.kind=='research_project_run':
@@ -286,43 +288,43 @@ class ResearchRuntime:
             return result
         if job.kind=='historical_replay':
             cid=str(job.payload['canonical_id']); interval=str(job.payload.get('interval','10m')); threshold=float(job.payload.get('threshold',70))
-            await progress(.15,f'Historical Replay: признаки {cid}')
+            await progress(.15,f'Historical Replay: РїСЂРёР·РЅР°РєРё {cid}')
             result=await asyncio.to_thread(self.replay.run,cid,interval,threshold)
             await progress(.9,f'Historical Replay: OOS/control {cid}')
             if result.get('status')=='movement_candidate':
-                title=f'Автонаходка движения: {cid} / {interval}'
+                title=f'РђРІС‚РѕРЅР°С…РѕРґРєР° РґРІРёР¶РµРЅРёСЏ: {cid} / {interval}'
                 if not any(x['title']==title for x in self.lab.list_ideas(3000)):
                     self.lab.add_idea(title,
-                        f"Historical Replay нашёл повышенное абсолютное движение после anomaly episodes. N={result.get('events')}. Проверить направление, режимы, ликвидность, новости и execution-cost layer.",
+                        f"Historical Replay РЅР°С€С‘Р» РїРѕРІС‹С€РµРЅРЅРѕРµ Р°Р±СЃРѕР»СЋС‚РЅРѕРµ РґРІРёР¶РµРЅРёРµ РїРѕСЃР»Рµ anomaly episodes. N={result.get('events')}. РџСЂРѕРІРµСЂРёС‚СЊ РЅР°РїСЂР°РІР»РµРЅРёРµ, СЂРµР¶РёРјС‹, Р»РёРєРІРёРґРЅРѕСЃС‚СЊ, РЅРѕРІРѕСЃС‚Рё Рё execution-cost layer.",
                         origin='machine',kind='anomaly',priority=75,tags=['auto-discovery','movement-candidate',interval])
             if int(result.get('events') or 0)>=40: result['strategy_jobs_queued']=self._enqueue_matching_strategies(cid,interval)
-            await progress(1,f'Historical Replay завершён: {cid} / {result.get("status")}')
+            await progress(1,f'Historical Replay Р·Р°РІРµСЂС€С‘РЅ: {cid} / {result.get("status")}')
             return result
         if job.kind=='verify_lake':
-            await progress(.5,'Проверка Parquet Data Lake')
+            await progress(.5,'РџСЂРѕРІРµСЂРєР° Parquet Data Lake')
             result=await asyncio.to_thread(self.lake.verify)
-            await progress(1,'Data Lake проверен')
+            await progress(1,'Data Lake РїСЂРѕРІРµСЂРµРЅ')
             return result
         if job.kind=='strategy_run':
             strategy_id=str(job.payload['strategy_id']); canonical_id=str(job.payload['canonical_id']); spec=self.lab.get_strategy(strategy_id)
             if spec is None: raise KeyError(f'strategy {strategy_id} not found')
-            await progress(.1,f'Загрузка истории {canonical_id}')
+            await progress(.1,f'Р—Р°РіСЂСѓР·РєР° РёСЃС‚РѕСЂРёРё {canonical_id}')
             frame=await asyncio.to_thread(self.lake.read_candles,canonical_id,spec.interval)
-            await progress(.35,f'Поиск событий, параметров и controls: {canonical_id}')
+            await progress(.35,f'РџРѕРёСЃРє СЃРѕР±С‹С‚РёР№, РїР°СЂР°РјРµС‚СЂРѕРІ Рё controls: {canonical_id}')
             if str(spec.event.get('type'))=='buy_dip_grid': result=await asyncio.to_thread(run_buy_dip_grid,spec,canonical_id,frame)
             else: result=await asyncio.to_thread(self.machine.run,spec,canonical_id,frame)
             self.lab.save_strategy_run(result)
             if result.status=='candidate':
-                title=f'Кандидат стратегии: {spec.name_ru} / {canonical_id}'
+                title=f'РљР°РЅРґРёРґР°С‚ СЃС‚СЂР°С‚РµРіРёРё: {spec.name_ru} / {canonical_id}'
                 if not any(x['title']==title for x in self.lab.list_ideas(3000)):
                     self.lab.add_idea(title,
-                        f"Strategy Machine получил candidate после validation/holdout/walk-forward. Это ещё не live signal: требуется replication, data-quality и execution stress. Run={result.run_id}",
+                        f"Strategy Machine РїРѕР»СѓС‡РёР» candidate РїРѕСЃР»Рµ validation/holdout/walk-forward. Р­С‚Рѕ РµС‰С‘ РЅРµ live signal: С‚СЂРµР±СѓРµС‚СЃСЏ replication, data-quality Рё execution stress. Run={result.run_id}",
                         origin='machine',kind='strategy',priority=85,tags=['strategy-candidate',spec.id])
             diag=result.diagnostics or {}
             if diag.get('best_cell') or diag.get('worst_cell'):
-                result.warnings.append('Диагностика прибыльных/убыточных режимов сохранена; использовать её как новую гипотезу, а не как постфактум-фильтр holdout.')
+                result.warnings.append('Р”РёР°РіРЅРѕСЃС‚РёРєР° РїСЂРёР±С‹Р»СЊРЅС‹С…/СѓР±С‹С‚РѕС‡РЅС‹С… СЂРµР¶РёРјРѕРІ СЃРѕС…СЂР°РЅРµРЅР°; РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РµС‘ РєР°Рє РЅРѕРІСѓСЋ РіРёРїРѕС‚РµР·Сѓ, Р° РЅРµ РєР°Рє РїРѕСЃС‚С„Р°РєС‚СѓРј-С„РёР»СЊС‚СЂ holdout.')
                 self.lab.save_strategy_run(result)
-            await progress(1,f'Стратегия {spec.name_ru}: расчёт завершён / {result.status}')
+            await progress(1,f'РЎС‚СЂР°С‚РµРіРёСЏ {spec.name_ru}: СЂР°СЃС‡С‘С‚ Р·Р°РІРµСЂС€С‘РЅ / {result.status}')
             return result.model_dump(mode='json')
         raise ValueError(f'unknown research job kind: {job.kind}')
 
@@ -338,7 +340,7 @@ class ResearchRuntime:
     async def _autoplan_idle(self) -> int:
         now=time.time()
         if now-self._last_auto_plan_s < 30: return 0
-        self._last_auto_plan_s=now; self.last_action='MAX: ищу пробелы истории и derivative metrics'
+        self._last_auto_plan_s=now; self.last_action='MAX: РёС‰Сѓ РїСЂРѕР±РµР»С‹ РёСЃС‚РѕСЂРёРё Рё derivative metrics'
         quotes,source_errors=await self._collect_planner_quotes(); jobs=self.lab.list_jobs(8000); now_ms=int(time.time()*1000)
 
         policy=self.control.get()
@@ -359,15 +361,15 @@ class ResearchRuntime:
 
         total=len(history_payloads)+len(metric_payloads)
         if total:
-            self.last_action=(f"Автопилот: +{len(history_payloads)} history · +{len(metric_payloads)} metrics · "
-                              f"history {history_stats.get('known_total',0)}/{history_stats.get('target_total',0)} · "
+            self.last_action=(f"РђРІС‚РѕРїРёР»РѕС‚: +{len(history_payloads)} history В· +{len(metric_payloads)} metrics В· "
+                              f"history {history_stats.get('known_total',0)}/{history_stats.get('target_total',0)} В· "
                               f"metrics {metric_stats.get('known_total',0)}/{metric_stats.get('target_total',0)}")
         elif history_stats.get('target_total',0) or metric_stats.get('target_total',0):
-            self.last_action=(f"Автопилот: history готово {history_stats.get('done',0)}/{history_stats.get('target_total',0)} · "
-                              f"metrics готово {metric_stats.get('done',0)}/{metric_stats.get('target_total',0)} · "
-                              f"ошибок {history_stats.get('failed',0)+metric_stats.get('failed',0)}")
+            self.last_action=(f"РђРІС‚РѕРїРёР»РѕС‚: history РіРѕС‚РѕРІРѕ {history_stats.get('done',0)}/{history_stats.get('target_total',0)} В· "
+                              f"metrics РіРѕС‚РѕРІРѕ {metric_stats.get('done',0)}/{metric_stats.get('target_total',0)} В· "
+                              f"РѕС€РёР±РѕРє {history_stats.get('failed',0)+metric_stats.get('failed',0)}")
         else:
-            self.last_action='MAX: ждём доступный market universe для автоплана'
+            self.last_action='MAX: Р¶РґС‘Рј РґРѕСЃС‚СѓРїРЅС‹Р№ market universe РґР»СЏ Р°РІС‚РѕРїР»Р°РЅР°'
         return total
 
     def _refresh_resource_snapshot(self) -> None:
@@ -379,16 +381,16 @@ class ResearchRuntime:
             cpu=0.0; ram=0.0
         reasons=[]
         if cpu >= float(state.cpu_soft_limit_pct):
-            reasons.append(f'CPU {cpu:.0f}% ≥ {state.cpu_soft_limit_pct}%')
+            reasons.append(f'CPU {cpu:.0f}% в‰Ґ {state.cpu_soft_limit_pct}%')
         if ram >= float(state.ram_soft_limit_pct):
-            reasons.append(f'RAM {ram:.0f}% ≥ {state.ram_soft_limit_pct}%')
+            reasons.append(f'RAM {ram:.0f}% в‰Ґ {state.ram_soft_limit_pct}%')
         self._resource_snapshot={
             'cpu_percent':round(cpu,1),
             'ram_percent':round(ram,1),
             'cpu_soft_limit_pct':state.cpu_soft_limit_pct,
             'ram_soft_limit_pct':state.ram_soft_limit_pct,
             'throttled':bool(reasons),
-            'reason':' · '.join(reasons),
+            'reason':' В· '.join(reasons),
             'ts_ms':int(time.time()*1000),
         }
 
@@ -396,7 +398,7 @@ class ResearchRuntime:
         while True:
             try:
                 state=self.control.get()
-                if state.heavy_allowed and state.auto_plan_enabled:
+                if state.heavy_allowed and getattr(state, 'auto_plan_enabled', True):
                     assert self._planner_lock is not None
                     async with self._planner_lock:
                         await self._autoplan_idle()
@@ -404,7 +406,7 @@ class ResearchRuntime:
                 raise
             except Exception as exc:
                 self.last_error=f'auto planner: {exc}'
-                self.last_action=f'Автопилот: ошибка планировщика — {str(exc)[:180]}'
+                self.last_action=f'РђРІС‚РѕРїРёР»РѕС‚: РѕС€РёР±РєР° РїР»Р°РЅРёСЂРѕРІС‰РёРєР° вЂ” {str(exc)[:180]}'
             await asyncio.sleep(5)
 
     async def _worker_loop(self, worker_id: int) -> None:
@@ -414,7 +416,7 @@ class ResearchRuntime:
             if not state.heavy_allowed:
                 self._worker_states[worker_id]={'state':'paused','reason':f'mode {state.mode.upper()}'}
                 if worker_id==0:
-                    self.last_action='Тяжёлые расчёты на паузе — включи МАКС'
+                    self.last_action='РўСЏР¶С‘Р»С‹Рµ СЂР°СЃС‡С‘С‚С‹ РЅР° РїР°СѓР·Рµ вЂ” РІРєР»СЋС‡Рё РњРђРљРЎ'
                 await asyncio.sleep(1.5)
                 continue
             if worker_id >= desired:
@@ -425,14 +427,14 @@ class ResearchRuntime:
                 reason=str(self._resource_snapshot.get('reason') or 'resource soft limit')
                 self._worker_states[worker_id]={'state':'throttled','reason':reason}
                 if worker_id==0:
-                    self.last_action=f'Ресурсный governor: новые heavy jobs на паузе · {reason}'
+                    self.last_action=f'Р РµСЃСѓСЂСЃРЅС‹Р№ governor: РЅРѕРІС‹Рµ heavy jobs РЅР° РїР°СѓР·Рµ В· {reason}'
                 await asyncio.sleep(2)
                 continue
 
             job=self.lab.claim_next_job()
             if job is None:
                 self._worker_states[worker_id]={'state':'idle','reason':'queue empty'}
-                if worker_id==0 and state.auto_plan_enabled:
+                if worker_id==0 and getattr(state, 'auto_plan_enabled', True):
                     try:
                         assert self._planner_lock is not None
                         async with self._planner_lock:
@@ -441,7 +443,7 @@ class ResearchRuntime:
                         raise
                     except Exception as exc:
                         self.last_error=f'auto planner: {exc}'
-                        self.last_action=f'Автопилот: ошибка планировщика — {str(exc)[:180]}'
+                        self.last_action=f'РђРІС‚РѕРїРёР»РѕС‚: РѕС€РёР±РєР° РїР»Р°РЅРёСЂРѕРІС‰РёРєР° вЂ” {str(exc)[:180]}'
                         await asyncio.sleep(10)
                         continue
                     if queued:
@@ -456,7 +458,7 @@ class ResearchRuntime:
                 'started_at_ms':int(time.time()*1000),
             }
             self._worker_states[worker_id]={'state':'running','job_id':job.id,'kind':job.kind,'title':job.title_ru}
-            self.last_action=f'W{worker_id+1}: {job.title_ru} — запуск'
+            self.last_action=f'W{worker_id+1}: {job.title_ru} вЂ” Р·Р°РїСѓСЃРє'
             try:
                 result=await self._execute(job)
                 self.lab.update_job(job.id,status='done',progress=1,result=result,error='')
@@ -465,7 +467,7 @@ class ResearchRuntime:
             except ResearchPaused:
                 mode=self.control.get().mode.upper()
                 self.last_error=None
-                self.last_action=f'W{worker_id+1}: {job.title_ru} — пауза {mode}; продолжится в МАКС'
+                self.last_action=f'W{worker_id+1}: {job.title_ru} вЂ” РїР°СѓР·Р° {mode}; РїСЂРѕРґРѕР»Р¶РёС‚СЃСЏ РІ РњРђРљРЎ'
                 self.lab.update_job(job.id,status='queued',progress=0,error='')
             except Exception as exc:
                 self.last_error=str(exc)
@@ -510,3 +512,6 @@ class ResearchRuntime:
             self._worker_tasks=[]
             self._active_jobs.clear()
             self._running=False
+
+
+

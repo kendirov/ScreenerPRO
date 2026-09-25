@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Any, Literal
 from pydantic import BaseModel, Field
@@ -42,6 +42,8 @@ class StrategyRunResult(BaseModel):
     splits: dict[str, Any] = Field(default_factory=dict)
     robustness: dict[str, Any] = Field(default_factory=dict)
     diagnostics: dict[str, Any] = Field(default_factory=dict)
+    trade_trace: list[dict[str, Any]] = Field(default_factory=list)
+    control_trace: list[dict[str, Any]] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -148,3 +150,4 @@ class PaperTrade(BaseModel):
     pnl_pct: float | None = None
     exit_reason: str = ''
     payload: dict[str, Any] = Field(default_factory=dict)
+
