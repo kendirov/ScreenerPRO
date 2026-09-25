@@ -123,7 +123,7 @@ public partial class MainWindow : Window
         {
             if (Cockpit.CoreWebView2 == null)
                 await Cockpit.EnsureCoreWebView2Async();
-            if (Cockpit.Source == null)
+            if (Cockpit.Source == null || string.Equals(Cockpit.Source.Scheme, "about", StringComparison.OrdinalIgnoreCase))
                 Cockpit.Source = new Uri(_api.BaseUrl + "/");
 
             OfflinePanel.Visibility = Visibility.Collapsed;
@@ -155,6 +155,9 @@ public partial class MainWindow : Window
             SetRuntimeVisual(false, false);
             return;
         }
+
+        if (Cockpit.Source == null || string.Equals(Cockpit.Source.Scheme, "about", StringComparison.OrdinalIgnoreCase))
+            await ShowCockpitAsync("");
 
         var resourcesTask = _api.GetJsonAsync("/api/resources");
         var overviewTask = _api.GetJsonAsync("/api/overview");
