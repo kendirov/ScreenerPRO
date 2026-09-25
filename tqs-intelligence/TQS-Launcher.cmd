@@ -1,6 +1,10 @@
 @echo off
 setlocal
 cd /d "%~dp0"
+if exist "%~dp0desktop\publish\TQS.Desktop.exe" (
+  start "" "%~dp0desktop\publish\TQS.Desktop.exe"
+  exit /b 0
+)
 if not exist "%~dp0.venv\Scripts\pythonw.exe" (
   echo TQS is not installed yet.
   echo Run install-windows.cmd once.

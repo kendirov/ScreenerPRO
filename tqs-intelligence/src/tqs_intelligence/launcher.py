@@ -71,6 +71,7 @@ class TQSLauncher:
         self.root.geometry("1040x835")
         self.root.minsize(900, 720)
         self.root.configure(bg=BG)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self._setup_style()
         self._build_ui()
         threading.Thread(target=self._health_loop, name="tqs-launcher-health", daemon=True).start()
@@ -789,6 +790,28 @@ class TQSLauncher:
             try: self.refresh_all()
             except Exception: pass
         self.root.after(3000, self._poll)
+
+    def _on_close(self) -> None:
+        if getattr(self, "_closing", False):
+            return
+        self._closing = True
+        try:
+            self.root.withdraw()
+        except Exception:
+            pass
+
+        def work() -> None:
+            try:
+                self._stop_backend()
+            except Exception:
+                pass
+            finally:
+                try:
+                    self.root.after(0, self.root.destroy)
+                except Exception:
+                    pass
+
+        threading.Thread(target=work, name="tqs-launcher-close", daemon=True).start()
 
     def run(self) -> int:
         self.root.mainloop(); return 0
