@@ -16,6 +16,7 @@ class ControlState:
     data_lake_root: str = './data-lake'
     drive_export_root: str = ''
     auto_update: bool = True
+    auto_plan_enabled: bool = False
     heavy_workers: int = 2
     history_batch_size: int = 4
     metric_batch_size: int = 2
@@ -46,6 +47,7 @@ class ControlCenter:
             data_lake_root=os.getenv('TQS_DATA_LAKE_ROOT', './data-lake'),
             drive_export_root=os.getenv('TQS_DRIVE_EXPORT_ROOT', ''),
             auto_update=os.getenv('TQS_AUTO_UPDATE', 'true').lower() in {'1','true','yes','on'},
+            auto_plan_enabled=os.getenv('TQS_AUTO_PLAN_ENABLED', 'false').lower() in {'1','true','yes','on'},
             heavy_workers=max(1, int(os.getenv('TQS_HEAVY_WORKERS', '2'))),
             history_batch_size=max(1, int(os.getenv('TQS_HISTORY_BATCH_SIZE', '4'))),
             metric_batch_size=max(1, int(os.getenv('TQS_METRIC_BATCH_SIZE', '2'))),

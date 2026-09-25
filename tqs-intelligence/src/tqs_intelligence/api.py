@@ -97,12 +97,18 @@ class ControlPatch(BaseModel):
     data_lake_root: str | None = None
     drive_export_root: str | None = None
     auto_update: bool | None = None
+    auto_plan_enabled: bool | None = None
     heavy_workers: int | None = Field(default=None, ge=1, le=4)
     history_batch_size: int | None = Field(default=None, ge=1, le=16)
     metric_batch_size: int | None = Field(default=None, ge=1, le=8)
     refresh_seconds_override: int | None = Field(default=None, ge=0, le=900)
     cpu_soft_limit_pct: int | None = Field(default=None, ge=50, le=99)
     ram_soft_limit_pct: int | None = Field(default=None, ge=50, le=99)
+
+
+class JobControlPatch(BaseModel):
+    priority: int | None = Field(default=None, ge=0, le=100)
+    paused: bool | None = None
 
 
 class IdeaCreate(BaseModel):
@@ -307,10 +313,19 @@ app = FastAPI(title='TQS Intelligence & Strategy Machine', version=__version__, 
 
 
 def _static_response(asset_path: str) -> Response:
-    item = _STATIC_ASSETS.get(asset_path)
-    if item is None:
+    # Small cockpit assets are read directly in-process. This avoids the
+    # threadpool stalls previously observed with StaticFiles/FileResponse and
+    # also lets UI-only edits become visible without restarting the 5+ GB
+    # analytical runtime.
+    target = (STATIC / asset_path).resolve()
+    try:
+        target.relative_to(STATIC.resolve())
+    except ValueError:
         raise HTTPException(status_code=404, detail='Static asset not found')
-    body, media_type = item
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail='Static asset not found')
+    body = target.read_bytes()
+    media_type = mimetypes.guess_type(target.name)[0] or 'application/octet-stream'
     return Response(
         content=body,
         media_type=media_type,
@@ -442,38 +457,60 @@ async def refresh():
 
 @app.get('/api/overview')
 def overview():
+    """Fast owner-facing cockpit state.
+
+    This endpoint must stay responsive while DuckDB/SQLite writers are busy.
+    Detailed historical/storage counts belong to dedicated background/diagnostic
+    endpoints and must never blank the live cockpit.
+    """
     snapshot=_snapshot(); classes={}
     if snapshot:
-        for quote in snapshot.quotes: classes[quote.asset_class.value]=classes.get(quote.asset_class.value,0)+1
-    stats=store.stats()
-    return {'initializing':snapshot is None,'version':app.version,'identity':_identity(),'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
-            'quote_count':len(snapshot.quotes) if snapshot else 0,'anomaly_count':len(snapshot.anomalies) if snapshot else 0,
-            'active_episode_count':stats.get('active_episodes',0),'episode_count':stats.get('anomaly_episodes',0),
-            'news_count':len(snapshot.news) if snapshot else 0,'asset_classes':classes,
-            'sources':[x.model_dump(mode='json') for x in service.current_health()],'runtime':service.runtime_status(),
-            'research_runtime':research_runtime.status(),'account_intelligence':account_service.status(),'pulse_public':pulse_service.status(),
-            'control':control.status(),'resources':_resources(),'storage':stats,'lab':lab.stats(),
-            'top_anomalies':[x.model_dump(mode='json') for x in snapshot.anomalies[:30]] if snapshot else []}
+        for quote in snapshot.quotes:
+            classes[quote.asset_class.value]=classes.get(quote.asset_class.value,0)+1
+    research=research_runtime.quick_status()
+    active_jobs=list(research.get('active_jobs') or [])
+    auto_history=research.get('auto_history') or {}
+    auto_metrics=research.get('auto_metrics') or {}
+    queued_running=int(auto_history.get('queued_running') or 0)+int(auto_metrics.get('queued_running') or 0)
+    queued=max(0,queued_running-len(active_jobs))
+    return {
+        'initializing':snapshot is None,'version':app.version,'identity':_identity(),
+        'generated_at_ms':snapshot.generated_at_ms if snapshot else None,
+        'quote_count':len(snapshot.quotes) if snapshot else 0,
+        'anomaly_count':len(snapshot.anomalies) if snapshot else 0,
+        'active_episode_count':None,'episode_count':None,
+        'news_count':len(snapshot.news) if snapshot else 0,'asset_classes':classes,
+        'sources':[x.model_dump(mode='json') for x in service.current_health()],
+        'runtime':service.runtime_status(),'research_runtime':research,
+        'account_intelligence':account_service.quick_status(),
+        'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.quick_status(),
+        'control':control.status(),'resources':_resources(),
+        'storage':{'deferred':True,'reason':'interactive_fast_path'},
+        'lab':{'queued_jobs':queued,'running_jobs':len(active_jobs),'deferred':True},
+        'top_anomalies':[x.model_dump(mode='json') for x in snapshot.anomalies[:50]] if snapshot else []
+    }
 
 
 @app.get('/api/system')
 async def system():
-    data_lake, storage_stats, lab_stats, research_status_full, account_status_full, remote_status_full = await asyncio.gather(
-        asyncio.to_thread(lake.quick_stats),
-        asyncio.to_thread(store.stats),
-        asyncio.to_thread(lab.stats),
-        asyncio.to_thread(research_runtime.status),
-        asyncio.to_thread(account_service.status),
-        asyncio.to_thread(remote_node_status),
-    )
-    return {'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),'research_runtime':research_status_full,
-            'account_intelligence':account_status_full,'control':control.status(),'resources':_resources(),'remote_node':remote_status_full,
-            'storage':storage_stats,'lab':lab_stats,'data_lake':data_lake,
-            'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
-                      'twelve_data_enabled':bool(settings.twelve_data_api_key),'episode_threshold':settings.episode_threshold,
-                      'moex_premium_enabled':settings.moex_premium_enabled,'telegram_news_enabled':settings.telegram_news_enabled},
-            'pipeline':['collect','normalize','persist','anomaly','episode lifecycle','account/position intelligence','historical lake',
-                        'strategy/event study','control/OOS/walk-forward/costs','relationship mining','briefing snapshot','portable AI snapshot']}
+    # System screen is an operator surface, not a deep audit. Never make it wait
+    # for analytical DB scans while the research workers are active.
+    return {
+        'version':app.version,'identity':_identity(),'runtime':service.runtime_status(),
+        'research_runtime':research_runtime.quick_status(),
+        'account_intelligence':account_service.quick_status(),
+        'lchi_public':lchi_service.quick_status(),'pulse_public':pulse_service.quick_status(),
+        'control':control.status(),'resources':_resources(),
+        'remote_node':{'deferred':True,'reason':'interactive_fast_path'},
+        'storage':{'deferred':True,'reason':'interactive_fast_path'},
+        'lab':{'deferred':True,'reason':'interactive_fast_path'},
+        'data_lake':lake.quick_stats(),
+        'config':{'refresh_seconds':settings.refresh_seconds,'db_path':settings.db_path,'rss_feeds':len(news.rss_urls),
+                  'twelve_data_enabled':bool(settings.twelve_data_api_key),'episode_threshold':settings.episode_threshold,
+                  'moex_premium_enabled':settings.moex_premium_enabled,'telegram_news_enabled':settings.telegram_news_enabled},
+        'pipeline':['collect','normalize','persist','anomaly','episode lifecycle','account/position intelligence','historical lake',
+                    'strategy/event study','control/OOS/walk-forward/costs','relationship mining','briefing snapshot','portable AI snapshot']
+    }
 
 
 @app.get('/api/node/remote')
@@ -591,14 +628,17 @@ async def quotes(q:str='',provider:str='',market_type:str='',asset_class:AssetCl
 @app.get('/api/instrument/{canonical_id:path}')
 async def universal_instrument(canonical_id:str):
     snapshot = _snapshot()
-    return await asyncio.to_thread(instrument_lab.build, canonical_id, snapshot)
+    try:
+        return await asyncio.to_thread(instrument_lab.build_fast, canonical_id, snapshot)
+    except KeyError:
+        raise HTTPException(404, 'instrument not found in current snapshot')
 
 
 @app.get('/api/moex')
 def moex():
     payload = moex_lab.overview(_snapshot())
-    payload['lchi_public'] = lchi_service.status()
-    payload['pulse_public'] = pulse_service.status()
+    payload['lchi_public'] = lchi_service.quick_status()
+    payload['pulse_public'] = pulse_service.quick_status()
     return payload
 
 
@@ -610,8 +650,8 @@ def moex_intelligence(limit:int=Query(200,ge=1,le=1000)):
 @app.get('/api/moex/lab')
 def moex_market_lab():
     payload = moex_lab.overview(_snapshot())
-    payload['lchi_public'] = lchi_service.status()
-    payload['pulse_public'] = pulse_service.status()
+    payload['lchi_public'] = lchi_service.quick_status()
+    payload['pulse_public'] = pulse_service.quick_status()
     return payload
 
 
@@ -624,7 +664,7 @@ def moex_instrument_lab(canonical_id:str):
 
 @app.get('/api/moex/participants/lchi/status')
 def lchi_status():
-    return lchi_service.status()
+    return lchi_service.quick_status()
 
 
 @app.get('/api/moex/participants/lchi')
@@ -669,7 +709,7 @@ class PulseTrackCreate(BaseModel):
 
 @app.get('/api/moex/participants/pulse/status')
 def pulse_status():
-    return pulse_service.status()
+    return pulse_service.quick_status()
 
 
 @app.get('/api/moex/participants/pulse')
@@ -853,7 +893,28 @@ def create_backfill(request:BackfillCreate):
 
 
 @app.get('/api/jobs')
-def jobs(limit:int=Query(300,ge=1,le=2000)): return [x.model_dump(mode='json') for x in lab.list_jobs(limit)]
+def jobs(limit:int=Query(300,ge=1,le=2000)):
+    items=lab.list_jobs(limit)
+    controls=lab.job_controls([item.id for item in items])
+    rows=[]
+    for item in items:
+        row=item.model_dump(mode='json')
+        row['control']=controls[item.id]
+        rows.append(row)
+    return rows
+
+
+@app.post('/api/jobs/{job_id}/control')
+def set_job_control(job_id:str, request:JobControlPatch):
+    job=lab.get_job(job_id)
+    if job is None:
+        raise HTTPException(404,'job not found')
+    control_state=lab.set_job_control(
+        job_id,
+        priority=request.priority,
+        paused=request.paused,
+    )
+    return {'ok':True,'job':job.model_dump(mode='json'),'control':control_state}
 
 
 def _metric_points_from_result(result: dict[str, Any]) -> int:
@@ -918,7 +979,9 @@ def save_strategy(spec:StrategySpec): return lab.save_strategy(spec).model_dump(
 
 
 @app.get('/api/strategies/runs')
-def strategy_runs(strategy_id:str='',limit:int=Query(200,ge=1,le=2000)):
+def strategy_runs(strategy_id:str='',limit:int=Query(200,ge=1,le=2000),full:bool=False):
+    if not full:
+        return lab.list_strategy_run_summaries(strategy_id,limit)
     return [x.model_dump(mode='json') for x in lab.list_strategy_runs(strategy_id,limit)]
 
 
@@ -966,7 +1029,9 @@ def paper_bot_trades(bot_id:str='',status:str='',limit:int=Query(300,ge=1,le=300
 
 @app.get('/api/data-lake')
 async def data_lake_status():
-    return await asyncio.to_thread(lake.verify)
+    # Fast cached inventory for the UI. Full parquet verification is an explicit
+    # POST job and must not run in the page-load critical path.
+    return lake.quick_stats()
 
 
 @app.post('/api/data-lake/verify')

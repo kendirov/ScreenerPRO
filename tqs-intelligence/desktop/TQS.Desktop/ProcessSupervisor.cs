@@ -87,6 +87,8 @@ public sealed class ProcessSupervisor : IDisposable
             if (!File.Exists(python))
                 throw new FileNotFoundException("Не найден .venv\\Scripts\\python.exe", python);
 
+            SetSafeStartupControl();
+
             var stopMarker = Path.Combine(Root, "data", "server-stop.flag");
             if (File.Exists(stopMarker))
                 File.Delete(stopMarker);
@@ -111,6 +113,7 @@ public sealed class ProcessSupervisor : IDisposable
 
             _supervisor = new Process { StartInfo = psi, EnableRaisingEvents = true };
             _supervisor.Start();
+            try { _supervisor.PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
             _job.Assign(_supervisor);
 
             _ = PumpAsync(_supervisor.StandardOutput, logPath);
@@ -199,6 +202,30 @@ public sealed class ProcessSupervisor : IDisposable
             "application/json");
         using var response = await _http.PostAsync(BaseUrl + "/api/control", body);
         response.EnsureSuccessStatusCode();
+    }
+
+    private void SetSafeStartupControl()
+    {
+        try
+        {
+            var dataDir = Path.Combine(Root, "data");
+            Directory.CreateDirectory(dataDir);
+            var path = Path.Combine(dataDir, "control.json");
+            Dictionary<string, object?> state;
+            if (File.Exists(path))
+            {
+                state = JsonSerializer.Deserialize<Dictionary<string, object?>>(
+                    File.ReadAllText(path)) ?? new Dictionary<string, object?>();
+            }
+            else
+            {
+                state = new Dictionary<string, object?>();
+            }
+            state["mode"] = "stop";
+            state["changed_by"] = "tqs-desktop-safe-start";
+            File.WriteAllText(path, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch { }
     }
 
     private async Task CleanupOrphansAsync()

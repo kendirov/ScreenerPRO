@@ -25,7 +25,8 @@ class DuckStore:
     def __init__(self, path: str) -> None:
         db = Path(path)
         db.parent.mkdir(parents=True, exist_ok=True)
-        self._con = duckdb.connect(str(db))
+        self.path = str(db.resolve())
+        self._con = duckdb.connect(self.path)
         self._lock = threading.Lock()
         self._con.execute("""
             create table if not exists quote_snapshots (
@@ -64,6 +65,14 @@ class DuckStore:
                 status varchar, payload_json varchar
             );
         """)
+
+    def reader_connection(self):
+        """Independent DuckDB connection for analytical reads.
+
+        DuckDB MVCC lets this reader observe the last committed state while the
+        primary connection is writing. The caller owns and must close it.
+        """
+        return duckdb.connect(self.path)
 
     def persist_snapshot(self, quotes: list[Quote], anomalies: list[Anomaly], news: list[NewsItem]) -> None:
         """Persist a full market snapshot using DuckDB Arrow bulk inserts.
@@ -206,8 +215,11 @@ class DuckStore:
             sql += " where " + " and ".join(where)
         sql += " order by case when status='active' then 0 else 1 end, peak_score desc, opened_at_ms desc limit ?"
         params.append(limit)
-        with self._lock:
-            rows = self._con.execute(sql, params).fetchall()
+        con = self.reader_connection()
+        try:
+            rows = con.execute(sql, params).fetchall()
+        finally:
+            con.close()
         return [self._episode_from_row(row) for row in rows]
 
     def get_episode(self, episode_id: str) -> AnomalyEpisode | None:
@@ -353,11 +365,14 @@ class DuckStore:
                 )
 
     def list_findings(self, limit: int = 100) -> list[ResearchFinding]:
-        with self._lock:
-            rows = self._con.execute(
+        con = self.reader_connection()
+        try:
+            rows = con.execute(
                 "select payload_json from research_findings order by case when status='candidate' then 0 else 1 end, sample_count desc limit ?",
                 [limit],
             ).fetchall()
+        finally:
+            con.close()
         return [ResearchFinding.model_validate_json(row[0]) for row in rows]
 
     def append_log(self, item: RuntimeLog) -> None:
@@ -389,8 +404,11 @@ class DuckStore:
             sql += " where " + " and ".join(where)
         sql += " order by ts_ms desc limit ?"
         params.append(limit)
-        with self._lock:
-            rows = self._con.execute(sql, params).fetchall()
+        con = self.reader_connection()
+        try:
+            rows = con.execute(sql, params).fetchall()
+        finally:
+            con.close()
         return [RuntimeLog(ts_ms=r[0], level=r[1], component=r[2], message=r[3], details=json.loads(r[4] or "{}")) for r in rows]
 
     def create_hypothesis(self, request: HypothesisCreate, now_ms: int) -> Hypothesis:

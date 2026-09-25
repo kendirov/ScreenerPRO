@@ -113,6 +113,8 @@ class LchiPublicStore:
                     evidence_level text not null default 'public_account'
                 );
                 create index if not exists idx_lchi_events_symbol_time on lchi_position_events(seccode, ts_ms);
+                create index if not exists idx_lchi_participants_rank_deals
+                    on lchi_participants(coalesce(ranking,999999), coalesce(total_deals,0) desc);
 
                 create table if not exists lchi_meta (
                     key text primary key,
@@ -121,6 +123,18 @@ class LchiPublicStore:
                 """
             )
             self._con.commit()
+
+    def _reader(self) -> sqlite3.Connection:
+        """Short-lived WAL reader for cockpit/API queries.
+
+        Collector writes keep their dedicated connection/lock. Owner-facing reads
+        use a separate connection so a long portfolio sync cannot blank the UI.
+        """
+        con = sqlite3.connect(str(self.path), timeout=1.0, check_same_thread=False)
+        con.row_factory = sqlite3.Row
+        con.execute("pragma query_only=ON")
+        con.execute("pragma busy_timeout=1000")
+        return con
 
     def meta_get(self, key: str, default: str = "") -> str:
         with self._lock:
@@ -319,8 +333,8 @@ class LchiPublicStore:
             needle = f"%{q.lower().strip()}%"
             params += [needle, needle]
         params.append(int(limit))
-        with self._lock:
-            rows = self._con.execute(
+        with self._reader() as con:
+            rows = con.execute(
                 f"select * from lchi_participants {where} order by coalesce(ranking,999999), coalesce(total_deals,0) desc limit ?",
                 params,
             ).fetchall()
@@ -341,8 +355,8 @@ class LchiPublicStore:
             symbol_filter = "and (upper(p.seccode)=? or upper(p.base_contract_code)=? or upper(p.seccode) like ?)"
             params.extend([needle, root, root + "-%"])
         params.append(int(limit))
-        with self._lock:
-            rows = self._con.execute(
+        with self._reader() as con:
+            rows = con.execute(
                 f"""
                 select p.*, u.login, u.broker_code, u.ranking, u.total_yield, u.total_deals
                 from lchi_position_snapshots p
@@ -368,8 +382,8 @@ class LchiPublicStore:
             where = "where (upper(e.seccode)=? or upper(e.seccode) like ?)"
             params.extend([needle, root + "-%"])
         params.append(int(limit))
-        with self._lock:
-            rows = self._con.execute(
+        with self._reader() as con:
+            rows = con.execute(
                 f"""
                 select e.*, u.login, u.broker_code, u.ranking, u.total_yield
                 from lchi_position_events e
@@ -382,25 +396,25 @@ class LchiPublicStore:
         return [dict(r) for r in rows]
 
     def account(self, user_id: str) -> dict[str, Any] | None:
-        with self._lock:
-            user = self._con.execute("select * from lchi_participants where user_id=?", [user_id]).fetchone()
+        with self._reader() as con:
+            user = con.execute("select * from lchi_participants where user_id=?", [user_id]).fetchone()
             if user is None:
                 return None
-            mx = self._con.execute(
+            mx = con.execute(
                 "select max(observed_at_ms) from lchi_position_snapshots where user_id=?", [user_id]
             ).fetchone()[0]
             positions = []
             if mx is not None:
                 positions = [
                     dict(r) | {"evidence_level": "public_account"}
-                    for r in self._con.execute(
+                    for r in con.execute(
                         "select * from lchi_position_snapshots where user_id=? and observed_at_ms=? order by abs(coalesce(estimated_value,0)) desc",
                         [user_id, int(mx)],
                     ).fetchall()
                 ]
             events = [
                 dict(r)
-                for r in self._con.execute(
+                for r in con.execute(
                     "select * from lchi_position_events where user_id=? order by ts_ms desc limit 500", [user_id]
                 ).fetchall()
             ]
@@ -410,12 +424,12 @@ class LchiPublicStore:
         return {"participant": participant, "positions": positions, "events": events}
 
     def stats(self) -> dict[str, Any]:
-        with self._lock:
-            participants = int(self._con.execute("select count(*) from lchi_participants").fetchone()[0])
-            synced = int(self._con.execute("select count(*) from lchi_participants where last_portfolio_sync_ms is not null").fetchone()[0])
-            snapshots = int(self._con.execute("select count(*) from lchi_position_snapshots").fetchone()[0])
-            events = int(self._con.execute("select count(*) from lchi_position_events").fetchone()[0])
-            latest = self._con.execute("select max(observed_at_ms) from lchi_position_snapshots").fetchone()[0]
+        with self._reader() as con:
+            participants = int(con.execute("select count(*) from lchi_participants").fetchone()[0])
+            synced = int(con.execute("select count(*) from lchi_participants where last_portfolio_sync_ms is not null").fetchone()[0])
+            snapshots = int(con.execute("select count(*) from lchi_position_snapshots").fetchone()[0])
+            events = int(con.execute("select count(*) from lchi_position_events").fetchone()[0])
+            latest = con.execute("select max(observed_at_ms) from lchi_position_snapshots").fetchone()[0]
         return {
             "participants_discovered": participants,
             "participants_with_portfolio": synced,

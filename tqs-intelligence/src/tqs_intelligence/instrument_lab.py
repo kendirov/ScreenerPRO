@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import statistics
 from typing import Any
@@ -170,6 +171,172 @@ class InstrumentLab:
             for name,series in rows.items(): metrics[name]=series; participant[name]=series[-1]
             if not rows.get("futoi_fiz_long_contracts"): backfills.append({"provider":"moex","symbol":key,"start_ms":1609459200000,"authorized":False})
         return metrics,sources,participant,backfills
+
+    def build_fast(self, canonical_id: str, snapshot: Any) -> dict[str, Any]:
+        """Interactive instrument packet that avoids analytical DB locks.
+
+        Price history and derivative metrics come from the file-backed Data Lake;
+        live quote/anomaly/news context comes from the in-memory market snapshot.
+        Deep episode/strategy history is deliberately deferred so the chart opens
+        immediately even while bulk research is writing DuckDB/SQLite.
+        """
+        quotes = snapshot.quotes if snapshot else []
+        quote_obj = next((q for q in quotes if q.canonical_id == canonical_id), None)
+        if quote_obj is None:
+            raise KeyError(canonical_id)
+        quote = quote_obj.model_dump(mode="json")
+        symbol = str(quote.get("symbol") or canonical_id.rsplit(":", 1)[-1])
+        provider = str(quote.get("provider") or canonical_id.split(":", 1)[0])
+        market_type = str(quote.get("market_type") or "")
+        key = economic_key(symbol, provider, market_type)
+        venue_context = self._venue_context(quotes, quote)
+        related = [x for x in venue_context if x.get("canonical_id") != canonical_id][:30]
+
+        interval = "10m" if provider == "moex" else "5m"
+        price_history_cid = canonical_id
+        price_history_provider = provider
+        candles = self._history(price_history_cid, interval, max_points=4000)
+        if not candles and provider != "moex":
+            fallback = next(
+                (x for x in venue_context if x.get("provider") == "binance" and x.get("market_type") in {"usdt-futures", "spot"}),
+                None,
+            )
+            if fallback:
+                price_history_cid = str(fallback.get("canonical_id"))
+                price_history_provider = "binance"
+                candles = self._history(price_history_cid, "5m", max_points=4000)
+                interval = "5m"
+
+        latest = {
+            "ts_ms": int(quote.get("observed_at_ms") or quote.get("ts_ms") or 0),
+            "price": quote.get("last"),
+            "change_24h_pct": quote.get("change_24h_pct"),
+            "volume_24h": quote.get("volume_24h"),
+            "turnover_24h": quote.get("turnover_24h"),
+            "open_interest": quote.get("open_interest"),
+            "funding_rate": quote.get("funding_rate"),
+        }
+
+        # Historical volume anomalies are computed from already-loaded candles,
+        # so the trader can see concrete episodes without waiting for DuckDB.
+        scores: list[dict[str, Any]] = []
+        volumes: list[float] = []
+        for candle in candles:
+            raw = candle.get("volume")
+            try:
+                volume = float(raw) if raw is not None else None
+            except (TypeError, ValueError):
+                volume = None
+            if volume is None or not math.isfinite(volume):
+                continue
+            baseline = volumes[-20:]
+            if len(baseline) >= 8:
+                med = statistics.median(baseline)
+                ratio = volume / med if med > 0 else 0.0
+                if ratio >= 2.0:
+                    score = min(100.0, 75.0 + (ratio - 2.0) * 10.0)
+                    scores.append({
+                        "ts_ms": int(candle.get("ts_ms") or 0),
+                        "score": round(score, 2),
+                        "severity": "high" if ratio >= 3.0 else "medium",
+                        "reasons": [f"Объём {ratio:.1f}x медианы предыдущих 20 свечей"],
+                        "signals": ["volume_spike"],
+                    })
+            volumes.append(volume)
+
+        if snapshot:
+            now_ts = int(quote.get("observed_at_ms") or quote.get("ts_ms") or 0)
+            for anomaly in snapshot.anomalies:
+                if anomaly.canonical_id != canonical_id:
+                    continue
+                scores.append({
+                    "ts_ms": now_ts,
+                    "score": float(anomaly.score),
+                    "severity": str(anomaly.severity),
+                    "reasons": list(anomaly.reasons or []),
+                    "signals": list(anomaly.signals or []),
+                })
+        scores.sort(key=lambda x: int(x.get("ts_ms") or 0))
+
+        news: list[dict[str, Any]] = []
+        if snapshot:
+            for item in snapshot.news:
+                if key and key in {economic_key(x) for x in item.symbols}:
+                    news.append(item.model_dump(mode="json"))
+
+        # Historical OI/FUTOI/funding are a deferred secondary layer in the
+        # interactive path. Scanning the metric lake here used to make a simple
+        # SBER chart wait behind multi-year backfills. Current quote-level OI /
+        # funding remain visible immediately via latest_live; deep metric series
+        # are loaded by research/backfill workers instead of blocking the chart.
+        metrics: dict[str, list[dict[str, Any]]] = {}
+        metric_sources: dict[str, dict[str, list[dict[str, Any]]]] = {}
+        participant_context: dict[str, Any] = {}
+        metric_backfills: list[dict[str, Any]] = []
+        historical_oi: list[dict[str, Any]] = []
+        historical_funding: list[dict[str, Any]] = []
+        participant_points = 0
+        bounds = self.lake.candle_bounds(price_history_cid, interval)
+        coverage = {
+            "live_snapshots": 1,
+            "historical_candles": int(bounds.get("rows") or len(candles)),
+            "chart_candles": len(candles),
+            "history_from_ms": int(candles[0]["ts_ms"]) if candles else None,
+            "history_to_ms": int(candles[-1]["ts_ms"]) if candles else None,
+            "price_history_canonical_id": price_history_cid,
+            "price_history_provider": price_history_provider,
+            "price_history_is_fallback": price_history_cid != canonical_id,
+            "anomaly_points": len(scores),
+            "episodes": None,
+            "news": len(news),
+            "strategy_runs": None,
+            "venue_matches": len(venue_context),
+            "historical_oi_points": len(historical_oi),
+            "historical_funding_points": len(historical_funding),
+            "participant_metric_points": participant_points,
+            "metric_sources": {k: {m: len(v) for m, v in rows.items()} for k, rows in metric_sources.items()},
+            "has_oi": bool(historical_oi) or quote.get("open_interest") is not None,
+            "has_funding": bool(historical_funding) or quote.get("funding_rate") is not None,
+            "has_futoi": participant_points > 0,
+            "deep_context_status": "deferred",
+        }
+        backfill = None
+        if provider in {"moex", "binance"}:
+            backfill = {
+                "provider": provider,
+                "symbol": symbol,
+                "market_type": market_type or ("shares" if provider == "moex" else "usdt-futures"),
+                "interval": interval,
+            }
+
+        return {
+            "canonical_id": canonical_id,
+            "economic_key": key,
+            "quote": quote,
+            "latest_live": latest,
+            "coverage": coverage,
+            "interval": interval,
+            "price_history_source": {
+                "canonical_id": price_history_cid,
+                "provider": price_history_provider,
+                "fallback": price_history_cid != canonical_id,
+            },
+            "candles": candles,
+            "live": [latest] if latest["ts_ms"] else [],
+            "metrics": metrics,
+            "metric_sources": metric_sources,
+            "participant_context": participant_context,
+            "scores": scores,
+            "episodes": [],
+            "news": news[:100],
+            "strategy_runs": [],
+            "venue_context": venue_context,
+            "related": related,
+            "suggested_backfill": backfill,
+            "suggested_metrics_backfill": metric_backfills[0] if metric_backfills else None,
+            "suggested_metric_backfills": metric_backfills,
+            "deferred_layers": ["episodes", "strategy_runs", "historical_live_snapshots"],
+        }
 
     def build(self, canonical_id: str, snapshot: Any) -> dict[str, Any]:
         quotes=snapshot.quotes if snapshot else []; quote_obj=next((q for q in quotes if q.canonical_id==canonical_id),None)

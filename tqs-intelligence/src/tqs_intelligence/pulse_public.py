@@ -180,6 +180,7 @@ class PulsePublicStore:
     def __init__(self, path: str = "./data/tqs-pulse.sqlite3") -> None:
         db = Path(path)
         db.parent.mkdir(parents=True, exist_ok=True)
+        self.path = db
         self._lock = RLock()
         self._con = sqlite3.connect(str(db), check_same_thread=False)
         self._con.row_factory = sqlite3.Row
@@ -215,6 +216,13 @@ class PulsePublicStore:
             )
             self._con.commit()
 
+    def _reader(self) -> sqlite3.Connection:
+        con = sqlite3.connect(str(self.path), timeout=1.0, check_same_thread=False)
+        con.row_factory = sqlite3.Row
+        con.execute("pragma query_only=ON")
+        con.execute("pragma busy_timeout=1000")
+        return con
+
     def track(self, handle: str) -> dict[str, Any]:
         handle = handle.strip().lstrip("@")
         if not handle:
@@ -231,8 +239,8 @@ class PulsePublicStore:
         return {"handle": handle, "source_url": url}
 
     def tracked(self, limit: int = 1000) -> list[dict[str, Any]]:
-        with self._lock:
-            rows = self._con.execute(
+        with self._reader() as con:
+            rows = con.execute(
                 "select * from pulse_profiles order by coalesce(last_sync_ms,0), tracked_at_ms limit ?", [int(limit)]
             ).fetchall()
         return [dict(row) for row in rows]
@@ -289,8 +297,8 @@ class PulsePublicStore:
             self._con.commit()
 
     def profiles(self, limit: int = 200) -> list[dict[str, Any]]:
-        with self._lock:
-            rows = self._con.execute(
+        with self._reader() as con:
+            rows = con.execute(
                 "select handle,display_name,followers,posts_count,last_sync_ms,last_error,source_url from pulse_profiles order by coalesce(followers,0) desc limit ?",
                 [int(limit)],
             ).fetchall()
@@ -303,8 +311,8 @@ class PulsePublicStore:
             where = "where upper(symbol)=?"
             params.append(symbol.upper().strip())
         params.append(int(limit))
-        with self._lock:
-            rows = self._con.execute(
+        with self._reader() as con:
+            rows = con.execute(
                 f"""select e.*,p.display_name,p.followers from pulse_events e
                     left join pulse_profiles p on p.handle=e.handle
                     {where} order by e.ts_ms desc limit ?""",
@@ -313,11 +321,11 @@ class PulsePublicStore:
         return [dict(row) for row in rows]
 
     def stats(self) -> dict[str, Any]:
-        with self._lock:
-            profiles = int(self._con.execute("select count(*) from pulse_profiles").fetchone()[0])
-            synced = int(self._con.execute("select count(*) from pulse_profiles where last_sync_ms is not null").fetchone()[0])
-            events = int(self._con.execute("select count(*) from pulse_events").fetchone()[0])
-            latest = self._con.execute("select max(last_sync_ms) from pulse_profiles").fetchone()[0]
+        with self._reader() as con:
+            profiles = int(con.execute("select count(*) from pulse_profiles").fetchone()[0])
+            synced = int(con.execute("select count(*) from pulse_profiles where last_sync_ms is not null").fetchone()[0])
+            events = int(con.execute("select count(*) from pulse_events").fetchone()[0])
+            latest = con.execute("select max(last_sync_ms) from pulse_profiles").fetchone()[0]
         return {"profiles_tracked": profiles, "profiles_synced": synced, "events": events, "last_sync_ms": latest}
 
 
@@ -345,6 +353,7 @@ class PulsePublicService:
         self.running = False
         self.last_action = "Пульс: ожидание"
         self.last_error: str | None = None
+        self._stats_cache = store.stats()
         for handle in handles or []:
             if handle.strip():
                 self.store.track(handle)
@@ -400,6 +409,7 @@ class PulsePublicService:
                 for row in rows:
                     await self.sync(str(row["handle"]))
                     await asyncio.sleep(0.5)
+                self._stats_cache = await asyncio.to_thread(self.store.stats)
                 await asyncio.sleep(120 if state.mode == "max" else self.refresh_seconds)
         finally:
             self.running = False
@@ -412,10 +422,9 @@ class PulsePublicService:
             "evidence_level": "public_profile",
             "size_policy": "operation quantity is unknown unless a public source explicitly exposes it; TQS never estimates it",
             "source": "T-Bank Pulse public profile SSR / best effort",
+            **self._stats_cache,
         }
 
     def status(self) -> dict[str, Any]:
-        return {
-            **self.quick_status(),
-            **self.store.stats(),
-        }
+        self._stats_cache = self.store.stats()
+        return self.quick_status()

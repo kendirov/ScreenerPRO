@@ -67,3 +67,29 @@ def test_moex_live_intelligence_is_available_before_history():
     assert row["history_status"] == "warming"
     assert row["baseline_days"] == 0
     assert "не в активной торговой сессии" in row["reasons"][0]
+
+
+
+def test_moex_lchi_enrichment_never_waits_for_busy_collector():
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    lock = threading.Lock()
+    lock.acquire()
+    try:
+        class NeverQuery:
+            def execute(self, *args, **kwargs):
+                raise AssertionError("busy LCHI store must not be queried")
+
+        engine = MoexFeatureEngine(
+            store=None,
+            lchi_store=SimpleNamespace(_lock=lock, _con=NeverQuery()),
+        )
+        started = time.perf_counter()
+        result = engine._lchi_flows(["SBER", "SiZ6"], 1_000_000)
+        elapsed = time.perf_counter() - started
+        assert result == {}
+        assert elapsed < 0.05
+    finally:
+        lock.release()

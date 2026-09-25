@@ -53,6 +53,12 @@ class LabStore:
                     status text, progress real, title_ru text, payload_json text,
                     result_json text, error text, started_at_ms integer, finished_at_ms integer
                 );
+                create table if not exists research_job_controls (
+                    job_id text primary key,
+                    priority integer not null default 50,
+                    paused integer not null default 0,
+                    updated_at_ms integer not null
+                );
                 create table if not exists strategy_specs (
                     id text primary key, created_at_ms integer, updated_at_ms integer,
                     name_ru text, status text, version integer, spec_json text
@@ -77,6 +83,13 @@ class LabStore:
                 create index if not exists idx_paper_trades_bot_status on paper_trades(bot_id,status);
             ''')
             self._con.commit()
+
+    def _reader(self) -> sqlite3.Connection:
+        con = sqlite3.connect(str(self.path), timeout=1.0, check_same_thread=False)
+        con.row_factory = sqlite3.Row
+        con.execute('pragma query_only=ON')
+        con.execute('pragma busy_timeout=1000')
+        return con
 
     def add_idea(self, title: str, text: str, origin: str = 'artem', kind: str = 'research',
                  priority: int = 50, tags: list[str] | None = None) -> dict[str, Any]:
@@ -150,8 +163,8 @@ class LabStore:
         if status:
             sql += ' where status=?'; params.append(status)
         sql += ' order by updated_at_ms desc limit ?'; params.append(limit)
-        with self._lock:
-            rows = self._con.execute(sql, params).fetchall()
+        with self._reader() as con:
+            rows = con.execute(sql, params).fetchall()
         return [ResearchProject.model_validate_json(r[0]) for r in rows]
 
     def get_research_project(self, project_id: str) -> ResearchProject | None:
@@ -199,9 +212,74 @@ class LabStore:
                            result=_loads(r['result_json'], {}), error=r['error'])
 
     def list_jobs(self, limit: int = 300) -> list[ResearchJob]:
-        with self._lock:
-            rows = self._con.execute('select * from research_jobs order by created_at_ms desc limit ?', [limit]).fetchall()
+        with self._reader() as con:
+            rows = con.execute('select * from research_jobs order by created_at_ms desc limit ?', [limit]).fetchall()
         return [self._job_from_row(r) for r in rows]
+
+    def get_job(self, job_id: str) -> ResearchJob | None:
+        with self._reader() as con:
+            row = con.execute('select * from research_jobs where id=?', [job_id]).fetchone()
+        return self._job_from_row(row) if row else None
+
+    def job_control(self, job_id: str) -> dict[str, Any]:
+        with self._reader() as con:
+            row = con.execute(
+                'select priority,paused,updated_at_ms from research_job_controls where job_id=?',
+                [job_id],
+            ).fetchone()
+        if row is None:
+            return {'job_id': job_id, 'priority': 50, 'paused': False, 'updated_at_ms': None}
+        return {
+            'job_id': job_id,
+            'priority': max(0, min(int(row['priority'] or 50), 100)),
+            'paused': bool(row['paused']),
+            'updated_at_ms': row['updated_at_ms'],
+        }
+
+    def job_controls(self, job_ids: list[str]) -> dict[str, dict[str, Any]]:
+        ids = [str(x) for x in job_ids if str(x)]
+        if not ids:
+            return {}
+        placeholders = ','.join('?' for _ in ids)
+        with self._reader() as con:
+            rows = con.execute(
+                f'select job_id,priority,paused,updated_at_ms from research_job_controls where job_id in ({placeholders})',
+                ids,
+            ).fetchall()
+        found = {
+            str(row['job_id']): {
+                'job_id': str(row['job_id']),
+                'priority': max(0, min(int(row['priority'] or 50), 100)),
+                'paused': bool(row['paused']),
+                'updated_at_ms': row['updated_at_ms'],
+            }
+            for row in rows
+        }
+        return {
+            job_id: found.get(job_id, {
+                'job_id': job_id, 'priority': 50, 'paused': False, 'updated_at_ms': None
+            })
+            for job_id in ids
+        }
+
+    def set_job_control(self, job_id: str, *, priority: int | None = None,
+                        paused: bool | None = None) -> dict[str, Any]:
+        current = self.job_control(job_id)
+        next_priority = current['priority'] if priority is None else max(0, min(int(priority), 100))
+        next_paused = current['paused'] if paused is None else bool(paused)
+        now = _now_ms()
+        with self._lock:
+            self._con.execute(
+                '''insert into research_job_controls(job_id,priority,paused,updated_at_ms)
+                   values(?,?,?,?)
+                   on conflict(job_id) do update set
+                     priority=excluded.priority,
+                     paused=excluded.paused,
+                     updated_at_ms=excluded.updated_at_ms''',
+                [job_id, next_priority, 1 if next_paused else 0, now],
+            )
+            self._con.commit()
+        return {'job_id': job_id, 'priority': next_priority, 'paused': next_paused, 'updated_at_ms': now}
 
     def recent_job_activity(self, since_ms: int, limit: int = 2000) -> list[dict[str, Any]]:
         """Durable job ledger for owner-facing overnight/activity summaries."""
@@ -224,22 +302,35 @@ class LabStore:
 
     def claim_next_job(self) -> ResearchJob | None:
         with self._lock:
-            rows = self._con.execute("select * from research_jobs where status='queued' order by created_at_ms limit 200").fetchall()
+            rows = self._con.execute(
+                """select j.*, coalesce(c.priority,50) as user_priority,
+                          coalesce(c.paused,0) as user_paused
+                     from research_jobs j
+                     left join research_job_controls c on c.job_id=j.id
+                    where j.status='queued' and coalesce(c.paused,0)=0
+                    order by j.created_at_ms
+                    limit 200"""
+            ).fetchall()
             if not rows: return None
-            def priority(r: sqlite3.Row) -> tuple[int, int]:
+            def priority(r: sqlite3.Row) -> tuple[int, int, int]:
                 payload = _loads(r['payload_json'], {})
                 kind = str(r['kind'] or '')
+                provider = str(payload.get('provider') or '').lower()
                 if kind == 'research_project_run':
                     p = 0
                 elif payload.get('research_project_id'):
                     p = 1
-                elif kind == 'strategy_run':
+                elif kind in {'historical_backfill','derivative_metric_backfill'} and provider == 'moex':
                     p = 2
-                elif kind == 'historical_replay':
+                elif kind in {'historical_backfill','derivative_metric_backfill'}:
                     p = 3
+                elif kind == 'strategy_run':
+                    p = 5
+                elif kind == 'historical_replay':
+                    p = 6
                 else:
                     p = 4
-                return (p, int(r['created_at_ms'] or 0))
+                return (-max(0, min(int(r['user_priority'] or 50), 100)), p, int(r['created_at_ms'] or 0))
             row = min(rows, key=priority)
             now = _now_ms()
             self._con.execute("update research_jobs set status='running',progress=0.01,started_at_ms=?,updated_at_ms=? where id=?", [now, now, row['id']])
@@ -274,8 +365,8 @@ class LabStore:
         return spec
 
     def list_strategies(self, limit: int = 500) -> list[StrategySpec]:
-        with self._lock:
-            rows = self._con.execute('select spec_json from strategy_specs order by updated_at_ms desc limit ?', [limit]).fetchall()
+        with self._reader() as con:
+            rows = con.execute('select spec_json from strategy_specs order by updated_at_ms desc limit ?', [limit]).fetchall()
         return [StrategySpec.model_validate_json(r[0]) for r in rows]
 
     def get_strategy(self, strategy_id: str) -> StrategySpec | None:
@@ -293,9 +384,30 @@ class LabStore:
         sql = 'select result_json from strategy_runs'; params: list[Any] = []
         if strategy_id: sql += ' where strategy_id=?'; params.append(strategy_id)
         sql += ' order by created_at_ms desc limit ?'; params.append(limit)
-        with self._lock:
-            rows = self._con.execute(sql, params).fetchall()
+        with self._reader() as con:
+            rows = con.execute(sql, params).fetchall()
         return [StrategyRunResult.model_validate_json(r[0]) for r in rows]
+
+    def list_strategy_run_summaries(self, strategy_id: str = '', limit: int = 300) -> list[dict[str, Any]]:
+        """Small owner-facing projection; never deserialize multi-MB diagnostics."""
+        sql = 'select run_id,strategy_id,canonical_id,created_at_ms,status from strategy_runs'
+        params: list[Any] = []
+        if strategy_id:
+            sql += ' where strategy_id=?'
+            params.append(strategy_id)
+        sql += ' order by created_at_ms desc limit ?'
+        params.append(limit)
+        with self._reader() as con:
+            rows = con.execute(sql, params).fetchall()
+        return [{
+            'run_id': r['run_id'],
+            'strategy_id': r['strategy_id'],
+            'canonical_id': r['canonical_id'],
+            'created_at_ms': r['created_at_ms'],
+            'status': r['status'],
+            'events': None,
+            'summary_only': True,
+        } for r in rows]
 
     def get_strategy_run(self, run_id: str) -> StrategyRunResult | None:
         with self._lock:
@@ -319,8 +431,8 @@ class LabStore:
         return PaperBot.model_validate_json(row[0]) if row else None
 
     def list_paper_bots(self, limit: int = 300) -> list[PaperBot]:
-        with self._lock:
-            rows=self._con.execute('select bot_json from paper_bots order by updated_at_ms desc limit ?',[limit]).fetchall()
+        with self._reader() as con:
+            rows=con.execute('select bot_json from paper_bots order by updated_at_ms desc limit ?',[limit]).fetchall()
         return [PaperBot.model_validate_json(r[0]) for r in rows]
 
     def append_paper_signal(self, signal: PaperSignal) -> None:
@@ -361,15 +473,15 @@ class LabStore:
         return [PaperTrade.model_validate_json(r[0]) for r in rows]
 
     def stats(self) -> dict[str, int]:
-        with self._lock:
+        with self._reader() as con:
             return {
-                'ideas': self._con.execute('select count(*) from ideas').fetchone()[0],
-                'research_projects': self._con.execute('select count(*) from research_projects').fetchone()[0],
-                'research_runs': self._con.execute('select count(*) from research_runs').fetchone()[0],
-                'queued_jobs': self._con.execute("select count(*) from research_jobs where status='queued'").fetchone()[0],
-                'running_jobs': self._con.execute("select count(*) from research_jobs where status='running'").fetchone()[0],
-                'strategies': self._con.execute('select count(*) from strategy_specs').fetchone()[0],
-                'strategy_runs': self._con.execute('select count(*) from strategy_runs').fetchone()[0],
-                'paper_bots': self._con.execute('select count(*) from paper_bots').fetchone()[0],
-                'paper_trades': self._con.execute('select count(*) from paper_trades').fetchone()[0],
+                'ideas': con.execute('select count(*) from ideas').fetchone()[0],
+                'research_projects': con.execute('select count(*) from research_projects').fetchone()[0],
+                'research_runs': con.execute('select count(*) from research_runs').fetchone()[0],
+                'queued_jobs': con.execute("select count(*) from research_jobs where status='queued'").fetchone()[0],
+                'running_jobs': con.execute("select count(*) from research_jobs where status='running'").fetchone()[0],
+                'strategies': con.execute('select count(*) from strategy_specs').fetchone()[0],
+                'strategy_runs': con.execute('select count(*) from strategy_runs').fetchone()[0],
+                'paper_bots': con.execute('select count(*) from paper_bots').fetchone()[0],
+                'paper_trades': con.execute('select count(*) from paper_trades').fetchone()[0],
             }

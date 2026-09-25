@@ -6,12 +6,16 @@
 
   async function loadParticipants(){
     try{
-      const [status,participants,pulseStatus,pulseProfiles]=await Promise.all([
+      const packets=await Promise.allSettled([
         api('/api/moex/participants/lchi/status'),
         api('/api/moex/participants/lchi?limit=200'+(participantQuery?'&q='+encodeURIComponent(participantQuery):'')),
         api('/api/moex/participants/pulse/status'),
         api('/api/moex/participants/pulse?limit=200')
       ]);
+      const status=packets[0].status==='fulfilled'?packets[0].value:{};
+      const participants=packets[1].status==='fulfilled'?packets[1].value:[];
+      const pulseStatus=packets[2].status==='fulfilled'?packets[2].value:{};
+      const pulseProfiles=packets[3].status==='fulfilled'?packets[3].value:[];
       $('#participantMetrics').innerHTML=[
         pMetric('ЛЧИ найдено',compact(status.participants_discovered||0),'публичный каталог'),
         pMetric('Портфели прочитаны',compact(status.participants_with_portfolio||0),'публичные снимки'),

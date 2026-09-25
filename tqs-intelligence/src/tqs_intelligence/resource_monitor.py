@@ -40,14 +40,29 @@ class ResourceMonitor:
         return "other"
 
     def _proc_rows(self, now: float) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """Fast TQS process-tree telemetry.
+
+        Enumerating every Windows process is surprisingly capable of hanging on
+        protected/driver processes. The owner cockpit must never wait for that.
+        We therefore sample only this backend and its process tree here. Global
+        CPU/RAM/disk/network are still measured separately and stay live.
+        """
         rows: list[dict[str, Any]] = []
-        current_pids: set[int] = set()
-        for proc in psutil.process_iter(["pid", "name", "cmdline", "memory_info", "num_threads", "status"]):
+        procs: dict[int, psutil.Process] = {}
+        try:
+            current = psutil.Process(os.getpid())
+            procs[current.pid] = current
+            for proc in current.parents():
+                procs[proc.pid] = proc
+            for proc in current.children(recursive=True):
+                procs[proc.pid] = proc
+        except Exception:
+            pass
+
+        current_pids = set(procs)
+        for pid, proc in procs.items():
             try:
-                pid = int(proc.info["pid"])
-                current_pids.add(pid)
-                name = str(proc.info.get("name") or "")
-                cmd = " ".join(proc.info.get("cmdline") or [])
+                name = proc.name()
                 times = proc.cpu_times()
                 cpu_total = float(times.user + times.system)
                 previous = self._prev_proc_cpu.get(pid)
@@ -57,20 +72,21 @@ class ResourceMonitor:
                     elapsed = max(0.001, now - prev_ts)
                     cpu_percent = max(0.0, (cpu_total - prev_cpu) / elapsed * 100.0)
                 self._prev_proc_cpu[pid] = (cpu_total, now)
-                rss = getattr(proc.info.get("memory_info"), "rss", 0) or 0
-                category = self._category(cmd, name)
-                rows.append(
-                    {
-                        "pid": pid,
-                        "name": name,
-                        "category": category,
-                        "cpu_percent": round(cpu_percent, 1),
-                        "memory_mb": round(float(rss) / (1024**2), 1),
-                        "threads": int(proc.info.get("num_threads") or 0),
-                        "status": str(proc.info.get("status") or ""),
-                        "command": cmd[:300],
-                    }
-                )
+                rss = proc.memory_info().rss
+                try:
+                    cmd = " ".join(proc.cmdline())[:300]
+                except Exception:
+                    cmd = ""
+                rows.append({
+                    "pid": pid,
+                    "name": name,
+                    "category": self._category(cmd, name),
+                    "cpu_percent": round(cpu_percent, 1),
+                    "memory_mb": round(float(rss) / (1024**2), 1),
+                    "threads": int(proc.num_threads()),
+                    "status": str(proc.status()),
+                    "command": cmd,
+                })
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
             except Exception:
@@ -79,18 +95,8 @@ class ResourceMonitor:
         for pid in list(self._prev_proc_cpu):
             if pid not in current_pids:
                 self._prev_proc_cpu.pop(pid, None)
-
-        tqs = [
-            x
-            for x in rows
-            if x["category"] != "other"
-            or "tqs" in x["command"].lower()
-            or "tqs" in x["name"].lower()
-        ]
-        tqs.sort(key=lambda x: (x["cpu_percent"], x["memory_mb"]), reverse=True)
-
-        top = sorted(rows, key=lambda x: (x["cpu_percent"], x["memory_mb"]), reverse=True)[:12]
-        return tqs[:30], top
+        rows.sort(key=lambda x: (x["cpu_percent"], x["memory_mb"]), reverse=True)
+        return rows[:30], rows[:12]
 
     def _io_rates(self, now: float) -> tuple[dict[str, Any], dict[str, Any]]:
         disk = psutil.disk_io_counters()

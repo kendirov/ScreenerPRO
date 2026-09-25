@@ -124,6 +124,8 @@ class MoexFeatureEngine:
     position changes. It intentionally does not treat delayed FUTOI as live.
     """
 
+    HISTORY_CANDIDATE_LIMIT = 180
+
     def __init__(self, store: Any, lchi_store: Any | None = None, metric_lake: Any | None = None) -> None:
         self.store = store
         self.lchi_store = lchi_store
@@ -169,7 +171,7 @@ class MoexFeatureEngine:
                 break
         return out
 
-    def _same_time_baselines(self, canonical_ids: list[str], now_ms: int) -> dict[str, list[dict[str, Any]]]:
+    def _same_time_baselines(self, canonical_ids: list[str], now_ms: int, con: Any | None = None) -> dict[str, list[dict[str, Any]]]:
         if not canonical_ids:
             return {}
         # Moscow has no DST. Shift epoch by +3h so integer day/minute arithmetic
@@ -203,8 +205,11 @@ class MoexFeatureEngine:
         """
         params: list[Any] = [cutoff, today_id, *canonical_ids, minute_now, minute_now]
         try:
-            with self.store._lock:
-                rows = self.store._con.execute(sql, params).fetchall()
+            if con is not None:
+                rows = con.execute(sql, params).fetchall()
+            else:
+                with self.store._lock:
+                    rows = self.store._con.execute(sql, params).fetchall()
         except Exception:
             return {}
         out: dict[str, list[dict[str, Any]]] = {}
@@ -219,7 +224,7 @@ class MoexFeatureEngine:
             )
         return out
 
-    def _recent_history(self, canonical_ids: list[str], now_ms: int) -> dict[str, list[HistoryPoint]]:
+    def _recent_history(self, canonical_ids: list[str], now_ms: int, con: Any | None = None) -> dict[str, list[HistoryPoint]]:
         if not canonical_ids:
             return {}
         cutoff = now_ms - 4 * 3_600_000
@@ -232,8 +237,11 @@ class MoexFeatureEngine:
             order by canonical_id, observed_at_ms
         """
         try:
-            with self.store._lock:
-                rows = self.store._con.execute(sql, [cutoff, *canonical_ids]).fetchall()
+            if con is not None:
+                rows = con.execute(sql, [cutoff, *canonical_ids]).fetchall()
+            else:
+                with self.store._lock:
+                    rows = self.store._con.execute(sql, [cutoff, *canonical_ids]).fetchall()
         except Exception:
             return {}
         out: dict[str, list[HistoryPoint]] = {}
@@ -347,17 +355,24 @@ class MoexFeatureEngine:
         since_ms = now_ms - 60 * MINUTE_MS
         wanted = {str(symbol or "").upper().strip() for symbol in symbols if str(symbol or "").strip()}
         roots = {symbol.split("-")[0] for symbol in wanted}
+        lock = self.lchi_store._lock
+        acquired = False
         try:
-            with self.lchi_store._lock:
-                rows = self.lchi_store._con.execute(
-                    """select upper(seccode), event_type, previous_qty, current_qty, delta_qty, user_id
-                       from lchi_position_events
-                       where ts_ms>=?
-                       order by ts_ms desc""",
-                    [since_ms],
-                ).fetchall()
+            acquired = lock.acquire(blocking=False)
+            if not acquired:
+                return {}
+            rows = self.lchi_store._con.execute(
+                """select upper(seccode), event_type, previous_qty, current_qty, delta_qty, user_id
+                   from lchi_position_events
+                   where ts_ms>=?
+                   order by ts_ms desc""",
+                [since_ms],
+            ).fetchall()
         except Exception:
             return {}
+        finally:
+            if acquired:
+                lock.release()
 
         exact: dict[str, dict[str, Any]] = {}
         families: dict[str, dict[str, Any]] = {}
@@ -475,10 +490,20 @@ class MoexFeatureEngine:
 
     def analyze(self, quotes: list[Quote]) -> list[Anomaly]:
         now_ms = max((int(q.observed_at_ms) for q in quotes if q.provider == "moex"), default=_now_ms())
-        candidates = self._candidate_quotes(quotes)
+        candidates = self._candidate_quotes(quotes, limit=self.HISTORY_CANDIDATE_LIMIT)
         ids = [q.canonical_id for q in candidates]
-        baselines = self._same_time_baselines(ids, now_ms)
-        recent = self._recent_history(ids, now_ms)
+        reader = None
+        try:
+            reader_factory = getattr(self.store, "reader_connection", None)
+            reader = reader_factory() if callable(reader_factory) else None
+            baselines = self._same_time_baselines(ids, now_ms, reader)
+            recent = self._recent_history(ids, now_ms, reader)
+        finally:
+            if reader is not None:
+                try:
+                    reader.close()
+                except Exception:
+                    pass
         lchi_flows = self._lchi_flows([q.symbol for q in candidates], now_ms)
         anomalies: list[Anomaly] = []
         rows_out: list[dict[str, Any]] = []
@@ -681,6 +706,7 @@ class MoexFeatureEngine:
             "rows": rows,
             "signals": by_signal,
             "count": len(rows),
+            "history_candidate_limit": self.HISTORY_CANDIDATE_LIMIT,
             "definition": "MOEX own-history attention layer: same-time-of-day activity + short-horizon price/OI/liquidity + public participant context",
         }
 
