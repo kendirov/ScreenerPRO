@@ -38,3 +38,87 @@ def test_workspace_declares_trace_gap_without_trade_records():
     assert out["strategy"]["sample_total"] == 20
     assert out["strategy"]["control_total"] == 60
     assert "trade_level_trace_for_hour_weekday_exit_diagnostics" in out["research_readiness"]["missing"]
+
+
+def test_build_research_payload_calls_diagnostics():
+    from types import SimpleNamespace
+    from tqs_intelligence.instrument_lab import InstrumentLab
+
+    class Store:
+        def list_episodes(self, **kwargs):
+            return []
+
+    class Lab:
+        def list_strategy_runs_for_instrument(self, canonical_id, limit):
+            return []
+
+    obj = object.__new__(InstrumentLab)
+    obj.store = Store()
+    obj.lab = Lab()
+    obj.lake = None
+    obj.metric_lake = None
+
+    quote = SimpleNamespace(canonical_id="moex:shares:SBER", symbol="SBER")
+    out = obj.build_research("moex:shares:SBER", SimpleNamespace(quotes=[quote]))
+    assert out["canonical_id"] == "moex:shares:SBER"
+    assert out["deep_coverage"] == {"episodes": 0, "strategy_runs": 0, "trade_records": 0}
+    assert out["diagnostics"]["research_readiness"]["ready"] is False
+
+
+def test_build_research_payload_slims_large_trade_trace():
+    from types import SimpleNamespace
+    from tqs_intelligence.instrument_lab import InstrumentLab
+
+    class Store:
+        def list_episodes(self, **kwargs):
+            return []
+
+    class FakeRun:
+        def model_dump(self, mode="json"):
+            trades = [
+                {
+                    "entry_ts_ms": i * 600000,
+                    "net_return_pct": 0.1 if i % 2 == 0 else -0.05,
+                    "mfe_pct": 0.2,
+                    "mae_pct": -0.1,
+                    "exit_policy": "hold",
+                    "exit_reason": "time",
+                    "side": "long",
+                    "split": "validation",
+                }
+                for i in range(2000)
+            ]
+            return {
+                "run_id": "r-big",
+                "strategy_id": "s",
+                "canonical_id": "moex:shares:SBER",
+                "interval": "10m",
+                "generated_at_ms": 1,
+                "status": "candidate",
+                "events": 4000,
+                "round_events": 2000,
+                "control_events": 2000,
+                "trade_trace": trades,
+                "control_trace": trades,
+            }
+
+    class Lab:
+        def list_strategy_runs_for_instrument(self, canonical_id, limit):
+            return [FakeRun()]
+
+    obj = object.__new__(InstrumentLab)
+    obj.store = Store()
+    obj.lab = Lab()
+    obj.lake = None
+    obj.metric_lake = None
+
+    quote = SimpleNamespace(canonical_id="moex:shares:SBER", symbol="SBER")
+    out = obj.build_research("moex:shares:SBER", SimpleNamespace(quotes=[quote]))
+    run = out["strategy_runs"][0]
+    assert "trade_trace" not in run
+    assert "control_trace" not in run
+    assert len(run["recent_trade_trace"]) == 120
+    assert len(run["equity_curve"]) <= 600
+    assert len(run["control_equity_curve"]) <= 600
+    assert run["trace_counts"] == {"event": 2000, "control": 2000}
+    assert out["diagnostics"]["strategy"]["trace_coverage"]["trade_records"] == 2000

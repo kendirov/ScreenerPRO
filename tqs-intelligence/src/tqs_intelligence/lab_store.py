@@ -388,6 +388,14 @@ class LabStore:
             rows = con.execute(sql, params).fetchall()
         return [StrategyRunResult.model_validate_json(r[0]) for r in rows]
 
+    def list_strategy_runs_for_instrument(self, canonical_id: str, limit: int = 100) -> list[StrategyRunResult]:
+        with self._reader() as con:
+            rows = con.execute(
+                'select result_json from strategy_runs where canonical_id=? order by created_at_ms desc limit ?',
+                [canonical_id, limit],
+            ).fetchall()
+        return [StrategyRunResult.model_validate_json(r[0]) for r in rows]
+
     def list_strategy_run_summaries(self, strategy_id: str = '', limit: int = 300) -> list[dict[str, Any]]:
         """Small owner-facing projection; never deserialize multi-MB diagnostics."""
         sql = 'select run_id,strategy_id,canonical_id,created_at_ms,status from strategy_runs'

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import asyncio
 import mimetypes
@@ -636,6 +636,15 @@ async def universal_instrument(canonical_id:str):
         raise HTTPException(404, 'instrument not found in current snapshot')
 
 
+@app.get('/api/instrument-research/{canonical_id:path}')
+async def universal_instrument_research(canonical_id:str):
+    snapshot = _snapshot()
+    try:
+        return await asyncio.to_thread(instrument_lab.build_research, canonical_id, snapshot)
+    except KeyError:
+        raise HTTPException(404, 'instrument not found in current snapshot')
+
+
 @app.get('/api/moex')
 def moex():
     payload = moex_lab.overview(_snapshot())
@@ -1062,5 +1071,3 @@ def main()->None:
 
 
 if __name__=='__main__': main()
-
-

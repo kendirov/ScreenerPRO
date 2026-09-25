@@ -1,10 +1,12 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import math
 import re
 import statistics
 from typing import Any
+
+from .stock_research_diagnostics import build_instrument_diagnostics
 
 
 _STABLE_QUOTES = ("USDT", "USDC", "BUSD", "FDUSD", "USD", "BTC", "ETH")
@@ -342,6 +344,87 @@ class InstrumentLab:
             "suggested_metrics_backfill": metric_backfills[0] if metric_backfills else None,
             "suggested_metric_backfills": metric_backfills,
             "deferred_layers": ["episodes", "strategy_runs", "historical_live_snapshots"],
+        }
+
+    def build_research(self, canonical_id: str, snapshot: Any) -> dict[str, Any]:
+        quotes = snapshot.quotes if snapshot else []
+        quote_obj = next((q for q in quotes if q.canonical_id == canonical_id), None)
+        symbol = str(
+            quote_obj.symbol if quote_obj is not None
+            else (canonical_id.rsplit(":", 1)[-1] if ":" in canonical_id else canonical_id)
+        )
+        episodes = [
+            x for x in self.store.list_episodes(limit=1000, q=symbol)
+            if x.canonical_id == canonical_id
+        ][:200]
+        episode_rows = [{"episode": ep.model_dump(mode="json"), "outcome": None} for ep in episodes]
+
+        if hasattr(self.lab, "list_strategy_runs_for_instrument"):
+            run_objects = self.lab.list_strategy_runs_for_instrument(canonical_id, 50)
+        else:
+            run_objects = [
+                x for x in self.lab.list_strategy_runs(limit=500)
+                if x.canonical_id == canonical_id
+            ][:50]
+        full_runs = [x.model_dump(mode="json") for x in run_objects]
+        diagnostics = build_instrument_diagnostics(
+            episode_rows=episode_rows,
+            scores=[],
+            strategy_runs=full_runs,
+        )
+
+        def equity_curve(rows: list[dict[str, Any]], max_points: int = 600) -> list[dict[str, Any]]:
+            ordered = sorted(
+                (x for x in rows if x.get("entry_ts_ms") is not None and x.get("net_return_pct") is not None),
+                key=lambda x: int(x.get("entry_ts_ms") or 0),
+            )
+            if not ordered:
+                return []
+            bucket = max(1, (len(ordered) + max_points - 1) // max_points)
+            curve: list[dict[str, Any]] = []
+            cumulative = 0.0
+            for start in range(0, len(ordered), bucket):
+                chunk = ordered[start:start + bucket]
+                chunk_return = sum(float(x.get("net_return_pct") or 0.0) for x in chunk)
+                cumulative += chunk_return
+                last = chunk[-1]
+                curve.append({
+                    "entry_ts_ms": int(last.get("entry_ts_ms") or 0),
+                    "net_return_pct": chunk_return,
+                    "cum": cumulative,
+                    "trades": len(chunk),
+                })
+            return curve
+
+        slim_runs: list[dict[str, Any]] = []
+        keep_keys = {
+            "run_id", "strategy_id", "canonical_id", "interval", "generated_at_ms", "status",
+            "events", "round_events", "control_events", "metrics", "splits", "robustness",
+            "diagnostics", "warnings",
+        }
+        for run in full_runs:
+            trades = list(run.get("trade_trace") or [])
+            controls = list(run.get("control_trace") or [])
+            slim = {key: run.get(key) for key in keep_keys if key in run}
+            slim["recent_trade_trace"] = sorted(
+                trades, key=lambda x: int(x.get("entry_ts_ms") or 0)
+            )[-120:]
+            slim["equity_curve"] = equity_curve(trades)
+            slim["control_equity_curve"] = equity_curve(controls)
+            slim["trace_counts"] = {"event": len(trades), "control": len(controls)}
+            slim_runs.append(slim)
+
+        trace = diagnostics.get("strategy", {}).get("trace_coverage", {})
+        return {
+            "canonical_id": canonical_id,
+            "episodes": episode_rows,
+            "strategy_runs": slim_runs,
+            "diagnostics": diagnostics,
+            "deep_coverage": {
+                "episodes": len(episode_rows),
+                "strategy_runs": len(full_runs),
+                "trade_records": int(trace.get("trade_records") or 0),
+            },
         }
 
     def build(self, canonical_id: str, snapshot: Any) -> dict[str, Any]:
