@@ -33,3 +33,29 @@ def test_update_quiesce_does_nothing_when_research_idle(tmp_path):
 
     assert sup._quiesce_research_for_update(timeout_s=5) is None
     assert sup.control.get().mode == "max"
+
+
+def test_listener_alive_detects_configured_port(monkeypatch):
+    class Addr:
+        ip = "127.0.0.1"
+        port = 8787
+
+    class Conn:
+        status = "LISTEN"
+        laddr = Addr()
+
+    sup = Supervisor.__new__(Supervisor)
+    sup.host = "127.0.0.1"
+    sup.port = 8787
+    monkeypatch.setattr("tqs_intelligence.supervisor.psutil.net_connections", lambda kind: [Conn()])
+
+    assert sup._listener_alive() is True
+
+
+def test_listener_alive_returns_false_when_port_is_missing(monkeypatch):
+    sup = Supervisor.__new__(Supervisor)
+    sup.host = "127.0.0.1"
+    sup.port = 8787
+    monkeypatch.setattr("tqs_intelligence.supervisor.psutil.net_connections", lambda kind: [])
+
+    assert sup._listener_alive() is False

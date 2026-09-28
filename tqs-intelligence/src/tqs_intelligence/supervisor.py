@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import psutil
 import subprocess
 import sys
 import time
@@ -32,6 +33,7 @@ class Supervisor:
         self.server_mode = server_mode_enabled(self.root)
         self.auto_update_interval_s = auto_update_interval_seconds(self.root)
         self.server_stop_marker = stop_marker_path(self.root)
+        self.listener_missing_streak = 0
 
     def _say(self, message: str) -> None:
         print(f'[TQS SUPERVISOR {time.strftime("%H:%M:%S")}] {message}', flush=True)
@@ -92,18 +94,68 @@ class Supervisor:
         self._say(f'uvicorn запущен PID={self.child.pid}')
         self._write_heartbeat('starting')
 
+    def _listener_alive(self) -> bool:
+        try:
+            for conn in psutil.net_connections(kind="tcp"):
+                if conn.status != psutil.CONN_LISTEN or not conn.laddr:
+                    continue
+                if int(conn.laddr.port) != self.port:
+                    continue
+                address = str(conn.laddr.ip or "")
+                if address in {self.host, "0.0.0.0", "::", "::1"} or self.host in {"0.0.0.0", "::"}:
+                    return True
+            return False
+        except Exception:
+            # Socket inspection is a safety signal, not a reason to restart by itself.
+            return True
+
+    def _stop_owned_process_tree(self, child: subprocess.Popen) -> None:
+        try:
+            root = psutil.Process(child.pid)
+            descendants = root.children(recursive=True)
+            targets = descendants + [root]
+            for proc in reversed(targets):
+                try:
+                    proc.terminate()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            _, alive = psutil.wait_procs(targets, timeout=6)
+            for proc in alive:
+                try:
+                    proc.kill()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            if alive:
+                psutil.wait_procs(alive, timeout=4)
+        except Exception:
+            try:
+                child.terminate()
+                child.wait(timeout=5)
+            except Exception:
+                try:
+                    child.kill()
+                except Exception:
+                    pass
+
     def stop_child(self) -> None:
         child = self.child
         if child is None:
             self._write_heartbeat('stopped')
             return
         if child.poll() is None:
-            child.terminate()
-            try:
-                child.wait(timeout=15)
-            except subprocess.TimeoutExpired:
-                child.kill()
-                child.wait(timeout=5)
+            if os.name == "nt":
+                self._stop_owned_process_tree(child)
+                try:
+                    child.wait(timeout=2)
+                except Exception:
+                    pass
+            else:
+                child.terminate()
+                try:
+                    child.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait(timeout=5)
         self._say(f'uvicorn остановлен exit={child.returncode}')
         self.child = None
         self._write_heartbeat('stopped')
@@ -369,6 +421,28 @@ class Supervisor:
                             self.stop_child()
                             time.sleep(3)
                             continue
+                    if self.child is not None and self.child.poll() is None:
+                        if self._listener_alive():
+                            self.listener_missing_streak = 0
+                        else:
+                            self.listener_missing_streak += 1
+                            self._write_heartbeat(
+                                "listener_missing",
+                                listener_missing_streak=self.listener_missing_streak,
+                                port=self.port,
+                            )
+                            if self.listener_missing_streak >= 4:
+                                self._say(
+                                    f"backend PID alive but port {self.port} has no LISTEN socket; "
+                                    "restarting owned backend tree"
+                                )
+                                self.stop_child()
+                                self.start_child()
+                                self.listener_missing_streak = 0
+                                if not self.healthy(60):
+                                    self._say("listener recovery healthcheck failed; retrying in main loop")
+                                continue
+
                     request = self.updater.pop_request()
                     if request is not None:
                         self.apply_update(bool(request.get('force')))
