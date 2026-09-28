@@ -200,10 +200,10 @@ class InstrumentLab:
         venue_context = self._venue_context(quotes, quote)
         related = [x for x in venue_context if x.get("canonical_id") != canonical_id][:30]
 
-        interval = "10m" if provider == "moex" else "5m"
+        interval = "1m" if provider == "moex" else "5m"
         price_history_cid = canonical_id
         price_history_provider = provider
-        candles = self._history(price_history_cid, interval, max_points=4000)
+        candles = self._history(price_history_cid, interval, max_points=25000 if provider == "moex" else 4000)
         if not candles and provider != "moex":
             fallback = next(
                 (x for x in venue_context if x.get("provider") == "binance" and x.get("market_type") in {"usdt-futures", "spot"}),
@@ -432,7 +432,7 @@ class InstrumentLab:
         quote=quote_obj.model_dump(mode="json") if quote_obj is not None else self._latest_quote(canonical_id); live=self._live_series(canonical_id)
         symbol=str((quote or {}).get("symbol") or (canonical_id.rsplit(":",1)[-1] if ":" in canonical_id else canonical_id)); provider=str((quote or {}).get("provider") or (canonical_id.split(":",1)[0] if ":" in canonical_id else "")); market_type=str((quote or {}).get("market_type") or (canonical_id.split(":",2)[1] if canonical_id.count(":")>=2 else "")); key=economic_key(symbol,provider,market_type)
         venue_context=self._venue_context(quotes,quote); related=[x for x in venue_context if x.get("canonical_id")!=canonical_id][:30]
-        interval="10m" if provider=="moex" else "5m"; price_history_cid=canonical_id; price_history_provider=provider; candles=self._history(price_history_cid,interval)
+        interval="1m" if provider=="moex" else "5m"; price_history_cid=canonical_id; price_history_provider=provider; candles=self._history(price_history_cid,interval,max_points=30000 if provider=="moex" else 15000)
         if not candles and provider!="moex":
             fallback=next((x for x in venue_context if x.get("provider")=="binance" and x.get("market_type") in {"usdt-futures","spot"}),None)
             if fallback:

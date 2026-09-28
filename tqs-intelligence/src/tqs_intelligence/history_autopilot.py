@@ -67,7 +67,7 @@ def _payload_for_quote(q: Quote) -> dict[str, Any] | None:
             "market_type": q.market_type,
             "engine": engine,
             "market": market,
-            "interval": "10m",
+            "interval": "1m",
             "start_ms": START_2021_MS,
             "history_parser_version": 2,
         }

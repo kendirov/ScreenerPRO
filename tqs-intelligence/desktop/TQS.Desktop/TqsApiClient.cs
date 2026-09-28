@@ -9,7 +9,7 @@ namespace TQS.Desktop;
 
 public sealed class TqsApiClient : IDisposable
 {
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(6) };
     public string BaseUrl { get; } = "http://127.0.0.1:8787";
 
     public async Task<JsonDocument?> GetJsonAsync(string path)

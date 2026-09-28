@@ -109,7 +109,7 @@ public partial class MainWindow : Window
         var script = @"(() => {
           let s=document.getElementById('tqs-desktop-embed');
           if(!s){s=document.createElement('style');s.id='tqs-desktop-embed';document.head.appendChild(s);}
-          s.textContent='.sidebar,.topbar{display:none!important}.app{display:block!important;min-height:100vh!important}.main{margin:0!important;width:100%!important;max-width:none!important}.view{padding-top:0!important}.eyebrow{display:none!important}body{overflow-x:hidden!important}';
+          s.textContent='html,body,button,input,select,textarea{font-family:""Segoe UI"",Arial,sans-serif!important}.sidebar,.topbar{display:none!important}.app{display:block!important;min-height:100vh!important}.main{margin:0!important;width:100%!important;max-width:none!important}.view{padding-top:0!important}.eyebrow{display:none!important}body{overflow-x:hidden!important}';
           document.documentElement.style.background='#0c1014';
           document.body.style.background='#0c1014';
         })();";

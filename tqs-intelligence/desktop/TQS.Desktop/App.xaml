@@ -13,12 +13,12 @@
         <SolidColorBrush x:Key="Border" Color="#29313A"/>
 
         <Style TargetType="TextBlock">
-            <Setter Property="FontFamily" Value="Segoe UI Variable Text"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
         </Style>
 
         <Style x:Key="SoftButton" TargetType="Button">
-            <Setter Property="FontFamily" Value="Segoe UI Variable Text"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
@@ -65,7 +65,7 @@
         </Style>
 
         <Style x:Key="NavButton" TargetType="Button">
-            <Setter Property="FontFamily" Value="Segoe UI Variable Text"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="Medium"/>
             <Setter Property="Foreground" Value="#B8BEC6"/>

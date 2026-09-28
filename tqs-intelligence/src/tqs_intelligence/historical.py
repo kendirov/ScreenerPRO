@@ -191,7 +191,7 @@ class HistoricalBackfiller:
         elif provider == 'moex':
             result = await self.backfill_moex(symbol=str(payload['symbol']), engine=str(payload.get('engine','stock')),
                                               market=str(payload.get('market','shares')), market_type=str(payload.get('market_type','shares')),
-                                              interval=str(payload.get('interval','10m')), start_ms=start_ms, end_ms=end_ms,
+                                              interval=str(payload.get('interval','1m')), start_ms=start_ms, end_ms=end_ms,
                                               progress=candle_progress)
         else:
             raise ValueError(f'provider {provider} does not have bulk historical backfill yet')

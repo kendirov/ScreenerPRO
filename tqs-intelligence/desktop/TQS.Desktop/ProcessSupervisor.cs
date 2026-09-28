@@ -14,11 +14,13 @@ namespace TQS.Desktop;
 
 public sealed class ProcessSupervisor : IDisposable
 {
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(2) };
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(5) };
     private readonly SemaphoreSlim _gate = new(1, 1);
     private WindowsJob? _job;
     private Process? _supervisor;
     private bool _disposed;
+    private int _healthFailureStreak;
+    private DateTime _lastHealthyUtc = DateTime.MinValue;
 
     public string Root { get; }
     public string BaseUrl { get; } = "http://127.0.0.1:8787";
@@ -59,11 +61,27 @@ public sealed class ProcessSupervisor : IDisposable
         {
             using var response = await _http.GetAsync(BaseUrl + "/api/health");
             var json = await response.Content.ReadAsStringAsync();
-            return new RuntimeStatus(response.IsSuccessStatusCode, json, OwnsRuntime, OwnedPid, null);
+            if (response.IsSuccessStatusCode)
+            {
+                _healthFailureStreak = 0;
+                _lastHealthyUtc = DateTime.UtcNow;
+                return new RuntimeStatus(true, json, OwnsRuntime, OwnedPid, null);
+            }
+            _healthFailureStreak++;
+            var grace = OwnsRuntime && _healthFailureStreak < 3 &&
+                        _lastHealthyUtc != DateTime.MinValue &&
+                        DateTime.UtcNow - _lastHealthyUtc < TimeSpan.FromSeconds(20);
+            return new RuntimeStatus(grace, json, OwnsRuntime, OwnedPid,
+                grace ? $"health degraded ({(int)response.StatusCode})" : $"HTTP {(int)response.StatusCode}");
         }
         catch (Exception ex)
         {
-            return new RuntimeStatus(false, null, OwnsRuntime, OwnedPid, ex.GetType().Name);
+            _healthFailureStreak++;
+            var grace = OwnsRuntime && _healthFailureStreak < 3 &&
+                        _lastHealthyUtc != DateTime.MinValue &&
+                        DateTime.UtcNow - _lastHealthyUtc < TimeSpan.FromSeconds(20);
+            return new RuntimeStatus(grace, null, OwnsRuntime, OwnedPid,
+                grace ? $"health probe transient: {ex.GetType().Name}" : ex.GetType().Name);
         }
     }
 
