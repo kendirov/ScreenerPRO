@@ -406,7 +406,7 @@ class ResearchRuntime:
                 raise
             except Exception as exc:
                 self.last_error=f'auto planner: {exc}'
-                self.last_action=f'РђРІС‚РѕРїРёР»РѕС‚: РѕС€РёР±РєР° РїР»Р°РЅРёСЂРѕРІС‰РёРєР° вЂ” {str(exc)[:180]}'
+                self.last_action=f'Autoplan planner error: {str(exc)[:180]}'
             await asyncio.sleep(5)
 
     async def _worker_loop(self, worker_id: int) -> None:
