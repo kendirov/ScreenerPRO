@@ -31,3 +31,6 @@ button,input,select{font:inherit}button{cursor:pointer}.mono{font-family:"Cascad
 .liveProcList{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}.liveProcList span{border:1px solid var(--line);border-radius:6px;padding:5px 7px;color:var(--muted);font-size:8px}.liveProcList b{color:var(--text);font-weight:600}
 @media(max-width:900px){.liveMachineGrid,.liveProgressGrid{grid-template-columns:1fr}.liveMachineGrid .spanWide{grid-column:auto}}
 
+
+/* Strategy discovery builder */
+.discoveryBuilder{border-color:#2e3740}.discoveryPresets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.discoveryGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.discoveryGrid label{display:flex;flex-direction:column;gap:6px;color:#8f99a3;font-size:12px}.discoveryGrid input{width:100%;box-sizing:border-box;background:#0b0e11;border:1px solid #2b3239;color:#eef2f5;border-radius:7px;padding:9px 10px;outline:none}.discoveryGrid input:focus{border-color:#69747f}.discoveryActions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.discoveryActions .sub{flex:1;min-width:260px}@media(max-width:1100px){.discoveryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.discoveryGrid{grid-template-columns:1fr}.discoveryActions .btn{width:100%}.discoveryActions .sub{min-width:0}.discoveryPresets .btn{flex:1 1 45%}}

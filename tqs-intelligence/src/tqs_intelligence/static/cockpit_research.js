@@ -86,3 +86,52 @@ document.addEventListener('click',async function(e){
     }catch(err){toast('Paper status: '+esc(err.message))}
   }
 });
+
+(()=>{
+const el=id=>document.getElementById(id);
+const n=(id)=>{const raw=el(id)?.value?.trim();return raw===''||raw==null?null:Number(raw)};
+const ints=value=>String(value||'').split(',').map(x=>Number(x.trim())).filter(Number.isInteger);
+function preset(name){
+  ['discoveryHours','discoveryRsi','discoveryReturn','discoveryRound','discoveryVolume'].forEach(id=>{if(el(id))el(id).value=''});
+  if(name==='rsi')el('discoveryRsi').value='30';
+  if(name==='drop')el('discoveryReturn').value='-0.5';
+  if(name==='round')el('discoveryRound').value='10';
+  if(name==='volume')el('discoveryVolume').value='3';
+  el('discoveryStatus').textContent=name==='baseline'?'Baseline: вход после каждой завершённой минуты.':'Preset заполнен. Запуск создаст отдельный frozen StrategySpec.';
+}
+document.addEventListener('click',async e=>{
+  const p=e.target.closest('.discoveryPreset'); if(p){preset(p.dataset.preset);return}
+  const b=e.target.closest('#discoveryRun'); if(!b)return;
+  const symbol=(el('discoverySymbol')?.value||'').trim();
+  if(!symbol){toast('Укажите инструмент');return}
+  b.disabled=true; const status=el('discoveryStatus'); status.textContent='Ищу инструмент и фиксирую StrategySpec…';
+  try{
+    const quotes=await api('/api/quotes?q='+encodeURIComponent(symbol)+'&limit=30');
+    const quote=quotes.find(x=>x.provider==='moex'&&['shares','forts'].includes(x.market_type))||quotes[0];
+    if(!quote)throw new Error('инструмент не найден в свежем snapshot');
+    const filters={auto_run:false,return_lookback_bars:15,rsi_period:14,volume_z_window:30};
+    const hours=ints(el('discoveryHours')?.value); if(hours.length)filters.hours_msk=hours;
+    const rsi=n('discoveryRsi'); if(Number.isFinite(rsi))filters.rsi_lte=rsi;
+    const ret=n('discoveryReturn'); if(Number.isFinite(ret))filters.return_lte_pct=ret;
+    const round=n('discoveryRound'); if(Number.isFinite(round))filters.round_distance_bps_lte=round;
+    const volume=n('discoveryVolume'); if(Number.isFinite(volume))filters.volume_z_gte=volume;
+    const horizon=Math.max(1,Math.min(240,Math.round(n('discoveryHorizon')||30)));
+    const costs=Math.max(0,n('discoveryCosts')??8);
+    const id='TQS-STRAT-DISCOVERY-'+Date.now();
+    const labels=[];
+    if(hours.length)labels.push('часы '+hours.join(','));
+    if(Number.isFinite(rsi))labels.push('RSI≤'+rsi);
+    if(Number.isFinite(ret))labels.push('ret15≤'+ret+'%');
+    if(Number.isFinite(round))labels.push('round≤'+round+'bp');
+    if(Number.isFinite(volume))labels.push('vol z≥'+volume);
+    const name=labels.length?'MOEX discovery · '+labels.join(' · '):'Каждую минуту · baseline';
+    const spec={id,name_ru:name,version:1,status:'exploratory',origin:'artem-ui',idea:'Систематически проверить условие против matched time-shift control без post-hoc promotion.',universe:['MOEX stocks','MOEX futures'],interval:'1m',event:{type:'conditional_entry',control_offset_bars:30},entry:{type:'next_bar_open',side:'long'},exit:{type:'time',horizon_bars:horizon},filters,costs:{round_trip_bps:costs},validation:{exploration_fraction:.6,validation_fraction:.2,holdout_fraction:.2,walk_forward_folds:4,min_events:40},notes:['Создано через TQS Strategy Discovery Builder.','Найденный новый фильтр требует отдельного frozen run.']};
+    await api('/api/strategies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(spec)});
+    const job=await api('/api/strategies/'+encodeURIComponent(id)+'/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({canonical_id:quote.canonical_id})});
+    status.textContent='В очереди: '+name+' · '+(quote.display_symbol||quote.symbol)+' · job '+job.id;
+    toast('Strategy run поставлен в очередь');
+    await loadResearch();
+  }catch(err){status.textContent='Ошибка: '+err.message;toast('Discovery: '+esc(err.message))}
+  finally{b.disabled=false}
+});
+})();

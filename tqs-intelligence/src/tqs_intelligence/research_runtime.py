@@ -18,6 +18,7 @@ from .replay import HistoricalReplayEngine
 from .research_experiments import ResearchExperimentEngine
 from .sources import BinanceSource, BybitSource, MoexSource
 from .strategy_extensions import default_buy_dip_bps_spec, default_buy_dip_points_spec, run_buy_dip_grid
+from .strategy_discovery import default_minute_discovery_spec, run_conditional_entry
 from .strategy_machine import StrategyMachine, default_round_buffer_spec, default_scheduled_entry_spec
 from .strategy_models import ResearchProject
 
@@ -67,7 +68,7 @@ class ResearchRuntime:
         crypto.id='TQS-STRAT-ROUND-BUFFER-CRYPTO-001'; crypto.name_ru='РљСЂРёРїС‚Рѕ: РѕС‚СЃРєРѕРє РѕС‚ РєСЂСѓРіР»С‹С… / Р±СѓС„РµСЂРЅС‹С… Р·РѕРЅ'; crypto.interval='5m'; crypto.costs={'round_trip_bps':10.0}
         crypto.notes=list(crypto.notes)+['РћС‚РґРµР»СЊРЅР°СЏ 5m РІРµСЂСЃРёСЏ РґР»СЏ crypto perpetuals; СЂРµРїР»РёРєР°С†РёСЏ РјРµР¶РґСѓ Р±РёСЂР¶Р°РјРё РѕР±СЏР·Р°С‚РµР»СЊРЅР° РїРµСЂРµРґ promotion.']
         if self.lab.get_strategy(crypto.id) is None: self.lab.save_strategy(crypto)
-        for spec in (default_buy_dip_bps_spec(), default_buy_dip_points_spec()):
+        for spec in (default_buy_dip_bps_spec(), default_buy_dip_points_spec(), default_minute_discovery_spec()):
             if self.lab.get_strategy(spec.id) is None: self.lab.save_strategy(spec)
         self._seed_research_projects()
 
@@ -184,7 +185,7 @@ class ResearchRuntime:
         existing={(j.kind,str(j.payload.get('strategy_id')),str(j.payload.get('canonical_id'))) for j in self.lab.list_jobs(1000) if j.status in {'queued','running'}}
         for spec in self.lab.list_strategies():
             key=('strategy_run',spec.id,canonical_id)
-            if spec.interval==interval and key not in existing:
+            if spec.interval==interval and bool(spec.filters.get('auto_run', True)) and key not in existing:
                 self.lab.enqueue_job('strategy_run',f'РђРІС‚РѕС‚РµСЃС‚: {spec.name_ru} / {canonical_id}',{'strategy_id':spec.id,'canonical_id':canonical_id}); count+=1
         return count
 
@@ -311,7 +312,9 @@ class ResearchRuntime:
             await progress(.1,f'Р—Р°РіСЂСѓР·РєР° РёСЃС‚РѕСЂРёРё {canonical_id}')
             frame=await asyncio.to_thread(self.lake.read_candles,canonical_id,spec.interval)
             await progress(.35,f'РџРѕРёСЃРє СЃРѕР±С‹С‚РёР№, РїР°СЂР°РјРµС‚СЂРѕРІ Рё controls: {canonical_id}')
-            if str(spec.event.get('type'))=='buy_dip_grid': result=await asyncio.to_thread(run_buy_dip_grid,spec,canonical_id,frame)
+            event_type=str(spec.event.get('type'))
+            if event_type=='buy_dip_grid': result=await asyncio.to_thread(run_buy_dip_grid,spec,canonical_id,frame)
+            elif event_type=='conditional_entry': result=await asyncio.to_thread(run_conditional_entry,spec,canonical_id,frame)
             else: result=await asyncio.to_thread(self.machine.run,spec,canonical_id,frame)
             self.lab.save_strategy_run(result)
             if result.status=='candidate':

@@ -21,6 +21,18 @@
         });
       }
     }
+    if(state.layers.strategies){
+      const runs=(state.instrument?.strategy_runs||[]).slice(0,12), trades=[];
+      for(const run of runs){
+        for(const trade of (run.trade_trace||[]).slice(-40))trades.push({...trade,run:run.run_id});
+      }
+      trades.sort((a,b)=>Number(a.entry_ts_ms||0)-Number(b.entry_ts_ms||0));
+      for(const trade of trades.slice(-60)){
+        const net=Number(trade.net_return_pct||0), entryTs=Number(trade.entry_ts_ms||trade.signal_ts_ms||0), exitTs=Number(trade.exit_ts_ms||0);
+        if(entryTs)markers.push({time:Math.floor(entryTs/1000),position:'belowBar',color:COLORS.violet,shape:'arrowUp',text:'STR '+(net>=0?'+':'')+net.toFixed(2)+'%'});
+        if(exitTs)markers.push({time:Math.floor(exitTs/1000),position:'aboveBar',color:net>=0?COLORS.green:COLORS.red,shape:'circle',text:'EXIT'});
+      }
+    }
     markers.sort((a,b)=>a.time-b.time);
     const compacted=[];let lastKey='';let same=0;
     for(const m of markers){
