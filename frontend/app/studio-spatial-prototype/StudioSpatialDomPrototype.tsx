@@ -521,9 +521,9 @@ export default function StudioSpatialDomPrototype() {
             <button data-testid="export-board-package" onClick={downloadSnapshot}><FileJson size={14}/> Export Board Package</button>
             <button data-testid="import-board-package" onClick={()=>importRef.current?.click()}><Upload size={14}/> Import Board Package</button>
             <input ref={importRef} data-testid="import-board-file" hidden type="file" accept="application/json" onChange={async e=>{
-              const file=e.target.files?.[0];if(!file)return;
+              const input=e.currentTarget, file=input.files?.[0];if(!file)return;
               try{const parsed=JSON.parse(await file.text()) as BoardSnapshot;importSnapshot(parsed)}catch{}
-              e.currentTarget.value="";
+              finally{input.value="";}
             }}/>
           </div>:null}
           {libraryTab==="knowledge"?<div className={styles.knowledgePanel}><BookOpen size={20}/><strong>TQS Knowledge</strong><p>Verified knowledge search is reserved for the production connector gate. V3 keeps the surface and source-ref contract without creating a duplicate backend.</p></div>:null}
