@@ -36,6 +36,9 @@ try {
   console.log("QA: goto", url);
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
   console.log("QA: domcontentloaded");
+  await page.waitForTimeout(1200);
+  console.log("QA: body", (await page.locator("body").innerText()).slice(0, 800));
+  console.log("QA: testids", await page.locator("[data-testid]").count());
   await page.getByTestId("studio-spatial-v2").waitFor({ timeout: 10000 });
   check((await page.getByTestId("block-text").count()) >= 1, "initial Rich Text exists");
   check((await page.getByTestId("block-chart").count()) >= 1, "initial Chart exists");
