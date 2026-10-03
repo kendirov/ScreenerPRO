@@ -8,7 +8,7 @@ export function StudioMarketChart({dataSpec,embedded,cursorIndex,onData}:{dataSp
  const [data,setData]=useState<LiveDataResponse|null>(embedded||null); const [error,setError]=useState(""); const [loading,setLoading]=useState(!embedded);
  const family=dataSpec?.instrument?.family||embedded?.instrument.family||"SI";
  useEffect(()=>{if(embedded){setData(embedded);setLoading(false);return}let alive=true;setLoading(true);setError("");
-   const q=new URLSearchParams({family,sessions:String(period),interval:"1"});if(dataSpec?.fixedRange?.from===dataSpec?.fixedRange?.till&&dataSpec.fixedRange?.from)q.set("date",dataSpec.fixedRange.from);
+   const q=new URLSearchParams({family,sessions:String(period),interval:"1"});const fixedFrom=dataSpec?.fixedRange?.from;const fixedTill=dataSpec?.fixedRange?.till;if(fixedFrom&&fixedFrom===fixedTill)q.set("date",fixedFrom);
    fetch("/api/studio/live-data?"+q.toString()).then(async r=>{const x=await r.json();if(!r.ok||!x.ok)throw new Error(x.error||"Live data error");return x as LiveDataResponse}).then(x=>{if(alive){setData(x);onData?.(x)}}).catch(e=>alive&&setError(e.message)).finally(()=>alive&&setLoading(false));return()=>{alive=false}
  },[embedded,family,period,dataSpec?.fixedRange?.from,dataSpec?.fixedRange?.till,onData]);
  const shown=useMemo(()=>{if(!data)return null;if(cursorIndex==null)return data;const s=data.sessions.at(-1);if(!s)return data;return {...data,sessions:[{...s,points:s.points.slice(0,Math.max(1,cursorIndex+1)),totalVolume:s.points[Math.max(0,Math.min(cursorIndex,s.points.length-1))]?.cumVolume||0}]} as LiveDataResponse},[data,cursorIndex]);
