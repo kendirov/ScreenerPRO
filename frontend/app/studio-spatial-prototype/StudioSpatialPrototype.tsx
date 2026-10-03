@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   BaseBoxShapeUtil,
   Editor,
@@ -9,6 +9,11 @@ import {
   TLShape,
   Tldraw,
   createShapeId,
+  createTLStore,
+  defaultBindingUtils,
+  defaultShapeUtils,
+  getSnapshot,
+  loadSnapshot,
   useEditor,
   useValue,
 } from "tldraw";
@@ -322,6 +327,13 @@ class StudioShapeUtil extends BaseBoxShapeUtil<StudioShape> {
 
 const shapeUtils = [StudioShapeUtil];
 
+function createStudioStore() {
+  return createTLStore({
+    shapeUtils: [...defaultShapeUtils, ...shapeUtils],
+    bindingUtils: defaultBindingUtils,
+  });
+}
+
 function blockProps(kind: BlockKind): StudioShape["props"] {
   const base: Record<BlockKind, StudioShape["props"]> = {
     richText: { w: 430, h: 270, kind, data: JSON.stringify({ title: "Rich Text", body: "<h2>Свободный текст на доске</h2><p>Выделите блок и нажмите Enter или дважды кликните, чтобы форматировать текст.</p>" }) },
@@ -356,12 +368,39 @@ const LIBRARY: { kind: BlockKind; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function StudioSpatialPrototype() {
+  const [store] = useState(createStudioStore);
+  const [storeReady, setStoreReady] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [mode, setMode] = useState<Mode>("edit");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contextPoint, setContextPoint] = useState<{x:number;y:number;clientX:number;clientY:number}|null>(null);
   const [presentFrame, setPresentFrame] = useState<"article"|"lesson">("article");
   const [cameraTick, setCameraTick] = useState(0);
+
+  useLayoutEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      try {
+        loadSnapshot(store, JSON.parse(raw));
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+    setStoreReady(true);
+
+    let saveTimer: number | undefined;
+    const cleanup = store.listen(() => {
+      if (saveTimer) window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(getSnapshot(store)));
+      }, 150);
+    });
+
+    return () => {
+      cleanup();
+      if (saveTimer) window.clearTimeout(saveTimer);
+    };
+  }, [store]);
 
   const handleEditorReady = useCallback((ed: Editor) => {
     (window as any).__tqsStudioEditor = ed;
@@ -452,7 +491,7 @@ export default function StudioSpatialPrototype() {
       editor.deleteShapes(Array.from(editor.getCurrentPageShapeIds()));
       seedDemo(editor);
     }, { ignoreShapeLock: true });
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getSnapshot(editor.store)));
   };
 
   return (
@@ -515,17 +554,19 @@ export default function StudioSpatialPrototype() {
                   const p=editor.screenToPage({x:e.clientX,y:e.clientY});
                   createBlockAt(kind,p);
                 }}>
-                <EditorBridgeContext.Provider value={handleEditorReady}>
-                  <Tldraw
-                    shapeUtils={shapeUtils}
-                    persistenceKey={STORAGE_KEY}
-                    components={tldrawComponents}
-                    hideUi
-                    autoFocus
-                    options={{ camera: { wheelBehavior: "zoom", panSpeed: 1, zoomSpeed: 1 } }}
-                    onMount={handleEditorReady}
-                  />
-                </EditorBridgeContext.Provider>
+                {storeReady ? (
+                  <EditorBridgeContext.Provider value={handleEditorReady}>
+                    <Tldraw
+                      store={store}
+                      shapeUtils={shapeUtils}
+                      components={tldrawComponents}
+                      hideUi
+                      autoFocus
+                      options={{ camera: { wheelBehavior: "zoom", panSpeed: 1, zoomSpeed: 1 } }}
+                      onMount={handleEditorReady}
+                    />
+                  </EditorBridgeContext.Provider>
+                ) : null}
                 {toolbarStyle && selectedShape ? (
                   <div className={styles.selectionToolbar} data-testid="selection-toolbar" style={{left:toolbarStyle.left,top:toolbarStyle.top}}>
                     <span>{selectedShape.props.kind}</span>
