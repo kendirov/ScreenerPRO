@@ -529,8 +529,14 @@ Deno.serve(async(req:Request)=>{
   try{
     if(path==="/health") return json({ok:true,service:"studio-api",schema:"v5"},200,origin);
     if(path==="/public/db-smoke"&&req.method==="GET"){
-      const [row]=await directDb`select now() as now, (select count(*)::int from public.studio_world_objects where world_key=${OWNER_WORLD}) as objects`;
-      return json({ok:true,transport:"direct-postgres",now:row?.now||null,objects:row?.objects||0},200,origin);
+      const raw=Deno.env.get("SUPABASE_DB_URL")||"";
+      let parsed:any=null;try{const u=new URL(raw);parsed={protocol:u.protocol,hostname:u.hostname,port:u.port,hasUser:Boolean(u.username),hasPassword:Boolean(u.password),pathname:u.pathname}}catch{}
+      try{
+        const [row]=await directDb`select now() as now, (select count(*)::int from public.studio_world_objects where world_key=${OWNER_WORLD}) as objects`;
+        return json({ok:true,transport:"direct-postgres",envPresent:Boolean(raw),envLength:raw.length,parsed,now:row?.now||null,objects:row?.objects||0},200,origin);
+      }catch(error){
+        return json({ok:false,transport:"direct-postgres",envPresent:Boolean(raw),envLength:raw.length,parsed,error:error instanceof Error?error.message:String(error)},500,origin);
+      }
     }
     if(path==="/owner/bootstrap"&&req.method==="GET") return ownerBootstrap(url);
     if(path==="/oauth/callback") return oauthCallback(url);
