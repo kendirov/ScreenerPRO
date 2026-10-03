@@ -3,7 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {BookOpen,ChevronLeft,ChevronRight,CircleDot,Download,FileJson,FileText,FolderSync,Image as ImageIcon,Link as LinkIcon,ListTodo,Maximize2,Menu,Mic,Moon,MoreHorizontal,PanelLeftClose,PanelLeftOpen,PenLine,Plus,Search,Settings,SquarePen,Sun,Type,Upload,Volume2,X} from "lucide-react";
 import {DocumentEditorV5} from "@/components/studio-v5/DocumentEditorV5";
 import {StudioMarketChart} from "@/components/studio-v5/MarketChart";
-import {downloadPdf,driveOAuthStart,ownerMagicLink,studioAction,studioSignOut,studioSupabase} from "@/lib/studio-v5/api";
+import {downloadPdf,driveOAuthStart,studioAction} from "@/lib/studio-v5/api";
 import type {DataSpec,DocumentBundle,StudioActivity,StudioDocument,StudioObject,WorldOverview} from "@/lib/studio-v5/types";
 import styles from "./studio-v5.module.css";
 
@@ -20,7 +20,6 @@ function titleForKind(kind:string){return kind==="text"?"Текст":kind==="tas
 function fileToDataUrl(file:File){return new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(file)})}
 
 export default function StudioWorldV5(){
- const [auth,setAuth]=useState<"loading"|"in"|"out"|"missing-env">("loading"),[loginSent,setLoginSent]=useState(false),[authError,setAuthError]=useState("");
  const [overview,setOverview]=useState<WorldOverview|null>(null),[documents,setDocuments]=useState<StudioDocument[]>([]),[bundle,setBundle]=useState<DocumentBundle|null>(null);
  const [surface,setSurface]=useState<Surface>("world"),[selected,setSelected]=useState<string|null>(null),[editing,setEditing]=useState<string|null>(null);
  const [camera,setCamera]=useState<Camera>({x:34,y:24,zoom:.55}),[worldNav,setWorldNav]=useState(true),[docNav,setDocNav]=useState(true),[search,setSearch]=useState("");
@@ -37,8 +36,7 @@ export default function StudioWorldV5(){
   if(!bundle&&docs[0]){try{setBundle(await studioAction<DocumentBundle>("getDocument",{documentId:docs[0].id}))}catch{}}
  },[bundle]);
 
- useEffect(()=>{let mounted=true;try{const s=studioSupabase();s.auth.getSession().then(({data})=>{if(mounted)setAuth(data.session?"in":"out")}).catch(e=>{if(mounted){setAuth("out");setAuthError(e.message)}});const sub=s.auth.onAuthStateChange((_e,session)=>{if(!mounted)return;setAuth(session?"in":"out")});return()=>{mounted=false;sub.data.subscription.unsubscribe()}}catch(e){setAuth("missing-env");setAuthError(e instanceof Error?e.message:String(e))}},[]);
- useEffect(()=>{if(auth==="in")void load().catch(e=>{setNotice("Server load: "+e.message);const raw=localStorage.getItem(CACHE);if(raw)try{const x=JSON.parse(raw);setOverview(x.overview);setDocuments(x.documents||[])}catch{}})},[auth,load]);
+ useEffect(()=>{void load().catch(e=>{setNotice("Server load: "+e.message);const raw=localStorage.getItem(CACHE);if(raw)try{const x=JSON.parse(raw);setOverview(x.overview);setDocuments(x.documents||[])}catch{}})},[load]);
 
  useEffect(()=>{const down=(e:KeyboardEvent)=>{const mod=e.metaKey||e.ctrlKey;if(mod&&e.key==="1"){e.preventDefault();setSurface("world")}if(mod&&e.key==="2"){e.preventDefault();setSurface("documents")}if(mod&&e.key.toLowerCase()==="k"){e.preventDefault();if(surface==="world")searchRef.current?.focus()}if(e.code==="Space"&&!isEditableTarget(e.target)){setSpace(true);e.preventDefault()}if(e.key==="Escape"){setEditing(null);setContext(null);setDrawMode(null)}};const up=(e:KeyboardEvent)=>{if(e.code==="Space")setSpace(false)};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up)}},[surface]);
  useEffect(()=>{const el=canvas.current;if(!el||surface!=="world")return;const wheel=(e:WheelEvent)=>{e.preventDefault();const r=el.getBoundingClientRect();if(e.ctrlKey){const sx=e.clientX-r.left,sy=e.clientY-r.top;setCamera(c=>{const factor=Math.exp(-e.deltaY*.005),zoom=Math.max(.14,Math.min(2.5,c.zoom*factor)),wx=(sx-c.x)/c.zoom,wy=(sy-c.y)/c.zoom;return{zoom,x:sx-wx*zoom,y:sy-wy*zoom}});return}setCamera(c=>e.shiftKey?{...c,x:c.x-(e.deltaY+e.deltaX)}:{...c,x:c.x-e.deltaX,y:c.y-e.deltaY})};el.addEventListener("wheel",wheel,{passive:false});return()=>el.removeEventListener("wheel",wheel)},[surface]);
@@ -91,14 +89,11 @@ export default function StudioWorldV5(){
  const exportJson=()=>{if(!overview)return;const blob=new Blob([JSON.stringify({schemaVersion:"tqs-studio-world/v5",overview,documents,selectedDocument:bundle},null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tqs-studio-v5.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),0)};
  const importJson=async(file:File)=>{const x=JSON.parse(await file.text());if(!x?.overview?.objects)throw new Error("Invalid V5 export");for(const o of x.overview.objects as StudioObject[]){const existing=objects.find(z=>z.id===o.id);if(existing)await studioAction("updateObject",{id:o.id,revision:existing.revision,patch:o});else await studioAction("createWorldObject",{object:o})}await load();setNotice("JSON импортирован в server state")};
 
- if(auth==="loading")return <div className={styles.loading}>TQS Studio V5 · загрузка…</div>;
- if(auth!=="in")return <OwnerLogin missing={auth==="missing-env"} error={authError} sent={loginSent} onSend={async email=>{const {error}=await ownerMagicLink(email);if(error)setAuthError(error.message);else setLoginSent(true)}}/>;
-
  return <main className={styles.shell} data-theme="dark" onPaste={onPaste}>
   <header className={styles.topbar}>
    <div className={styles.brand}><strong>TQS Studio</strong><span>V5</span></div>
    <div className={styles.switch}><button className={surface==="world"?styles.active:""} onClick={()=>setSurface("world")}>Мир <kbd>⌘1</kbd></button><button className={surface==="documents"?styles.active:""} onClick={()=>setSurface("documents")}>Документы <kbd>⌘2</kbd></button></div>
-   <div className={styles.topactions}>{surface==="world"&&selectedObject&&<button onClick={createDocumentFromSelected}><FileText size={14}/>Документ</button>}<button onClick={()=>setDiagnostics(v=>!v)} title="Диагностика"><Settings size={15}/></button><button onClick={()=>void studioSignOut()} title="Выйти"><MoreHorizontal size={15}/></button></div>
+   <div className={styles.topactions}>{surface==="world"&&selectedObject&&<button onClick={createDocumentFromSelected}><FileText size={14}/>Документ</button>}<button onClick={()=>setDiagnostics(v=>!v)} title="Диагностика"><Settings size={15}/></button><span title="Открытый прототип" style={{fontSize:9,color:"#8d887e",padding:"0 6px"}}>OPEN</span></div>
   </header>
   {notice&&<div className={styles.notice} onClick={()=>setNotice("")}>{notice}<X size={12}/></div>}
   {surface==="world"?<div className={styles.body}>
@@ -126,10 +121,6 @@ export default function StudioWorldV5(){
  </main>
 }
 
-function OwnerLogin({missing,error,sent,onSend}:{missing:boolean;error:string;sent:boolean;onSend:(email:string)=>void}){
- const [email,setEmail]=useState("kendirov@gmail.com");
- return <div className={styles.login}><div><strong>TQS Studio V5</strong><h1>Вход владельца</h1><p>Canonical Studio state теперь хранится в Supabase. localStorage используется только как recovery cache.</p>{missing&&<pre>{error}</pre>}{sent?<p>Ссылка для входа отправлена на {email}.</p>:<><input value={email} onChange={e=>setEmail(e.target.value)}/><button onClick={()=>onSend(email)}>Отправить magic link</button></>}</div></div>
-}
 function isEditableTarget(target:EventTarget|null){const e=target as HTMLElement|null;return Boolean(e?.isContentEditable||["INPUT","TEXTAREA","SELECT","BUTTON","A","VIDEO","AUDIO"].includes(e?.tagName||""))}
 function escapeHtml(s:string){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]||m))}
 
