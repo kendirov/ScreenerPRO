@@ -45,6 +45,26 @@ function safeReturnTo(raw:string|null){
   }catch{}
   return null;
 }
+async function ownerBootstrap(url:URL){
+  const token=url.searchParams.get("token")||"";
+  if(!token) return json({error:"BOOTSTRAP_TOKEN_REQUIRED"},400);
+  const hash=await sha256Hex(token);
+  const {data:row,error}=await admin.from("studio_owner_bootstrap_tokens")
+    .select("*").eq("token_hash",hash).is("used_at",null).gt("expires_at",new Date().toISOString()).maybeSingle();
+  if(error) throw error;
+  if(!row) return json({error:"BOOTSTRAP_TOKEN_INVALID_OR_EXPIRED"},401);
+  const {data:owner}=await admin.from("studio_owner_access").select("email").eq("owner_id",row.owner_id).single();
+  const {data:link,error:le}=await admin.auth.admin.generateLink({
+    type:"magiclink",
+    email:owner.email,
+    options:{redirectTo:row.return_to}
+  });
+  if(le) throw le;
+  const actionLink=(link as any)?.properties?.action_link || (link as any)?.properties?.actionLink;
+  if(!actionLink) throw Object.assign(new Error("BOOTSTRAP_ACTION_LINK_MISSING"),{status:500});
+  await admin.from("studio_owner_bootstrap_tokens").update({used_at:new Date().toISOString()}).eq("id",row.id);
+  return Response.redirect(actionLink,302);
+}
 async function ownerFromRequest(req:Request){
   const auth=req.headers.get("Authorization")||"";
   const token=auth.startsWith("Bearer ")?auth.slice(7):"";
@@ -343,6 +363,7 @@ Deno.serve(async(req:Request)=>{
   const url=new URL(req.url),path=functionPath(url);
   try{
     if(path==="/health") return json({ok:true,service:"studio-api",schema:"v5"},200,origin);
+    if(path==="/owner/bootstrap"&&req.method==="GET") return ownerBootstrap(url);
     if(path==="/oauth/callback") return oauthCallback(url);
     if(path==="/share"){
       const token=url.searchParams.get("token")||"";const bundle=token?await loadShare(token):null;
