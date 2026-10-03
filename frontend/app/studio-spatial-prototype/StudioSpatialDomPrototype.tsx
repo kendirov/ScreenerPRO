@@ -302,7 +302,7 @@ export default function StudioSpatialDomPrototype() {
           {gesture&&gesture.type!=="pan"?<><div className={styles.snapGuideV}/><div className={styles.snapGuideH}/></>:null}
         </div>
 
-        {toolbar&&selected&&mode==="edit"&&interactingId!==selected.id?<div className={styles.selectionToolbar} data-testid="selection-toolbar" style={{left:toolbar.left+(mode==="edit"?220:0),top:toolbar.top+68}}>
+        {toolbar&&selected&&mode==="edit"&&interactingId!==selected.id?<div className={styles.selectionToolbar} data-testid="selection-toolbar" style={{left:toolbar.left,top:toolbar.top}}>
           <span>{selected.kind}</span>
           <button onClick={()=>{const id=uid(selected.kind==="frame"?"richText":selected.kind as BlockKind);const copy={...selected,id,x:selected.x+35,y:selected.y+35,parentId:selected.kind==="frame"?undefined:selected.parentId};setItems(v=>[...v,copy]);setSelectedId(id)}}>Duplicate</button>
           {selected.kind!=="frame"?<button data-testid="toggle-hidden" onClick={()=>patchItem(selected.id,{hidden:!selected.hidden})}>{selected.hidden?"Show":"Hide"}</button>:null}
