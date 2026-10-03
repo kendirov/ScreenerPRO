@@ -30,3 +30,15 @@ export async function POST(req:Request){
     return Response.json({ok:false,error:error?.message||String(error),details:error?.details||null},{status:Number(error?.status||502),headers:{"Cache-Control":"no-store"}});
   }
 }
+
+export async function GET(req:Request){
+  try{
+    const token=new URL(req.url).searchParams.get("token")||"";
+    if(!token)return Response.json({ok:false,error:"token required"},{status:400});
+    const data=await rpc("studio_public_share_load",{p_token:token});
+    if(!data)return Response.json({ok:false,error:"SHARE_NOT_FOUND"},{status:404});
+    return Response.json({ok:true,data},{headers:{"Cache-Control":"no-store"}});
+  }catch(error:any){
+    return Response.json({ok:false,error:error?.message||String(error),details:error?.details||null},{status:Number(error?.status||502),headers:{"Cache-Control":"no-store"}});
+  }
+}
