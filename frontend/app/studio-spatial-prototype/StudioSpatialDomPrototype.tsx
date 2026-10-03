@@ -124,12 +124,12 @@ function ImageBlock({item}:{item:StudioItem}) {
   </div><figcaption><strong>{item.data.title}</strong><span>{item.data.caption}</span></figcaption></figure>;
 }
 
-const VIDEO_URL="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+const VIDEO_URL="https://www.w3schools.com/html/mov_bbb.mp4";
 const TRANSCRIPT=[
   {t:0,label:"00:00",text:"Контекст: почему абсолютный объём сам по себе мало что объясняет."},
   {t:4,label:"00:04",text:"Смотрим переход внимания между RTS и Si."},
   {t:8,label:"00:08",text:"Важна связка цена, поток сделок и открытый интерес."},
-  {t:12,label:"00:12",text:"Этот же блок позже сможет хранить расшифровку урока."},
+  {t:9,label:"00:09",text:"Этот же блок позже сможет хранить расшифровку урока."},
 ];
 function VideoBlock({item,interactive}:{item:StudioItem;interactive:boolean}) {
   const ref=useRef<HTMLVideoElement>(null);
