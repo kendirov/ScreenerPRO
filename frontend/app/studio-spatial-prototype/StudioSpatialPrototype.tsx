@@ -64,12 +64,21 @@ const EditorBridgeContext = React.createContext<(editor: Editor) => void>(() => 
 function StudioEditorBridge() {
   const editor = useEditor();
   const onReady = React.useContext(EditorBridgeContext);
+  const shapeCount = useValue("studio shape count", () => editor.getCurrentPageShapeIds().size, [editor]);
+  const snapMode = useValue("studio snap mode", () => editor.user.getIsSnapMode(), [editor]);
 
   useEffect(() => {
     onReady(editor);
   }, [editor, onReady]);
 
-  return null;
+  return (
+    <div
+      data-testid="editor-bridge-ready"
+      data-shape-count={shapeCount}
+      data-snap-mode={snapMode ? "on" : "off"}
+      style={{ display: "none" }}
+    />
+  );
 }
 
 const tldrawComponents = {
