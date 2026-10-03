@@ -282,6 +282,15 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     const appOrigin=safeReturnTo(p.appOrigin)||origin; if(!appOrigin)throw new Error("APP_ORIGIN_REQUIRED");
     return createFreshShare(owner.id,p.documentId,appOrigin);
   }
+  if(name==="configureDriveOAuth"){
+    const clientId=String(p.clientId||"").trim(),clientSecret=String(p.clientSecret||"").trim();
+    if(!clientId||clientId.length<20||!clientSecret||clientSecret.length<10) throw Object.assign(new Error("INVALID_OAUTH_CLIENT_CONFIG"),{status:400});
+    await vaultPut("studio_google_client_id",clientId,"TQS Studio Google OAuth web client id");
+    await vaultPut("studio_google_client_secret",clientSecret,"TQS Studio Google OAuth web client secret");
+    const cfg=await googleConfig();
+    await admin.from("studio_drive_connections").update({status:"CONFIGURED",last_error:null,metadata:{oauth_client_configured_at:new Date().toISOString(),redirect_uri:cfg.redirectUri},updated_at:new Date().toISOString()}).eq("owner_id",owner.id);
+    return {configured:true,redirectUri:cfg.redirectUri,scopes:DRIVE_SCOPES};
+  }
   if(name==="driveStatus"){
     const {data:connection}=await admin.from("studio_drive_connections").select("*").eq("owner_id",owner.id).single();
     const {data:conflicts}=await admin.from("studio_sync_conflicts").select("*").eq("owner_id",owner.id).eq("state","OPEN").order("created_at",{ascending:false}).limit(20);
