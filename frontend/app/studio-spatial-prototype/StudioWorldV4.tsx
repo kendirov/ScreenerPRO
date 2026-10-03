@@ -158,7 +158,7 @@ function PdfCard({item,onChange}:{item:Item;onChange:(p:Partial<Item>)=>void}){
  </div>
 }
 
-function DocEditor({doc,onDoc,goWorld}:{doc:StudioDocument;onDoc:(d:StudioDocument)=>void;goWorld:()=>void}){
+const DOC_BLOCK_LABEL:Record<DocBlock["type"],string>={heading:"Заголовок",text:"Текст",callout:"Выделение",image:"Изображение",chart:"График",video:"Видео",source:"Источник",divider:"Разделитель"};\nfunction DocEditor({doc,onDoc,goWorld}:{doc:StudioDocument;onDoc:(d:StudioDocument)=>void;goWorld:()=>void}){
  const update=(id:string,content:string)=>onDoc({...doc,revision:doc.revision+1,blocks:doc.blocks.map(b=>b.id===id?{...b,content}:b)});
  const add=(type:DocBlock["type"])=>onDoc({...doc,revision:doc.revision+1,blocks:[...doc.blocks,{id:uid("db"),type,content:type==="divider"?"":"Новый блок"}]});
  return <article className={styles.documentEditor} data-testid="document-editor">
@@ -169,7 +169,7 @@ function DocEditor({doc,onDoc,goWorld}:{doc:StudioDocument;onDoc:(d:StudioDocume
     {(b.type==="chart"||b.type==="video"||b.type==="image")?<div className={styles.docRef}><Layers3 size={18}/><b>{b.content}</b><small>{b.ref||"reference"}</small></div>:<div contentEditable suppressContentEditableWarning onBlur={e=>update(b.id,e.currentTarget.innerText)}>{b.content}</div>}
    </section>)}
   </div>
-  <footer className={styles.docAdd}><span>Добавить блок:</span>{(["text","callout","image","chart","video","source","divider"] as DocBlock["type"][]).map(t=><button key={t} onClick={()=>add(t)}>{{text:"Текст",callout:"Выделение",image:"Изображение",chart:"График",video:"Видео",source:"Источник",divider:"Разделитель"}[t]}</button>)}</footer>
+  <footer className={styles.docAdd}><span>Добавить блок:</span>{(["text","callout","image","chart","video","source","divider"] as DocBlock["type"][]).map(t=><button key={t} onClick={()=>add(t)}>{DOC_BLOCK_LABEL[t]}</button>)}</footer>
  </article>
 }
 
@@ -230,7 +230,7 @@ export default function StudioWorldV4(){
 
  const onFiles=(files:File[],cx:number,cy:number)=>{const file=files[0];if(!file||!file.type.startsWith("image/"))return;const p=screenToWorld(cx,cy),id=addAt("image",p.x,p.y,file.name);void readDataUrl(file).then(assetUrl=>patch(id,{assetUrl},"image_paste"))};
  const openDoc=(id:string)=>{setDocId(id);setSurface("documents")};
- const currentDoc=documents.find(d=>d.id===docId)||documents[0];
+ const currentDoc=documents.find(d=>d.id===docId)||documents[0]!;
  const setDoc=(d:StudioDocument)=>{setDocuments(v=>v.map(x=>x.id===d.id?d:x));setRevision(r=>r+1);log(d.id,d.semanticPath,"text_update",`Обновлён документ: ${d.title}`)};
  const createDocFromSelected=()=>{if(!selectedItem)return;const id=uid("doc"),d:StudioDocument={id,kind:"instruction",title:`Документ — ${selectedItem.title}`,semanticPath:selectedItem.semanticPath,frameId:selectedItem.kind==="frame"?selectedItem.id:selectedItem.parentId,revision:1,status:"Черновик",blocks:[{id:uid("db"),type:"heading",content:selectedItem.title},{id:uid("db"),type:"text",content:selectedItem.body?.replace(/<[^>]+>/g,"")||"Создано из выбранного объекта World."}]};setDocuments(v=>[...v,d]);log(id,d.semanticPath,"document_link",`Создан документ из: ${selectedItem.title}`);openDoc(id)};
 
@@ -245,7 +245,7 @@ export default function StudioWorldV4(){
   {label:"Inbox",id:FRAME_INBOX}
  ],[]);
 
- const Tree=({nodes,depth=0}:{nodes:any[];depth?:number})=><>{nodes.map(n=><div key={n.id}><div className={styles.treeRow} style={{paddingLeft:10+depth*14}}><button className={styles.treeMain} onClick={()=>n.doc?openDoc(n.doc):focus(n.id)}>{n.children?<ChevronRight size={12}/>:<span className={styles.dot}/>}<span>{n.label}</span></button><button title="На доске" data-testid={"board-target-"+n.id} onClick={()=>focus(n.id)}><CircleDot size={12}/></button></div>{n.children?<Tree nodes={n.children} depth={depth+1}/>:null}</div>)}</>;
+ const Tree=({nodes,depth=0}:{nodes:any[];depth?:number}):React.ReactNode=><>{nodes.map(n=><div key={n.id}><div className={styles.treeRow} style={{paddingLeft:10+depth*14}}><button className={styles.treeMain} onClick={()=>n.doc?openDoc(n.doc):focus(n.id)}>{n.children?<ChevronRight size={12}/>:<span className={styles.dot}/>}<span>{n.label}</span></button><button title="На доске" data-testid={"board-target-"+n.id} onClick={()=>focus(n.id)}><CircleDot size={12}/></button></div>{n.children?<Tree nodes={n.children} depth={depth+1}/>:null}</div>)}</>;
 
  const visibleItems=items.filter(i=>!i.hidden&&i.kind!=="annotation");
  const lod=camera.zoom<.32?"far":camera.zoom<.6?"mid":"near";
