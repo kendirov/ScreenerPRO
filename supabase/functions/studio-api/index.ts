@@ -53,17 +53,35 @@ async function ownerBootstrap(url:URL){
     .select("*").eq("token_hash",hash).is("used_at",null).gt("expires_at",new Date().toISOString()).maybeSingle();
   if(error) throw error;
   if(!row) return json({error:"BOOTSTRAP_TOKEN_INVALID_OR_EXPIRED"},401);
-  const {data:owner}=await admin.from("studio_owner_access").select("email").eq("owner_id",row.owner_id).single();
-  const {data:link,error:le}=await admin.auth.admin.generateLink({
-    type:"magiclink",
-    email:owner.email,
-    options:{redirectTo:row.return_to}
-  });
+  const {data:owner,error:oe}=await admin.from("studio_owner_access").select("email").eq("owner_id",row.owner_id).single();
+  if(oe||!owner?.email) throw oe||new Error("OWNER_EMAIL_MISSING");
+  const {data:link,error:le}=await admin.auth.admin.generateLink({type:"magiclink",email:owner.email});
   if(le) throw le;
-  const actionLink=(link as any)?.properties?.action_link || (link as any)?.properties?.actionLink;
-  if(!actionLink) throw Object.assign(new Error("BOOTSTRAP_ACTION_LINK_MISSING"),{status:500});
+  const properties=(link as any)?.properties||{};
+  let tokenHash=properties.hashed_token||properties.hashedToken||"";
+  if(!tokenHash){
+    const actionLink=properties.action_link||properties.actionLink||"";
+    if(actionLink){
+      try{
+        const au=new URL(actionLink);
+        tokenHash=au.searchParams.get("token")||au.searchParams.get("token_hash")||"";
+      }catch{}
+    }
+  }
+  if(!tokenHash) throw Object.assign(new Error("BOOTSTRAP_TOKEN_HASH_MISSING"),{status:500});
+  const {data:verified,error:ve}=await admin.auth.verifyOtp({token_hash:tokenHash,type:"email"});
+  if(ve||!verified?.session) throw ve||Object.assign(new Error("BOOTSTRAP_SESSION_MISSING"),{status:500});
   await admin.from("studio_owner_bootstrap_tokens").update({used_at:new Date().toISOString()}).eq("id",row.id);
-  return Response.redirect(actionLink,302);
+  const target=new URL(row.return_to);
+  const s=verified.session;
+  target.hash=new URLSearchParams({
+    access_token:s.access_token,
+    refresh_token:s.refresh_token,
+    expires_in:String(s.expires_in||3600),
+    token_type:s.token_type||"bearer",
+    type:"magiclink"
+  }).toString();
+  return Response.redirect(target.toString(),302);
 }
 async function ownerFromRequest(req:Request){
   const auth=req.headers.get("Authorization")||"";
