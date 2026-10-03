@@ -1,0 +1,28 @@
+export type UpdatePolicy = "LIVE"|"AS_OF"|"PUBLICATION_SNAPSHOT"|"MIXED";
+export type DataSpec = {
+  provider: "MOEX_ISS"|string;
+  instrument: { family?: string; secid?: string; resolver?: string };
+  metric: string;
+  relativeRange?: { tradingSessions?: number; days?: number } | null;
+  fixedRange?: { from: string; till: string } | null;
+  transforms: string[];
+  display: Record<string, unknown>;
+  updatePolicy: UpdatePolicy;
+  asOf: string | null;
+};
+export type StudioObject = {
+  id:string; world_key:string; kind:string; semantic_path:string; parent_id:string|null;
+  x:number;y:number;w:number;h:number;z:number;title:string;body:any;relations:any[];
+  status:string|null;hidden:boolean;revision:number;created_at?:string;updated_at?:string;
+};
+export type StudioActivity={id:string;entity_id:string|null;semantic_path:string;event_type:string;status:"NEW"|"IN_REVIEW"|"DONE";summary:string;payload:any;occurred_at:string};
+export type StudioDocument={id:string;world_key:string;slug:string;kind:string;title:string;semantic_path:string;frame_id:string|null;revision:number;status:string;share_mode:string;metadata:any};
+export type StudioDocumentBlock={block_id:string;document_id:string;ordinal:number;block_type:string;content:any;data_spec:DataSpec|null;asset_id:string|null;revision:number};
+export type WorldOverview={world:{world_key:string;revision:number;title:string;metadata:any};objects:StudioObject[];activity:StudioActivity[]};
+export type DocumentBundle={document:StudioDocument;blocks:StudioDocumentBlock[]};
+export type LiveSessionPoint={timestamp:string;price:number;volume:number;cumVolume:number;minute:number};
+export type LiveSession={date:string;totalVolume:number;points:LiveSessionPoint[]};
+export type LiveDataResponse={
+  ok:boolean; dataSpec:DataSpec; instrument:{family:string;secid:string;expiryDate?:string;shortName?:string};
+  sessions:LiveSession[];source:{provider:string;url?:string;asOf:string|null;interval:number;diagnostics:string[]};error?:string;
+};
