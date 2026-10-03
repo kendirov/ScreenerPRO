@@ -552,6 +552,16 @@ Deno.serve(async(req:Request)=>{
       if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
       return json({ok:true,data:await action({id:o.owner_id,email:o.email},body.action,body.payload||{},origin||"")},200,origin);
     }
+    if(path==="/public/pdf-bundle"&&req.method==="POST"){
+      const body=await req.json();
+      const bundle=body?.bundle,liveUrl=safeReturnTo(String(body?.liveUrl||""));
+      if(!bundle?.document||!Array.isArray(bundle?.blocks)||!liveUrl)return json({error:"bundle/liveUrl required"},400,origin);
+      const pdf=await generatePdf(bundle,liveUrl);
+      const filename=String(bundle.document.title||"document")+".pdf";
+      const h=new Headers({"Content-Type":"application/pdf","Content-Disposition":`attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,"X-TQS-Share-Url":liveUrl});
+      applyCors(h,origin);
+      return new Response(pdf,{headers:h});
+    }
     if(path==="/public/pdf"&&req.method==="GET"){
       const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
       if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
