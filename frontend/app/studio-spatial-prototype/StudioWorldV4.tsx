@@ -185,7 +185,7 @@ export default function StudioWorldV4(){
  const selectedItem=items.find(i=>i.id===selected)||null;
 
  const log=useCallback((entityId:string,semanticPath:string,type:Activity["type"],summary:string)=>{
-  setActivity(v=>[{id:uid("evt"),entityId,semanticPath,type,timestamp:now(),summary,status:"NEW"},...v].slice(0,250));
+  setActivity(v=>[{id:uid("evt"),entityId,semanticPath,type,timestamp:now(),summary,status:"NEW" as const},...v].slice(0,250));
  },[]);
  const mutate=(fn:(v:Item[])=>Item[],event?:()=>void)=>{setItems(v=>fn(v));setRevision(r=>r+1);event?.()};
  const patch=(id:string,p:Partial<Item>,eventType?:Activity["type"])=>mutate(v=>v.map(i=>i.id===id?{...i,...p,updatedAt:now()}:i),()=>{const i=items.find(x=>x.id===id);if(i&&eventType)log(id,i.semanticPath,eventType,`${eventType}: ${i.title}`)});
