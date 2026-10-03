@@ -4,6 +4,7 @@ import {BookOpen,ChevronLeft,ChevronRight,CircleDot,Download,FileJson,FileText,F
 import {DocumentEditorV5} from "@/components/studio-v5/DocumentEditorV5";
 import {StudioMarketChart} from "@/components/studio-v5/MarketChart";
 import {downloadPdf,driveOAuthStart,studioAction} from "@/lib/studio-v5/api";
+import {resetLocalStudio} from "@/lib/studio-v5/local-store";
 import type {DataSpec,DocumentBundle,StudioActivity,StudioDocument,StudioObject,WorldOverview} from "@/lib/studio-v5/types";
 import styles from "./studio-v5.module.css";
 
@@ -16,14 +17,14 @@ const snap=(n:number)=>Math.round(n/GRID)*GRID;
 const WORLD_W=7200,WORLD_H=4200;
 
 function asHtml(body:any){return typeof body?.html==="string"?body.html:""}
-function titleForKind(kind:string){return kind==="text"?"Текст":kind==="task"?"Задача":kind==="voice"?"Голосовая заметка":kind==="image"?"Картинка":kind==="file"?"Файл":kind==="link"?"Ссылка":kind==="frame"?"Фрейм / раздел":kind==="chart"?"График / данные":kind}
+function titleForKind(kind:string){return kind==="text"?"Текст":kind==="task"?"Задача":kind==="voice"?"Голосовая заметка":kind==="image"?"Картинка":kind==="video"?"Видео":kind==="file"?"Файл":kind==="link"?"Ссылка":kind==="frame"?"Фрейм / раздел":kind==="chart"?"График / данные":kind}
 function fileToDataUrl(file:File){return new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(file)})}
 
 export default function StudioWorldV5(){
  const [overview,setOverview]=useState<WorldOverview|null>(null),[documents,setDocuments]=useState<StudioDocument[]>([]),[bundle,setBundle]=useState<DocumentBundle|null>(null);
  const [surface,setSurface]=useState<Surface>("world"),[selected,setSelected]=useState<string|null>(null),[editing,setEditing]=useState<string|null>(null);
  const [camera,setCamera]=useState<Camera>({x:34,y:24,zoom:.55}),[worldNav,setWorldNav]=useState(true),[docNav,setDocNav]=useState(true),[search,setSearch]=useState("");
- const [grid,setGrid]=useState(false),[diagnostics,setDiagnostics]=useState(false),[drive,setDrive]=useState<any>(null),[driveFiles,setDriveFiles]=useState<any[]>([]),[notice,setNotice]=useState("");
+ const [grid,setGrid]=useState(false),[diagnostics,setDiagnostics]=useState(false),[theme,setTheme]=useState<"dark"|"light">("dark"),[drive,setDrive]=useState<any>(null),[driveFiles,setDriveFiles]=useState<any[]>([]),[notice,setNotice]=useState("");
  const [gesture,setGesture]=useState<any>(null),[space,setSpace]=useState(false),[drawMode,setDrawMode]=useState<DrawMode>(null),[drawPoints,setDrawPoints]=useState<Array<{x:number;y:number}>>([]);
  const [context,setContext]=useState<{sx:number;sy:number;wx:number;wy:number}|null>(null);
  const canvas=useRef<HTMLElement|null>(null),searchRef=useRef<HTMLInputElement>(null),importRef=useRef<HTMLInputElement>(null),lastPointer=useRef<{x:number;y:number;at:number}|null>(null),didInitialFit=useRef(false);
@@ -48,7 +49,7 @@ export default function StudioWorldV5(){
  const insertionPoint=()=>{if(lastPointer.current&&Date.now()-lastPointer.current.at<30000)return{x:lastPointer.current.x,y:lastPointer.current.y};if(selectedObject?.kind==="frame")return{x:selectedObject.x+selectedObject.w/2,y:selectedObject.y+selectedObject.h/2};const r=canvas.current?.getBoundingClientRect();return r?screenToWorld(r.left+r.width/2,r.top+r.height/2):{x:800,y:600}};
  const createObject=async(kind:string,opts:any={})=>{
   const p=opts.point||insertionPoint(),parent=deepestFrame(p.x,p.y),id=kind+"-"+crypto.randomUUID(),title=opts.title||titleForKind(kind);
-  const dims=kind==="text"?{w:270,h:104}:kind==="task"?{w:300,h:84}:kind==="voice"?{w:320,h:84}:kind==="link"?{w:320,h:80}:kind==="image"?{w:480,h:320}:kind==="frame"?{w:700,h:480}:kind==="chart"?{w:620,h:390}:{w:340,h:110};
+  const dims=kind==="text"?{w:270,h:104}:kind==="task"?{w:300,h:84}:kind==="voice"?{w:320,h:84}:kind==="link"?{w:320,h:80}:kind==="image"?{w:480,h:320}:kind==="video"?{w:480,h:280}:kind==="frame"?{w:700,h:480}:kind==="chart"?{w:620,h:390}:{w:340,h:110};
   const imageTarget=kind==="text"?objects.filter(o=>o.kind==="image"&&p.x>=o.x&&p.x<=o.x+o.w&&p.y>=o.y&&p.y<=o.y+o.h).sort((a,b)=>b.z-a.z)[0]:null;
   const row:any={id,kind,semantic_path:parent?parent.semantic_path+"/"+title:title,parent_id:parent?.id||null,x:snap(p.x),y:snap(p.y),...dims,z:kind==="frame"?2:10,title,body:opts.body||{},relations:parent?[{type:"contains",targetId:parent.id}]:[],status:kind==="task"?"NEW":kind==="voice"?"WAITING_RECORDING":null,hidden:false};
   const annotatesTarget=opts.annotates||imageTarget?.id;if(annotatesTarget)row.relations.push({type:"annotates",targetId:annotatesTarget});
@@ -73,7 +74,7 @@ export default function StudioWorldV5(){
   if(g)await persistGesture(g).catch(e=>setNotice(e.message))
  };
 
- const handleFiles=async(files:File[],point?:{x:number;y:number})=>{for(const file of files.slice(0,4)){const p=point||insertionPoint(),dataUrl=await fileToDataUrl(file),asset=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),kind=file.type.startsWith("image/")?"image":"file";await createObject(kind,{point:p,title:file.name,body:{assetId:asset.asset.id,mimeType:asset.asset.mime_type,filename:file.name}})}};
+ const handleFiles=async(files:File[],point?:{x:number;y:number})=>{for(const file of files.slice(0,4)){const p=point||insertionPoint(),dataUrl=await fileToDataUrl(file),asset=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),kind=file.type.startsWith("image/")?"image":file.type.startsWith("video/")?"video":"file";await createObject(kind,{point:p,title:file.name,body:{assetId:asset.asset.id,mimeType:asset.asset.mime_type,filename:file.name}})}};
  const classifyText=async(text:string,point?:{x:number;y:number})=>{const t=text.trim();if(!t)return;let url=false;try{const u=new URL(t);url=u.protocol==="http:"||u.protocol==="https:"}catch{}if(url)await createObject("link",{point,title:"Ссылка",body:{url:t}});else await createObject("text",{point,title:"Текст",body:{html:"<p>"+escapeHtml(t)+"</p>"}})};
  const onPaste=async(e:React.ClipboardEvent)=>{if(isEditableTarget(e.target))return;const files=Array.from(e.clipboardData.files);if(files.length){e.preventDefault();await handleFiles(files);return}const text=e.clipboardData.getData("text/plain");if(text){e.preventDefault();await classifyText(text)}};
  const onDrop=async(e:React.DragEvent)=>{e.preventDefault();const p=screenToWorld(e.clientX,e.clientY),files=Array.from(e.dataTransfer.files);if(files.length){await handleFiles(files,p);return}const text=e.dataTransfer.getData("text/uri-list")||e.dataTransfer.getData("text/plain");if(text)await classifyText(text,p)};
@@ -93,11 +94,11 @@ export default function StudioWorldV5(){
  const exportJson=()=>{if(!overview)return;const blob=new Blob([JSON.stringify({schemaVersion:"tqs-studio-world/v5",overview,documents,selectedDocument:bundle},null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tqs-studio-v5.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),0)};
  const importJson=async(file:File)=>{const x=JSON.parse(await file.text());if(!x?.overview?.objects)throw new Error("Invalid V5 export");for(const o of x.overview.objects as StudioObject[]){const existing=objects.find(z=>z.id===o.id);if(existing)await studioAction("updateObject",{id:o.id,revision:existing.revision,patch:o});else await studioAction("createWorldObject",{object:o})}await load();setNotice("JSON импортирован в server state")};
 
- return <main className={styles.shell} data-theme="dark" onPaste={onPaste}>
+ return <main className={styles.shell} data-theme={theme} onPaste={onPaste}>
   <header className={styles.topbar}>
    <div className={styles.brand}><strong>TQS Studio</strong><span>V5</span></div>
    <div className={styles.switch}><button className={surface==="world"?styles.active:""} onClick={()=>setSurface("world")}>Мир <kbd>⌘1</kbd></button><button className={surface==="documents"?styles.active:""} onClick={()=>setSurface("documents")}>Документы <kbd>⌘2</kbd></button></div>
-   <div className={styles.topactions}>{surface==="world"&&selectedObject&&<button onClick={createDocumentFromSelected}><FileText size={14}/>Документ</button>}<button onClick={()=>setDiagnostics(v=>!v)} title="Диагностика"><Settings size={15}/></button><span title="Открытый прототип" style={{fontSize:9,color:"#8d887e",padding:"0 6px"}}>OPEN</span></div>
+   <div className={styles.topactions}>{surface==="world"&&selectedObject&&<button onClick={createDocumentFromSelected}><FileText size={14}/>Документ</button>}<button onClick={()=>setTheme(v=>v==="dark"?"light":"dark")} title="Светлая / тёмная тема">{theme==="dark"?<Sun size={15}/>:<Moon size={15}/>}</button><button onClick={()=>setDiagnostics(v=>!v)} title="Диагностика"><Settings size={15}/></button><span title="Открытый прототип" style={{fontSize:9,color:"#8d887e",padding:"0 6px"}}>OPEN</span></div>
   </header>
   {notice&&<div className={styles.notice} onClick={()=>setNotice("")}>{notice}<X size={12}/></div>}
   {surface==="world"?<div className={styles.body}>
@@ -121,7 +122,7 @@ export default function StudioWorldV5(){
       {context&&<ContextMenu at={context} onAdd={(kind,extra)=>void createObject(kind,{point:{x:context.wx,y:context.wy},...extra})} onDraw={m=>{setDrawMode(m);setContext(null)}}/>}
     </section>
    </div>:<DocumentsMode docs={documents} bundle={bundle} open={openDocument} navOpen={docNav} setNavOpen={setDocNav} setBundle={setBundle} onWorld={()=>bundle?.document.frame_id&&focusObject(bundle.document.frame_id)} onShare={()=>void share()} onPdf={()=>void pdf()}/>}
-  {diagnostics&&<Diagnostics overview={overview} lod={lod} grid={grid} setGrid={setGrid} onClose={()=>setDiagnostics(false)} onExport={exportJson} onImport={file=>void importJson(file).catch(e=>setNotice(e.message))} importRef={importRef} drive={drive} driveFiles={driveFiles} refreshDrive={()=>void refreshDrive()} connectDrive={()=>void connectDrive()} syncDrive={()=>void studioAction("driveSyncCheckpoint",{}).then(x=>{setNotice("Drive checkpoint: "+JSON.stringify(x));return refreshDrive()}).catch(e=>setNotice(e.message))} conflictProbe={()=>void studioAction("driveConflictProbe",{expectedDriveVersion:"__STALE__"}).then(x=>setNotice("Conflict probe: "+JSON.stringify(x))).catch(e=>setNotice(e.message))}/>}
+  {diagnostics&&<Diagnostics overview={overview} lod={lod} grid={grid} setGrid={setGrid} onClose={()=>setDiagnostics(false)} onExport={exportJson} onImport={file=>void importJson(file).catch(e=>setNotice(e.message))} importRef={importRef} drive={drive} driveFiles={driveFiles} refreshDrive={()=>void refreshDrive()} connectDrive={()=>void connectDrive()} syncDrive={()=>void studioAction("driveSyncCheckpoint",{}).then(x=>{setNotice("Drive checkpoint: "+JSON.stringify(x));return refreshDrive()}).catch(e=>setNotice(e.message))} conflictProbe={()=>void studioAction("driveConflictProbe",{expectedDriveVersion:"__STALE__"}).then(x=>setNotice("Conflict probe: "+JSON.stringify(x))).catch(e=>setNotice(e.message))} onReset={()=>{resetLocalStudio();didInitialFit.current=false;void load();setNotice("Демо восстановлено")}}/>}
  </main>
 }
 
@@ -137,6 +138,7 @@ function WorldObject({object:o,compact,selected,editing,onSelect,onMoveStart,onR
    {o.kind==="task"&&<TaskObject object={o} editing={editing} onEdit={onEdit} onStop={onStopEdit} onPatch={onPatch}/>}
    {o.kind==="voice"&&<VoiceObject object={o} onPatch={onPatch}/>}
    {o.kind==="image"&&<AssetObject object={o} kind="image"/>}
+   {o.kind==="video"&&<AssetObject object={o} kind="video"/>}
    {o.kind==="file"&&<AssetObject object={o} kind="file"/>}
    {o.kind==="link"&&<LinkObject object={o} editing={editing} onStop={onStopEdit} onPatch={onPatch}/>}
    {o.kind==="chart"&&<StudioMarketChart dataSpec={o.body?.dataSpec as DataSpec}/>}
@@ -145,7 +147,7 @@ function WorldObject({object:o,compact,selected,editing,onSelect,onMoveStart,onR
   {selected&&<span className={styles.resize} onPointerDown={onResizeStart}/>}
  </div>
 }
-function iconFor(kind:string){return kind==="text"?"T":kind==="task"?"✓":kind==="voice"?"◉":kind==="image"?"▧":kind==="link"?"↗":kind==="chart"?"⌁":kind==="documentRef"?"D":"•"}
+function iconFor(kind:string){return kind==="text"?"T":kind==="task"?"✓":kind==="voice"?"◉":kind==="image"?"▧":kind==="video"?"▶":kind==="link"?"↗":kind==="chart"?"⌁":kind==="documentRef"?"D":"•"}
 
 function TextObject({object:o,editing,onEdit,onStop,onPatch}:{object:StudioObject;editing:boolean;onEdit:()=>void;onStop:()=>void;onPatch:(p:any,e?:string,s?:string)=>void}){
  const ref=useRef<HTMLDivElement>(null),[bubble,setBubble]=useState(false);
@@ -172,11 +174,11 @@ function blobToDataUrl(blob:Blob){return new Promise<string>((resolve,reject)=>{
 function formatSec(n:number){return Math.floor(n/60)+":"+String(n%60).padStart(2,"0")}
 function AssetObject({object:o,kind}:{object:StudioObject;kind:string}){
  const [url,setUrl]=useState<string|null>(o.body?.previewUrl||null);useEffect(()=>{if(!o.body?.assetId||url)return;void studioAction<any>("getAssetUrl",{assetId:o.body.assetId}).then(x=>setUrl(x.signedUrl)).catch(()=>{})},[o.body?.assetId,url]);
- return kind==="image"?<div className={styles.image}>{url?<img src={url} alt={o.title}/>:<ImageIcon size={28}/>}</div>:<div className={styles.file}><FileText size={20}/><span>{o.body?.filename||o.title}</span></div>
+ return kind==="image"?<div className={styles.image}>{url?<img src={url} alt={o.title}/>:<ImageIcon size={28}/>}</div>:kind==="video"?<div className={styles.image}>{url?<video controls src={url} style={{width:"100%",height:"100%",objectFit:"contain"}}/>:<span>Видео</span>}</div>:<div className={styles.file}><FileText size={20}/><span>{o.body?.filename||o.title}</span></div>
 }
 function Annotation({object:o}:{object:StudioObject}){const p=o.body?.points||[],kind=o.body?.annotationKind;return <svg className={styles.annotation} style={{left:o.x,top:o.y,width:o.w,height:o.h,zIndex:o.z}} viewBox={"0 0 "+Math.max(1,o.w)+" "+Math.max(1,o.h)}><defs><marker id={"arrow-"+o.id} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#d6a94c"/></marker></defs><polyline points={p.map((x:any)=>x.x+","+x.y).join(" ")} fill="none" stroke={kind==="marker"?"rgba(214,169,76,.42)":"#d6a94c"} strokeWidth={kind==="marker"?18:3} strokeLinecap="round" strokeLinejoin="round" markerEnd={kind==="arrow"?"url(#arrow-"+o.id+")":undefined}/></svg>}
 
-function ContextMenu({at,onAdd,onDraw}:{at:any;onAdd:(kind:string,extra?:any)=>void;onDraw:(m:DrawMode)=>void}){const rows=[["voice","Голосовая заметка"],["text","Текст"],["task","Задача"],["image","Картинка / скриншот"],["link","Ссылка"],["chart","График / данные"],["file","PDF / документ"],["frame","Фрейм / раздел"]];return <div className={styles.context} style={{left:at.sx,top:at.sy}}><strong>Добавить сюда</strong>{rows.map(([k,l])=><button key={k} onClick={()=>onAdd(k,k==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:undefined)}>{l}</button>)}<button onClick={()=>onDraw("pencil")}>Карандаш / маркер</button><button onClick={()=>onDraw("arrow")}>Стрелка / связь</button></div>}
+function ContextMenu({at,onAdd,onDraw}:{at:any;onAdd:(kind:string,extra?:any)=>void;onDraw:(m:DrawMode)=>void}){const rows=[["voice","Голосовая заметка"],["text","Текст"],["task","Задача"],["image","Картинка / скриншот"],["link","Ссылка"],["chart","График / данные"],["file","PDF / документ"],["video","Видео"],["frame","Фрейм / раздел"]];return <div className={styles.context} style={{left:at.sx,top:at.sy}}><strong>Добавить сюда</strong>{rows.map(([k,l])=><button key={k} onClick={()=>onAdd(k,k==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:undefined)}>{l}</button>)}<button onClick={()=>onDraw("pencil")}>Карандаш / маркер</button><button onClick={()=>onDraw("arrow")}>Стрелка / связь</button></div>}
 
 function DocumentsMode({docs,bundle,open,navOpen,setNavOpen,setBundle,onWorld,onShare,onPdf}:{docs:StudioDocument[];bundle:DocumentBundle|null;open:(id:string)=>Promise<void>;navOpen:boolean;setNavOpen:(v:boolean)=>void;setBundle:(x:DocumentBundle)=>void;onWorld:()=>void;onShare:()=>void;onPdf:()=>void}){
  return <div className={styles.documents}>
@@ -184,6 +186,6 @@ function DocumentsMode({docs,bundle,open,navOpen,setNavOpen,setBundle,onWorld,on
   <section className={styles.docsurface}>{bundle?<><header className={styles.doctoolbar}><div><small>{bundle.document.kind}</small><h1>{bundle.document.title}</h1><span>{bundle.document.semantic_path} · revision {bundle.document.revision}</span></div><div><button onClick={onWorld}>На доске</button><button onClick={onShare}>Поделиться</button><button onClick={onPdf}><Download size={14}/>PDF</button></div></header><DocumentEditorV5 bundle={bundle} onBundle={setBundle}/></>:<div className={styles.empty}>Выберите документ</div>}</section>
  </div>
 }
-function Diagnostics({overview,lod,grid,setGrid,onClose,onExport,onImport,importRef}:{overview:WorldOverview|null;lod:string;grid:boolean;setGrid:(v:boolean)=>void;onClose:()=>void;onExport:()=>void;onImport:(f:File)=>void;importRef:React.RefObject<HTMLInputElement|null>;drive?:any;driveFiles?:any[];refreshDrive?:()=>void;connectDrive?:()=>void;syncDrive?:()=>void;conflictProbe?:()=>void}){
- return <div className={styles.diag}><header><strong>Диагностика</strong><button onClick={onClose}><X size={14}/></button></header><section><b>World</b><span>Revision: {overview?.world.revision||"—"}</span><span>LOD: {lod}</span><label><input type="checkbox" checked={grid} onChange={e=>setGrid(e.target.checked)}/> Grid</label><div><button onClick={onExport}><FileJson size={13}/>JSON Export</button><button onClick={()=>importRef.current?.click()}><Upload size={13}/>Import</button><input ref={importRef} hidden type="file" accept="application/json" onChange={e=>{const f=e.target.files?.[0];if(f)onImport(f);e.target.value=""}}/></div></section><section><b>Google Drive</b><span>Интеграция отложена до owner review. Мир и документы сейчас работают без авторизации.</span></section></div>
+function Diagnostics({overview,lod,grid,setGrid,onClose,onExport,onImport,importRef,onReset}:{overview:WorldOverview|null;lod:string;grid:boolean;setGrid:(v:boolean)=>void;onClose:()=>void;onExport:()=>void;onImport:(f:File)=>void;importRef:React.RefObject<HTMLInputElement|null>;drive?:any;driveFiles?:any[];refreshDrive?:()=>void;connectDrive?:()=>void;syncDrive?:()=>void;conflictProbe?:()=>void;onReset:()=>void}){
+ return <div className={styles.diag}><header><strong>Диагностика</strong><button onClick={onClose}><X size={14}/></button></header><section><b>World</b><span>Revision: {overview?.world.revision||"—"}</span><span>LOD: {lod}</span><label><input type="checkbox" checked={grid} onChange={e=>setGrid(e.target.checked)}/> Grid</label><div><button onClick={onExport}><FileJson size={13}/>JSON Export</button><button onClick={()=>importRef.current?.click()}><Upload size={13}/>Import</button><button onClick={onReset}>Сбросить демо</button><input ref={importRef} hidden type="file" accept="application/json" onChange={e=>{const f=e.target.files?.[0];if(f)onImport(f);e.target.value=""}}/></div></section><section><b>Google Drive</b><span>Интеграция отложена до owner review. Мир и документы сейчас работают без авторизации.</span></section></div>
 }
