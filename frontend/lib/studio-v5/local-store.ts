@@ -81,6 +81,10 @@ function documentBundle(s:LocalState,id:string):DocumentBundle{
 function bumpWorld(s:LocalState){s.overview.world.revision+=1}
 export function resetLocalStudio(){const s=initialState();save(s);return clone(s)}
 export function getLocalSeed(){return clone(initialState())}
+export function saveLocalObjectDraft(id:string,patch:Partial<StudioObject>){
+ const s=load(),i=s.overview.objects.findIndex(o=>o.id===id);if(i<0)return false;
+ s.overview.objects[i]={...s.overview.objects[i],...patch,updated_at:now()};save(s);return true;
+}
 
 export async function localStudioAction<T=any>(name:string,p:any={}):Promise<T>{
  const s=load();
