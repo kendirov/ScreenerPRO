@@ -5,7 +5,9 @@ const url = process.env.STUDIO_URL || "http://127.0.0.1:3027/studio-spatial-prot
 const evidenceDir = process.env.STUDIO_EVIDENCE || "C:/ArtemOS/evidence/tqs-studio-spatial-v2";
 fs.mkdirSync(evidenceDir, { recursive: true });
 
+console.log("QA: launch browser");
 const browser = await chromium.launch({ channel: "msedge", headless: true });
+console.log("QA: browser launched");
 const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
 const failures = [];
 const check = (condition, label) => {
@@ -29,7 +31,9 @@ async function drag(locator, dx, dy) {
 }
 
 try {
-  await page.goto(url, { waitUntil: "domcontentloaded" });
+  console.log("QA: goto", url);
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
+  console.log("QA: domcontentloaded");
   await page.getByTestId("studio-spatial-v2").waitFor();
   check((await page.getByTestId("block-text").count()) >= 1, "initial Rich Text exists");
   check((await page.getByTestId("block-chart").count()) >= 1, "initial Chart exists");
