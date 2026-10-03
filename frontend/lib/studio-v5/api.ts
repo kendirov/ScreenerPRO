@@ -103,7 +103,7 @@ function scheduleSync(delay=350){
 export async function studioAction<T=any>(action:string,payload:any={}):Promise<T>{
   scheduleSync();
   if(action==="createShare"){
-    const r=await fetch("/api/studio/share",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({documentId:payload.documentId,appOrigin:payload.appOrigin}),cache:"no-store"});
+    const r=await fetch("/api/studio/share",{method:"POST",headers:{"Content-Type":"application/json","x-studio-public-key":SUPABASE_PUBLIC_KEY},body:JSON.stringify({documentId:payload.documentId,appOrigin:payload.appOrigin}),cache:"no-store"});
     const x=await r.json();if(!r.ok||!x.ok)throw Object.assign(new Error(x.error||`Share ${r.status}`),{details:x.details,status:r.status});
     return x.data as T;
   }
