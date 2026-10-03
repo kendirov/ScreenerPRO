@@ -180,6 +180,7 @@ export default function StudioWorldV4(){
  const [theme,setTheme]=useState<ThemeMode>("dark"),[grid,setGrid]=useState(false),[surface,setSurface]=useState<Surface>("world"),[revision,setRevision]=useState(1);
  const [camera,setCamera]=useState({x:30,y:20,zoom:.55}),[selected,setSelected]=useState<string|null>(null),[context,setContext]=useState<{sx:number;sy:number;wx:number;wy:number}|null>(null);
  const [navOpen,setNavOpen]=useState(true),[navSection,setNavSection]=useState("Проекты"),[docId,setDocId]=useState(DOC_SI),[settings,setSettings]=useState(false);
+ const [frameView,setFrameView]=useState<"none"|"preview"|"present">("none");
  const [gesture,setGesture]=useState<any>(null),[space,setSpace]=useState(false),[drawing,setDrawing]=useState<AnnotationKind|null>(null),[draftPoints,setDraftPoints]=useState<{x:number;y:number}[]>([]);
  const canvas=useRef<HTMLElement|null>(null),importRef=useRef<HTMLInputElement>(null);
  const selectedItem=items.find(i=>i.id===selected)||null;
@@ -193,7 +194,7 @@ export default function StudioWorldV4(){
 
  const snapshot=useCallback(():Snapshot=>({schemaVersion:"tqs-studio-world/v4",revision,theme,grid,items,documents,activity,updatedAt:now()}),[revision,theme,grid,items,documents,activity]);
  const importSnapshot=useCallback((s:Snapshot)=>{if(!s||s.schemaVersion!=="tqs-studio-world/v4"||!Array.isArray(s.items)||!Array.isArray(s.documents))return false;setItems(s.items);setDocuments(s.documents);setActivity(s.activity||[]);setTheme(s.theme||"dark");setGrid(!!s.grid);setRevision(s.revision||1);localStorage.setItem(STORAGE,JSON.stringify(s));return true},[]);
- const reset=useCallback(()=>{setItems(seedItems());setDocuments(seedDocs());setActivity([]);setTheme("dark");setGrid(false);setCamera({x:30,y:20,zoom:.55});setRevision(r=>r+1);localStorage.removeItem(STORAGE)},[]);
+ const reset=useCallback(()=>{setItems(seedItems());setDocuments(seedDocs());setActivity([]);setTheme("dark");setGrid(false);setFrameView("none");setCamera({x:30,y:20,zoom:.55});setRevision(r=>r+1);localStorage.removeItem(STORAGE)},[]);
  useEffect(()=>{try{const raw=localStorage.getItem(STORAGE);if(raw)importSnapshot(JSON.parse(raw))}catch{}},[importSnapshot]);
  useEffect(()=>{const t=setTimeout(()=>localStorage.setItem(STORAGE,JSON.stringify(snapshot())),180);return()=>clearTimeout(t)},[snapshot]);
  useEffect(()=>{window.__TQS_STUDIO_V4__={exportSnapshot:snapshot,importSnapshot,reset,queryActivity,getState:()=>({items,documents,activity,revision,surface})};return()=>{delete window.__TQS_STUDIO_V4__}},[snapshot,importSnapshot,reset,queryActivity,items,documents,activity,revision,surface]);
@@ -223,12 +224,14 @@ export default function StudioWorldV4(){
  };
  const focus=(id:string)=>{const i=items.find(x=>x.id===id);if(!i||!canvas.current)return;const r=canvas.current.getBoundingClientRect(),z=Math.max(.22,Math.min(1.3,Math.min((r.width-140)/i.w,(r.height-140)/i.h)));setCamera({zoom:z,x:(r.width-i.w*z)/2-i.x*z,y:(r.height-i.h*z)/2-i.y*z});setSelected(id);setSurface("world")};
  const fitWorld=()=>{if(!canvas.current)return;const r=canvas.current.getBoundingClientRect(),z=Math.min((r.width-80)/WORLD_W,(r.height-80)/WORLD_H);setCamera({zoom:z,x:30,y:30})};
+ const enterFrameView=(mode:"preview"|"present")=>{if(!selectedItem||selectedItem.kind!=="frame")return;setFrameView(mode);setContext(null);setDrawing(null);focus(selectedItem.id)};
+ const exitFrameView=()=>setFrameView("none");
 
  useEffect(()=>{const el=canvas.current;if(!el)return;const wheel=(e:WheelEvent)=>{e.preventDefault();const r=el.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;if(e.ctrlKey||Math.abs(e.deltaY)>Math.abs(e.deltaX)*1.5){setCamera(c=>{const f=Math.exp(-e.deltaY*.0025),nz=Math.max(.16,Math.min(2.4,c.zoom*f)),wx=(sx-c.x)/c.zoom,wy=(sy-c.y)/c.zoom;return{zoom:nz,x:sx-wx*nz,y:sy-wy*nz}})}else setCamera(c=>({...c,x:c.x-e.deltaX,y:c.y-e.deltaY}))};el.addEventListener("wheel",wheel,{passive:false});return()=>el.removeEventListener("wheel",wheel)},[]);
 
  useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.key===" "){setSpace(true);if(!(e.target as HTMLElement)?.isContentEditable)e.preventDefault()}if(e.key==="Escape"){setDrawing(null);setContext(null);setSelected(null)}};const up=(e:KeyboardEvent)=>{if(e.key===" ")setSpace(false)};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up)}},[]);
 
- const startMove=(e:React.PointerEvent,item:Item)=>{if(e.button!==0||drawing)return;e.preventDefault();e.stopPropagation();setSelected(item.id);setGesture({type:"move",id:item.id,sx:e.clientX,sy:e.clientY,ox:item.x,oy:item.y})};
+ const startMove=(e:React.PointerEvent,item:Item)=>{if(frameView!=="none"||e.button!==0||drawing)return;e.preventDefault();e.stopPropagation();setSelected(item.id);setGesture({type:"move",id:item.id,sx:e.clientX,sy:e.clientY,ox:item.x,oy:item.y})};
  const pointerMove=(e:React.PointerEvent)=>{if(gesture?.type==="pan"){setCamera(c=>({...c,x:gesture.ox+e.clientX-gesture.sx,y:gesture.oy+e.clientY-gesture.sy}));return}if(gesture?.type==="move"){move(gesture.id,gesture.ox+(e.clientX-gesture.sx)/camera.zoom,gesture.oy+(e.clientY-gesture.sy)/camera.zoom);return}if(gesture?.type==="resize"){patch(gesture.id,{w:Math.max(220,snap(gesture.ow+(e.clientX-gesture.sx)/camera.zoom)),h:Math.max(140,snap(gesture.oh+(e.clientY-gesture.sy)/camera.zoom))});return}if(drawing&&draftPoints.length){const p=screenToWorld(e.clientX,e.clientY);setDraftPoints(v=>[...v,p])}};
  const pointerUp=()=>{const movedId=gesture?.type==="move"?gesture.id:null;if(drawing&&draftPoints.length>1){const pts=draftPoints,minX=Math.min(...pts.map(p=>p.x)),minY=Math.min(...pts.map(p=>p.y)),maxX=Math.max(...pts.map(p=>p.x)),maxY=Math.max(...pts.map(p=>p.y));const center=pts[Math.floor(pts.length/2)],image=items.filter(i=>i.kind==="image"&&center.x>=i.x&&center.x<=i.x+i.w&&center.y>=i.y&&center.y<=i.y+i.h).sort((a,b)=>b.z-a.z)[0],parent=deepestFrame(center.x,center.y),id=uid("annotation"),semantic=parent?`${parent.semanticPath}/Аннотация`:"Аннотация",t=now();const rel:Relation[]=[];if(image)rel.push({type:"annotates",targetId:image.id});if(parent)rel.push({type:"contains",targetId:parent.id});const ann:Item={id,kind:"annotation",annotationKind:drawing,semanticPath:semantic,parentId:parent?.id,x:minX,y:minY,w:Math.max(20,maxX-minX),h:Math.max(20,maxY-minY),z:20,title:drawing==="marker"?"Маркер":drawing==="arrow"?"Стрелка":"Карандаш",createdAt:t,updatedAt:t,relations:rel,points:pts.map(p=>({x:p.x-minX,y:p.y-minY}))};mutate(v=>[...v,ann],()=>log(id,semantic,"annotate",`Аннотация ${ann.title}${image?" на "+image.title:""}`));}setDraftPoints([]);setGesture(null);if(movedId)reparentAfterMove(movedId)};
 
@@ -263,12 +266,13 @@ export default function StudioWorldV4(){
  const lod=camera.zoom<.32?"far":camera.zoom<.6?"mid":"near";
  const download=()=>{const b=new Blob([JSON.stringify(snapshot(),null,2)],{type:"application/json"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download="tqs-studio-world-v4.snapshot.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),0)};
 
- return <main className={styles.shell} data-theme={theme} data-surface={surface}>
+ return <main className={styles.shell} data-theme={theme} data-surface={surface} data-frame-view={frameView}>
   <header className={styles.topbar}>
    <div className={styles.brand}><span>TQS Studio</span><strong>{surface==="world"?"Мир":"Документы"}</strong></div>
    <div className={styles.surfaceSwitch}><button data-testid="surface-world" className={surface==="world"?styles.active:""} onClick={()=>setSurface("world")}>Мир</button><button data-testid="surface-documents" className={surface==="documents"?styles.active:""} onClick={()=>setSurface("documents")}>Документы</button></div>
    <div className={styles.topActions}>
-    {surface==="world"&&selectedItem?<button onClick={createDocFromSelected}><FileText size={14}/> Создать документ из выбранного</button>:null}
+    {frameView!=="none"?<button data-testid="exit-frame-view" onClick={exitFrameView}>← {frameView==="present"?"Презентация":"Просмотр"}</button>:null}
+    {surface==="world"&&frameView==="none"&&selectedItem?<button onClick={createDocFromSelected}><FileText size={14}/> Создать документ из выбранного</button>:null}
     <button title="Вписать мир" onClick={fitWorld}><Maximize2 size={14}/></button>
     <button title="Тема" data-testid="theme-toggle" onClick={()=>setTheme(t=>t==="dark"?"light":"dark")}>{theme==="dark"?<Moon size={14}/>:<Sun size={14}/>}</button>
     <button title="Настройки" onClick={()=>setSettings(v=>!v)}><Settings size={14}/></button>
@@ -279,7 +283,7 @@ export default function StudioWorldV4(){
   {settings?<div className={styles.settings}><b>Настройки</b><label><input type="checkbox" checked={grid} onChange={e=>setGrid(e.target.checked)}/> Сетка</label><div>Навигация: <strong>Авто</strong></div><small>Мышь и тачпад определяются автоматически. Ручной выбор скрыт из основного интерфейса.</small></div>:null}
 
   <div className={styles.body}>
-   <aside className={navOpen?styles.navigator:styles.navRail} data-testid="navigator">
+   {frameView==="none"?<aside className={navOpen?styles.navigator:styles.navRail} data-testid="navigator">
     <div className={styles.navHead}>{navOpen?<><div><b>Навигатор</b><small>База</small></div><button onClick={()=>setNavOpen(false)}><PanelLeftClose size={15}/></button></>:<button onClick={()=>setNavOpen(true)}><PanelLeftOpen size={15}/></button>}</div>
     {navOpen?<><label className={styles.search}><Search size={13}/><input placeholder="Поиск по базе"/></label>
     <nav>{["Недавние","Входящие","Проекты","Курсы","Занятия","Статьи","База знаний","Избранное"].map(s=><button key={s} className={navSection===s?styles.navActive:""} onClick={()=>setNavSection(s)}>{s==="Недавние"?<Sparkles size={14}/>:s==="Входящие"?<Inbox size={14}/>:s==="Избранное"?<Star size={14}/>:<Layers3 size={14}/>}<span>{s}</span>{s==="Недавние"&&activity.filter(a=>a.status==="NEW").length?<em>{activity.filter(a=>a.status==="NEW").length}</em>:null}</button>)}</nav>
@@ -290,7 +294,7 @@ export default function StudioWorldV4(){
      {!["Недавние","Входящие","Избранное"].includes(navSection)?<Tree nodes={navTree}/>:null}
      {navSection==="Проекты"?<div className={styles.agentRecent}><b>Agent Recent</b><small data-testid="agent-recent-count">{queryActivity({semanticPath:"ARTEM OS/Agent"}).length} событий</small>{queryActivity({semanticPath:"ARTEM OS/Agent"}).slice(0,6).map(a=><span key={a.id}>{a.summary}</span>)}</div>:null}
     </div></>:null}
-   </aside>
+   </aside>:null}
 
    {surface==="documents"?<section className={styles.documentsSurface}>
     <aside className={styles.docList}><b>Документы</b>{documents.map(d=><button key={d.id} className={d.id===currentDoc.id?styles.docActive:""} onClick={()=>setDocId(d.id)}><span>{d.kind==="lesson"?"Занятие":"Статья"}</span><strong>{d.title}</strong><small>{d.semanticPath}</small></button>)}</aside>
@@ -298,7 +302,7 @@ export default function StudioWorldV4(){
    </section>:<section ref={canvas as any} className={`${styles.canvas} ${grid?styles.grid:""}`} data-testid="world-canvas" data-lod={lod} tabIndex={0}
     onPointerDown={e=>{if(drawing){const p=screenToWorld(e.clientX,e.clientY);setDraftPoints([p]);return}if(e.button===1||(space&&e.button===0)){e.preventDefault();setGesture({type:"pan",sx:e.clientX,sy:e.clientY,ox:camera.x,oy:camera.y});return}if(e.button===0&&e.target===e.currentTarget){setSelected(null);setContext(null)}}}
     onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}
-    onContextMenu={e=>{if((e.target as HTMLElement).closest("[data-world-item]"))return;e.preventDefault();const r=e.currentTarget.getBoundingClientRect(),p=screenToWorld(e.clientX,e.clientY);setContext({sx:e.clientX-r.left,sy:e.clientY-r.top,wx:p.x,wy:p.y})}}
+    onContextMenu={e=>{if(frameView!=="none")return;if((e.target as HTMLElement).closest("[data-world-item]"))return;e.preventDefault();const r=e.currentTarget.getBoundingClientRect(),p=screenToWorld(e.clientX,e.clientY);setContext({sx:e.clientX-r.left,sy:e.clientY-r.top,wx:p.x,wy:p.y})}}
     onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();onFiles(Array.from(e.dataTransfer.files),e.clientX,e.clientY)}}
     onPaste={e=>{const files=Array.from(e.clipboardData.files);if(!files.length||!canvas.current)return;const r=canvas.current.getBoundingClientRect();onFiles(files,r.left+r.width/2,r.top+r.height/2)}}>
      <div className={styles.world} style={{transform:`translate(${camera.x}px,${camera.y}px) scale(${camera.zoom})`,width:WORLD_W,height:WORLD_H}}>
@@ -309,7 +313,7 @@ export default function StudioWorldV4(){
        return <div key={item.id} data-world-item data-testid={`world-item-${item.kind}`} data-id={item.id} data-semantic-path={item.semanticPath}
         className={`${styles.item} ${styles["kind_"+item.kind]} ${selected===item.id?styles.selected:""} ${gesture?.id===item.id?styles.dragging:""}`}
         style={{left:item.x,top:item.y,width:item.w,height:item.h,zIndex:item.z,borderRadius:item.kind==="frame"?22:14}}
-        onPointerDownCapture={e=>{if(e.button===0&&!drawing)setSelected(item.id)}}>
+        onPointerDownCapture={e=>{if(frameView==="none"&&e.button===0&&!drawing)setSelected(item.id)}}>
         {item.kind==="frame"?<><div className={styles.frameTitle} onPointerDown={e=>startMove(e,item)}><span>{item.title}</span><small>{item.semanticPath}</small></div>{lod==="far"?null:<div className={styles.frameMeta}>{item.semanticPath.split("/").length===1?"Проект":item.semanticPath.includes("Занятие")?"Занятие":"Раздел"}</div>}</>:
         <><div className={styles.itemHandle} onPointerDown={e=>startMove(e,item)}><span>{item.title}</span><MoreHorizontal size={13}/></div><div className={styles.itemContent}>
          {item.kind==="text"?<TextCard item={item} onChange={p=>patch(item.id,p,"text_update")}/>:null}
@@ -322,7 +326,7 @@ export default function StudioWorldV4(){
          {item.kind==="link"?<div className={styles.linkCard} onPointerDown={e=>e.stopPropagation()}><LinkIcon size={18}/><input aria-label="URL" value={item.body||""} onChange={e=>patch(item.id,{body:e.target.value},"text_update")} placeholder="https://"/></div>:null}
          {item.kind==="documentRef"?<button className={styles.documentRef} onClick={()=>{const d=item.relations.find(r=>r.type==="document_of");if(d)openDoc(d.targetId)}}><BookOpen size={22}/><b>{item.title}</b><span>Открыть документ</span></button>:null}
         </div></>}
-        {selected===item.id?<span className={styles.resize} onPointerDown={e=>{e.stopPropagation();setGesture({type:"resize",id:item.id,sx:e.clientX,sy:e.clientY,ow:item.w,oh:item.h})}}/>:null}
+        {frameView==="none"&&selected===item.id?<span className={styles.resize} onPointerDown={e=>{e.stopPropagation();setGesture({type:"resize",id:item.id,sx:e.clientX,sy:e.clientY,ow:item.w,oh:item.h})}}/>:null}
        </div>
       })}
       {items.filter(i=>i.kind==="annotation").map(a=><svg key={a.id} className={styles.annotation} style={{left:a.x,top:a.y,width:a.w,height:a.h,zIndex:a.z}} viewBox={`0 0 ${Math.max(1,a.w)} ${Math.max(1,a.h)}`}><defs><marker id={`arrow-${a.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#d7a84b"/></marker></defs><polyline points={(a.points||[]).map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke={a.annotationKind==="marker"?"rgba(218,167,68,.42)":"#d7a84b"} strokeWidth={a.annotationKind==="marker"?18:3} strokeLinecap="round" strokeLinejoin="round" markerEnd={a.annotationKind==="arrow"?`url(#arrow-${a.id})`:undefined}/></svg>)}
@@ -330,21 +334,22 @@ export default function StudioWorldV4(){
       {draftPoints.length>1?<svg className={styles.annotationDraft} style={{left:0,top:0,width:WORLD_W,height:WORLD_H}}><polyline points={draftPoints.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke="#d7a84b" strokeWidth={drawing==="marker"?18:3} strokeLinecap="round"/></svg>:null}
      </div>
 
-     <div className={styles.canvasTools}>
+     {frameView==="none"?<div className={styles.canvasTools}>
       <button className={drawing==="pencil"?styles.toolActive:""} onClick={()=>setDrawing(drawing==="pencil"?null:"pencil")} title="Карандаш / маркер"><PenLine size={15}/></button>
       <button className={drawing==="marker"?styles.toolActive:""} onClick={()=>setDrawing(drawing==="marker"?null:"marker")} title="Маркер"><SquarePen size={15}/></button>
       <button className={drawing==="arrow"?styles.toolActive:""} onClick={()=>setDrawing(drawing==="arrow"?null:"arrow")} title="Стрелка / связь">↗</button>
       <span>{Math.round(camera.zoom*100)}%</span>
-     </div>
+     </div>:null}
 
-     {selectedItem?<div className={styles.selectionBar}>
+     {frameView==="none"&&selectedItem?<div className={styles.selectionBar}>
       <span>{selectedItem.title}</span>
       {selectedItem.kind==="documentRef"?<button onClick={()=>{const d=selectedItem.relations.find(r=>r.type==="document_of");if(d)openDoc(d.targetId)}}>Открыть документ</button>:null}
+      {selectedItem.kind==="frame"?<><button data-testid="frame-preview" onClick={()=>enterFrameView("preview")}>Просмотр</button><button data-testid="frame-present" onClick={()=>enterFrameView("present")}>Презентация</button></>:null}
       <button onClick={()=>patch(selectedItem.id,{hidden:true})}>Скрыть</button>
       <button onClick={()=>{mutate(v=>v.filter(i=>i.id!==selectedItem.id&&i.parentId!==selectedItem.id));setSelected(null)}}>Удалить</button>
      </div>:null}
 
-     {context?<div className={styles.context} style={{left:context.sx,top:context.sy}} data-testid="add-here-menu"><b>Добавить сюда</b>
+     {frameView==="none"&&context?<div className={styles.context} style={{left:context.sx,top:context.sy}} data-testid="add-here-menu"><b>Добавить сюда</b>
       {[
        ["voice","Голосовая заметка",<Mic key="i" size={14}/>],["text","Текст",<Type key="i" size={14}/>],["task","Задача",<ListTodo key="i" size={14}/>],
        ["image","Картинка / скриншот",<ImageIcon key="i" size={14}/>],["link","Ссылка",<LinkIcon key="i" size={14}/>],["chart","График / данные",<Layers3 key="i" size={14}/>],
@@ -354,12 +359,12 @@ export default function StudioWorldV4(){
       <button onClick={()=>{setDrawing("arrow");setContext(null)}}><span>↗</span><span>Стрелка / связь</span></button>
      </div>:null}
 
-     <div className={styles.bottomBar}>
+     {frameView==="none"?<div className={styles.bottomBar}>
       <button data-testid="export-world" onClick={download}><FileJson size={14}/> Экспорт</button>
       <button onClick={()=>importRef.current?.click()}><Upload size={14}/> Импорт</button>
       <input ref={importRef} hidden type="file" accept="application/json" onChange={async e=>{const f=e.currentTarget.files?.[0];if(!f)return;try{importSnapshot(JSON.parse(await f.text()))}catch{}finally{e.currentTarget.value=""}}}/>
       <span data-testid="grid-state">Сетка: {grid?"вкл":"выкл"}</span><span data-testid="lod-state">Детализация: {lod==="far"?"далеко":lod==="mid"?"средне":"близко"}</span><span>рев. {revision}</span>
-     </div>
+     </div>:null}
    </section>}
   </div>
  </main>
