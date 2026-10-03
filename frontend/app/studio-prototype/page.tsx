@@ -305,7 +305,8 @@ export default function StudioPrototypePage() {
   const [mode, setMode] = useState<Mode>("edit");
   const [blocks, setBlocks] = useState<StudioBlock[]>(cloneDefaults);
   const [selectedId, setSelectedId] = useState<string | null>("si-before-2014");
-  const [draggedId, setDraggedId] = useState<string | null>(null);\n  const draggedIdRef = useRef<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const draggedIdRef = useRef<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -439,7 +440,8 @@ export default function StudioPrototypePage() {
   };
 
   const moveBlock = (targetId: string) => {
-    if (!draggedId || draggedId === targetId) return;
+    const activeDraggedId = draggedIdRef.current ?? draggedId;
+    if (!activeDraggedId || activeDraggedId === targetId) return;
     setBlocks((current) => {
       const next = [...current];
       const from = next.findIndex((block) => block.id === activeDraggedId);
@@ -449,7 +451,8 @@ export default function StudioPrototypePage() {
       next.splice(Math.max(target, 0), 0, moved);
       return next;
     });
-    setSelectedId(draggedId);
+    setSelectedId(activeDraggedId);
+    draggedIdRef.current = null;
     setDraggedId(null);
   };
 
@@ -717,6 +720,7 @@ export default function StudioPrototypePage() {
                         draggable
                         aria-label={`Перетащить блок ${block.content.title ?? block.type}`}
                         onDragStart={(event) => {
+                          draggedIdRef.current = block.id;
                           setDraggedId(block.id);
                           event.dataTransfer.effectAllowed = "move";
                           event.dataTransfer.setData("text/plain", block.id);
