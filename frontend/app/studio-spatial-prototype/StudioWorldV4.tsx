@@ -39,7 +39,8 @@ const STORAGE="tqs-studio-world-v4";
 const now=()=>new Date().toISOString();
 const uid=(p:string)=>`${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
 const SNAP=10;
-const snap=(n:number)=>Math.round(n/SNAP)*SNAP;\nconst readDataUrl=(blob:Blob)=>new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
+const snap=(n:number)=>Math.round(n/SNAP)*SNAP;
+const readDataUrl=(blob:Blob)=>new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
 const WORLD_W=7200,WORLD_H=4200;
 
 const FRAME_AGENT="frame-agent";
@@ -158,7 +159,8 @@ function PdfCard({item,onChange}:{item:Item;onChange:(p:Partial<Item>)=>void}){
  </div>
 }
 
-const DOC_BLOCK_LABEL:Record<DocBlock["type"],string>={heading:"Заголовок",text:"Текст",callout:"Выделение",image:"Изображение",chart:"График",video:"Видео",source:"Источник",divider:"Разделитель"};\nfunction DocEditor({doc,onDoc,goWorld}:{doc:StudioDocument;onDoc:(d:StudioDocument)=>void;goWorld:()=>void}){
+const DOC_BLOCK_LABEL:Record<DocBlock["type"],string>={heading:"Заголовок",text:"Текст",callout:"Выделение",image:"Изображение",chart:"График",video:"Видео",source:"Источник",divider:"Разделитель"};
+function DocEditor({doc,onDoc,goWorld}:{doc:StudioDocument;onDoc:(d:StudioDocument)=>void;goWorld:()=>void}){
  const update=(id:string,content:string)=>onDoc({...doc,revision:doc.revision+1,blocks:doc.blocks.map(b=>b.id===id?{...b,content}:b)});
  const add=(type:DocBlock["type"])=>onDoc({...doc,revision:doc.revision+1,blocks:[...doc.blocks,{id:uid("db"),type,content:type==="divider"?"":"Новый блок"}]});
  return <article className={styles.documentEditor} data-testid="document-editor">
@@ -198,7 +200,8 @@ export default function StudioWorldV4(){
 
  const screenToWorld=(cx:number,cy:number)=>{const r=canvas.current!.getBoundingClientRect();return{x:(cx-r.left-camera.x)/camera.zoom,y:(cy-r.top-camera.y)/camera.zoom}};
  const deepestFrame=(x:number,y:number)=>items.filter(i=>i.kind==="frame"&&x>=i.x&&x<=i.x+i.w&&y>=i.y&&y<=i.y+i.h).sort((a,b)=>(a.w*a.h)-(b.w*b.h))[0];
- const kindTitles:Record<Kind,string>={frame:"Фрейм / раздел",text:"Текст",task:"Задача",image:"Картинка / скриншот",chart:"График / данные",video:"Видео",pdf:"PDF / документ",voice:"Голосовая заметка",documentRef:"Документ",link:"Ссылка",annotation:"Аннотация"};\n const addAt=(kind:Kind,x:number,y:number,title?:string)=>{
+ const kindTitles:Record<Kind,string>={frame:"Фрейм / раздел",text:"Текст",task:"Задача",image:"Картинка / скриншот",chart:"График / данные",video:"Видео",pdf:"PDF / документ",voice:"Голосовая заметка",documentRef:"Документ",link:"Ссылка",annotation:"Аннотация"};
+ const addAt=(kind:Kind,x:number,y:number,title?:string)=>{
   const parent=deepestFrame(x,y),id=uid(kind),semantic=parent?`${parent.semanticPath}/${title||kind}`:title||kind,t=now();
   const base:Item={id,kind,semanticPath:semantic,parentId:parent?.id,x:snap(x),y:snap(y),w:kind==="frame"?700:kind==="image"?500:kind==="chart"?560:kind==="voice"?430:kind==="task"?380:440,h:kind==="frame"?500:kind==="image"?340:kind==="chart"?360:kind==="voice"?210:kind==="task"?190:250,z:kind==="frame"?2:8,title:title||kindTitles[kind],body:kind==="text"?"<p>Новая заметка</p>":kind==="task"?"Новая задача":kind==="link"?"https://":undefined,status:kind==="voice"?"Ожидает записи":kind==="task"?"NEW":undefined,createdAt:t,updatedAt:t,relations:parent?[{type:"contains",targetId:parent.id}]:[]};
   mutate(v=>[...v,base],()=>log(id,semantic,kind==="voice"?"voice":kind==="task"?"task":kind==="image"?"image_paste":"create",`Создано: ${base.title}`));setSelected(id);setContext(null);return id;
@@ -307,13 +310,15 @@ export default function StudioWorldV4(){
          {item.kind==="video"?<VideoCard/>:null}
          {item.kind==="pdf"?<PdfCard item={item} onChange={p=>patch(item.id,p)}/>:null}
          {item.kind==="image"?<div className={styles.imageCard}>{item.assetUrl?<img src={item.assetUrl} alt={item.title}/>:<><ImageIcon size={32}/><span>Перетащите или вставьте изображение</span></>}</div>:null}
-         {item.kind==="link"?<div className={styles.linkCard} onPointerDown={e=>e.stopPropagation()}><LinkIcon size={18}/><input aria-label="URL" value={item.body||""} onChange={e=>patch(item.id,{body:e.target.value},"text_update")} placeholder="https://"/></div>:null}\n         {item.kind==="documentRef"?<button className={styles.documentRef} onClick={()=>{const d=item.relations.find(r=>r.type==="document_of");if(d)openDoc(d.targetId)}}><BookOpen size={22}/><b>{item.title}</b><span>Открыть документ</span></button>:null}
+         {item.kind==="link"?<div className={styles.linkCard} onPointerDown={e=>e.stopPropagation()}><LinkIcon size={18}/><input aria-label="URL" value={item.body||""} onChange={e=>patch(item.id,{body:e.target.value},"text_update")} placeholder="https://"/></div>:null}
+         {item.kind==="documentRef"?<button className={styles.documentRef} onClick={()=>{const d=item.relations.find(r=>r.type==="document_of");if(d)openDoc(d.targetId)}}><BookOpen size={22}/><b>{item.title}</b><span>Открыть документ</span></button>:null}
         </div></>}
         {selected===item.id?<span className={styles.resize} onPointerDown={e=>{e.stopPropagation();setGesture({type:"resize",id:item.id,sx:e.clientX,sy:e.clientY,ow:item.w,oh:item.h})}}/>:null}
        </div>
       })}
       {items.filter(i=>i.kind==="annotation").map(a=><svg key={a.id} className={styles.annotation} style={{left:a.x,top:a.y,width:a.w,height:a.h,zIndex:a.z}} viewBox={`0 0 ${Math.max(1,a.w)} ${Math.max(1,a.h)}`}><defs><marker id={`arrow-${a.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#d7a84b"/></marker></defs><polyline points={(a.points||[]).map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke={a.annotationKind==="marker"?"rgba(218,167,68,.42)":"#d7a84b"} strokeWidth={a.annotationKind==="marker"?18:3} strokeLinecap="round" strokeLinejoin="round" markerEnd={a.annotationKind==="arrow"?`url(#arrow-${a.id})`:undefined}/></svg>)}
-      {gesture?.type==="move"?<><div className={styles.snapGuideV}/><div className={styles.snapGuideH}/></>:null}\n      {draftPoints.length>1?<svg className={styles.annotationDraft} style={{left:0,top:0,width:WORLD_W,height:WORLD_H}}><polyline points={draftPoints.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke="#d7a84b" strokeWidth={drawing==="marker"?18:3} strokeLinecap="round"/></svg>:null}
+      {gesture?.type==="move"?<><div className={styles.snapGuideV}/><div className={styles.snapGuideH}/></>:null}
+      {draftPoints.length>1?<svg className={styles.annotationDraft} style={{left:0,top:0,width:WORLD_W,height:WORLD_H}}><polyline points={draftPoints.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke="#d7a84b" strokeWidth={drawing==="marker"?18:3} strokeLinecap="round"/></svg>:null}
      </div>
 
      <div className={styles.canvasTools}>
