@@ -92,9 +92,7 @@ try{
  console.log("PASS move annotated image");
 
  await page.getByText("Занятие 1 — Рабочее пространство",{exact:true}).first().click();
- await page.getByRole("button",{name:"Документы"}).click();
- const lessonButton=page.getByRole("button",{name:/Занятие 1 — Рабочее пространство/}).first();await lessonButton.click();
- await page.locator('[data-testid="ordered-block-editor"]').waitFor();
+ await page.locator('[data-testid="ordered-block-editor"]').waitFor({timeout:15000});
  assert(await page.locator(".studio-edit-block").count()>=13,"lesson document does not contain full demo blocks");
  await page.locator('[data-testid="studio-market-chart"]').first().waitFor({timeout:30000});
  await page.locator('[data-testid="market-replay"]').waitFor({timeout:30000});
