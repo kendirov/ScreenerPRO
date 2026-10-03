@@ -203,9 +203,19 @@ export default function StudioWorldV4(){
   const base:Item={id,kind,semanticPath:semantic,parentId:parent?.id,x:snap(x),y:snap(y),w:kind==="frame"?700:kind==="image"?500:kind==="chart"?560:kind==="voice"?430:kind==="task"?380:440,h:kind==="frame"?500:kind==="image"?340:kind==="chart"?360:kind==="voice"?210:kind==="task"?190:250,z:kind==="frame"?2:8,title:title||kindTitles[kind],body:kind==="text"?"<p>Новая заметка</p>":kind==="task"?"Новая задача":kind==="link"?"https://":undefined,status:kind==="voice"?"Ожидает записи":kind==="task"?"NEW":undefined,createdAt:t,updatedAt:t,relations:parent?[{type:"contains",targetId:parent.id}]:[]};
   mutate(v=>[...v,base],()=>log(id,semantic,kind==="voice"?"voice":kind==="task"?"task":kind==="image"?"image_paste":"create",`Создано: ${base.title}`));setSelected(id);setContext(null);return id;
  };
+ const descendantIds=(rootId:string,source:Item[])=>{const out=new Set<string>();let frontier=[rootId];while(frontier.length){const next:string[]=[];for(const p of frontier){for(const i of source){if(i.parentId===p&&!out.has(i.id)){out.add(i.id);next.push(i.id)}}}frontier=next}return out};
  const move=(id:string,nx:number,ny:number)=>{
-  const item=items.find(i=>i.id===id);if(!item)return;const dx=snap(nx)-item.x,dy=snap(ny)-item.y;
-  mutate(v=>v.map(i=>i.id===id?{...i,x:snap(nx),y:snap(ny),updatedAt:now()}:i.parentId===id||i.relations.some(r=>r.type==="annotates"&&r.targetId===id)?{...i,x:i.x+dx,y:i.y+dy,updatedAt:now()}:i));
+  const item=items.find(i=>i.id===id);if(!item)return;const tx=snap(nx),ty=snap(ny),dx=tx-item.x,dy=ty-item.y,desc=descendantIds(id,items);
+  mutate(v=>v.map(i=>i.id===id?{...i,x:tx,y:ty,updatedAt:now()}:desc.has(i.id)||i.relations.some(r=>r.type==="annotates"&&r.targetId===id)?{...i,x:i.x+dx,y:i.y+dy,updatedAt:now()}:i));
+ };
+ const reparentAfterMove=(id:string)=>{
+  const item=items.find(i=>i.id===id);if(!item)return;
+  const cx=item.x+item.w/2,cy=item.y+item.h/2;
+  const parent=items.filter(i=>i.kind==="frame"&&i.id!==id&&cx>=i.x&&cx<=i.x+i.w&&cy>=i.y&&cy<=i.y+i.h).sort((a,b)=>(a.w*a.h)-(b.w*b.h))[0];
+  if(parent?.id!==item.parentId){
+   const oldPath=item.semanticPath,newPath=parent?`${parent.semanticPath}/${item.title}`:item.title;
+   mutate(v=>v.map(i=>i.id===id?{...i,parentId:parent?.id,semanticPath:newPath,relations:[...i.relations.filter(r=>r.type!=="contains"),...(parent?[{type:"contains" as const,targetId:parent.id}]:[])],updatedAt:now()}:i),()=>log(id,newPath,"semantic_reparent",`${oldPath} → ${newPath}`));
+  }
  };
  const focus=(id:string)=>{const i=items.find(x=>x.id===id);if(!i||!canvas.current)return;const r=canvas.current.getBoundingClientRect(),z=Math.max(.22,Math.min(1.3,Math.min((r.width-140)/i.w,(r.height-140)/i.h)));setCamera({zoom:z,x:(r.width-i.w*z)/2-i.x*z,y:(r.height-i.h*z)/2-i.y*z});setSelected(id);setSurface("world")};
  const fitWorld=()=>{if(!canvas.current)return;const r=canvas.current.getBoundingClientRect(),z=Math.min((r.width-80)/WORLD_W,(r.height-80)/WORLD_H);setCamera({zoom:z,x:30,y:30})};
