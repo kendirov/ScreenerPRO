@@ -2,11 +2,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.99.3";
 import { PDFDocument, rgb } from "npm:pdf-lib@1.17.1";
 import fontkit from "npm:@pdf-lib/fontkit@1.1.1";
+import postgres from "npm:postgres@3.4.3";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const secretMap = (()=>{try{return JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}")}catch{return {}}})();
 const SERVICE_KEY = secretMap.default ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession:false, autoRefreshToken:false } });
+const directDb = postgres(Deno.env.get("SUPABASE_DB_URL") ?? "", {prepare:false,max:1,connect_timeout:5,idle_timeout:20});
 const OWNER_WORLD = "tqs-studio-world";
 const DRIVE_ROOT = "1NSPF-zrrM1RAqniRR4FHL56VvGDcBXWl";
 const DRIVE_EXPORTS = "1Qf7C_3xP5OtxUfWhjkuMZ0NNLpn1gqW8";
@@ -526,6 +528,10 @@ Deno.serve(async(req:Request)=>{
   const url=new URL(req.url),path=functionPath(url);
   try{
     if(path==="/health") return json({ok:true,service:"studio-api",schema:"v5"},200,origin);
+    if(path==="/public/db-smoke"&&req.method==="GET"){
+      const [row]=await directDb`select now() as now, (select count(*)::int from public.studio_world_objects where world_key=${OWNER_WORLD}) as objects`;
+      return json({ok:true,transport:"direct-postgres",now:row?.now||null,objects:row?.objects||0},200,origin);
+    }
     if(path==="/owner/bootstrap"&&req.method==="GET") return ownerBootstrap(url);
     if(path==="/oauth/callback") return oauthCallback(url);
     if(path==="/share"){
