@@ -214,7 +214,7 @@ function PdfBlock({ shape, editor, interactive }: { shape: StudioShape; editor: 
     let cancelled = false;
     (async () => {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.mjs", import.meta.url).toString();
+      pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.worker.min.mjs";
       const bytes = Uint8Array.from(atob(PDF_BASE64), (c) => c.charCodeAt(0));
       const pdf = await pdfjs.getDocument({ data: bytes }).promise;
       if (cancelled) return;
@@ -227,7 +227,7 @@ function PdfBlock({ shape, editor, interactive }: { shape: StudioShape; editor: 
       if (!ctx) return;
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     })();
     return () => { cancelled = true; };
   }, [pageNumber]);
@@ -362,7 +362,7 @@ export default function StudioSpatialPrototype() {
       }
     };
     editor.on("event", handler);
-    return () => editor.off("event", handler);
+    return () => { editor.off("event", handler); };
   }, [editor]);
 
   useEffect(() => {
@@ -408,7 +408,7 @@ export default function StudioSpatialPrototype() {
   const reset = () => {
     if (!editor) return;
     editor.run(() => {
-      editor.deleteShapes(Array.from(editor.getCurrentPageShapeIds()), { ignoreShapeLock: true } as any);
+      editor.deleteShapes(Array.from(editor.getCurrentPageShapeIds()));
       seedDemo(editor);
     }, { ignoreShapeLock: true });
     localStorage.removeItem(STORAGE_KEY);
