@@ -267,7 +267,63 @@ async function generatePdf(bundle:any,liveUrl:string){
   draw("Актуальная версия:",8); draw(liveUrl,8);
   return new Uint8Array(await pdf.save());
 }
+async function ensureStudioSeed(owner:{id:string;email:string}){
+  await admin.from("studio_worlds").upsert({
+    world_key:OWNER_WORLD,owner_id:owner.id,title:"TQS Studio World",revision:1,
+    metadata:{schema_version:"tqs-studio-world/v5",seed:"canonical-v5"}
+  },{onConflict:"world_key",ignoreDuplicates:true});
+
+  const objects=[
+    {id:"frame-agent",kind:"frame",semantic_path:"ARTEM OS/Agent",parent_id:null,x:260,y:300,w:1180,h:850,z:1,title:"ARTEM OS / Agent",body:{},relations:[],status:null,hidden:false},
+    {id:"frame-tqs",kind:"frame",semantic_path:"TQS/Trading/Intelligence",parent_id:null,x:2050,y:240,w:1500,h:930,z:1,title:"TQS / Trading / Intelligence",body:{},relations:[],status:null,hidden:false},
+    {id:"frame-learning",kind:"frame",semantic_path:"Обучение",parent_id:null,x:3900,y:260,w:2300,h:1700,z:1,title:"Обучение",body:{},relations:[],status:null,hidden:false},
+    {id:"frame-articles",kind:"frame",semantic_path:"Статьи",parent_id:null,x:600,y:1800,w:1650,h:1000,z:1,title:"Статьи",body:{},relations:[],status:null,hidden:false},
+    {id:"frame-inbox",kind:"frame",semantic_path:"Inbox",parent_id:null,x:2700,y:1780,w:1200,h:900,z:1,title:"Inbox",body:{},relations:[],status:null,hidden:false},
+    {id:"course-free",kind:"frame",semantic_path:"Обучение/Бесплатный курс",parent_id:"frame-learning",x:4100,y:520,w:920,h:1180,z:2,title:"Бесплатный курс",body:{},relations:[{type:"contains",targetId:"frame-learning"}],status:null,hidden:false},
+    {id:"course-scalp",kind:"frame",semantic_path:"Обучение/Скальпинг по стакану",parent_id:"frame-learning",x:5160,y:520,w:850,h:1180,z:2,title:"Скальпинг по стакану",body:{},relations:[{type:"contains",targetId:"frame-learning"}],status:null,hidden:false},
+    {id:"lesson-free-1",kind:"frame",semantic_path:"Обучение/Бесплатный курс/Занятие 1",parent_id:"course-free",x:4210,y:720,w:700,h:360,z:3,title:"Занятие 1 — Рабочее пространство",body:{demo:true},relations:[{type:"contains",targetId:"course-free"}],status:null,hidden:false},
+    {id:"lesson-free-2",kind:"frame",semantic_path:"Обучение/Бесплатный курс/Занятие 2",parent_id:"course-free",x:4210,y:1130,w:700,h:240,z:3,title:"Занятие 2 — Стакан и лента",body:{},relations:[{type:"contains",targetId:"course-free"}],status:null,hidden:false},
+    {id:"lesson-free-3",kind:"frame",semantic_path:"Обучение/Бесплатный курс/Занятие 3",parent_id:"course-free",x:4210,y:1420,w:700,h:240,z:3,title:"Занятие 3 — Базовая подготовка",body:{},relations:[{type:"contains",targetId:"course-free"}],status:null,hidden:false},
+    {id:"lesson-scalp-1",kind:"frame",semantic_path:"Обучение/Скальпинг по стакану/Занятие 1",parent_id:"course-scalp",x:5260,y:720,w:640,h:240,z:3,title:"Занятие 1 — Чтение стакана",body:{},relations:[{type:"contains",targetId:"course-scalp"}],status:null,hidden:false},
+    {id:"lesson-scalp-2",kind:"frame",semantic_path:"Обучение/Скальпинг по стакану/Занятие 2",parent_id:"course-scalp",x:5260,y:1020,w:640,h:240,z:3,title:"Занятие 2 — Плотности и реакции",body:{},relations:[{type:"contains",targetId:"course-scalp"}],status:null,hidden:false},
+    {id:"lesson-scalp-3",kind:"frame",semantic_path:"Обучение/Скальпинг по стакану/Занятие 3",parent_id:"course-scalp",x:5260,y:1320,w:640,h:240,z:3,title:"Занятие 3 — Работа с импульсом",body:{},relations:[{type:"contains",targetId:"course-scalp"}],status:null,hidden:false},
+    {id:"lesson-demo-text",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/План занятия",parent_id:"lesson-free-1",x:4280,y:820,w:270,h:110,z:10,title:"План занятия",body:{html:"<p>Настроить график, стакан, ленту и рабочие заметки. Это тестовый объект: его можно редактировать и перемещать.</p>"},relations:[{type:"contains",targetId:"lesson-free-1"}],status:null,hidden:false},
+    {id:"lesson-demo-task",kind:"task",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Практика",parent_id:"lesson-free-1",x:4590,y:820,w:280,h:90,z:10,title:"Практика урока",body:{title:"Добавить свой скрин рабочего пространства",done:false},relations:[{type:"contains",targetId:"lesson-free-1"}],status:"NEW",hidden:false},
+    {id:"lesson-demo-voice",kind:"voice",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Голосовая заметка",parent_id:"lesson-free-1",x:4280,y:950,w:320,h:84,z:10,title:"Голосовая заметка",body:{status:"Ожидает записи"},relations:[{type:"contains",targetId:"lesson-free-1"}],status:"WAITING_RECORDING",hidden:false},
+    {id:"lesson-doc-ref",kind:"documentRef",semantic_path:"Обучение/Бесплатный курс/Занятие 1",parent_id:"lesson-free-1",x:4630,y:945,w:240,h:84,z:10,title:"Открыть документ занятия",body:{documentId:"doc-lesson-workspace"},relations:[{type:"document_of",targetId:"doc-lesson-workspace"},{type:"contains",targetId:"lesson-free-1"}],status:null,hidden:false},
+    {id:"article-si-frame",kind:"documentRef",semantic_path:"Статьи/Si — история ликвидности",parent_id:"frame-articles",x:820,y:2070,w:650,h:240,z:5,title:"Статья — Si: история ликвидности",body:{documentId:"doc-si"},relations:[{type:"document_of",targetId:"doc-si"},{type:"contains",targetId:"frame-articles"}],status:null,hidden:false}
+  ].map(o=>({...o,world_key:OWNER_WORLD,owner_id:owner.id,revision:1}));
+  const {error:oe}=await admin.from("studio_world_objects").upsert(objects,{onConflict:"id",ignoreDuplicates:true}); if(oe)throw oe;
+
+  const docs=[
+    {id:"doc-lesson-workspace",owner_id:owner.id,world_key:OWNER_WORLD,slug:"zanyatie-1-rabochee-prostranstvo",kind:"lesson",title:"Занятие 1 — Рабочее пространство",semantic_path:"Обучение/Бесплатный курс/Занятие 1",frame_id:"lesson-free-1",revision:1,status:"DRAFT",share_mode:"private",metadata:{demo:true}},
+    {id:"doc-si",owner_id:owner.id,world_key:OWNER_WORLD,slug:"si-istoriya-likvidnosti",kind:"article",title:"Статья — Si: история ликвидности",semantic_path:"Статьи/Si — история ликвидности",frame_id:"article-si-frame",revision:1,status:"DRAFT",share_mode:"private",metadata:{drive_package_id:"1UJVJUBPt5pEHmjmb79Pllm-hyIij0DkD"}}
+  ];
+  const {error:de}=await admin.from("studio_documents").upsert(docs,{onConflict:"id",ignoreDuplicates:true}); if(de)throw de;
+
+  const liveSpec={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart",crosshair:true,periodControl:true},updatePolicy:"LIVE",asOf:null};
+  const replaySpec={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv",relativeRange:{tradingSessions:1},fixedRange:null,transforms:["chronological"],display:{renderer:"studio_market_replay",targetDurationSeconds:30},updatePolicy:"LIVE",asOf:null};
+  const lessonBlocks=[
+    {block_id:"lesson-h1",ordinal:1,block_type:"heading",content:{text:"Занятие 1 — Рабочее пространство"},data_spec:null},
+    {block_id:"lesson-t1",ordinal:2,block_type:"rich_text",content:{html:"<p>Настраиваем рабочее пространство так, чтобы график, стакан, лента и заметки помогали принимать решения. Этот документ — тестовая поверхность Studio V5.</p>"},data_spec:null},
+    {block_id:"lesson-call",ordinal:3,block_type:"callout",content:{text:"Практика: оставляем на экране только то, что влияет на торговое решение."},data_spec:null},
+    {block_id:"lesson-live",ordinal:4,block_type:"live_data",content:{title:"Si — реальный объём текущей и прошлой сессии"},data_spec:liveSpec},
+    {block_id:"lesson-replay",ordinal:5,block_type:"market_replay",content:{title:"Market Replay — Si, день за 30 секунд"},data_spec:replaySpec},
+    {block_id:"lesson-table",ordinal:6,block_type:"table",content:{columns:["Элемент","Зачем"],rows:[["График","Контекст цены"],["Стакан","Текущая ликвидность"],["Лента","Агрессор и темп"]]},data_spec:null},
+    {block_id:"lesson-image",ordinal:7,block_type:"image",content:{caption:"Сюда можно вставить скрин рабочего пространства и рисовать поверх него."},data_spec:null},
+    {block_id:"lesson-video",ordinal:8,block_type:"video",content:{title:"Видео / запись экрана — тестовый reference"},data_spec:null},
+    {block_id:"lesson-pdf",ordinal:9,block_type:"pdf_excerpt",content:{title:"PDF / конспект",text:"Тестовый excerpt: блок документа можно адресовать по номеру и stable block_id.",page:1},data_spec:null},
+    {block_id:"lesson-sources",ordinal:10,block_type:"sources",content:{items:[{label:"Связанный World Frame",entityId:"lesson-free-1"},{label:"MOEX ISS",type:"market_data"}]},data_spec:null},
+    {block_id:"lesson-div",ordinal:11,block_type:"divider",content:{},data_spec:null},
+    {block_id:"lesson-end",ordinal:12,block_type:"rich_text",content:{html:"<p>Проверь: вставку между блоками, drag reorder, переход «На доске», share и PDF.</p>"},data_spec:null}
+  ].map(b=>({...b,document_id:"doc-lesson-workspace",owner_id:owner.id,revision:1}));
+  const {error:be}=await admin.from("studio_document_blocks").upsert(lessonBlocks,{onConflict:"block_id",ignoreDuplicates:true}); if(be)throw be;
+
+  return {seed:"canonical-v5",objects:objects.length,documents:docs.length,lessonBlocks:lessonBlocks.length};
+}
+
 async function action(owner:{id:string;email:string},name:string,p:any,origin:string){
+  if(name==="ensureSeed") return ensureStudioSeed(owner);
   if(name==="getWorldOverview"){
     const [{data:world},{data:objects},{data:activity}]=await Promise.all([
       admin.from("studio_worlds").select("*").eq("owner_id",owner.id).eq("world_key",OWNER_WORLD).single(),
@@ -411,7 +467,7 @@ Deno.serve(async(req:Request)=>{
     }
     if(path==="/public/action"&&req.method==="POST"){
       const body=await req.json();
-      const allowed=new Set(["getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare"]);
+      const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","driveStatus"]);
       if(!allowed.has(body.action)) return json({ok:false,error:"PUBLIC_ACTION_FORBIDDEN"},403,origin);
       const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
       if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
