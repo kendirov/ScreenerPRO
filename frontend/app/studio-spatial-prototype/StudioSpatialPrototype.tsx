@@ -123,23 +123,30 @@ function ChartBlock({ shape, editor, interactive }: { shape: StudioShape; editor
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!ref.current) return;
-    const chart = echarts.init(ref.current);
-    const rows = CHART_DATA[period];
-    chart.setOption({
-      animation: false,
-      grid: { left: 38, right: 16, top: 22, bottom: 28 },
-      tooltip: { trigger: "axis", axisPointer: { type: "cross" } },
-      xAxis: { type: "category", data: rows.map((r) => r[0]), axisLine: { lineStyle: { color: "#aaa" } } },
-      yAxis: { type: "value", splitLine: { lineStyle: { color: "#ececea" } } },
-      series: [
-        ...(series !== "RTS" ? [{ name: "Si", type: "line", smooth: true, showSymbol: false, data: rows.map((r) => r[1]), lineStyle: { width: 2, color: "#111" }, itemStyle: { color: "#111" } }] : []),
-        ...(series !== "SI" ? [{ name: "RTS", type: "line", smooth: true, showSymbol: false, data: rows.map((r) => r[2]), lineStyle: { width: 1.5, color: "#888" }, itemStyle: { color: "#888" } }] : []),
-      ],
+    let chart: echarts.ECharts | null = null;
+    const ro = new ResizeObserver(() => chart?.resize());
+    const raf = window.requestAnimationFrame(() => {
+      if (!ref.current || ref.current.clientWidth === 0 || ref.current.clientHeight === 0) return;
+      chart = echarts.init(ref.current);
+      const rows = CHART_DATA[period];
+      chart.setOption({
+        animation: false,
+        grid: { left: 38, right: 16, top: 22, bottom: 28 },
+        tooltip: { trigger: "axis", axisPointer: { type: "cross" } },
+        xAxis: { type: "category", data: rows.map((r) => r[0]), axisLine: { lineStyle: { color: "#aaa" } } },
+        yAxis: { type: "value", splitLine: { lineStyle: { color: "#ececea" } } },
+        series: [
+          ...(series !== "RTS" ? [{ name: "Si", type: "line", smooth: true, showSymbol: false, data: rows.map((r) => r[1]), lineStyle: { width: 2, color: "#111" }, itemStyle: { color: "#111" } }] : []),
+          ...(series !== "SI" ? [{ name: "RTS", type: "line", smooth: true, showSymbol: false, data: rows.map((r) => r[2]), lineStyle: { width: 1.5, color: "#888" }, itemStyle: { color: "#888" } }] : []),
+        ],
+      });
+      ro.observe(ref.current);
     });
-    const ro = new ResizeObserver(() => chart.resize());
-    ro.observe(ref.current);
-    return () => { ro.disconnect(); chart.dispose(); };
+    return () => {
+      window.cancelAnimationFrame(raf);
+      ro.disconnect();
+      chart?.dispose();
+    };
   }, [period, series]);
 
   return (
@@ -147,10 +154,10 @@ function ChartBlock({ shape, editor, interactive }: { shape: StudioShape; editor
       <div className={styles.blockHead}><strong>{data.title}</strong><span>tooltip + crosshair</span></div>
       <div className={styles.chartControls} onPointerDown={(e) => e.stopPropagation()}>
         {(["1Y", "3Y", "ALL"] as const).map((p) => (
-          <button data-testid={`chart-period-${p}`} className={period === p ? styles.controlActive : ""} disabled={!interactive} onClick={() => patchShape(editor, shape, { period: p })}>{p}</button>
+          <button key={p} data-testid={`chart-period-${p}`} className={period === p ? styles.controlActive : ""} disabled={!interactive} onClick={() => patchShape(editor, shape, { period: p })}>{p}</button>
         ))}
         {(["SI", "RTS", "BOTH"] as const).map((s) => (
-          <button data-testid={`chart-series-${s}`} className={series === s ? styles.controlActive : ""} disabled={!interactive} onClick={() => patchShape(editor, shape, { series: s })}>{s}</button>
+          <button key={s} data-testid={`chart-series-${s}`} className={series === s ? styles.controlActive : ""} disabled={!interactive} onClick={() => patchShape(editor, shape, { series: s })}>{s}</button>
         ))}
       </div>
       <div ref={ref} className={styles.chartStage} data-testid="market-chart" />
@@ -214,7 +221,7 @@ function PdfBlock({ shape, editor, interactive }: { shape: StudioShape; editor: 
     let cancelled = false;
     (async () => {
       const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-      pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.worker.min.mjs";
+      pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
       const bytes = Uint8Array.from(atob(PDF_BASE64), (c) => c.charCodeAt(0));
       const pdf = await pdfjs.getDocument({ data: bytes }).promise;
       if (cancelled) return;
@@ -258,7 +265,7 @@ function StudioShapeBody({ shape, editor }: { shape: StudioShape; editor: Editor
       style={{ width: shape.props.w, height: shape.props.h, pointerEvents: interactive ? "all" : "none" }}
     >
       <div className={styles.shapeLabel}><Move size={12}/><span>{shape.props.kind}</span>{editing ? <b>INTERACT</b> : null}</div>
-      <div className={styles.shapeContent}>
+      <div className={styles.shapeContent} data-testid={`studio-shape-${shape.props.kind}`} data-shape-id={shape.id}>
         {shape.props.kind === "richText" ? <RichTextBlock shape={shape} editor={editor} interactive={interactive}/> : null}
         {shape.props.kind === "chart" ? <ChartBlock shape={shape} editor={editor} interactive={interactive}/> : null}
         {shape.props.kind === "image" ? <ImageBlock shape={shape}/> : null}
@@ -334,7 +341,7 @@ export default function StudioSpatialPrototype() {
     if (!editor) return;
     const props = blockProps(kind);
     const id = createShapeId();
-    editor.createShape({ id, type: SHAPE_TYPE, x: point.x - props.w / 2, y: point.y - 30, props } as any);
+    editor.createShape({ id, type: SHAPE_TYPE, x: point.x, y: point.y, props } as any);
     editor.select(id);
     setSelectedId(id);
   }, [editor]);
@@ -478,10 +485,13 @@ export default function StudioSpatialPrototype() {
                   shapeUtils={shapeUtils}
                   persistenceKey={STORAGE_KEY}
                   hideUi
+                  autoFocus
                   options={{ camera: { wheelBehavior: "zoom", panSpeed: 1, zoomSpeed: 1 } }}
                   onMount={(ed)=>{
+                    (window as any).__tqsStudioEditor = ed;
                     setEditor(ed);
                     ed.updateInstanceState({ isReadonly: false });
+                    ed.user.updateUserPreferences({ isSnapMode: true });
                     seedDemo(ed);
                   }}
                 />
