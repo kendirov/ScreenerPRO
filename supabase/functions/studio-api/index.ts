@@ -304,18 +304,14 @@ async function ensureStudioSeed(owner:{id:string;email:string}){
   const liveSpec={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart",crosshair:true,periodControl:true},updatePolicy:"LIVE",asOf:null};
   const replaySpec={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv",relativeRange:{tradingSessions:1},fixedRange:null,transforms:["chronological"],display:{renderer:"studio_market_replay",targetDurationSeconds:30},updatePolicy:"LIVE",asOf:null};
   const lessonBlocks=[
-    {block_id:"lesson-h1",ordinal:1,block_type:"heading",content:{text:"Занятие 1 — Рабочее пространство"},data_spec:null},
-    {block_id:"lesson-t1",ordinal:2,block_type:"rich_text",content:{html:"<p>Настраиваем рабочее пространство так, чтобы график, стакан, лента и заметки помогали принимать решения. Этот документ — тестовая поверхность Studio V5.</p>"},data_spec:null},
-    {block_id:"lesson-call",ordinal:3,block_type:"callout",content:{text:"Практика: оставляем на экране только то, что влияет на торговое решение."},data_spec:null},
-    {block_id:"lesson-live",ordinal:4,block_type:"live_data",content:{title:"Si — реальный объём текущей и прошлой сессии"},data_spec:liveSpec},
-    {block_id:"lesson-replay",ordinal:5,block_type:"market_replay",content:{title:"Market Replay — Si, день за 30 секунд"},data_spec:replaySpec},
-    {block_id:"lesson-table",ordinal:6,block_type:"table",content:{columns:["Элемент","Зачем"],rows:[["График","Контекст цены"],["Стакан","Текущая ликвидность"],["Лента","Агрессор и темп"]]},data_spec:null},
-    {block_id:"lesson-image",ordinal:7,block_type:"image",content:{caption:"Сюда можно вставить скрин рабочего пространства и рисовать поверх него."},data_spec:null},
-    {block_id:"lesson-video",ordinal:8,block_type:"video",content:{title:"Видео / запись экрана — тестовый reference"},data_spec:null},
-    {block_id:"lesson-pdf",ordinal:9,block_type:"pdf_excerpt",content:{title:"PDF / конспект",text:"Тестовый excerpt: блок документа можно адресовать по номеру и stable block_id.",page:1},data_spec:null},
-    {block_id:"lesson-sources",ordinal:10,block_type:"sources",content:{items:[{label:"Связанный World Frame",entityId:"lesson-free-1"},{label:"MOEX ISS",type:"market_data"}]},data_spec:null},
-    {block_id:"lesson-div",ordinal:11,block_type:"divider",content:{},data_spec:null},
-    {block_id:"lesson-end",ordinal:12,block_type:"rich_text",content:{html:"<p>Проверь: вставку между блоками, drag reorder, переход «На доске», share и PDF.</p>"},data_spec:null}
+    {block_id:"lesson-chart",ordinal:6,block_type:"interactive_chart",content:{title:"Si — интерактивный график"},data_spec:liveSpec},
+    {block_id:"lesson-live",ordinal:7,block_type:"live_data",content:{title:"Si — реальный объём текущей и прошлой сессии"},data_spec:liveSpec},
+    {block_id:"lesson-replay",ordinal:8,block_type:"market_replay",content:{title:"Market Replay — Si, день за 30 секунд"},data_spec:replaySpec},
+    {block_id:"lesson-image",ordinal:9,block_type:"image",content:{caption:"Сюда можно вставить скрин рабочего пространства и рисовать поверх него."},data_spec:null},
+    {block_id:"lesson-video",ordinal:10,block_type:"video",content:{title:"Видео / запись экрана — тестовый reference"},data_spec:null},
+    {block_id:"lesson-pdf",ordinal:11,block_type:"pdf_excerpt",content:{title:"PDF / конспект",text:"Тестовый excerpt: блок документа можно адресовать по номеру и stable block_id.",page:1},data_spec:null},
+    {block_id:"lesson-div",ordinal:12,block_type:"divider",content:{},data_spec:null},
+    {block_id:"lesson-end",ordinal:13,block_type:"rich_text",content:{html:"<p>Проверь: вставку между блоками, drag reorder, переход «На доске», share и PDF.</p>"},data_spec:null}
   ].map(b=>({...b,document_id:"doc-lesson-workspace",owner_id:owner.id,revision:1}));
   const {error:be}=await admin.from("studio_document_blocks").upsert(lessonBlocks,{onConflict:"block_id",ignoreDuplicates:true}); if(be)throw be;
 
