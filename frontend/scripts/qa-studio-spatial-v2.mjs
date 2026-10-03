@@ -10,7 +10,7 @@ const browser = await chromium.launch({ channel: "msedge", headless: true });
 console.log("QA: browser launched");
 const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
 page.on("console", (msg) => console.log("BROWSER_CONSOLE", msg.type(), msg.text()));
-page.on("pageerror", (error) => console.log("BROWSER_PAGEERROR", error.message));
+page.on("pageerror", (error) => console.log("BROWSER_PAGEERROR", error.stack || error.message));
 const failures = [];
 const check = (condition, label) => {
   if (!condition) failures.push(label);
