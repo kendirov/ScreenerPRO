@@ -402,6 +402,23 @@ Deno.serve(async(req:Request)=>{
       const token=url.searchParams.get("token")||"";const bundle=token?await loadShare(token):null;
       if(!bundle)return json({error:"SHARE_NOT_FOUND"},404,origin);return json(bundle,200,origin);
     }
+    if(path==="/public/action"&&req.method==="POST"){
+      const body=await req.json();
+      const allowed=new Set(["getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare"]);
+      if(!allowed.has(body.action)) return json({ok:false,error:"PUBLIC_ACTION_FORBIDDEN"},403,origin);
+      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
+      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
+      return json({ok:true,data:await action({id:o.owner_id,email:o.email},body.action,body.payload||{},origin||"")},200,origin);
+    }
+    if(path==="/public/pdf"&&req.method==="GET"){
+      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
+      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
+      const documentId=url.searchParams.get("documentId")||"";const appOrigin=safeReturnTo(url.searchParams.get("appOrigin"))||origin||"";
+      if(!documentId||!appOrigin)return json({error:"documentId/appOrigin required"},400,origin);
+      const share=await createFreshShare(o.owner_id,documentId,appOrigin);const liveUrl=share.url;
+      const bundle=await loadDocument(o.owner_id,documentId);const pdf=await generatePdf(bundle,liveUrl);
+      const h=new Headers({"Content-Type":"application/pdf","Content-Disposition":`attachment; filename*=UTF-8''${encodeURIComponent(bundle.document.title+".pdf")}`,"X-TQS-Share-Url":liveUrl});applyCors(h,origin);return new Response(pdf,{headers:h});
+    }
     const owner=await ownerFromRequest(req);
     if(path==="/oauth/start"&&req.method==="GET") return oauthStart(req,owner,url,origin||"");
     if(path==="/pdf"&&req.method==="GET"){
