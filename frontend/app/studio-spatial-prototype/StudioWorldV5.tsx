@@ -83,7 +83,7 @@ export default function StudioWorldV5(){
  const pdf=async()=>{if(!bundle)return;const x=await downloadPdf(bundle.document.id,drive?.connection?.status==="CONNECTED");const u=URL.createObjectURL(x.blob),a=document.createElement("a");a.href=u;a.download=bundle.document.title+".pdf";a.click();setTimeout(()=>URL.revokeObjectURL(u),0);setNotice("PDF создан"+(x.drive?" · Drive export requested":""))};
  const refreshDrive=async()=>{try{const d=await studioAction<any>("driveStatus");setDrive(d);if(d.connection?.status==="CONNECTED")setDriveFiles(await studioAction<any[]>("driveListRoot"))}catch(e){setNotice(e instanceof Error?e.message:String(e))}};
  const connectDrive=async()=>{try{const x=await driveOAuthStart(window.location.href);window.location.href=x.url}catch(e:any){setDrive(e.details||{error:e.message});setNotice(e.message)}};
- useEffect(()=>{if(auth==="in"&&diagnostics)void refreshDrive()},[auth,diagnostics]);
+ useEffect(()=>{if(diagnostics)setDrive((d:any)=>d||{connection:{status:"OPTIONAL_AUTH_LATER"},oauthConfigured:false,conflicts:[]})},[diagnostics]);
 
  const navRoots=objects.filter(o=>o.kind==="frame"&&!o.parent_id),filtered=search?objects.filter(o=>(o.title+" "+o.semantic_path).toLowerCase().includes(search.toLowerCase())):navRoots;
  const exportJson=()=>{if(!overview)return;const blob=new Blob([JSON.stringify({schemaVersion:"tqs-studio-world/v5",overview,documents,selectedDocument:bundle},null,2)],{type:"application/json"}),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download="tqs-studio-v5.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),0)};
