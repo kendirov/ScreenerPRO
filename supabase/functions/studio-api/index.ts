@@ -531,12 +531,26 @@ Deno.serve(async(req:Request)=>{
     if(path==="/public/db-smoke"&&req.method==="GET"){
       const raw=Deno.env.get("SUPABASE_DB_URL")||"";
       let parsed:any=null;try{const u=new URL(raw);parsed={protocol:u.protocol,hostname:u.hostname,port:u.port,hasUser:Boolean(u.username),hasPassword:Boolean(u.password),pathname:u.pathname}}catch{}
+      const attempts:any[]=[];
       try{
         const [row]=await directDb`select now() as now, (select count(*)::int from public.studio_world_objects where world_key=${OWNER_WORLD}) as objects`;
         return json({ok:true,transport:"direct-postgres",envPresent:Boolean(raw),envLength:raw.length,parsed,now:row?.now||null,objects:row?.objects||0},200,origin);
-      }catch(error){
-        return json({ok:false,transport:"direct-postgres",envPresent:Boolean(raw),envLength:raw.length,parsed,error:error instanceof Error?error.message:String(error)},500,origin);
+      }catch(error){attempts.push({host:parsed?.hostname||"direct",ok:false,error:error instanceof Error?error.message:String(error)})}
+      if(raw){
+        try{
+          const u=new URL(raw),password=u.password,ref=(u.hostname.match(/^db\.([^.]+)\.supabase\.co$/)||[])[1]||"";
+          for(const host of ["aws-0-eu-central-1.pooler.supabase.com","aws-1-eu-central-1.pooler.supabase.com"]){
+            const poolUrl=`postgresql://${encodeURIComponent("postgres."+ref)}:${encodeURIComponent(password)}@${host}:6543/postgres`;
+            const candidate=postgres(poolUrl,{prepare:false,max:1,connect_timeout:4,idle_timeout:2,ssl:"require"});
+            try{
+              const [row]=await candidate`select now() as now, (select count(*)::int from public.studio_world_objects where world_key=${OWNER_WORLD}) as objects`;
+              await candidate.end({timeout:1});
+              return json({ok:true,transport:"transaction-pooler",host,parsed,now:row?.now||null,objects:row?.objects||0,attempts},200,origin);
+            }catch(error){attempts.push({host,ok:false,error:error instanceof Error?error.message:String(error)});try{await candidate.end({timeout:1})}catch{}}
+          }
+        }catch(error){attempts.push({host:"pooler-setup",ok:false,error:error instanceof Error?error.message:String(error)})}
       }
+      return json({ok:false,transport:"postgres",envPresent:Boolean(raw),envLength:raw.length,parsed,attempts},500,origin);
     }
     if(path==="/owner/bootstrap"&&req.method==="GET") return ownerBootstrap(url);
     if(path==="/oauth/callback") return oauthCallback(url);
