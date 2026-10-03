@@ -322,8 +322,12 @@ export default function StudioSpatialDomPrototype() {
   const patchData=useCallback((id:string,patch:Partial<BlockData>)=>mutateItems(v=>v.map(i=>i.id===id?{...i,data:{...i.data,...patch}}:i)),[mutateItems]);
 
   const addBlock=useCallback((kind:BlockKind,x:number,y:number,preset:PagePreset="article")=>{
-    const d=blockDefaults(kind,preset), id=uid(kind);
-    mutateItems(v=>[...v,{id,kind,x:snap(x),y:snap(y),w:d.w,h:d.h,z:Math.max(5,...v.map(i=>i.z||0))+1,data:d.data}]);
+    const d=blockDefaults(kind,preset), id=uid(kind), px=snap(x), py=snap(y);
+    mutateItems(v=>{
+      const parent=v.filter(i=>i.kind==="frame"&&px>=i.x&&py>=i.y&&px+d.w<=i.x+i.w&&py+d.h<=i.y+i.h)
+        .sort((a,b)=>(a.w*a.h)-(b.w*b.h))[0];
+      return [...v,{id,kind,x:px,y:py,w:d.w,h:d.h,z:Math.max(5,...v.map(i=>i.z||0))+1,parentId:parent?.id,data:d.data}];
+    });
     setSelectedId(id);setInteractingId(null);setContext(null);
   },[mutateItems]);
   const addFrame=useCallback((x:number,y:number)=>{
