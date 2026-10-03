@@ -69,7 +69,7 @@ export function studioSyncStatus(){
 
 export async function flushStudioSync(){
   if(flushing||typeof window==="undefined")return studioSyncStatus();
-  flushing=true;
+  flushing=true;let retryDelay=0;
   try{
     let jobs=readOutbox(),processed=0;
     while(jobs.length&&processed<20){
@@ -79,11 +79,15 @@ export async function flushStudioSync(){
         jobs.shift();writeOutbox(jobs);processed++;
       }catch(error){
         if(isIdempotentDuplicate(error)){jobs.shift();writeOutbox(jobs);processed++;continue}
-        job.attempts=(job.attempts||0)+1;jobs[0]=job;writeOutbox(jobs);break;
+        job.attempts=(job.attempts||0)+1;jobs[0]=job;writeOutbox(jobs);
+        retryDelay=Math.min(30000,1500*Math.pow(2,Math.min(job.attempts,4)));break;
       }
     }
     return {pending:jobs.length,processed};
-  }finally{flushing=false}
+  }finally{
+    flushing=false;
+    if(retryDelay>0&&readOutbox().length)scheduleSync(retryDelay);
+  }
 }
 function scheduleSync(delay=350){
   if(typeof window==="undefined"||syncTimer!==null)return;
