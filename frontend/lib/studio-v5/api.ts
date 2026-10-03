@@ -12,10 +12,10 @@ export function studioSupabase(){ if(!client) client=createClient(SUPABASE_URL,S
 export async function studioSession(){
   const {data,error}=await studioSupabase().auth.getSession(); if(error) throw error; return data.session;
 }
-const LOCAL_FIRST=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","markActivityDone","driveStatus"]);
+const LOCAL_FIRST=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone","driveStatus"]);
 const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe"]);
 async function serverAction<T=any>(action:string,payload:any={}):Promise<T>{
-  const ctrl=new AbortController();const timer=window.setTimeout(()=>ctrl.abort(),2200);
+  const ctrl=new AbortController();const timer=window.setTimeout(()=>ctrl.abort(),8000);
   try{
     const r=await fetch("/api/studio/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,payload}),cache:"no-store",signal:ctrl.signal});
     const x=await r.json();if(!r.ok||!x.ok)throw Object.assign(new Error(x.error||`Studio API ${r.status}`),{details:x.details,status:r.status});return x.data as T;
