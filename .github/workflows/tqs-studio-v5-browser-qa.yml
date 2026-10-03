@@ -41,31 +41,11 @@ jobs:
         env:
           STUDIO_QA_BASE: http://localhost:3000
         run: node frontend/scripts/qa-studio-v5.mjs
-      - name: Verify production Studio share, PDF and live Si
-        run: |
-          share_json="$(curl -fsS -X POST https://screenerpro.vercel.app/api/studio/share             -H 'Content-Type: application/json'             --data '{"documentId":"doc-lesson-workspace","appOrigin":"https://screenerpro.vercel.app"}')"
-          share_url="$(node -e 'const x=JSON.parse(process.argv[1]); if(!x.ok||!x.data?.url) process.exit(2); process.stdout.write(x.data.url)' "$share_json")"
-          curl -fsSL "$share_url" -o /tmp/studio-share.html
-          grep -q "Занятие 1" /tmp/studio-share.html
-          grep -q "Market Replay" /tmp/studio-share.html
-          grep -q "PDF / конспект" /tmp/studio-share.html
-
-          SHARE_URL="$share_url" node <<'NODE' > /tmp/studio-pdf-request.json
-          const bundle={
-            document:{id:"qa-pdf",title:"TQS Studio QA PDF",revision:1,semantic_path:"QA/PDF",kind:"instruction"},
-            blocks:[
-              {block_id:"h1",ordinal:1,block_type:"heading",content:{text:"TQS Studio QA PDF"}},
-              {block_id:"t1",ordinal:2,block_type:"rich_text",content:{html:"<p>PDF renderer QA</p>"}}
-            ]
-          };
-          process.stdout.write(JSON.stringify({bundle,liveUrl:process.env.SHARE_URL}));
-          NODE
-          curl -fsS -X POST https://screenerpro.vercel.app/api/studio/pdf             -H 'Content-Type: application/json' --data-binary @/tmp/studio-pdf-request.json -o /tmp/studio.pdf
-          test "$(head -c 4 /tmp/studio.pdf)" = "%PDF"
-
-          curl -fsS 'https://screenerpro.vercel.app/api/studio/live-data?family=SI&sessions=2' -o /tmp/studio-live.json
-          node -e 'const x=require("/tmp/studio-live.json"); if(!x.ok||x.dataSpec?.updatePolicy!=="LIVE"||!x.sessions?.length) process.exit(3)'
-          echo "PASS production share + clean document + PDF + live Si"
+      - name: Verify exact production Studio
+        env:
+          STUDIO_PROD_BASE: https://screenerpro.vercel.app
+          EXPECTED_SHA: ${{ github.sha }}
+        run: pnpm --dir frontend exec node scripts/qa-studio-production.mjs
       - name: App log on failure
         if: failure()
         run: tail -n 300 /tmp/tqs-studio-v5.log || true
