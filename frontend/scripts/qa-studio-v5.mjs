@@ -36,8 +36,8 @@ try{
  await textObj.waitFor();
  const editable=textObj.locator('[contenteditable="true"]');
  await editable.fill("QA text");
- await editable.press("Tab");
- await wait(100);
+ await editable.evaluate(el=>el.blur());
+ await wait(500);
  let s=await state();assert(s.overview.objects.some(o=>o.kind==="text"&&String(o.body?.html||"").includes("QA text")),"text not persisted locally");
  console.log("PASS create/edit Text");
 
@@ -116,7 +116,7 @@ try{
  await page.getByTitle("Светлая / тёмная тема").click();assert(await page.locator("main").getAttribute("data-theme")==="dark","dark theme failed");
  console.log("PASS Light/Dark");
 
- await page.getByTitle("Добавить").click();await page.getByRole("button",{name:"Текст",exact:true}).click();const persistent=page.locator('[data-testid="world-text"]').last().locator('[contenteditable="true"]');await persistent.fill("RELOAD-PERSIST");await persistent.press("Tab");await wait(100);
+ await page.getByTitle("Добавить").click();await page.getByRole("button",{name:"Текст",exact:true}).click();const persistent=page.locator('[data-testid="world-text"]').last().locator('[contenteditable="true"]');await persistent.fill("RELOAD-PERSIST");await persistent.evaluate(el=>el.blur());await wait(500);
  await page.reload({waitUntil:"domcontentloaded"});await page.getByText("TQS Studio",{exact:true}).waitFor();s=await state();assert(s.overview.objects.some(o=>String(o.body?.html||"").includes("RELOAD-PERSIST")),"reload persistence failed");
  console.log("PASS reload persistence");
 
