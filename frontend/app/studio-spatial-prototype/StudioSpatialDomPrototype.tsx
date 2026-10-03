@@ -404,24 +404,33 @@ export default function StudioSpatialDomPrototype() {
   };
   const onPointerUp=()=>setGesture(null);
 
-  const zoomAt=(clientX:number,clientY:number,factor:number)=>{
+  const zoomAt=useCallback((clientX:number,clientY:number,factor:number)=>{
     const el=canvasRef.current;if(!el)return;
-    const r=el.getBoundingClientRect(),sx=clientX-r.left,sy=clientY-r.top,wx=(sx-camera.x)/camera.zoom,wy=(sy-camera.y)/camera.zoom;
-    const nz=Math.max(.2,Math.min(2.8,camera.zoom*factor));
-    setCamera({zoom:nz,x:sx-wx*nz,y:sy-wy*nz});
-  };
-  const onWheel=(e:React.WheelEvent<HTMLElement>)=>{
-    const looksTrackpad=e.ctrlKey||Math.abs(e.deltaX)>1||Math.abs(e.deltaY)<28;
-    if(navMode==="auto")setDetectedNav(looksTrackpad?"trackpad":"mouse");
-    const active=navMode==="auto"?(looksTrackpad?"trackpad":"mouse"):navMode;
-    if(active==="trackpad"){
-      if(e.ctrlKey) zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.008));
-      else setCamera(c=>({...c,x:c.x-e.deltaX,y:c.y-e.deltaY}));
-      return;
-    }
-    if(e.shiftKey){setCamera(c=>({...c,x:c.x-e.deltaY}));return}
-    zoomAt(e.clientX,e.clientY,e.deltaY<0?1.12:.89);
-  };
+    const r=el.getBoundingClientRect(),sx=clientX-r.left,sy=clientY-r.top;
+    setCamera(c=>{
+      const wx=(sx-c.x)/c.zoom,wy=(sy-c.y)/c.zoom;
+      const nz=Math.max(.2,Math.min(2.8,c.zoom*factor));
+      return {zoom:nz,x:sx-wx*nz,y:sy-wy*nz};
+    });
+  },[]);
+  useEffect(()=>{
+    const el=canvasRef.current;if(!el)return;
+    const onWheel=(e:WheelEvent)=>{
+      e.preventDefault();
+      const looksTrackpad=e.ctrlKey||Math.abs(e.deltaX)>1||Math.abs(e.deltaY)<28;
+      if(navMode==="auto")setDetectedNav(looksTrackpad?"trackpad":"mouse");
+      const active=navMode==="auto"?(looksTrackpad?"trackpad":"mouse"):navMode;
+      if(active==="trackpad"){
+        if(e.ctrlKey) zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.008));
+        else setCamera(c=>({...c,x:c.x-e.deltaX,y:c.y-e.deltaY}));
+        return;
+      }
+      if(e.shiftKey){setCamera(c=>({...c,x:c.x-e.deltaY}));return}
+      zoomAt(e.clientX,e.clientY,e.deltaY<0?1.12:.89);
+    };
+    el.addEventListener("wheel",onWheel,{passive:false});
+    return()=>el.removeEventListener("wheel",onWheel);
+  },[navMode,zoomAt]);
 
   const fitBounds=useCallback((bounds:{x:number;y:number;w:number;h:number})=>{
     const el=canvasRef.current;if(!el)return;
@@ -522,7 +531,6 @@ export default function StudioSpatialDomPrototype() {
       </aside>:null}
 
       <section ref={canvasRef} className={`${styles.canvasWrap} ${styles.domCanvas} ${spaceDown?styles.handActive:""}`} data-testid="spatial-canvas"
-        onWheel={onWheel}
         onPointerDown={e=>{
           if(e.button===1||(spaceDown&&e.button===0)){e.preventDefault();setGesture({type:"pan",startX:e.clientX,startY:e.clientY,originX:camera.x,originY:camera.y});return}
           if(e.button===0&&e.target===e.currentTarget){setSelectedId(null);setInteractingId(null)}
