@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-const StudioSpatialPrototype = dynamic(() => import("./StudioSpatialPrototype"), { ssr: false });
+const StudioSpatialPrototype = dynamic(() => import("./StudioSpatialDomPrototype"), { ssr: false });
 
 export default function StudioSpatialPrototypePage() {
   return <StudioSpatialPrototype />;
