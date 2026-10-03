@@ -5,7 +5,7 @@ import { EditorContent, useEditor as useTiptapEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import * as echarts from "echarts";
 import {
-  BarChart3, BookOpen, ChevronLeft, ChevronRight, FileDown, FileJson, FileText,
+  BarChart3, BookOpen, FileDown, FileJson, FileText,
   Frame, Image as ImageIcon, Maximize2, MousePointer2, Move, PanelLeftClose,
   PanelLeftOpen, Presentation, RotateCcw, Search, Sparkles, Type, Upload, Video
 } from "lucide-react";
@@ -551,7 +551,7 @@ export default function StudioSpatialDomPrototype() {
               className={`${styles.domItem} ${selectedId===item.id?styles.domSelected:""} ${gesture?.id===item.id?styles.domDragging:""} ${item.hidden?styles.domHidden:""}`}
               style={{left:item.x,top:item.y,width:item.w,height:item.h,zIndex:item.z}}
               onPointerDownCapture={e=>{if(mode==="edit"&&e.button===0&&!spaceDown)setSelectedId(item.id)}}
-              onDoubleClick={()=>{if(mode==="edit"){setSelectedId(item.id);setInteractingId(item.id)}}>
+              onDoubleClick={()=>{if(mode==="edit"){setSelectedId(item.id);setInteractingId(item.id)}}}>
               <div className={styles.shape}>
                 {mode==="edit"?<div className={styles.grabZone} data-testid="grab-zone" onPointerDown={e=>startMove(e,item)}>
                   <Move size={12}/><span>{item.kind==="page"?(item.data.pagePreset==="a4"?"A4 Page":"Article Page"):item.kind}</span><b>DRAG</b>
