@@ -20,6 +20,10 @@ const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","
 
 type SyncJob={key:string;action:string;payload:any;createdAt:number;attempts:number};
 let flushing=false,syncTimer:number|null=null;
+function serverSyncEnabled(){
+  if(typeof window==="undefined")return false;
+  return !["localhost","127.0.0.1"].includes(window.location.hostname);
+}
 
 function readOutbox():SyncJob[]{
   if(typeof window==="undefined")return [];
@@ -38,6 +42,7 @@ function syncKey(action:string,p:any){
   return action+":"+crypto.randomUUID();
 }
 function enqueueSync(action:string,payload:any){
+  if(!serverSyncEnabled())return;
   const key=syncKey(action,payload),jobs=readOutbox(),next:{key:string;action:string;payload:any;createdAt:number;attempts:number}={key,action,payload,createdAt:Date.now(),attempts:0};
   const i=jobs.findIndex(j=>j.key===key);if(i>=0)jobs[i]={...jobs[i],payload,createdAt:Date.now()};else jobs.push(next);
   writeOutbox(jobs);
@@ -68,7 +73,7 @@ export function studioSyncStatus(){
 }
 
 export async function flushStudioSync(){
-  if(flushing||typeof window==="undefined")return studioSyncStatus();
+  if(flushing||typeof window==="undefined"||!serverSyncEnabled())return studioSyncStatus();
   flushing=true;let retryDelay=0;
   try{
     let jobs=readOutbox(),processed=0;
@@ -90,7 +95,7 @@ export async function flushStudioSync(){
   }
 }
 function scheduleSync(delay=350){
-  if(typeof window==="undefined"||syncTimer!==null)return;
+  if(typeof window==="undefined"||!serverSyncEnabled()||syncTimer!==null)return;
   syncTimer=window.setTimeout(()=>{syncTimer=null;void flushStudioSync()},delay);
 }
 
