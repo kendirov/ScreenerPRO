@@ -2,69 +2,86 @@
 
 ## Canonical status
 
-- Default branch: `main`
-- TQS Studio owner-review prototype branch: `chatgpt/tqs-studio-prototype-si-2026-10-02`
-- Prototype runtime commit verified before this checkpoint: `6c3023355ad06858888f96900c4f1d449cba85a5`
-- Prototype route: `/studio-prototype`
-- Status: **TECHNICAL PASS / OWNER REVIEW REQUIRED**
-- Production Studio implementation remains blocked until the owner reviews this prototype.
+- Default branch: `main`.
+- TQS Studio V5 (World + Documents) is merged to main via PR #40.
+- Permanent product route: `/studio`.
+- Architecture decision: **ONE WORLD CANVAS + DOCUMENTS**. Do not return to Notion-like V1 or split the world into separate boards.
+- Owner decision: authentication is deferred during active review; Studio opens directly.
+- Status: **OWNER REVIEW READY / USER-FACING QA PASS**.
+- Google Drive OAuth remains intentionally deferred until owner asks to enable it.
 
-## TQS Studio prototype scope now implemented
+## TQS Studio V5 implemented surface
 
-This is deliberately an isolated prototype inside the existing TQS/ScreenerPRO frontend. It does **not** introduce production Studio DB schema, AI connector, publishing backend, Academy integration, or a second repo/backend.
+World:
+- infinite graphite canvas;
+- semantic Navigator for Projects / Courses / Lessons / Articles / Recent;
+- seed frames: ARTEM OS / Agent, TQS / Trading / Intelligence, Обучение, Статьи, Inbox;
+- courses: Бесплатный курс and Скальпинг по стакану;
+- lesson frames, including canonical test lesson **Занятие 1 — Рабочее пространство**;
+- pan/zoom with Mac two-finger pan + ctrlKey pinch zoom;
+- free move/resize, snapping, nested semantic parent/child;
+- quick create Text / Task / Voice / Link / image / frame / annotation;
+- Smart Paste for URL / text / image;
+- Voice record / stop / playback;
+- image paste + pencil annotation relation + attached annotation movement;
+- Light / Dark, JSON export/import, Reset demo.
 
-The Si demo page currently supports:
-- add block;
-- inline text editing;
-- drag/reorder;
-- block widths Full / 2/3 / 1/2 / 1/3 and multi-column composition;
-- hide from Preview;
-- Edit / Preview modes;
-- local browser persistence after reload;
-- Reset demo;
-- responsive narrow layout with vertical stacking.
-
-Visual direction is a quiet monochrome editorial workspace, intentionally avoiding dashboard/card-grid/AI-look patterns.
+Documents:
+- separate linear Documents mode;
+- stable block IDs + ordinals;
+- insertion between blocks and drag reorder;
+- Lesson / Article surfaces linked back to exact World frame;
+- canonical lesson document and Si article seed;
+- live MOEX Si chart;
+- interactive Market Replay;
+- clean public document route;
+- PDF path.
 
 ## Verification evidence
 
-Exact prototype source was built in an isolated WORK worktree with:
+Latest pre-merge V5 head: `e3934f32b66963f1f5ccc894037e0c3af97c805d`.
 
-```
-pnpm -C frontend build
-```
+GitHub acceptance on that exact code:
+- build PASS;
+- second build gate PASS;
+- browser-qa PASS;
+- Vercel preview READY.
 
-Build completed successfully and emitted `/studio-prototype` as a static route.
+Browser QA passed:
+- seed + Navigator;
+- pan + pinch;
+- create/edit Text;
+- create/edit/complete Task;
+- record/stop/playback Voice;
+- Smart Paste URL/text/image;
+- pencil annotation relation;
+- move annotated image;
+- full lesson document + chart + replay;
+- document insert + reorder;
+- Market Replay controls;
+- Document → World;
+- Light/Dark;
+- reload persistence;
+- JSON export/import;
+- Reset demo.
 
-Real Playwright browser interaction QA on WORK passed the complete acceptance flow:
-- default 10-block workspace;
-- Inspector selection;
-- width change to 1/2;
-- drag/reorder with DOM-order readback;
-- two half-width blocks side-by-side;
-- add block + inline edit;
-- hide image from Preview;
-- Preview without Inspector/add/drag editor chrome;
-- reload persistence of added block, edited text, width, hidden state and order;
-- Reset demo back to default state;
-- 390px viewport with zero horizontal overflow and vertical block stacking.
+## Persistence / backend state
 
-QA process exit code: `0`.
-Screenshots captured for desktop Edit, desktop Preview and 390px narrow state.
+- Existing TQS Supabase project is reused; no second database/project.
+- `studio-api` is ACTIVE v25.
+- Canonical Studio schema/migrations exist for world objects, activity, documents/blocks/revisions, assets, Drive refs/conflicts, shares/publication metadata.
+- User interaction is **local-first** with a durable serialized sync outbox and bounded retry/backoff.
+- A transient Supabase upstream/SSL incident was observed during V5 finalization. The UI remains functional and mutations stay queued for sync rather than failing visibly.
+- Unsafe direct-Postgres transport experiments were fully reverted; no diagnostic DB transport is part of the active Studio implementation.
 
-## Boundary / next step
+## Drive / auth boundary
 
-Stop here. Do not build the production TQS Studio architecture or backend yet.
+- Owner explicitly chose to defer Studio authentication during review.
+- Drive integration code and secure Vault-backed OAuth path exist, but Google OAuth client consent/configuration is not currently a product gate.
+- Do not fake Drive sync. Re-enable only when owner explicitly asks to finish Drive connection.
 
-Next allowed action is owner review of the prototype. After review, record one of:
-- KEEP;
-- KEEP WITH CHANGES;
-- REJECT / REWORK.
+## Current next-step rule
 
-Only then may the production Studio roadmap be unblocked.
+Studio is now a real product surface on main, not a prototype branch task.
 
-## Platform boundary
-
-TQS is broader than this repository. See `TQS_PLATFORM.md`.
-
-Generic desktop/device automation is owned by Artem OS, not this repo.
+Do not rebuild the architecture. Continue only with owner-visible defects/polish found in `/studio` or with explicitly requested capabilities.
