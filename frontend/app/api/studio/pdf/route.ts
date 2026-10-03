@@ -1,17 +1,23 @@
-const EDGE="https://hppbuzbrjoyrwpdinlxk.supabase.co/functions/v1/studio-api/public/pdf";
-export async function GET(req:Request){
-  const u=new URL(req.url);
-  const target=new URL(EDGE);
-  for(const [k,v] of u.searchParams)target.searchParams.set(k,v);
-  let r:Response|null=null;
-  for(let attempt=0;attempt<2;attempt++){
-    try{r=await fetch(target,{cache:"no-store",signal:AbortSignal.timeout(20000)});if(r.status<500)break}catch{}
-    if(attempt===0)await new Promise(res=>setTimeout(res,350));
+const EDGE="https://hppbuzbrjoyrwpdinlxk.supabase.co/functions/v1/studio-api/public/pdf-bundle";
+
+export async function POST(req:Request){
+  try{
+    const body=await req.json();
+    const r=await fetch(EDGE,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body),
+      cache:"no-store",
+      signal:AbortSignal.timeout(20000)
+    });
+    const buf=await r.arrayBuffer();
+    const h=new Headers();
+    for(const k of ["content-type","content-disposition","x-tqs-share-url"]){
+      const v=r.headers.get(k);if(v)h.set(k,v);
+    }
+    h.set("Cache-Control","no-store");
+    return new Response(buf,{status:r.status,headers:h});
+  }catch(error){
+    return Response.json({error:error instanceof Error?error.message:String(error)},{status:503,headers:{"Cache-Control":"no-store"}});
   }
-  if(!r)return Response.json({error:"STUDIO_PDF_UPSTREAM_UNAVAILABLE"},{status:503});
-  const buf=await r.arrayBuffer();
-  const h=new Headers();
-  for(const k of ["content-type","content-disposition","x-tqs-share-url","x-tqs-drive-export"]) {const v=r.headers.get(k);if(v)h.set(k,v)}
-  h.set("Cache-Control","no-store");
-  return new Response(buf,{status:r.status,headers:h});
 }
