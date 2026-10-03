@@ -2,13 +2,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.99.3";
 import { PDFDocument, rgb } from "npm:pdf-lib@1.17.1";
 import fontkit from "npm:@pdf-lib/fontkit@1.1.1";
-import postgres from "npm:postgres@3.4.3";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const secretMap = (()=>{try{return JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}")}catch{return {}}})();
 const SERVICE_KEY = secretMap.default ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession:false, autoRefreshToken:false } });
-const directDb = postgres(Deno.env.get("SUPABASE_DB_URL") ?? "", {prepare:false,max:1,connect_timeout:5,idle_timeout:20});
 const OWNER_WORLD = "tqs-studio-world";
 const DRIVE_ROOT = "1NSPF-zrrM1RAqniRR4FHL56VvGDcBXWl";
 const DRIVE_EXPORTS = "1Qf7C_3xP5OtxUfWhjkuMZ0NNLpn1gqW8";
@@ -528,30 +526,6 @@ Deno.serve(async(req:Request)=>{
   const url=new URL(req.url),path=functionPath(url);
   try{
     if(path==="/health") return json({ok:true,service:"studio-api",schema:"v5"},200,origin);
-    if(path==="/public/db-smoke"&&req.method==="GET"){
-      const raw=Deno.env.get("SUPABASE_DB_URL")||"";
-      let parsed:any=null;try{const u=new URL(raw);parsed={protocol:u.protocol,hostname:u.hostname,port:u.port,hasUser:Boolean(u.username),hasPassword:Boolean(u.password),pathname:u.pathname}}catch{}
-      const attempts:any[]=[];
-      try{
-        const [row]=await directDb`select now() as now, (select count(*)::int from public.studio_world_objects where world_key=${OWNER_WORLD}) as objects`;
-        return json({ok:true,transport:"direct-postgres",envPresent:Boolean(raw),envLength:raw.length,parsed,now:row?.now||null,objects:row?.objects||0},200,origin);
-      }catch(error){attempts.push({host:parsed?.hostname||"direct",ok:false,error:error instanceof Error?error.message:String(error)})}
-      if(raw){
-        try{
-          const u=new URL(raw),password=u.password,ref=(u.hostname.match(/^db\.([^.]+)\.supabase\.co$/)||[])[1]||"";
-          for(const host of ["aws-0-eu-central-1.pooler.supabase.com","aws-1-eu-central-1.pooler.supabase.com"]){
-            const poolUrl=`postgresql://${encodeURIComponent("postgres."+ref)}:${encodeURIComponent(password)}@${host}:6543/postgres`;
-            const candidate=postgres(poolUrl,{prepare:false,max:1,connect_timeout:4,idle_timeout:2,ssl:"require"});
-            try{
-              const [row]=await candidate`select now() as now, (select count(*)::int from public.studio_world_objects where world_key=${OWNER_WORLD}) as objects`;
-              await candidate.end({timeout:1});
-              return json({ok:true,transport:"transaction-pooler",host,parsed,now:row?.now||null,objects:row?.objects||0,attempts},200,origin);
-            }catch(error){attempts.push({host,ok:false,error:error instanceof Error?error.message:String(error)});try{await candidate.end({timeout:1})}catch{}}
-          }
-        }catch(error){attempts.push({host:"pooler-setup",ok:false,error:error instanceof Error?error.message:String(error)})}
-      }
-      return json({ok:false,transport:"postgres",envPresent:Boolean(raw),envLength:raw.length,parsed,attempts},500,origin);
-    }
     if(path==="/owner/bootstrap"&&req.method==="GET") return ownerBootstrap(url);
     if(path==="/oauth/callback") return oauthCallback(url);
     if(path==="/share"){
