@@ -9,6 +9,7 @@ import {
   TLShape,
   Tldraw,
   createShapeId,
+  useEditor,
   useValue,
 } from "tldraw";
 import "tldraw/tldraw.css";
@@ -58,6 +59,22 @@ declare module "tldraw" {
 type StudioShape = TLShape<typeof SHAPE_TYPE>;
 
 const RuntimeContext = React.createContext<{ mode: Mode }>({ mode: "edit" });
+const EditorBridgeContext = React.createContext<(editor: Editor) => void>(() => {});
+
+function StudioEditorBridge() {
+  const editor = useEditor();
+  const onReady = React.useContext(EditorBridgeContext);
+
+  useEffect(() => {
+    onReady(editor);
+  }, [editor, onReady]);
+
+  return null;
+}
+
+const tldrawComponents = {
+  InFrontOfTheCanvas: StudioEditorBridge,
+};
 
 function parseData(shape: StudioShape): BlockData {
   try {
@@ -337,6 +354,14 @@ export default function StudioSpatialPrototype() {
   const [presentFrame, setPresentFrame] = useState<"article"|"lesson">("article");
   const [cameraTick, setCameraTick] = useState(0);
 
+  const handleEditorReady = useCallback((ed: Editor) => {
+    (window as any).__tqsStudioEditor = ed;
+    setEditor((current) => current === ed ? current : ed);
+    ed.updateInstanceState({ isReadonly: false });
+    ed.user.updateUserPreferences({ isSnapMode: true });
+    seedDemo(ed);
+  }, []);
+
   const createBlockAt = useCallback((kind: BlockKind, point: {x:number;y:number}) => {
     if (!editor) return;
     const props = blockProps(kind);
@@ -481,20 +506,17 @@ export default function StudioSpatialPrototype() {
                   const p=editor.screenToPage({x:e.clientX,y:e.clientY});
                   createBlockAt(kind,p);
                 }}>
-                <Tldraw
-                  shapeUtils={shapeUtils}
-                  persistenceKey={STORAGE_KEY}
-                  hideUi
-                  autoFocus
-                  options={{ camera: { wheelBehavior: "zoom", panSpeed: 1, zoomSpeed: 1 } }}
-                  onMount={(ed)=>{
-                    (window as any).__tqsStudioEditor = ed;
-                    setEditor(ed);
-                    ed.updateInstanceState({ isReadonly: false });
-                    ed.user.updateUserPreferences({ isSnapMode: true });
-                    seedDemo(ed);
-                  }}
-                />
+                <EditorBridgeContext.Provider value={handleEditorReady}>
+                  <Tldraw
+                    shapeUtils={shapeUtils}
+                    persistenceKey={STORAGE_KEY}
+                    components={tldrawComponents}
+                    hideUi
+                    autoFocus
+                    options={{ camera: { wheelBehavior: "zoom", panSpeed: 1, zoomSpeed: 1 } }}
+                    onMount={handleEditorReady}
+                  />
+                </EditorBridgeContext.Provider>
                 {toolbarStyle && selectedShape ? (
                   <div className={styles.selectionToolbar} data-testid="selection-toolbar" style={{left:toolbarStyle.left,top:toolbarStyle.top}}>
                     <span>{selectedShape.props.kind}</span>
