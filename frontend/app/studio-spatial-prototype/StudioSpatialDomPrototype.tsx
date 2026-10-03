@@ -72,7 +72,7 @@ function RichTextBlock({item,interactive,onData}:{item:StudioItem;interactive:bo
   });
   useEffect(()=>{editor?.setEditable(interactive)},[editor,interactive]);
   useEffect(()=>{
-    if(editor && !editor.isFocused && item.data.body && editor.getHTML()!==item.data.body) editor.commands.setContent(item.data.body,false);
+    if(editor && !editor.isFocused && item.data.body && editor.getHTML()!==item.data.body) editor.commands.setContent(item.data.body,{ emitUpdate:false });
   },[editor,item.data.body]);
   return <div className={styles.richText}>
     {interactive?<div className={styles.formatBar} data-testid="rich-text-toolbar" onPointerDown={e=>e.stopPropagation()}>
