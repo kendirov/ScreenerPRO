@@ -234,7 +234,11 @@ begin
     update public.studio_document_blocks set block_type=p_block_type,content=coalesce(p_content,'{}'::jsonb),data_spec=p_data_spec,revision=revision+1,updated_at=now()
     where block_id=p_block_id and owner_id=p_owner_id;
   else
-    if p_after_block_id is null then
+    if p_after_block_id='__FIRST__' then
+      pos:=1;
+      update public.studio_document_blocks set ordinal=ordinal+100000 where document_id=p_document_id and ordinal>=pos;
+      update public.studio_document_blocks set ordinal=ordinal-99999 where document_id=p_document_id and ordinal>=pos+100000;
+    elsif p_after_block_id is null then
       select coalesce(max(ordinal),0)+1 into pos from public.studio_document_blocks where document_id=p_document_id;
     else
       select ordinal+1 into pos from public.studio_document_blocks where document_id=p_document_id and block_id=p_after_block_id;
