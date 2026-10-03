@@ -411,7 +411,6 @@ export default function StudioSpatialDomPrototype() {
     setCamera({zoom:nz,x:sx-wx*nz,y:sy-wy*nz});
   };
   const onWheel=(e:React.WheelEvent<HTMLElement>)=>{
-    e.preventDefault();
     const looksTrackpad=e.ctrlKey||Math.abs(e.deltaX)>1||Math.abs(e.deltaY)<28;
     if(navMode==="auto")setDetectedNav(looksTrackpad?"trackpad":"mouse");
     const active=navMode==="auto"?(looksTrackpad?"trackpad":"mouse"):navMode;
