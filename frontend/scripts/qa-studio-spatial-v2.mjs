@@ -29,7 +29,7 @@ async function drag(locator, dx, dy) {
 }
 
 try {
-  await page.goto(url, { waitUntil: "networkidle" });
+  await page.goto(url, { waitUntil: "domcontentloaded" });
   await page.getByTestId("studio-spatial-v2").waitFor();
   check((await page.getByTestId("block-text").count()) >= 1, "initial Rich Text exists");
   check((await page.getByTestId("block-chart").count()) >= 1, "initial Chart exists");
@@ -118,14 +118,14 @@ try {
   check((await page.getByTestId("present-mode").count()) === 1, "Present mode works");
   await page.getByTestId("mode-edit").click();
 
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByTestId("studio-spatial-v2").waitFor();
   check((await page.getByTestId("block-callout").count()) === calloutsBefore + 1, "reload persistence keeps created object");
   check((await page.locator(".ProseMirror strong").count()) > 0, "reload persistence keeps rich-text formatting");
 
   await page.screenshot({ path: evidenceDir + "/desktop-edit.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check(overflow <= 1, "narrow viewport has no document horizontal overflow");
   await page.screenshot({ path: evidenceDir + "/narrow.png", fullPage: true });
