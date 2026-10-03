@@ -53,25 +53,40 @@ async function ownerBootstrap(url:URL){
     .select("*").eq("token_hash",hash).is("used_at",null).gt("expires_at",new Date().toISOString()).maybeSingle();
   if(error) throw error;
   if(!row) return json({error:"BOOTSTRAP_TOKEN_INVALID_OR_EXPIRED"},401);
+
   const {data:owner,error:oe}=await admin.from("studio_owner_access").select("email").eq("owner_id",row.owner_id).single();
   if(oe||!owner?.email) throw oe||new Error("OWNER_EMAIL_MISSING");
-  const {data:link,error:le}=await admin.auth.admin.generateLink({type:"magiclink",email:owner.email});
+
+  const {data:link,error:le}=await admin.auth.admin.generateLink({
+    type:"magiclink",
+    email:owner.email
+  });
   if(le) throw le;
+
   const properties=(link as any)?.properties||{};
-  let tokenHash=properties.hashed_token||properties.hashedToken||"";
-  if(!tokenHash){
-    const actionLink=properties.action_link||properties.actionLink||"";
-    if(actionLink){
-      try{
-        const au=new URL(actionLink);
-        tokenHash=au.searchParams.get("token")||au.searchParams.get("token_hash")||"";
-      }catch{}
-    }
+  const emailOtp=properties.email_otp||properties.emailOtp||"";
+  let verified:any=null;
+  let ve:any=null;
+  const verifier=createClient(SUPABASE_URL,SERVICE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+
+  if(emailOtp){
+    const vr=await verifier.auth.verifyOtp({email:owner.email,token:emailOtp,type:"email"});
+    verified=vr.data; ve=vr.error;
+  }else{
+    const tokenHash=properties.hashed_token||properties.hashedToken||"";
+    const verificationType=(properties.verification_type||properties.verificationType||"magiclink") as any;
+    if(!tokenHash) throw Object.assign(new Error("BOOTSTRAP_TOKEN_MATERIAL_MISSING"),{status:500});
+    const vr=await verifier.auth.verifyOtp({token_hash:tokenHash,type:verificationType});
+    verified=vr.data; ve=vr.error;
   }
-  if(!tokenHash) throw Object.assign(new Error("BOOTSTRAP_TOKEN_HASH_MISSING"),{status:500});
-  const {data:verified,error:ve}=await admin.auth.verifyOtp({token_hash:tokenHash,type:"email"});
+
   if(ve||!verified?.session) throw ve||Object.assign(new Error("BOOTSTRAP_SESSION_MISSING"),{status:500});
-  await admin.from("studio_owner_bootstrap_tokens").update({used_at:new Date().toISOString()}).eq("id",row.id);
+
+  const usedAt=new Date().toISOString();
+  const {data:marked,error:markError}=await admin.from("studio_owner_bootstrap_tokens")
+    .update({used_at:usedAt}).eq("id",row.id).is("used_at",null).select("id,used_at").maybeSingle();
+  if(markError||!marked?.used_at) throw markError||Object.assign(new Error("BOOTSTRAP_MARK_USED_FAILED"),{status:500});
+
   const target=new URL(row.return_to);
   const s=verified.session;
   target.hash=new URLSearchParams({
