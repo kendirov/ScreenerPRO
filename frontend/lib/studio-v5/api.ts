@@ -1,6 +1,7 @@
 "use client";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getLocalAssetPayload, localStudioAction } from "./local-store";
+import type {DocumentBundle} from "./types";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://hppbuzbrjoyrwpdinlxk.supabase.co";
 const SUPABASE_PUBLIC_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh";
@@ -126,11 +127,11 @@ export async function driveOAuthStart(returnTo:string){
   const r=await fetch(`${FN}/oauth/start?return_to=${encodeURIComponent(returnTo)}`,{headers:{Authorization:`Bearer ${session.access_token}`}});
   const x=await r.json(); if(!r.ok) throw Object.assign(new Error(x.code||x.error||"OAUTH_START_FAILED"),{details:x,status:r.status}); return x as {url:string;redirectUri:string;scopes:string[]};
 }
-export async function downloadPdf(documentId:string,saveDrive:boolean){
-  const appOrigin=window.location.origin;
-  const r=await fetch(`/api/studio/pdf?documentId=${encodeURIComponent(documentId)}&appOrigin=${encodeURIComponent(appOrigin)}&saveDrive=${saveDrive?1:0}`,{cache:"no-store"});
+export async function downloadPdf(bundle:DocumentBundle,liveUrl:string){
+  const r=await fetch("/api/studio/pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({bundle,liveUrl}),cache:"no-store"});
   if(!r.ok){let x:any={};try{x=await r.json()}catch{}throw Object.assign(new Error(x.error||`PDF ${r.status}`),{details:x,status:r.status})}
-  const blob=await r.blob(); const cd=r.headers.get("Content-Disposition")||""; return {blob,contentDisposition:cd,shareUrl:r.headers.get("X-TQS-Share-Url"),drive:r.headers.get("X-TQS-Drive-Export")};
+  const blob=await r.blob();const cd=r.headers.get("Content-Disposition")||"";
+  return {blob,contentDisposition:cd,shareUrl:r.headers.get("X-TQS-Share-Url")||liveUrl,drive:null};
 }
 export async function ownerMagicLink(email:string){
   return studioSupabase().auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href}});
