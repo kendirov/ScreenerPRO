@@ -304,3 +304,18 @@ begin
     execute format('grant select,insert,update,delete on table public.%I to service_role',t);
   end loop;
 end $$;
+
+
+-- Owner bootstrap fallback: server-generated one-time sign-in without email delivery.
+create table if not exists public.studio_owner_bootstrap_tokens (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.studio_owner_access(owner_id) on delete cascade,
+  token_hash text not null unique,
+  return_to text not null,
+  expires_at timestamptz not null,
+  used_at timestamptz null,
+  created_at timestamptz not null default now()
+);
+alter table public.studio_owner_bootstrap_tokens enable row level security;
+revoke all on table public.studio_owner_bootstrap_tokens from anon, authenticated;
+grant select,insert,update,delete on table public.studio_owner_bootstrap_tokens to service_role;
