@@ -4,7 +4,7 @@ import {BookOpen,ChevronLeft,ChevronRight,CircleDot,Download,FileJson,FileText,F
 import {DocumentEditorV5} from "@/components/studio-v5/DocumentEditorV5";
 import {StudioMarketChart} from "@/components/studio-v5/MarketChart";
 import {downloadPdf,driveOAuthStart,studioAction} from "@/lib/studio-v5/api";
-import {resetLocalStudio} from "@/lib/studio-v5/local-store";
+import {resetLocalStudio,saveLocalObjectDraft} from "@/lib/studio-v5/local-store";
 import type {DataSpec,DocumentBundle,StudioActivity,StudioDocument,StudioObject,WorldOverview} from "@/lib/studio-v5/types";
 import styles from "./studio-v5.module.css";
 
@@ -155,7 +155,7 @@ function TextObject({object:o,editing,onEdit,onStop,onPatch}:{object:StudioObjec
  const ref=useRef<HTMLDivElement>(null),[bubble,setBubble]=useState(false);
  useEffect(()=>{if(editing&&ref.current){ref.current.focus();const sel=window.getSelection(),range=document.createRange();range.selectNodeContents(ref.current);range.collapse(false);sel?.removeAllRanges();sel?.addRange(range)}},[editing]);
  useEffect(()=>{const f=()=>{const s=window.getSelection();setBubble(Boolean(editing&&s&&!s.isCollapsed&&ref.current?.contains(s.anchorNode)))};document.addEventListener("selectionchange",f);return()=>document.removeEventListener("selectionchange",f)},[editing]);
- return <div className={styles.textobj} onDoubleClick={onEdit}>{bubble&&<div className={styles.bubble}>{[["bold","B"],["italic","I"],["formatBlock","H2"],["insertUnorderedList","•"],["formatBlock","❝"]].map(([cmd,label],i)=><button key={i} onMouseDown={e=>e.preventDefault()} onClick={()=>document.execCommand(cmd,false,label==="H2"?"h2":label==="❝"?"blockquote":undefined)}>{label}</button>)}</div>}<div ref={ref} contentEditable={editing} suppressContentEditableWarning className={styles.editable} dangerouslySetInnerHTML={{__html:asHtml(o.body)||"<p></p>"}} onBlur={e=>{onPatch({body:{...o.body,html:e.currentTarget.innerHTML}},"text_update","Текст обновлён");onStop()}}/></div>
+ return <div className={styles.textobj} onDoubleClick={onEdit}>{bubble&&<div className={styles.bubble}>{[["bold","B"],["italic","I"],["formatBlock","H2"],["insertUnorderedList","•"],["formatBlock","❝"]].map(([cmd,label],i)=><button key={i} onMouseDown={e=>e.preventDefault()} onClick={()=>document.execCommand(cmd,false,label==="H2"?"h2":label==="❝"?"blockquote":undefined)}>{label}</button>)}</div>}<div ref={ref} contentEditable={editing} suppressContentEditableWarning className={styles.editable} dangerouslySetInnerHTML={{__html:asHtml(o.body)||"<p></p>"}} onInput={e=>{if(editing)saveLocalObjectDraft(o.id,{body:{...o.body,html:e.currentTarget.innerHTML}})}} onBlur={e=>{const html=e.currentTarget.innerHTML;saveLocalObjectDraft(o.id,{body:{...o.body,html}});onPatch({body:{...o.body,html}},"text_update","Текст обновлён");onStop()}}/></div>
 }
 function TaskObject({object:o,editing,onEdit,onStop,onPatch}:{object:StudioObject;editing:boolean;onEdit:()=>void;onStop:()=>void;onPatch:(p:any,e?:string,s?:string)=>void}){
  const [value,setValue]=useState(o.body?.title||o.title);const save=()=>{onPatch({title:value,body:{...o.body,title:value}},"task","Задача обновлена");onStop()};
