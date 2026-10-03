@@ -290,8 +290,8 @@ export default function StudioWorldV4(){
     onPointerDown={e=>{if(drawing){const p=screenToWorld(e.clientX,e.clientY);setDraftPoints([p]);return}if(e.button===1||(space&&e.button===0)){e.preventDefault();setGesture({type:"pan",sx:e.clientX,sy:e.clientY,ox:camera.x,oy:camera.y});return}if(e.button===0&&e.target===e.currentTarget){setSelected(null);setContext(null)}}}
     onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}
     onContextMenu={e=>{if((e.target as HTMLElement).closest("[data-world-item]"))return;e.preventDefault();const r=e.currentTarget.getBoundingClientRect(),p=screenToWorld(e.clientX,e.clientY);setContext({sx:e.clientX-r.left,sy:e.clientY-r.top,wx:p.x,wy:p.y})}}
-    onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();onFiles(e.dataTransfer.files,e.clientX,e.clientY)}}
-    onPaste={e=>{const f=Array.from(e.clipboardData.files);if(f.length)onFiles({0:f[0],length:1,item:(i:number)=>f[i]||null} as FileList,e.clientX||innerWidth/2,e.clientY||innerHeight/2)}}>
+    onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();onFiles(Array.from(e.dataTransfer.files),e.clientX,e.clientY)}}
+    onPaste={e=>{const files=Array.from(e.clipboardData.files);if(!files.length||!canvas.current)return;const r=canvas.current.getBoundingClientRect();onFiles(files,r.left+r.width/2,r.top+r.height/2)}}>
      <div className={styles.world} style={{transform:`translate(${camera.x}px,${camera.y}px) scale(${camera.zoom})`,width:WORLD_W,height:WORLD_H}}>
       {visibleItems.sort((a,b)=>a.z-b.z).map(item=>{
        if(lod==="far"&&item.kind!=="frame")return null;
