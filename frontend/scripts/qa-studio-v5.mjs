@@ -8,7 +8,7 @@ const errors=[];
 page.on("pageerror",e=>errors.push("pageerror: "+e.message));
 page.on("console",m=>{if(m.type()==="error")errors.push("console: "+m.text())});
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
-const state=async()=>page.evaluate(()=>JSON.parse(localStorage.getItem("tqs-studio-v5-recovery")||"null"));
+const state=async()=>page.evaluate(()=>JSON.parse(localStorage.getItem("tqs-studio-v5-local-state-v2")||"null"));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 try{
  await page.goto(base+"/studio",{waitUntil:"domcontentloaded",timeout:60000});
@@ -36,8 +36,8 @@ try{
  await textObj.waitFor();
  const editable=textObj.locator('[contenteditable="true"]');
  await editable.fill("QA text");
- await editable.evaluate(el=>el.blur());
- await wait(500);
+ await page.getByText("TQS Studio",{exact:true}).click();
+ await wait(350);
  let s=await state();assert(s.overview.objects.some(o=>o.kind==="text"&&String(o.body?.html||"").includes("QA text")),"text not persisted locally");
  console.log("PASS create/edit Text");
 
@@ -116,7 +116,7 @@ try{
  await page.getByTitle("Светлая / тёмная тема").click();assert(await page.locator("main").getAttribute("data-theme")==="dark","dark theme failed");
  console.log("PASS Light/Dark");
 
- await page.getByTitle("Добавить").click();await page.getByRole("button",{name:"Текст",exact:true}).click();const persistent=page.locator('[data-testid="world-text"]').last().locator('[contenteditable="true"]');await persistent.fill("RELOAD-PERSIST");await persistent.evaluate(el=>el.blur());await wait(500);
+ await page.getByTitle("Добавить").click();await page.getByRole("button",{name:"Текст",exact:true}).click();const persistent=page.locator('[data-testid="world-text"]').last().locator('[contenteditable="true"]');await persistent.fill("RELOAD-PERSIST");await page.getByText("TQS Studio",{exact:true}).click();await wait(350);
  await page.reload({waitUntil:"domcontentloaded"});await page.getByText("TQS Studio",{exact:true}).waitFor();s=await state();assert(s.overview.objects.some(o=>String(o.body?.html||"").includes("RELOAD-PERSIST")),"reload persistence failed");
  console.log("PASS reload persistence");
 
