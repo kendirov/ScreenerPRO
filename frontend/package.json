@@ -70,7 +70,14 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "tldraw": "5.4.2",
+    "@tiptap/react": "^3.6.6",
+    "@tiptap/starter-kit": "^3.6.6",
+    "@radix-ui/react-context-menu": "^2.2.16",
+    "@radix-ui/react-popover": "^1.1.15",
+    "echarts": "^6.0.0",
+    "pdfjs-dist": "^5.4.149"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
