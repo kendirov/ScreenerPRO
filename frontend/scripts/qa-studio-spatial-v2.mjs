@@ -9,6 +9,8 @@ console.log("QA: launch browser");
 const browser = await chromium.launch({ channel: "msedge", headless: true });
 console.log("QA: browser launched");
 const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+page.on("console", (msg) => console.log("BROWSER_CONSOLE", msg.type(), msg.text()));
+page.on("pageerror", (error) => console.log("BROWSER_PAGEERROR", error.message));
 const failures = [];
 const check = (condition, label) => {
   if (!condition) failures.push(label);
@@ -34,7 +36,7 @@ try {
   console.log("QA: goto", url);
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
   console.log("QA: domcontentloaded");
-  await page.getByTestId("studio-spatial-v2").waitFor();
+  await page.getByTestId("studio-spatial-v2").waitFor({ timeout: 10000 });
   check((await page.getByTestId("block-text").count()) >= 1, "initial Rich Text exists");
   check((await page.getByTestId("block-chart").count()) >= 1, "initial Chart exists");
   check((await page.getByTestId("block-video").count()) >= 1, "initial Video exists");
