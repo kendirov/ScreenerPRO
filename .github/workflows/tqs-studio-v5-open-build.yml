@@ -1,0 +1,23 @@
+name: TQS Studio V5 Open Build Gate
+on:
+  push:
+    branches:
+      - chatgpt/tqs-studio-v5-finalization-2026-10-03
+  workflow_dispatch:
+concurrency:
+  group: tqs-studio-v5-open-build
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir frontend build

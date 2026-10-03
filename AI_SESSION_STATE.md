@@ -3,41 +3,68 @@
 ## Canonical status
 
 - Default branch: `main`
-- Current observed HEAD before this front-door repair: `6a7d89d41e31a8a2f3e6798cfd1e24c26e10e30f`
-- Latest user-facing repository change: **TQS Academy v1**
-- This file is a compact recovery checkpoint, not a chronological log.
+- TQS Studio owner-review prototype branch: `chatgpt/tqs-studio-prototype-si-2026-10-02`
+- Prototype runtime commit verified before this checkpoint: `6c3023355ad06858888f96900c4f1d449cba85a5`
+- Prototype route: `/studio-prototype`
+- Status: **TECHNICAL PASS / OWNER REVIEW REQUIRED**
+- Production Studio implementation remains blocked until the owner reviews this prototype.
 
-## Current product surfaces in this repo
+## TQS Studio prototype scope now implemented
 
-- **Screener/Cockpit**: stocks/futures selection, Market Radar/In Play and related decision UI.
-- **Strategy Lab**: round-level and related strategy/research surfaces remain implemented; July scanner work is historical state, not the global current task.
-- **Academy**: dashboard, learning path and live lessons were added in the latest main commit.
-- **Materials**: interactive educational surfaces remain part of this codebase.
+This is deliberately an isolated prototype inside the existing TQS/ScreenerPRO frontend. It does **not** introduce production Studio DB schema, AI connector, publishing backend, Academy integration, or a second repo/backend.
 
-## Architecture boundary
+The Si demo page currently supports:
+- add block;
+- inline text editing;
+- drag/reorder;
+- block widths Full / 2/3 / 1/2 / 1/3 and multi-column composition;
+- hide from Preview;
+- Edit / Preview modes;
+- local browser persistence after reload;
+- Reset demo;
+- responsive narrow layout with vertical stacking.
 
-TQS is broader than this repository. See `TQS_PLATFORM.md`.
+Visual direction is a quiet monochrome editorial workspace, intentionally avoiding dashboard/card-grid/AI-look patterns.
 
-Generic desktop/device automation is no longer owned here. The historical `TQS Desktop Agent` implementation/docs are reference only; current generic execution belongs to Artem OS / `kendirov/tqs-development-factory`.
+## Verification evidence
 
-## Current repair / priority
-
-AI front door is being normalized so new ChatGPT/AI sessions:
-- enter through `AGENTS.md -> START_HERE_FOR_AI.md -> TQS_PLATFORM.md -> AI_SESSION_STATE.md`;
-- use Chat-first execution when available;
-- do not assume Cursor is mandatory;
-- do not use ScreenerPRO as the default repo for unrelated projects.
-
-## Stable verification
-
-Use targeted module verification first, then:
+Exact prototype source was built in an isolated WORK worktree with:
 
 ```
 pnpm -C frontend build
 ```
 
-For user-visible changes, build success alone is not PASS: inspect the actual relevant runtime/browser state.
+Build completed successfully and emitted `/studio-prototype` as a static route.
 
-## Next task rule
+Real Playwright browser interaction QA on WORK passed the complete acceptance flow:
+- default 10-block workspace;
+- Inspector selection;
+- width change to 1/2;
+- drag/reorder with DOM-order readback;
+- two half-width blocks side-by-side;
+- add block + inline edit;
+- hide image from Preview;
+- Preview without Inspector/add/drag editor chrome;
+- reload persistence of added block, edited text, width, hidden state and order;
+- Reset demo back to default state;
+- 390px viewport with zero horizontal overflow and vertical block stacking.
 
-There is intentionally no permanent "next feature" in this file. The next task comes from the owner's current goal + private TQS canon + current Git/runtime state. Update this file only when durable technical current state materially changes.
+QA process exit code: `0`.
+Screenshots captured for desktop Edit, desktop Preview and 390px narrow state.
+
+## Boundary / next step
+
+Stop here. Do not build the production TQS Studio architecture or backend yet.
+
+Next allowed action is owner review of the prototype. After review, record one of:
+- KEEP;
+- KEEP WITH CHANGES;
+- REJECT / REWORK.
+
+Only then may the production Studio roadmap be unblocked.
+
+## Platform boundary
+
+TQS is broader than this repository. See `TQS_PLATFORM.md`.
+
+Generic desktop/device automation is owned by Artem OS, not this repo.
