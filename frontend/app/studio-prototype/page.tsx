@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   Copy,
@@ -306,7 +306,6 @@ export default function StudioPrototypePage() {
   const [blocks, setBlocks] = useState<StudioBlock[]>(cloneDefaults);
   const [selectedId, setSelectedId] = useState<string | null>("si-before-2014");
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const draggedIdRef = useRef<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -440,19 +439,17 @@ export default function StudioPrototypePage() {
   };
 
   const moveBlock = (targetId: string) => {
-    const activeDraggedId = draggedIdRef.current ?? draggedId;
-    if (!activeDraggedId || activeDraggedId === targetId) return;
+    if (!draggedId || draggedId === targetId) return;
     setBlocks((current) => {
       const next = [...current];
-      const from = next.findIndex((block) => block.id === activeDraggedId);
+      const from = next.findIndex((block) => block.id === draggedId);
       if (from < 0) return current;
       const [moved] = next.splice(from, 1);
       const target = next.findIndex((block) => block.id === targetId);
       next.splice(Math.max(target, 0), 0, moved);
       return next;
     });
-    setSelectedId(activeDraggedId);
-    draggedIdRef.current = null;
+    setSelectedId(draggedId);
     setDraggedId(null);
   };
 
@@ -701,7 +698,7 @@ export default function StudioPrototypePage() {
                   style={{ "--block-span": block.span === "full" ? 12 : block.span === "twoThird" ? 8 : block.span === "half" ? 6 : 4 } as React.CSSProperties}
                   onClick={() => mode === "edit" && setSelectedId(block.id)}
                   onDragOver={(event) => {
-                    if (mode === "edit" && (draggedIdRef.current ?? draggedId)) event.preventDefault();
+                    if (mode === "edit" && draggedId) event.preventDefault();
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
@@ -720,12 +717,11 @@ export default function StudioPrototypePage() {
                         draggable
                         aria-label={`Перетащить блок ${block.content.title ?? block.type}`}
                         onDragStart={(event) => {
-                          draggedIdRef.current = block.id;
                           setDraggedId(block.id);
                           event.dataTransfer.effectAllowed = "move";
                           event.dataTransfer.setData("text/plain", block.id);
                         }}
-                        onDragEnd={() => {\n                          draggedIdRef.current = null;\n                          setDraggedId(null);\n                        }}
+                        onDragEnd={() => setDraggedId(null)}
                         data-testid={`drag-${block.id}`}
                       >
                         <GripVertical size={16} />
