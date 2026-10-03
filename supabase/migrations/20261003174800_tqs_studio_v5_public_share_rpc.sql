@@ -35,8 +35,8 @@ begin
   set revoked_at=now()
   where owner_id=v_owner and document_id=p_document_id and revoked_at is null;
 
-  v_token:=encode(gen_random_bytes(32),'hex');
-  v_hash:=encode(digest(v_token,'sha256'),'hex');
+  v_token:=encode(extensions.gen_random_bytes(32),'hex');
+  v_hash:=encode(extensions.digest(v_token,'sha256'),'hex');
 
   insert into public.studio_share_links(owner_id,document_id,slug,token_hash,mode,document_revision)
   values(v_owner,p_document_id,v_doc.slug,v_hash,'unlisted',v_doc.revision);
@@ -64,7 +64,7 @@ declare
   v_link public.studio_share_links%rowtype;
 begin
   if coalesce(p_token,'')='' then return null; end if;
-  v_hash:=encode(digest(p_token,'sha256'),'hex');
+  v_hash:=encode(extensions.digest(p_token,'sha256'),'hex');
 
   select * into v_link
   from public.studio_share_links
