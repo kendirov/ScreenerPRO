@@ -50,8 +50,9 @@ export default function StudioWorldV5(){
  const createObject=async(kind:string,opts:any={})=>{
   const p=opts.point||insertionPoint(),parent=deepestFrame(p.x,p.y),id=kind+"-"+crypto.randomUUID(),title=opts.title||titleForKind(kind);
   const dims=kind==="text"?{w:270,h:104}:kind==="task"?{w:300,h:84}:kind==="voice"?{w:320,h:84}:kind==="link"?{w:320,h:80}:kind==="image"?{w:480,h:320}:kind==="frame"?{w:700,h:480}:kind==="chart"?{w:620,h:390}:{w:340,h:110};
+  const imageTarget=kind==="text"?objects.filter(o=>o.kind==="image"&&p.x>=o.x&&p.x<=o.x+o.w&&p.y>=o.y&&p.y<=o.y+o.h).sort((a,b)=>b.z-a.z)[0]:null;
   const row:any={id,kind,semantic_path:parent?parent.semantic_path+"/"+title:title,parent_id:parent?.id||null,x:snap(p.x),y:snap(p.y),...dims,z:kind==="frame"?2:10,title,body:opts.body||{},relations:parent?[{type:"contains",targetId:parent.id}]:[],status:kind==="task"?"NEW":kind==="voice"?"WAITING_RECORDING":null,hidden:false};
-  if(opts.annotates)row.relations.push({type:"annotates",targetId:opts.annotates});
+  if(opts.annotates||imageTarget)row.relations.push({type:"annotates",targetId:opts.annotates||imageTarget.id});
   const res=await studioAction<any>("createWorldObject",{object:row});setOverview(v=>v?{...v,objects:[...v.objects,res.object],world:{...v.world,revision:res.worldRevision}}:v);setSelected(id);setContext(null);
   if(["text","task","link"].includes(kind))setEditing(id);return res.object as StudioObject;
  };
@@ -73,7 +74,7 @@ export default function StudioWorldV5(){
   if(g)await persistGesture(g).catch(e=>setNotice(e.message))
  };
 
- const handleFiles=async(files:File[],point?:{x:number;y:number})=>{for(const file of files.slice(0,4)){const p=point||insertionPoint(),dataUrl=await fileToDataUrl(file),asset=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),kind=file.type.startsWith("image/")?"image":"file";await createObject(kind,{point:p,title:file.name,body:{assetId:asset.asset.id,mimeType:asset.asset.mime_type,filename:file.name,previewUrl:asset.signedUrl}})}};
+ const handleFiles=async(files:File[],point?:{x:number;y:number})=>{for(const file of files.slice(0,4)){const p=point||insertionPoint(),dataUrl=await fileToDataUrl(file),asset=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),kind=file.type.startsWith("image/")?"image":"file";await createObject(kind,{point:p,title:file.name,body:{assetId:asset.asset.id,mimeType:asset.asset.mime_type,filename:file.name}})}};
  const classifyText=async(text:string,point?:{x:number;y:number})=>{const t=text.trim();if(!t)return;let url=false;try{const u=new URL(t);url=u.protocol==="http:"||u.protocol==="https:"}catch{}if(url)await createObject("link",{point,title:"Ссылка",body:{url:t}});else await createObject("text",{point,title:"Текст",body:{html:"<p>"+escapeHtml(t)+"</p>"}})};
  const onPaste=async(e:React.ClipboardEvent)=>{if(isEditableTarget(e.target))return;const files=Array.from(e.clipboardData.files);if(files.length){e.preventDefault();await handleFiles(files);return}const text=e.clipboardData.getData("text/plain");if(text){e.preventDefault();await classifyText(text)}};
  const onDrop=async(e:React.DragEvent)=>{e.preventDefault();const p=screenToWorld(e.clientX,e.clientY),files=Array.from(e.dataTransfer.files);if(files.length){await handleFiles(files,p);return}const text=e.dataTransfer.getData("text/uri-list")||e.dataTransfer.getData("text/plain");if(text)await classifyText(text,p)};
