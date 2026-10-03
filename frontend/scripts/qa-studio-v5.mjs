@@ -37,8 +37,8 @@ try{
  const editable=textObj.locator('[contenteditable="true"]');
  await editable.fill("QA text");
  await page.getByText("TQS Studio",{exact:true}).click();
- await wait(350);
- let s=await state();assert(s.overview.objects.some(o=>o.kind==="text"&&String(o.body?.html||"").includes("QA text")),"text not persisted locally");
+ await page.waitForFunction(()=>{try{const s=JSON.parse(localStorage.getItem("tqs-studio-v5-local-state-v2")||"null");return s?.overview?.objects?.some(o=>o.kind==="text"&&String(o.body?.html||"").includes("QA text"))}catch{return false}},{timeout:3000}).catch(()=>{});
+ let s=await state();if(!s?.overview?.objects?.some(o=>o.kind==="text"&&String(o.body?.html||"").includes("QA text"))){console.log("TEXT_DEBUG_DOM",await editable.innerHTML());console.log("TEXT_DEBUG_STATE",JSON.stringify(s?.overview?.objects?.filter(o=>o.kind==="text").map(o=>({id:o.id,title:o.title,body:o.body,revision:o.revision}))||[]))}assert(s.overview.objects.some(o=>o.kind==="text"&&String(o.body?.html||"").includes("QA text")),"text not persisted locally");
  console.log("PASS create/edit Text");
 
  await page.getByTitle("Добавить").click();
