@@ -320,121 +320,6 @@ async function ensureStudioSeed(owner:{id:string;email:string}){
   return {seed:"canonical-v5",objects:objects.length,documents:docs.length,lessonBlocks:lessonBlocks.length};
 }
 
-
-const DIRECT_PUBLIC_ACTIONS=new Set(["getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
-
-async function dbOwner(){
-  const rows=await directDb`select owner_id::text as owner_id,email from public.studio_owner_access where lower(email)=lower('kendirov@gmail.com') limit 1`;
-  const row=rows[0]; if(!row) throw new Error("PUBLIC_OWNER_NOT_FOUND");
-  return {id:String(row.owner_id),email:String(row.email)};
-}
-async function dbLoadDocument(ownerId:string,documentId:string){
-  const rows=await directDb`
-    select jsonb_build_object(
-      'document',to_jsonb(d),
-      'blocks',coalesce((select jsonb_agg(to_jsonb(b) order by b.ordinal) from public.studio_document_blocks b where b.owner_id=${ownerId}::uuid and b.document_id=d.id),'[]'::jsonb)
-    ) as bundle
-    from public.studio_documents d where d.owner_id=${ownerId}::uuid and d.id=${documentId} limit 1`;
-  if(!rows[0]?.bundle) throw new Error("DOCUMENT_NOT_FOUND"); return rows[0].bundle;
-}
-async function dbLogActivity(ownerId:string,entityId:string|null,semanticPath:string,eventType:string,summary:string,payload:any={}){
-  await directDb`insert into public.studio_activity(owner_id,world_key,entity_id,semantic_path,event_type,summary,payload,status)
-    values(${ownerId}::uuid,${OWNER_WORLD},${entityId},${semanticPath},${eventType},${summary},${JSON.stringify(payload)}::jsonb,'NEW')`;
-}
-async function dbBumpWorld(ownerId:string){
-  const rows=await directDb`update public.studio_worlds set revision=revision+1,updated_at=now()
-    where owner_id=${ownerId}::uuid and world_key=${OWNER_WORLD} returning revision`;
-  return Number(rows[0]?.revision||0);
-}
-async function dbAction(owner:{id:string;email:string},name:string,p:any,origin:string){
-  if(name==="getWorldOverview"){
-    const rows=await directDb`select jsonb_build_object(
-      'world',(select to_jsonb(w) from public.studio_worlds w where w.owner_id=${owner.id}::uuid and w.world_key=${OWNER_WORLD}),
-      'objects',coalesce((select jsonb_agg(to_jsonb(o) order by o.z,o.id) from public.studio_world_objects o where o.owner_id=${owner.id}::uuid and o.world_key=${OWNER_WORLD}),'[]'::jsonb),
-      'activity',coalesce((select jsonb_agg(to_jsonb(a) order by a.occurred_at desc) from (select * from public.studio_activity where owner_id=${owner.id}::uuid and world_key=${OWNER_WORLD} order by occurred_at desc limit 100) a),'[]'::jsonb)
-    ) as data`; return rows[0]?.data||{world:null,objects:[],activity:[]};
-  }
-  if(name==="getEntityContext"){
-    const rows=await directDb`select jsonb_build_object(
-      'entity',to_jsonb(e),
-      'children',coalesce((select jsonb_agg(to_jsonb(c) order by c.z,c.id) from public.studio_world_objects c where c.owner_id=${owner.id}::uuid and c.parent_id=e.id),'[]'::jsonb),
-      'activity',coalesce((select jsonb_agg(to_jsonb(a) order by a.occurred_at desc) from (select * from public.studio_activity where owner_id=${owner.id}::uuid and semantic_path like e.semantic_path||'%' order by occurred_at desc limit 50) a),'[]'::jsonb),
-      'documents',coalesce((select jsonb_agg(to_jsonb(d) order by d.updated_at desc) from public.studio_documents d where d.owner_id=${owner.id}::uuid and d.frame_id=e.id),'[]'::jsonb)
-    ) as data from public.studio_world_objects e where e.owner_id=${owner.id}::uuid and e.id=${String(p.id||"")} limit 1`;
-    if(!rows[0]?.data) throw new Error("ENTITY_NOT_FOUND"); return rows[0].data;
-  }
-  if(name==="getRecentActivity"){
-    const prefix=p.semanticPath?String(p.semanticPath)+"%":null,status=p.status?String(p.status):null,since=p.since?String(p.since):null,limit=Math.min(Number(p.limit||50),200);
-    return await directDb`select * from public.studio_activity where owner_id=${owner.id}::uuid
-      and (${prefix}::text is null or semantic_path like ${prefix})
-      and (${status}::text is null or status=${status})
-      and (${since}::timestamptz is null or occurred_at>=${since}::timestamptz)
-      order by occurred_at desc limit ${limit}`;
-  }
-  if(name==="getDocument") return dbLoadDocument(owner.id,String(p.documentId||""));
-  if(name==="listDocuments") return await directDb`select * from public.studio_documents where owner_id=${owner.id}::uuid and world_key=${OWNER_WORLD} order by updated_at desc`;
-  if(name==="createDocument"){
-    const id=String(p.id||("doc-"+crypto.randomUUID())),slug=String(p.slug||String(p.title||"document").toLowerCase().replace(/[^a-z0-9а-яё]+/gi,"-").replace(/^-|-$/g,"")+"-"+id.slice(-6));
-    return await directDb.begin(async sql=>{
-      const docs=await sql`insert into public.studio_documents(id,owner_id,world_key,slug,kind,title,semantic_path,frame_id,revision,status,share_mode,metadata)
-        values(${id},${owner.id}::uuid,${OWNER_WORLD},${slug},${String(p.kind||"instruction")},${String(p.title||"Новый документ")},${String(p.semanticPath||"Документы")},${p.frameId||null},1,'DRAFT','private','{}'::jsonb) returning *`;
-      const doc=docs[0],h="h-"+crypto.randomUUID(),t="t-"+crypto.randomUUID();
-      await sql`insert into public.studio_document_blocks(block_id,document_id,owner_id,ordinal,block_type,content) values
-        (${h},${id},${owner.id}::uuid,1,'heading',${JSON.stringify({text:doc.title})}::jsonb),
-        (${t},${id},${owner.id}::uuid,2,'rich_text',${JSON.stringify({html:"<p>Новый документ</p>"})}::jsonb)`;
-      await sql`insert into public.studio_document_revisions(document_id,owner_id,revision,snapshot,reason) values(${id},${owner.id}::uuid,1,${JSON.stringify({document:doc})}::jsonb,'create document')`;
-      await sql`insert into public.studio_activity(owner_id,world_key,entity_id,semantic_path,event_type,summary,payload,status)
-        values(${owner.id}::uuid,${OWNER_WORLD},${id},${doc.semantic_path},'document_link',${"Создан документ: "+doc.title},'{}'::jsonb,'NEW')`;
-      const blocks=await sql`select * from public.studio_document_blocks where owner_id=${owner.id}::uuid and document_id=${id} order by ordinal`;
-      return {document:doc,blocks};
-    });
-  }
-  if(name==="upsertDocumentBlock"){
-    const rows=await directDb`select public.studio_upsert_document_block(${owner.id}::uuid,${String(p.documentId||"")},${String(p.blockId||"")},${String(p.blockType||"rich_text")},${JSON.stringify(p.content||{})}::jsonb,${p.dataSpec==null?null:JSON.stringify(p.dataSpec)}::jsonb,${p.afterBlockId||null}) as data`;
-    await dbLogActivity(owner.id,String(p.documentId||""),String(p.semanticPath||"Документы"),"text_update","Обновлён блок "+String(p.blockId||""),{blockType:p.blockType}); return rows[0]?.data;
-  }
-  if(name==="reorderDocumentBlock"){
-    const rows=await directDb`select public.studio_reorder_document_block(${owner.id}::uuid,${String(p.documentId||"")},${String(p.blockId||"")},${Number(p.targetOrdinal||1)}) as data`; return rows[0]?.data;
-  }
-  if(name==="createWorldObject"){
-    const o={...sanitizeObjectPatch(p.object),id:String(p.object?.id||crypto.randomUUID())};
-    const rows=await directDb`insert into public.studio_world_objects(id,world_key,owner_id,kind,semantic_path,parent_id,x,y,w,h,z,title,body,relations,status,hidden,revision)
-      values(${o.id},${OWNER_WORLD},${owner.id}::uuid,${String(o.kind||"text")},${String(o.semantic_path||o.title||"Объект")},${o.parent_id??null},
-        ${Number(o.x||0)},${Number(o.y||0)},${Number(o.w||320)},${Number(o.h||120)},${Number(o.z||1)},${String(o.title||"")},
-        ${JSON.stringify(o.body||{})}::jsonb,${JSON.stringify(o.relations||[])}::jsonb,${o.status??null},${Boolean(o.hidden)},1) returning *`;
-    const data=rows[0],worldRevision=await dbBumpWorld(owner.id);await dbLogActivity(owner.id,data.id,data.semantic_path,"create","Создано: "+(data.title||data.kind));return {object:data,worldRevision};
-  }
-  if(name==="updateObject"){
-    const patch=sanitizeObjectPatch(p.patch),pj=JSON.stringify(patch),nextRevision=Number(p.revision||1)+1;
-    const rows=await directDb`update public.studio_world_objects o set
-      kind=case when ${pj}::jsonb ? 'kind' then ${pj}::jsonb->>'kind' else o.kind end,
-      semantic_path=case when ${pj}::jsonb ? 'semantic_path' then ${pj}::jsonb->>'semantic_path' else o.semantic_path end,
-      parent_id=case when ${pj}::jsonb ? 'parent_id' then ${pj}::jsonb->>'parent_id' else o.parent_id end,
-      x=case when ${pj}::jsonb ? 'x' then (${pj}::jsonb->>'x')::float8 else o.x end,
-      y=case when ${pj}::jsonb ? 'y' then (${pj}::jsonb->>'y')::float8 else o.y end,
-      w=case when ${pj}::jsonb ? 'w' then (${pj}::jsonb->>'w')::float8 else o.w end,
-      h=case when ${pj}::jsonb ? 'h' then (${pj}::jsonb->>'h')::float8 else o.h end,
-      z=case when ${pj}::jsonb ? 'z' then (${pj}::jsonb->>'z')::int else o.z end,
-      title=case when ${pj}::jsonb ? 'title' then coalesce(${pj}::jsonb->>'title','') else o.title end,
-      body=case when ${pj}::jsonb ? 'body' then coalesce(${pj}::jsonb->'body','{}'::jsonb) else o.body end,
-      relations=case when ${pj}::jsonb ? 'relations' then coalesce(${pj}::jsonb->'relations','[]'::jsonb) else o.relations end,
-      status=case when ${pj}::jsonb ? 'status' then ${pj}::jsonb->>'status' else o.status end,
-      hidden=case when ${pj}::jsonb ? 'hidden' then coalesce((${pj}::jsonb->>'hidden')::boolean,false) else o.hidden end,
-      revision=${nextRevision},updated_at=now()
-      where o.owner_id=${owner.id}::uuid and o.id=${String(p.id||"")} returning *`;
-    if(!rows[0]) throw new Error("OBJECT_NOT_FOUND");const data=rows[0],worldRevision=await dbBumpWorld(owner.id);
-    if(p.eventType)await dbLogActivity(owner.id,data.id,data.semantic_path,String(p.eventType),String(p.summary||("Обновлён: "+data.title)));return {object:data,worldRevision};
-  }
-  if(name==="markActivityDone"){
-    const rows=await directDb`update public.studio_activity set status='DONE' where owner_id=${owner.id}::uuid and id=${String(p.id||"")}::uuid returning *`; return rows[0]||null;
-  }
-  throw Object.assign(new Error("DIRECT_ACTION_UNSUPPORTED"),{status:400,details:{name}});
-}
-async function dispatchPublicAction(owner:{id:string;email:string},name:string,p:any,origin:string){
-  if(DIRECT_PUBLIC_ACTIONS.has(name)) return dbAction(owner,name,p,origin);
-  return action(owner,name,p,origin);
-}
-
 async function action(owner:{id:string;email:string},name:string,p:any,origin:string){
   if(name==="ensureSeed") return ensureStudioSeed(owner);
   if(name==="getWorldOverview"){
@@ -523,7 +408,7 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     const r=await driveFetch(owner.id,`https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&pageSize=100&orderBy=folder,name&supportsAllDrives=true&includeItemsFromAllDrives=true`);const x=await r.json();if(!r.ok)throw Object.assign(new Error("DRIVE_LIST_FAILED"),{status:r.status,details:x});return x.files||[];
   }
   if(name==="driveSyncCheckpoint"){
-    const overview=await dbAction(owner,"getWorldOverview",{},origin);const content=enc.encode(JSON.stringify({schemaVersion:"tqs-studio-world/v5",exportedAt:new Date().toISOString(),...overview},null,2));
+    const overview=await action(owner,"getWorldOverview",{},origin);const content=enc.encode(JSON.stringify({schemaVersion:"tqs-studio-world/v5",exportedAt:new Date().toISOString(),...overview},null,2));
     return upsertDriveContent(owner.id,{entityType:"world_snapshot",entityId:OWNER_WORLD,studioRevision:Number(overview.world.revision),name:"tqs-studio-world-v5.snapshot.json",mimeType:"application/json",content,parentId:DRIVE_ROOT,expectedDriveVersion:p.expectedDriveVersion||null});
   }
   if(name==="driveConflictProbe"){
@@ -563,36 +448,36 @@ async function runV5SelfTest(owner:{id:string;email:string},origin:string){
   const nonce=crypto.randomUUID(),objectId="qa-object-"+nonce,documentId="qa-doc-"+nonce;
   const assetIds:string[]=[]; const storagePaths:string[]=[]; const checks:Record<string,unknown>={};
   try{
-    checks.seed={mode:"existing-canonical"};
-    const overview=await dbAction(owner,"getWorldOverview",{},origin);
+    checks.seed=await ensureStudioSeed(owner);
+    const overview=await action(owner,"getWorldOverview",{},origin);
     if(!overview?.objects?.some((o:any)=>o.id==="lesson-free-1")) throw new Error("QA_LESSON_FRAME_MISSING");
     checks.world={objects:overview.objects.length,activity:overview.activity.length,revision:overview.world?.revision};
 
-    const lesson=await dbAction(owner,"getDocument",{documentId:"doc-lesson-workspace"},origin);
+    const lesson=await action(owner,"getDocument",{documentId:"doc-lesson-workspace"},origin);
     if((lesson?.blocks?.length||0)<13) throw new Error("QA_LESSON_BLOCKS_INCOMPLETE");
     checks.lesson={title:lesson.document.title,blocks:lesson.blocks.length};
 
-    const created=await dbAction(owner,"createWorldObject",{object:{
+    const created=await action(owner,"createWorldObject",{object:{
       id:objectId,kind:"text",semantic_path:"QA/V5/Temporary",parent_id:null,x:100,y:100,w:240,h:90,z:99,
       title:"QA temporary",body:{html:"<p>qa</p>"},relations:[],status:null,hidden:true
     }},origin);
     if(created?.object?.id!==objectId) throw new Error("QA_CREATE_OBJECT_FAILED");
     checks.createWorldObject=true;
 
-    const updated=await dbAction(owner,"updateObject",{id:objectId,revision:created.object.revision,patch:{title:"QA updated",body:{html:"<p>updated</p>"}},eventType:"text_update",summary:"QA updated"},origin);
+    const updated=await action(owner,"updateObject",{id:objectId,revision:created.object.revision,patch:{title:"QA updated",body:{html:"<p>updated</p>"}},eventType:"text_update",summary:"QA updated"},origin);
     if(updated?.object?.title!=="QA updated") throw new Error("QA_UPDATE_OBJECT_FAILED");
     checks.updateObject=true;
 
-    const doc=await dbAction(owner,"createDocument",{id:documentId,title:"QA V5 temporary document",semanticPath:"QA/V5",kind:"instruction"},origin);
+    const doc=await action(owner,"createDocument",{id:documentId,title:"QA V5 temporary document",semanticPath:"QA/V5",kind:"instruction"},origin);
     const firstId=doc?.blocks?.[0]?.block_id;
     if(!firstId) throw new Error("QA_CREATE_DOCUMENT_FAILED");
     checks.createDocument=true;
 
-    const inserted=await dbAction(owner,"upsertDocumentBlock",{documentId,blockId:"qa-block-"+nonce,blockType:"callout",content:{text:"QA inserted"},afterBlockId:firstId,semanticPath:"QA/V5"},origin);
+    const inserted=await action(owner,"upsertDocumentBlock",{documentId,blockId:"qa-block-"+nonce,blockType:"callout",content:{text:"QA inserted"},afterBlockId:firstId,semanticPath:"QA/V5"},origin);
     if(!inserted?.block) throw new Error("QA_INSERT_BLOCK_FAILED");
     checks.upsertDocumentBlock=true;
 
-    const reordered=await dbAction(owner,"reorderDocumentBlock",{documentId,blockId:"qa-block-"+nonce,targetOrdinal:1},origin);
+    const reordered=await action(owner,"reorderDocumentBlock",{documentId,blockId:"qa-block-"+nonce,targetOrdinal:1},origin);
     if(!reordered?.blocks?.some((b:any)=>b.block_id==="qa-block-"+nonce&&b.ordinal===1)) throw new Error("QA_REORDER_FAILED");
     checks.reorderDocumentBlock=true;
 
@@ -604,12 +489,12 @@ async function runV5SelfTest(owner:{id:string;email:string},origin:string){
     if(!assetUrl?.signedUrl) throw new Error("QA_ASSET_URL_FAILED");
     checks.getAssetUrl=true;
 
-    const recent=await dbAction(owner,"getRecentActivity",{semanticPath:"QA/V5",limit:20},origin);
+    const recent=await action(owner,"getRecentActivity",{semanticPath:"QA/V5",limit:20},origin);
     checks.getRecentActivity=Array.isArray(recent);
     const event=recent?.find((x:any)=>x.entity_id===documentId)||recent?.[0];
-    if(event?.id){await dbAction(owner,"markActivityDone",{id:event.id},origin);checks.markActivityDone=true}else checks.markActivityDone="no-event";
+    if(event?.id){await action(owner,"markActivityDone",{id:event.id},origin);checks.markActivityDone=true}else checks.markActivityDone="no-event";
 
-    const entity=await dbAction(owner,"getEntityContext",{id:"lesson-free-1"},origin);
+    const entity=await action(owner,"getEntityContext",{id:"lesson-free-1"},origin);
     if(!entity?.entity) throw new Error("QA_ENTITY_CONTEXT_FAILED");
     checks.getEntityContext={children:entity.children?.length||0,documents:entity.documents?.length||0};
 
@@ -681,17 +566,17 @@ Deno.serve(async(req:Request)=>{
     if(path==="/public/smoke"&&req.method==="GET"){
       const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
       if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
-      const owner=await dbOwner();
-      const world=await dbAction(owner,"getWorldOverview",{},origin||"");
-      const docs=await dbAction(owner,"listDocuments",{},origin||"");
+      const world=await action({id:o.owner_id,email:o.email},"getWorldOverview",{},origin||"");
+      const docs=await action({id:o.owner_id,email:o.email},"listDocuments",{},origin||"");
       return json({ok:true,mode:"open-prototype",world:world?.world?.title||null,objects:world?.objects?.length||0,documents:docs?.length||0},200,origin);
     }
     if(path==="/public/action"&&req.method==="POST"){
       const body=await req.json();
       const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","driveStatus"]);
       if(!allowed.has(body.action)) return json({ok:false,error:"PUBLIC_ACTION_FORBIDDEN"},403,origin);
-      const owner=await dbOwner();
-      return json({ok:true,data:await dispatchPublicAction(owner,body.action,body.payload||{},origin||"")},200,origin);
+      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
+      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
+      return json({ok:true,data:await action({id:o.owner_id,email:o.email},body.action,body.payload||{},origin||"")},200,origin);
     }
     if(path==="/public/pdf"&&req.method==="GET"){
       const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
