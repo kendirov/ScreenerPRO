@@ -40,3 +40,6 @@
 .linkCard input{flex:1;min-width:0;border:0;border-bottom:1px solid var(--line);outline:0;background:transparent;color:var(--text);padding:6px 2px;font-size:11px}
 .snapGuideV,.snapGuideH{position:absolute;z-index:98;pointer-events:none;background:color-mix(in srgb,var(--amber) 72%,transparent);box-shadow:0 0 8px color-mix(in srgb,var(--amber) 30%,transparent)}
 .snapGuideV{top:0;bottom:0;left:50%;width:1px}.snapGuideH{left:0;right:0;top:50%;height:1px}
+
+.docHeaderActions{display:flex;gap:7px;align-items:center}
+.docHeaderActions button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;padding:8px 10px;display:flex;gap:6px;align-items:center}
