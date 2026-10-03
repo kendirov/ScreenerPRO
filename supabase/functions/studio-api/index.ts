@@ -402,6 +402,13 @@ Deno.serve(async(req:Request)=>{
       const token=url.searchParams.get("token")||"";const bundle=token?await loadShare(token):null;
       if(!bundle)return json({error:"SHARE_NOT_FOUND"},404,origin);return json(bundle,200,origin);
     }
+    if(path==="/public/smoke"&&req.method==="GET"){
+      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
+      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
+      const world=await action({id:o.owner_id,email:o.email},"getWorldOverview",{},origin||"");
+      const docs=await action({id:o.owner_id,email:o.email},"listDocuments",{},origin||"");
+      return json({ok:true,mode:"open-prototype",world:world?.world?.title||null,objects:world?.objects?.length||0,documents:docs?.length||0},200,origin);
+    }
     if(path==="/public/action"&&req.method==="POST"){
       const body=await req.json();
       const allowed=new Set(["getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare"]);
