@@ -35,3 +35,8 @@
 .docAdd{max-width:760px;margin-top:18px;border-top:1px solid var(--line);padding-top:12px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}.docAdd span{font-size:9px;color:var(--muted)}
 @media(max-width:900px){.navigator{width:230px;flex-basis:230px}.topActions>button:first-child{display:none}.brand{min-width:auto}.documentEditor{padding:30px 24px}.docList{width:220px;flex-basis:220px}}
 @media(prefers-reduced-motion:reduce){.item{transition:none}}
+
+.linkCard{height:100%;display:flex;align-items:center;gap:9px;padding:14px;color:var(--amber)}
+.linkCard input{flex:1;min-width:0;border:0;border-bottom:1px solid var(--line);outline:0;background:transparent;color:var(--text);padding:6px 2px;font-size:11px}
+.snapGuideV,.snapGuideH{position:absolute;z-index:98;pointer-events:none;background:color-mix(in srgb,var(--amber) 72%,transparent);box-shadow:0 0 8px color-mix(in srgb,var(--amber) 30%,transparent)}
+.snapGuideV{top:0;bottom:0;left:50%;width:1px}.snapGuideH{left:0;right:0;top:50%;height:1px}
