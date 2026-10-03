@@ -15,7 +15,7 @@ import styles from "./studio-world-v4.module.css";
 
 type ThemeMode="light"|"dark";
 type Surface="world"|"documents";
-type Kind="frame"|"text"|"task"|"image"|"chart"|"video"|"pdf"|"voice"|"documentRef"|"annotation";
+type Kind="frame"|"text"|"task"|"image"|"chart"|"video"|"pdf"|"voice"|"documentRef"|"link"|"annotation";
 type AnnotationKind="pencil"|"marker"|"arrow"|"label";
 type Relation={type:"contains"|"spatial_context"|"annotates"|"targets"|"references"|"depends_on"|"derived_from"|"document_of";targetId:string};
 type Item={
@@ -39,7 +39,7 @@ const STORAGE="tqs-studio-world-v4";
 const now=()=>new Date().toISOString();
 const uid=(p:string)=>`${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
 const SNAP=10;
-const snap=(n:number)=>Math.round(n/SNAP)*SNAP;
+const snap=(n:number)=>Math.round(n/SNAP)*SNAP;\nconst readDataUrl=(blob:Blob)=>new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(blob)});
 const WORLD_W=7200,WORLD_H=4200;
 
 const FRAME_AGENT="frame-agent";
@@ -133,7 +133,7 @@ function TextCard({item,onChange}:{item:Item;onChange:(p:Partial<Item>)=>void}){
 function VoiceCard({item,onChange}:{item:Item;onChange:(p:Partial<Item>)=>void}){
  const recorder=useRef<MediaRecorder|null>(null),chunks=useRef<Blob[]>([]),started=useRef(0);
  const [recording,setRecording]=useState(false);
- const begin=async()=>{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const r=new MediaRecorder(stream);chunks.current=[];r.ondataavailable=e=>{if(e.data.size)chunks.current.push(e.data)};r.onstop=()=>{const b=new Blob(chunks.current,{type:r.mimeType||"audio/webm"});onChange({audioUrl:URL.createObjectURL(b),duration:Math.max(1,Math.round((Date.now()-started.current)/1000)),status:"Ожидает расшифровки"});stream.getTracks().forEach(t=>t.stop())};started.current=Date.now();r.start();recorder.current=r;setRecording(true)};
+ const begin=async()=>{const stream=await navigator.mediaDevices.getUserMedia({audio:true});const r=new MediaRecorder(stream);chunks.current=[];r.ondataavailable=e=>{if(e.data.size)chunks.current.push(e.data)};r.onstop=()=>{const b=new Blob(chunks.current,{type:r.mimeType||"audio/webm"});void readDataUrl(b).then(audioUrl=>onChange({audioUrl,duration:Math.max(1,Math.round((Date.now()-started.current)/1000)),status:"Ожидает расшифровки"}));stream.getTracks().forEach(t=>t.stop())};started.current=Date.now();r.start();recorder.current=r;setRecording(true)};
  const stop=()=>{recorder.current?.stop();setRecording(false)};
  return <div className={styles.voiceCard} onPointerDown={e=>e.stopPropagation()}>
   <button data-testid="voice-record" className={recording?styles.recording:""} onClick={recording?stop:begin}>{recording?<SquarePen size={16}/>:<Mic size={16}/>} {recording?"Остановить":"Записать"}</button>
@@ -169,7 +169,7 @@ function DocEditor({doc,onDoc,goWorld}:{doc:StudioDocument;onDoc:(d:StudioDocume
     {(b.type==="chart"||b.type==="video"||b.type==="image")?<div className={styles.docRef}><Layers3 size={18}/><b>{b.content}</b><small>{b.ref||"reference"}</small></div>:<div contentEditable suppressContentEditableWarning onBlur={e=>update(b.id,e.currentTarget.innerText)}>{b.content}</div>}
    </section>)}
   </div>
-  <footer className={styles.docAdd}><span>Добавить блок:</span>{(["text","callout","image","chart","video","source","divider"] as DocBlock["type"][]).map(t=><button key={t} onClick={()=>add(t)}>{t}</button>)}</footer>
+  <footer className={styles.docAdd}><span>Добавить блок:</span>{(["text","callout","image","chart","video","source","divider"] as DocBlock["type"][]).map(t=><button key={t} onClick={()=>add(t)}>{{text:"Текст",callout:"Выделение",image:"Изображение",chart:"График",video:"Видео",source:"Источник",divider:"Разделитель"}[t]}</button>)}</footer>
  </article>
 }
 
@@ -198,9 +198,9 @@ export default function StudioWorldV4(){
 
  const screenToWorld=(cx:number,cy:number)=>{const r=canvas.current!.getBoundingClientRect();return{x:(cx-r.left-camera.x)/camera.zoom,y:(cy-r.top-camera.y)/camera.zoom}};
  const deepestFrame=(x:number,y:number)=>items.filter(i=>i.kind==="frame"&&x>=i.x&&x<=i.x+i.w&&y>=i.y&&y<=i.y+i.h).sort((a,b)=>(a.w*a.h)-(b.w*b.h))[0];
- const addAt=(kind:Kind,x:number,y:number,title?:string)=>{
+ const kindTitles:Record<Kind,string>={frame:"Фрейм / раздел",text:"Текст",task:"Задача",image:"Картинка / скриншот",chart:"График / данные",video:"Видео",pdf:"PDF / документ",voice:"Голосовая заметка",documentRef:"Документ",link:"Ссылка",annotation:"Аннотация"};\n const addAt=(kind:Kind,x:number,y:number,title?:string)=>{
   const parent=deepestFrame(x,y),id=uid(kind),semantic=parent?`${parent.semanticPath}/${title||kind}`:title||kind,t=now();
-  const base:Item={id,kind,semanticPath:semantic,parentId:parent?.id,x:snap(x),y:snap(y),w:kind==="frame"?700:kind==="image"?500:kind==="chart"?560:kind==="voice"?430:kind==="task"?380:440,h:kind==="frame"?500:kind==="image"?340:kind==="chart"?360:kind==="voice"?210:kind==="task"?190:250,z:kind==="frame"?2:8,title:title||({text:"Текст",task:"Задача",image:"Картинка / скриншот",chart:"График / данные",video:"Видео",pdf:"PDF / документ",voice:"Голосовая заметка",documentRef:"Документ",annotation:"Аннотация",frame:"Фрейм / раздел"}[kind]),body:kind==="text"?"<p>Новая заметка</p>":kind==="task"?"Новая задача":undefined,status:kind==="voice"?"Ожидает записи":kind==="task"?"NEW":undefined,createdAt:t,updatedAt:t,relations:parent?[{type:"contains",targetId:parent.id}]:[]};
+  const base:Item={id,kind,semanticPath:semantic,parentId:parent?.id,x:snap(x),y:snap(y),w:kind==="frame"?700:kind==="image"?500:kind==="chart"?560:kind==="voice"?430:kind==="task"?380:440,h:kind==="frame"?500:kind==="image"?340:kind==="chart"?360:kind==="voice"?210:kind==="task"?190:250,z:kind==="frame"?2:8,title:title||kindTitles[kind],body:kind==="text"?"<p>Новая заметка</p>":kind==="task"?"Новая задача":kind==="link"?"https://":undefined,status:kind==="voice"?"Ожидает записи":kind==="task"?"NEW":undefined,createdAt:t,updatedAt:t,relations:parent?[{type:"contains",targetId:parent.id}]:[]};
   mutate(v=>[...v,base],()=>log(id,semantic,kind==="voice"?"voice":kind==="task"?"task":kind==="image"?"image_paste":"create",`Создано: ${base.title}`));setSelected(id);setContext(null);return id;
  };
  const move=(id:string,nx:number,ny:number)=>{
@@ -216,9 +216,9 @@ export default function StudioWorldV4(){
 
  const startMove=(e:React.PointerEvent,item:Item)=>{if(e.button!==0||drawing)return;e.preventDefault();e.stopPropagation();setSelected(item.id);setGesture({type:"move",id:item.id,sx:e.clientX,sy:e.clientY,ox:item.x,oy:item.y})};
  const pointerMove=(e:React.PointerEvent)=>{if(gesture?.type==="pan"){setCamera(c=>({...c,x:gesture.ox+e.clientX-gesture.sx,y:gesture.oy+e.clientY-gesture.sy}));return}if(gesture?.type==="move"){move(gesture.id,gesture.ox+(e.clientX-gesture.sx)/camera.zoom,gesture.oy+(e.clientY-gesture.sy)/camera.zoom);return}if(gesture?.type==="resize"){patch(gesture.id,{w:Math.max(220,snap(gesture.ow+(e.clientX-gesture.sx)/camera.zoom)),h:Math.max(140,snap(gesture.oh+(e.clientY-gesture.sy)/camera.zoom))});return}if(drawing&&draftPoints.length){const p=screenToWorld(e.clientX,e.clientY);setDraftPoints(v=>[...v,p])}};
- const pointerUp=()=>{if(drawing&&draftPoints.length>1){const pts=draftPoints,minX=Math.min(...pts.map(p=>p.x)),minY=Math.min(...pts.map(p=>p.y)),maxX=Math.max(...pts.map(p=>p.x)),maxY=Math.max(...pts.map(p=>p.y));const center=pts[Math.floor(pts.length/2)],image=items.filter(i=>i.kind==="image"&&center.x>=i.x&&center.x<=i.x+i.w&&center.y>=i.y&&center.y<=i.y+i.h).sort((a,b)=>b.z-a.z)[0],parent=deepestFrame(center.x,center.y),id=uid("annotation"),semantic=parent?`${parent.semanticPath}/Аннотация`:"Аннотация",t=now();const rel:Relation[]=[];if(image)rel.push({type:"annotates",targetId:image.id});if(parent)rel.push({type:"contains",targetId:parent.id});const ann:Item={id,kind:"annotation",annotationKind:drawing,semanticPath:semantic,parentId:parent?.id,x:minX,y:minY,w:Math.max(20,maxX-minX),h:Math.max(20,maxY-minY),z:20,title:drawing==="marker"?"Маркер":drawing==="arrow"?"Стрелка":"Карандаш",createdAt:t,updatedAt:t,relations:rel,points:pts.map(p=>({x:p.x-minX,y:p.y-minY}))};mutate(v=>[...v,ann],()=>log(id,semantic,"annotate",`Аннотация ${ann.title}${image?" на "+image.title:""}`));}setDraftPoints([]);setGesture(null)};
+ const pointerUp=()=>{const movedId=gesture?.type==="move"?gesture.id:null;if(drawing&&draftPoints.length>1){const pts=draftPoints,minX=Math.min(...pts.map(p=>p.x)),minY=Math.min(...pts.map(p=>p.y)),maxX=Math.max(...pts.map(p=>p.x)),maxY=Math.max(...pts.map(p=>p.y));const center=pts[Math.floor(pts.length/2)],image=items.filter(i=>i.kind==="image"&&center.x>=i.x&&center.x<=i.x+i.w&&center.y>=i.y&&center.y<=i.y+i.h).sort((a,b)=>b.z-a.z)[0],parent=deepestFrame(center.x,center.y),id=uid("annotation"),semantic=parent?`${parent.semanticPath}/Аннотация`:"Аннотация",t=now();const rel:Relation[]=[];if(image)rel.push({type:"annotates",targetId:image.id});if(parent)rel.push({type:"contains",targetId:parent.id});const ann:Item={id,kind:"annotation",annotationKind:drawing,semanticPath:semantic,parentId:parent?.id,x:minX,y:minY,w:Math.max(20,maxX-minX),h:Math.max(20,maxY-minY),z:20,title:drawing==="marker"?"Маркер":drawing==="arrow"?"Стрелка":"Карандаш",createdAt:t,updatedAt:t,relations:rel,points:pts.map(p=>({x:p.x-minX,y:p.y-minY}))};mutate(v=>[...v,ann],()=>log(id,semantic,"annotate",`Аннотация ${ann.title}${image?" на "+image.title:""}`));}setDraftPoints([]);setGesture(null);if(movedId)reparentAfterMove(movedId)};
 
- const onFiles=(files:FileList|null,cx:number,cy:number)=>{const file=files?.[0];if(!file||!file.type.startsWith("image/"))return;const p=screenToWorld(cx,cy),id=addAt("image",p.x,p.y,file.name);const url=URL.createObjectURL(file);patch(id,{assetUrl:url}, "image_paste")};
+ const onFiles=(files:File[],cx:number,cy:number)=>{const file=files[0];if(!file||!file.type.startsWith("image/"))return;const p=screenToWorld(cx,cy),id=addAt("image",p.x,p.y,file.name);void readDataUrl(file).then(assetUrl=>patch(id,{assetUrl},"image_paste"))};
  const openDoc=(id:string)=>{setDocId(id);setSurface("documents")};
  const currentDoc=documents.find(d=>d.id===docId)||documents[0];
  const setDoc=(d:StudioDocument)=>{setDocuments(v=>v.map(x=>x.id===d.id?d:x));setRevision(r=>r+1);log(d.id,d.semanticPath,"text_update",`Обновлён документ: ${d.title}`)};
@@ -237,7 +237,7 @@ export default function StudioWorldV4(){
 
  const Tree=({nodes,depth=0}:{nodes:any[];depth?:number})=><>{nodes.map(n=><div key={n.id}><div className={styles.treeRow} style={{paddingLeft:10+depth*14}}><button className={styles.treeMain} onClick={()=>n.doc?openDoc(n.doc):focus(n.id)}>{n.children?<ChevronRight size={12}/>:<span className={styles.dot}/>}<span>{n.label}</span></button><button title="На доске" data-testid={"board-target-"+n.id} onClick={()=>focus(n.id)}><CircleDot size={12}/></button></div>{n.children?<Tree nodes={n.children} depth={depth+1}/>:null}</div>)}</>;
 
- const visibleItems=items.filter(i=>!i.hidden);
+ const visibleItems=items.filter(i=>!i.hidden&&i.kind!=="annotation");
  const lod=camera.zoom<.32?"far":camera.zoom<.6?"mid":"near";
  const download=()=>{const b=new Blob([JSON.stringify(snapshot(),null,2)],{type:"application/json"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download="tqs-studio-world-v4.snapshot.json";a.click();setTimeout(()=>URL.revokeObjectURL(u),0)};
 
@@ -297,13 +297,13 @@ export default function StudioWorldV4(){
          {item.kind==="video"?<VideoCard/>:null}
          {item.kind==="pdf"?<PdfCard item={item} onChange={p=>patch(item.id,p)}/>:null}
          {item.kind==="image"?<div className={styles.imageCard}>{item.assetUrl?<img src={item.assetUrl} alt={item.title}/>:<><ImageIcon size={32}/><span>Перетащите или вставьте изображение</span></>}</div>:null}
-         {item.kind==="documentRef"?<button className={styles.documentRef} onClick={()=>{const d=item.relations.find(r=>r.type==="document_of");if(d)openDoc(d.targetId)}}><BookOpen size={22}/><b>{item.title}</b><span>Открыть документ</span></button>:null}
+         {item.kind==="link"?<div className={styles.linkCard} onPointerDown={e=>e.stopPropagation()}><LinkIcon size={18}/><input aria-label="URL" value={item.body||""} onChange={e=>patch(item.id,{body:e.target.value},"text_update")} placeholder="https://"/></div>:null}\n         {item.kind==="documentRef"?<button className={styles.documentRef} onClick={()=>{const d=item.relations.find(r=>r.type==="document_of");if(d)openDoc(d.targetId)}}><BookOpen size={22}/><b>{item.title}</b><span>Открыть документ</span></button>:null}
         </div></>}
         {selected===item.id?<span className={styles.resize} onPointerDown={e=>{e.stopPropagation();setGesture({type:"resize",id:item.id,sx:e.clientX,sy:e.clientY,ow:item.w,oh:item.h})}}/>:null}
        </div>
       })}
-      {items.filter(i=>i.kind==="annotation").map(a=><svg key={a.id} className={styles.annotation} style={{left:a.x,top:a.y,width:a.w,height:a.h,zIndex:a.z}} viewBox={`0 0 ${Math.max(1,a.w)} ${Math.max(1,a.h)}`}><polyline points={(a.points||[]).map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke={a.annotationKind==="marker"?"rgba(218,167,68,.42)":"#d7a84b"} strokeWidth={a.annotationKind==="marker"?18:3} strokeLinecap="round" strokeLinejoin="round"/></svg>)}
-      {draftPoints.length>1?<svg className={styles.annotationDraft} style={{left:0,top:0,width:WORLD_W,height:WORLD_H}}><polyline points={draftPoints.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke="#d7a84b" strokeWidth={drawing==="marker"?18:3} strokeLinecap="round"/></svg>:null}
+      {items.filter(i=>i.kind==="annotation").map(a=><svg key={a.id} className={styles.annotation} style={{left:a.x,top:a.y,width:a.w,height:a.h,zIndex:a.z}} viewBox={`0 0 ${Math.max(1,a.w)} ${Math.max(1,a.h)}`}><defs><marker id={`arrow-${a.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#d7a84b"/></marker></defs><polyline points={(a.points||[]).map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke={a.annotationKind==="marker"?"rgba(218,167,68,.42)":"#d7a84b"} strokeWidth={a.annotationKind==="marker"?18:3} strokeLinecap="round" strokeLinejoin="round" markerEnd={a.annotationKind==="arrow"?`url(#arrow-${a.id})`:undefined}/></svg>)}
+      {gesture?.type==="move"?<><div className={styles.snapGuideV}/><div className={styles.snapGuideH}/></>:null}\n      {draftPoints.length>1?<svg className={styles.annotationDraft} style={{left:0,top:0,width:WORLD_W,height:WORLD_H}}><polyline points={draftPoints.map(p=>`${p.x},${p.y}`).join(" ")} fill="none" stroke="#d7a84b" strokeWidth={drawing==="marker"?18:3} strokeLinecap="round"/></svg>:null}
      </div>
 
      <div className={styles.canvasTools}>
@@ -323,7 +323,7 @@ export default function StudioWorldV4(){
      {context?<div className={styles.context} style={{left:context.sx,top:context.sy}} data-testid="add-here-menu"><b>Добавить сюда</b>
       {[
        ["voice","Голосовая заметка",<Mic key="i" size={14}/>],["text","Текст",<Type key="i" size={14}/>],["task","Задача",<ListTodo key="i" size={14}/>],
-       ["image","Картинка / скриншот",<ImageIcon key="i" size={14}/>],["documentRef","Ссылка",<LinkIcon key="i" size={14}/>],["chart","График / данные",<Layers3 key="i" size={14}/>],
+       ["image","Картинка / скриншот",<ImageIcon key="i" size={14}/>],["link","Ссылка",<LinkIcon key="i" size={14}/>],["chart","График / данные",<Layers3 key="i" size={14}/>],
        ["pdf","PDF / документ",<FileText key="i" size={14}/>],["video","Видео",<Video key="i" size={14}/>],["frame","Фрейм / раздел",<Frame key="i" size={14}/>]
       ].map(([k,l,ic]:any)=><button key={k} onClick={()=>addAt(k,context.wx,context.wy,l)}>{ic}<span>{l}</span></button>)}
       <button onClick={()=>{setDrawing("pencil");setContext(null)}}><PenLine size={14}/><span>Карандаш / маркер</span></button>
@@ -334,7 +334,7 @@ export default function StudioWorldV4(){
       <button data-testid="export-world" onClick={download}><FileJson size={14}/> Экспорт</button>
       <button onClick={()=>importRef.current?.click()}><Upload size={14}/> Импорт</button>
       <input ref={importRef} hidden type="file" accept="application/json" onChange={async e=>{const f=e.currentTarget.files?.[0];if(!f)return;try{importSnapshot(JSON.parse(await f.text()))}catch{}finally{e.currentTarget.value=""}}}/>
-      <span data-testid="grid-state">Сетка: {grid?"вкл":"выкл"}</span><span data-testid="lod-state">LOD: {lod}</span><span>рев. {revision}</span>
+      <span data-testid="grid-state">Сетка: {grid?"вкл":"выкл"}</span><span data-testid="lod-state">Детализация: {lod==="far"?"далеко":lod==="mid"?"средне":"близко"}</span><span>рев. {revision}</span>
      </div>
    </section>}
   </div>
