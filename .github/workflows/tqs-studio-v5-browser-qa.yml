@@ -1,0 +1,44 @@
+name: TQS Studio V5 Browser QA
+on:
+  push:
+    branches:
+      - chatgpt/tqs-studio-v5-finalization-2026-10-03
+  workflow_dispatch:
+concurrency:
+  group: tqs-studio-v5-browser-qa
+  cancel-in-progress: true
+jobs:
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright locally for QA
+        run: pnpm --dir frontend add -D playwright@1.55.0 --ignore-workspace-root-check
+      - name: Install Chromium
+        run: pnpm --dir frontend exec playwright install --with-deps chromium
+      - name: Start Studio
+        run: |
+          pnpm --dir frontend dev > /tmp/tqs-studio-v5.log 2>&1 &
+          echo $! > /tmp/tqs-studio-v5.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/studio >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/tqs-studio-v5.log
+          exit 1
+      - name: Run browser QA
+        env:
+          STUDIO_QA_BASE: http://127.0.0.1:3000
+        run: node frontend/scripts/qa-studio-v5.mjs
+      - name: App log on failure
+        if: failure()
+        run: tail -n 300 /tmp/tqs-studio-v5.log || true
