@@ -23,3 +23,12 @@
 @media(max-width:900px){.navigator{width:220px;flex-basis:220px}.docnav{width:215px;flex-basis:215px}.docsurface{padding:0 18px 70px}.doctoolbar{flex-direction:column;gap:8px}.switch button kbd{display:none}}
 
 .sharePage{min-height:100vh;background:#faf8f2;color:#24221e;padding:50px 20px 100px;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}.cleanDocument{max-width:820px;margin:0 auto}.cleanDocument>header{border-bottom:1px solid #ded8cd;padding-bottom:20px;margin-bottom:26px}.cleanDocument>header small{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#9b7732}.cleanDocument>header h1{font-size:34px;line-height:1.15;margin:6px 0}.cleanDocument>header p{font-size:10px;color:#777167}.cleanDocument>footer{border-top:1px solid #ded8cd;margin-top:34px;padding-top:14px;color:#777167;font-size:9px}.sharePage :global(.studio-clean-flow){display:flex;flex-direction:column;gap:14px}.sharePage :global(.studio-clean-flow h2){color:#24221e}.sharePage :global(.studio-rich){font-size:14px;line-height:1.75}.sharePage :global(.studio-callout){background:#f1ead9;color:#332f25}.sharePage :global(.studio-interactive){background:#fff;border-color:#ddd5c7}.sharePage :global(.studio-market-source),.sharePage :global(.studio-replay-head){color:#746e64}.sharePage :global(.studio-sources){color:#625d55}.sharePage :global(.studio-sources a){color:#8c651c}
+
+.shell[data-theme="light"]{--bg:#f2efe7;--panel:#f7f4ed;--panel2:#ece7dd;--surface:#fffdf8;--text:#24231f;--muted:#756f65;--line:#d8d0c3;--amber:#a97822;background:var(--bg);color:var(--text)}
+.shell[data-theme="light"] .topbar,.shell[data-theme="light"] .navigator,.shell[data-theme="light"] .rail,.shell[data-theme="light"] .docnav,.shell[data-theme="light"] .docrail{background:#f7f4ed}
+.shell[data-theme="light"] .canvas{background:#efede6}
+.shell[data-theme="light"] .object{background:#fffdf8;border-color:#d9d1c4}
+.shell[data-theme="light"] .kind_frame{background:rgba(255,253,248,.55);border-color:rgba(125,110,82,.18)}
+.shell[data-theme="light"] .chip,.shell[data-theme="light"] .worldtools,.shell[data-theme="light"] .context,.shell[data-theme="light"] .diag{background:#fffdf8;color:#24231f;border-color:#d6cebf}
+.shell[data-theme="light"] .documents,.shell[data-theme="light"] .docsurface{background:#f2efe7}
+.shell[data-theme="light"] .doctoolbar{background:linear-gradient(#f2efe7f7,#f2efe7e8,#f2efe700)}
