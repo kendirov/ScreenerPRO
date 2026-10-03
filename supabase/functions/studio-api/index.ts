@@ -375,10 +375,10 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     const {data:signed,error:se}=await admin.storage.from("studio-assets").createSignedUrl(asset.storage_path,3600);if(se)throw se;return {asset,signedUrl:signed?.signedUrl||null};
   }
   if(name==="attachAsset"){
-    const {mime,bytes}=decodeDataUrl(p.dataUrl);const assetId=crypto.randomUUID();const ext=(p.filename||"asset").split(".").pop()||"bin";const path=`${owner.id}/${assetId}.${ext.replace(/[^a-zA-Z0-9]/g,"")}`;
-    const {error:ue}=await admin.storage.from("studio-assets").upload(path,bytes,{contentType:mime,upsert:false});if(ue)throw ue;
+    const {mime,bytes}=decodeDataUrl(p.dataUrl);const assetId=String(p.assetId||crypto.randomUUID());const ext=(p.filename||"asset").split(".").pop()||"bin";const path=`${owner.id}/${assetId}.${ext.replace(/[^a-zA-Z0-9]/g,"")}`;
+    const {error:ue}=await admin.storage.from("studio-assets").upload(path,bytes,{contentType:mime,upsert:true});if(ue)throw ue;
     const digest=await sha256Hex(String.fromCharCode(...bytes.slice(0,Math.min(bytes.length,500000))));
-    const {data:asset,error}=await admin.from("studio_assets").insert({id:assetId,owner_id:owner.id,storage_path:path,mime_type:mime,byte_size:bytes.length,sha256:digest,metadata:{filename:p.filename||null}}).select().single();if(error)throw error;
+    const {data:asset,error}=await admin.from("studio_assets").upsert({id:assetId,owner_id:owner.id,storage_path:path,mime_type:mime,byte_size:bytes.length,sha256:digest,metadata:{filename:p.filename||null}},{onConflict:"id"}).select().single();if(error)throw error;
     const {data:signed}=await admin.storage.from("studio-assets").createSignedUrl(path,3600);
     return {asset,signedUrl:signed?.signedUrl||null};
   }
