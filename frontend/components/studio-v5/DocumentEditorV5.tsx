@@ -19,7 +19,7 @@ export function DocumentEditorV5({bundle,onBundle}:{bundle:DocumentBundle;onBund
  const save=async(b:StudioDocumentBlock,content:any)=>{await studioAction("upsertDocumentBlock",{documentId:bundle.document.id,blockId:b.block_id,blockType:b.block_type,content,dataSpec:b.data_spec,semanticPath:bundle.document.semantic_path});await refresh()};
  const drop=async(targetOrdinal:number)=>{if(!dragId)return;await studioAction("reorderDocumentBlock",{documentId:bundle.document.id,blockId:dragId,targetOrdinal});setDragId(null);await refresh()};
  return <div className="studio-block-editor" data-testid="ordered-block-editor">
-   <InsertLine open={insertAfter===null} setOpen={()=>setInsertAfter(insertAfter===null?undefined:null)} onInsert={t=>insert(t,null)}/>
+   <InsertLine open={insertAfter==="__FIRST__"} setOpen={()=>setInsertAfter(insertAfter==="__FIRST__"?undefined:"__FIRST__")} onInsert={t=>insert(t,"__FIRST__")}/>
    {sorted.map((b,i)=><div key={b.block_id} className="studio-edit-block" draggable onDragStart={()=>setDragId(b.block_id)} onDragOver={e=>e.preventDefault()} onDrop={()=>drop(b.ordinal)}
       onContextMenu={e=>{e.preventDefault();setMenuAt({blockId:b.block_id,x:e.clientX,y:e.clientY})}}>
      <div className="studio-block-rail"><GripVertical size={15}/><span>{b.ordinal}</span></div>
