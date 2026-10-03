@@ -8,7 +8,7 @@ const errors=[];
 page.on("pageerror",e=>errors.push("pageerror: "+e.message));
 page.on("console",m=>{if(m.type()==="error")errors.push("console: "+m.text())});
 const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
-const state=async()=>page.evaluate(()=>JSON.parse(localStorage.getItem("tqs-studio-v5-local-state-v2")||"null"));
+const state=async()=>page.evaluate(()=>JSON.parse(localStorage.getItem("tqs-studio-v5-recovery")||"null"));
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 try{
  await page.goto(base+"/studio",{waitUntil:"domcontentloaded",timeout:60000});
