@@ -52,7 +52,7 @@ export default function StudioWorldV5(){
   const dims=kind==="text"?{w:270,h:104}:kind==="task"?{w:300,h:84}:kind==="voice"?{w:320,h:84}:kind==="link"?{w:320,h:80}:kind==="image"?{w:480,h:320}:kind==="frame"?{w:700,h:480}:kind==="chart"?{w:620,h:390}:{w:340,h:110};
   const imageTarget=kind==="text"?objects.filter(o=>o.kind==="image"&&p.x>=o.x&&p.x<=o.x+o.w&&p.y>=o.y&&p.y<=o.y+o.h).sort((a,b)=>b.z-a.z)[0]:null;
   const row:any={id,kind,semantic_path:parent?parent.semantic_path+"/"+title:title,parent_id:parent?.id||null,x:snap(p.x),y:snap(p.y),...dims,z:kind==="frame"?2:10,title,body:opts.body||{},relations:parent?[{type:"contains",targetId:parent.id}]:[],status:kind==="task"?"NEW":kind==="voice"?"WAITING_RECORDING":null,hidden:false};
-  if(opts.annotates||imageTarget)row.relations.push({type:"annotates",targetId:opts.annotates||imageTarget.id});
+  const annotatesTarget=opts.annotates||imageTarget?.id;if(annotatesTarget)row.relations.push({type:"annotates",targetId:annotatesTarget});
   const res=await studioAction<any>("createWorldObject",{object:row});setOverview(v=>v?{...v,objects:[...v.objects,res.object],world:{...v.world,revision:res.worldRevision}}:v);setSelected(id);setContext(null);
   if(["text","task","link"].includes(kind))setEditing(id);return res.object as StudioObject;
  };
