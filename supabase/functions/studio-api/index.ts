@@ -442,6 +442,84 @@ async function oauthCallback(url:URL){
   await admin.from("studio_oauth_states").update({used_at:new Date().toISOString()}).eq("id",st.id);
   const r=new URL(st.return_to);r.searchParams.set("drive","connected");return Response.redirect(r.toString(),302);
 }
+async function runV5SelfTest(owner:{id:string;email:string},origin:string){
+  const nonce=crypto.randomUUID(),objectId="qa-object-"+nonce,documentId="qa-doc-"+nonce;
+  const assetIds:string[]=[]; const storagePaths:string[]=[]; const checks:Record<string,unknown>={};
+  try{
+    checks.seed=await ensureStudioSeed(owner);
+    const overview=await action(owner,"getWorldOverview",{},origin);
+    if(!overview?.objects?.some((o:any)=>o.id==="lesson-free-1")) throw new Error("QA_LESSON_FRAME_MISSING");
+    checks.world={objects:overview.objects.length,activity:overview.activity.length,revision:overview.world?.revision};
+
+    const lesson=await action(owner,"getDocument",{documentId:"doc-lesson-workspace"},origin);
+    if((lesson?.blocks?.length||0)<13) throw new Error("QA_LESSON_BLOCKS_INCOMPLETE");
+    checks.lesson={title:lesson.document.title,blocks:lesson.blocks.length};
+
+    const created=await action(owner,"createWorldObject",{object:{
+      id:objectId,kind:"text",semantic_path:"QA/V5/Temporary",parent_id:null,x:100,y:100,w:240,h:90,z:99,
+      title:"QA temporary",body:{html:"<p>qa</p>"},relations:[],status:null,hidden:true
+    }},origin);
+    if(created?.object?.id!==objectId) throw new Error("QA_CREATE_OBJECT_FAILED");
+    checks.createWorldObject=true;
+
+    const updated=await action(owner,"updateObject",{id:objectId,revision:created.object.revision,patch:{title:"QA updated",body:{html:"<p>updated</p>"}},eventType:"text_update",summary:"QA updated"},origin);
+    if(updated?.object?.title!=="QA updated") throw new Error("QA_UPDATE_OBJECT_FAILED");
+    checks.updateObject=true;
+
+    const doc=await action(owner,"createDocument",{id:documentId,title:"QA V5 temporary document",semanticPath:"QA/V5",kind:"instruction"},origin);
+    const firstId=doc?.blocks?.[0]?.block_id;
+    if(!firstId) throw new Error("QA_CREATE_DOCUMENT_FAILED");
+    checks.createDocument=true;
+
+    const inserted=await action(owner,"upsertDocumentBlock",{documentId,blockId:"qa-block-"+nonce,blockType:"callout",content:{text:"QA inserted"},afterBlockId:firstId,semanticPath:"QA/V5"},origin);
+    if(!inserted?.block) throw new Error("QA_INSERT_BLOCK_FAILED");
+    checks.upsertDocumentBlock=true;
+
+    const reordered=await action(owner,"reorderDocumentBlock",{documentId,blockId:"qa-block-"+nonce,targetOrdinal:1},origin);
+    if(!reordered?.blocks?.some((b:any)=>b.block_id==="qa-block-"+nonce&&b.ordinal===1)) throw new Error("QA_REORDER_FAILED");
+    checks.reorderDocumentBlock=true;
+
+    const dataUrl="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=";
+    const asset=await action(owner,"attachAsset",{dataUrl,filename:"qa.png"},origin);
+    if(!asset?.asset?.id) throw new Error("QA_ATTACH_ASSET_FAILED");
+    assetIds.push(asset.asset.id);storagePaths.push(asset.asset.storage_path);checks.attachAsset=true;
+    const assetUrl=await action(owner,"getAssetUrl",{assetId:asset.asset.id},origin);
+    if(!assetUrl?.signedUrl) throw new Error("QA_ASSET_URL_FAILED");
+    checks.getAssetUrl=true;
+
+    const recent=await action(owner,"getRecentActivity",{semanticPath:"QA/V5",limit:20},origin);
+    checks.getRecentActivity=Array.isArray(recent);
+    const event=recent?.find((x:any)=>x.entity_id===documentId)||recent?.[0];
+    if(event?.id){await action(owner,"markActivityDone",{id:event.id},origin);checks.markActivityDone=true}else checks.markActivityDone="no-event";
+
+    const entity=await action(owner,"getEntityContext",{id:"lesson-free-1"},origin);
+    if(!entity?.entity) throw new Error("QA_ENTITY_CONTEXT_FAILED");
+    checks.getEntityContext={children:entity.children?.length||0,documents:entity.documents?.length||0};
+
+    const share=await action(owner,"createShare",{documentId,appOrigin:"https://screenerpro-git-chatgpt-tqs-stu-c70e5f-artem-kendirovs-projects.vercel.app"},origin);
+    if(!share?.token||!share?.url) throw new Error("QA_SHARE_FAILED");
+    const shared=await loadShare(share.token);
+    if(!shared?.document?.id) throw new Error("QA_SHARE_READBACK_FAILED");
+    checks.share=true;
+
+    const pdf=await generatePdf(await loadDocument(owner.id,documentId),share.url);
+    const header=new TextDecoder().decode(pdf.slice(0,4));
+    if(header!=="%PDF") throw new Error("QA_PDF_FAILED");
+    checks.pdf={bytes:pdf.byteLength,header};
+
+    const drive=await action(owner,"driveStatus",{},origin);
+    checks.driveStatus={status:drive?.connection?.status||null,oauthConfigured:Boolean(drive?.oauthConfigured)};
+
+    return {ok:true,checks};
+  }finally{
+    for(const path of storagePaths){try{await admin.storage.from("studio-assets").remove([path])}catch{}}
+    if(assetIds.length)try{await admin.from("studio_assets").delete().in("id",assetIds)}catch{}
+    try{await admin.from("studio_activity").delete().like("semantic_path","QA/V5%")}catch{}
+    try{await admin.from("studio_world_objects").delete().eq("id",objectId)}catch{}
+    try{await admin.from("studio_documents").delete().eq("id",documentId)}catch{}
+  }
+}
+
 Deno.serve(async(req:Request)=>{
   const origin=req.headers.get("Origin")||undefined;
   if(req.method==="OPTIONS"){const h=new Headers();applyCors(h,origin);return new Response(null,{status:204,headers:h})}
@@ -453,6 +531,11 @@ Deno.serve(async(req:Request)=>{
     if(path==="/share"){
       const token=url.searchParams.get("token")||"";const bundle=token?await loadShare(token):null;
       if(!bundle)return json({error:"SHARE_NOT_FOUND"},404,origin);return json(bundle,200,origin);
+    }
+    if(path==="/public/qa"&&req.method==="GET"){
+      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
+      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
+      return json(await runV5SelfTest({id:o.owner_id,email:o.email},origin||""),200,origin);
     }
     if(path==="/public/smoke"&&req.method==="GET"){
       const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
