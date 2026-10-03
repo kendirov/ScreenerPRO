@@ -1,10 +1,12 @@
 "use client";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const FN = process.env.NEXT_PUBLIC_SUPABASE_URL ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/studio-api` : "";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://hppbuzbrjoyrwpdinlxk.supabase.co";
+const SUPABASE_PUBLIC_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh";
+const FN = `${SUPABASE_URL}/functions/v1/studio-api`;
 
-let client: ReturnType<typeof createSupabaseBrowserClient>|null=null;
-export function studioSupabase(){ if(!client) client=createSupabaseBrowserClient(); return client; }
+let client: SupabaseClient|null=null;
+export function studioSupabase(){ if(!client) client=createClient(SUPABASE_URL,SUPABASE_PUBLIC_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}); return client; }
 
 export async function studioSession(){
   const {data,error}=await studioSupabase().auth.getSession(); if(error) throw error; return data.session;
