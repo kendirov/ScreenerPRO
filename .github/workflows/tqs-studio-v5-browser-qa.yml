@@ -47,6 +47,8 @@ jobs:
           share_url="$(node -e 'const x=JSON.parse(process.argv[1]); if(!x.ok||!x.data?.url) process.exit(2); process.stdout.write(x.data.url)' "$share_json")"
           curl -fsSL "$share_url" -o /tmp/studio-share.html
           grep -q "Занятие 1" /tmp/studio-share.html
+          grep -q "Market Replay" /tmp/studio-share.html
+          grep -q "PDF / конспект" /tmp/studio-share.html
 
           SHARE_URL="$share_url" node <<'NODE' > /tmp/studio-pdf-request.json
           const bundle={
