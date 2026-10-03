@@ -1,11 +1,11 @@
-name: TQS Studio V5 Browser QA
+name: TQS Studio V5 CI
 on:
   push:
     branches:
-      - chatgpt/tqs-studio-v5-finalization-2026-10-03
+      - main
   workflow_dispatch:
 concurrency:
-  group: tqs-studio-v5-browser-qa
+  group: tqs-studio-v5-ci
   cancel-in-progress: true
 jobs:
   browser-qa:
@@ -21,6 +21,8 @@ jobs:
           node-version: "22"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build Studio
+        run: pnpm --dir frontend build
       - name: Install Playwright locally for QA
         run: pnpm --dir frontend add -D playwright@1.55.0 --ignore-workspace-root-check
       - name: Install Chromium
