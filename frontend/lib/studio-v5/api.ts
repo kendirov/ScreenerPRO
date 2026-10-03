@@ -24,7 +24,9 @@ async function serverAction<T=any>(action:string,payload:any={}):Promise<T>{
 export async function studioAction<T=any>(action:string,payload:any={}):Promise<T>{
   if(action==="createDocument"&&!payload.id)payload={...payload,id:"doc-"+crypto.randomUUID()};
   if(action==="attachAsset"){
-    try{return await serverAction<T>(action,payload)}catch{return localStudioAction<T>(action,payload)}
+    const local:any=await localStudioAction<any>(action,payload);
+    void serverAction(action,{...payload,assetId:local?.asset?.id}).catch(()=>{});
+    return local as T;
   }
   if(LOCAL_FIRST.has(action)){
     const local=await localStudioAction<T>(action,payload);
