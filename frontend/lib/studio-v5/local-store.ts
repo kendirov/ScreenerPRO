@@ -81,6 +81,10 @@ function documentBundle(s:LocalState,id:string):DocumentBundle{
 function bumpWorld(s:LocalState){s.overview.world.revision+=1}
 export function resetLocalStudio(){const s=initialState();save(s);return clone(s)}
 export function getLocalSeed(){return clone(initialState())}
+export function getLocalAssetPayload(id:string){
+ const s=load(),a=s.assets[id];if(!a)return null;
+ return {assetId:a.id,dataUrl:a.dataUrl,filename:a.filename||("asset-"+a.id),mimeType:a.mime_type};
+}
 export function saveLocalObjectDraft(id:string,patch:Partial<StudioObject>){
  const s=load(),i=s.overview.objects.findIndex(o=>o.id===id);if(i<0)return false;
  s.overview.objects[i]={...s.overview.objects[i],...patch,updated_at:now()};save(s);return true;
