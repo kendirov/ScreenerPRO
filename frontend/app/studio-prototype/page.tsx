@@ -701,7 +701,7 @@ export default function StudioPrototypePage() {
                   style={{ "--block-span": block.span === "full" ? 12 : block.span === "twoThird" ? 8 : block.span === "half" ? 6 : 4 } as React.CSSProperties}
                   onClick={() => mode === "edit" && setSelectedId(block.id)}
                   onDragOver={(event) => {
-                    if (mode === "edit" && draggedId) event.preventDefault();
+                    if (mode === "edit" && (draggedIdRef.current ?? draggedId)) event.preventDefault();
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
