@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   Copy,
@@ -305,7 +305,7 @@ export default function StudioPrototypePage() {
   const [mode, setMode] = useState<Mode>("edit");
   const [blocks, setBlocks] = useState<StudioBlock[]>(cloneDefaults);
   const [selectedId, setSelectedId] = useState<string | null>("si-before-2014");
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);\n  const draggedIdRef = useRef<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -442,7 +442,7 @@ export default function StudioPrototypePage() {
     if (!draggedId || draggedId === targetId) return;
     setBlocks((current) => {
       const next = [...current];
-      const from = next.findIndex((block) => block.id === draggedId);
+      const from = next.findIndex((block) => block.id === activeDraggedId);
       if (from < 0) return current;
       const [moved] = next.splice(from, 1);
       const target = next.findIndex((block) => block.id === targetId);
@@ -721,7 +721,7 @@ export default function StudioPrototypePage() {
                           event.dataTransfer.effectAllowed = "move";
                           event.dataTransfer.setData("text/plain", block.id);
                         }}
-                        onDragEnd={() => setDraggedId(null)}
+                        onDragEnd={() => {\n                          draggedIdRef.current = null;\n                          setDraggedId(null);\n                        }}
                         data-testid={`drag-${block.id}`}
                       >
                         <GripVertical size={16} />
