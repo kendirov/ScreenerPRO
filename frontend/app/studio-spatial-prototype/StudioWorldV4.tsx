@@ -160,11 +160,11 @@ function PdfCard({item,onChange}:{item:Item;onChange:(p:Partial<Item>)=>void}){
 }
 
 const DOC_BLOCK_LABEL:Record<DocBlock["type"],string>={heading:"Заголовок",text:"Текст",callout:"Выделение",image:"Изображение",chart:"График",video:"Видео",source:"Источник",divider:"Разделитель"};
-function DocEditor({doc,onDoc,goWorld}:{doc:StudioDocument;onDoc:(d:StudioDocument)=>void;goWorld:()=>void}){
+function DocEditor({doc,onDoc,goWorld,onPin}:{doc:StudioDocument;onDoc:(d:StudioDocument)=>void;goWorld:()=>void;onPin:()=>void}){
  const update=(id:string,content:string)=>onDoc({...doc,revision:doc.revision+1,blocks:doc.blocks.map(b=>b.id===id?{...b,content}:b)});
  const add=(type:DocBlock["type"])=>onDoc({...doc,revision:doc.revision+1,blocks:[...doc.blocks,{id:uid("db"),type,content:type==="divider"?"":"Новый блок"}]});
  return <article className={styles.documentEditor} data-testid="document-editor">
-  <header><div><span>{doc.kind==="lesson"?"Занятие":"Статья"}</span><h1>{doc.title}</h1><p>{doc.semanticPath} · ревизия {doc.revision}</p></div><button data-testid="show-on-board" onClick={goWorld}><CircleDot size={15}/> Показать на доске</button></header>
+  <header><div><span>{doc.kind==="lesson"?"Занятие":"Статья"}</span><h1>{doc.title}</h1><p>{doc.semanticPath} · ревизия {doc.revision}</p></div><div className={styles.docHeaderActions}><button data-testid="pin-on-world" onClick={onPin}><LinkIcon size={15}/> Закрепить на Мире</button><button data-testid="show-on-board" onClick={goWorld}><CircleDot size={15}/> Показать на доске</button></div></header>
   <div className={styles.docFlow}>
    {doc.blocks.map(b=>b.type==="divider"?<hr key={b.id}/>:<section key={b.id} className={styles["doc_"+b.type]}>
     <span>{b.type==="heading"?"Заголовок":b.type==="callout"?"Выделение":b.type==="image"?"Изображение":b.type==="chart"?"График":b.type==="video"?"Видео":b.type==="source"?"Источник":"Текст"}</span>
@@ -202,9 +202,10 @@ export default function StudioWorldV4(){
  const deepestFrame=(x:number,y:number)=>items.filter(i=>i.kind==="frame"&&x>=i.x&&x<=i.x+i.w&&y>=i.y&&y<=i.y+i.h).sort((a,b)=>(a.w*a.h)-(b.w*b.h))[0];
  const kindTitles:Record<Kind,string>={frame:"Фрейм / раздел",text:"Текст",task:"Задача",image:"Картинка / скриншот",chart:"График / данные",video:"Видео",pdf:"PDF / документ",voice:"Голосовая заметка",documentRef:"Документ",link:"Ссылка",annotation:"Аннотация"};
  const addAt=(kind:Kind,x:number,y:number,title?:string)=>{
-  const parent=deepestFrame(x,y),id=uid(kind),semantic=parent?`${parent.semanticPath}/${title||kind}`:title||kind,t=now();
-  const base:Item={id,kind,semanticPath:semantic,parentId:parent?.id,x:snap(x),y:snap(y),w:kind==="frame"?700:kind==="image"?500:kind==="chart"?560:kind==="voice"?430:kind==="task"?380:440,h:kind==="frame"?500:kind==="image"?340:kind==="chart"?360:kind==="voice"?210:kind==="task"?190:250,z:kind==="frame"?2:8,title:title||kindTitles[kind],body:kind==="text"?"<p>Новая заметка</p>":kind==="task"?"Новая задача":kind==="link"?"https://":undefined,status:kind==="voice"?"Ожидает записи":kind==="task"?"NEW":undefined,createdAt:t,updatedAt:t,relations:parent?[{type:"contains",targetId:parent.id}]:[]};
-  mutate(v=>[...v,base],()=>log(id,semantic,kind==="voice"?"voice":kind==="task"?"task":kind==="image"?"image_paste":"create",`Создано: ${base.title}`));setSelected(id);setContext(null);return id;
+  const parent=deepestFrame(x,y),imageTarget=kind==="text"?items.filter(i=>i.kind==="image"&&x>=i.x&&x<=i.x+i.w&&y>=i.y&&y<=i.y+i.h).sort((a,b)=>b.z-a.z)[0]:undefined,id=uid(kind),semantic=parent?`${parent.semanticPath}/${title||kind}`:title||kind,t=now();
+  const relations:Relation[]=[...(parent?[{type:"contains" as const,targetId:parent.id}]:[]),...(imageTarget?[{type:"annotates" as const,targetId:imageTarget.id}]:[])];
+  const base:Item={id,kind,semanticPath:semantic,parentId:parent?.id,x:snap(x),y:snap(y),w:kind==="frame"?700:kind==="image"?500:kind==="chart"?560:kind==="voice"?430:kind==="task"?380:440,h:kind==="frame"?500:kind==="image"?340:kind==="chart"?360:kind==="voice"?210:kind==="task"?190:250,z:kind==="frame"?2:8,title:title||kindTitles[kind],body:kind==="text"?"<p>Новая заметка</p>":kind==="task"?"Новая задача":kind==="link"?"https://":undefined,status:kind==="voice"?"Ожидает записи":kind==="task"?"NEW":undefined,createdAt:t,updatedAt:t,relations};
+  mutate(v=>[...v,base],()=>log(id,semantic,imageTarget?"annotate":kind==="voice"?"voice":kind==="task"?"task":kind==="image"?"image_paste":"create",imageTarget?`Текстовая аннотация на ${imageTarget.title}`:`Создано: ${base.title}`));setSelected(id);setContext(null);return id;
  };
  const descendantIds=(rootId:string,source:Item[])=>{const out=new Set<string>();let frontier=[rootId];while(frontier.length){const next:string[]=[];for(const p of frontier){for(const i of source){if(i.parentId===p&&!out.has(i.id)){out.add(i.id);next.push(i.id)}}}frontier=next}return out};
  const move=(id:string,nx:number,ny:number)=>{
@@ -235,6 +236,14 @@ export default function StudioWorldV4(){
  const openDoc=(id:string)=>{setDocId(id);setSurface("documents")};
  const currentDoc=documents.find(d=>d.id===docId)||documents[0]!;
  const setDoc=(d:StudioDocument)=>{setDocuments(v=>v.map(x=>x.id===d.id?d:x));setRevision(r=>r+1);log(d.id,d.semanticPath,"text_update",`Обновлён документ: ${d.title}`)};
+ const pinDocument=(d:StudioDocument)=>{
+  const existing=items.find(i=>i.kind==="documentRef"&&i.relations.some(r=>r.type==="document_of"&&r.targetId===d.id));
+  if(existing){focus(existing.id);return}
+  const anchor=(d.frameId&&items.find(i=>i.id===d.frameId))||items.find(i=>i.id===FRAME_INBOX);
+  const id=uid("documentRef"),t=now(),x=(anchor?.x||300)+60,y=(anchor?.y||300)+90,parent=anchor?.kind==="frame"?anchor:undefined;
+  const ref:Item={id,kind:"documentRef",semanticPath:d.semanticPath,parentId:parent?.id,x:snap(x),y:snap(y),w:430,h:180,z:9,title:d.title,body:"Связанный документ без копирования содержимого.",createdAt:t,updatedAt:t,relations:[...(parent?[{type:"contains" as const,targetId:parent.id}]:[]),{type:"document_of",targetId:d.id}]};
+  mutate(v=>[...v,ref],()=>log(id,d.semanticPath,"document_link",`Документ закреплён на Мире: ${d.title}`));setSurface("world");setSelected(id);
+ };
  const createDocFromSelected=()=>{if(!selectedItem)return;const id=uid("doc"),d:StudioDocument={id,kind:"instruction",title:`Документ — ${selectedItem.title}`,semanticPath:selectedItem.semanticPath,frameId:selectedItem.kind==="frame"?selectedItem.id:selectedItem.parentId,revision:1,status:"Черновик",blocks:[{id:uid("db"),type:"heading",content:selectedItem.title},{id:uid("db"),type:"text",content:selectedItem.body?.replace(/<[^>]+>/g,"")||"Создано из выбранного объекта World."}]};setDocuments(v=>[...v,d]);log(id,d.semanticPath,"document_link",`Создан документ из: ${selectedItem.title}`);openDoc(id)};
 
  const navTree=useMemo(()=>[
@@ -285,8 +294,8 @@ export default function StudioWorldV4(){
 
    {surface==="documents"?<section className={styles.documentsSurface}>
     <aside className={styles.docList}><b>Документы</b>{documents.map(d=><button key={d.id} className={d.id===currentDoc.id?styles.docActive:""} onClick={()=>setDocId(d.id)}><span>{d.kind==="lesson"?"Занятие":"Статья"}</span><strong>{d.title}</strong><small>{d.semanticPath}</small></button>)}</aside>
-    <DocEditor doc={currentDoc} onDoc={setDoc} goWorld={()=>currentDoc.frameId?focus(currentDoc.frameId):setSurface("world")}/>
-   </section>:<section ref={canvas as any} className={`${styles.canvas} ${grid?styles.grid:""}`} data-testid="world-canvas" data-lod={lod}
+    <DocEditor doc={currentDoc} onDoc={setDoc} onPin={()=>pinDocument(currentDoc)} goWorld={()=>currentDoc.frameId?focus(currentDoc.frameId):setSurface("world")}/>
+   </section>:<section ref={canvas as any} className={`${styles.canvas} ${grid?styles.grid:""}`} data-testid="world-canvas" data-lod={lod} tabIndex={0}
     onPointerDown={e=>{if(drawing){const p=screenToWorld(e.clientX,e.clientY);setDraftPoints([p]);return}if(e.button===1||(space&&e.button===0)){e.preventDefault();setGesture({type:"pan",sx:e.clientX,sy:e.clientY,ox:camera.x,oy:camera.y});return}if(e.button===0&&e.target===e.currentTarget){setSelected(null);setContext(null)}}}
     onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}
     onContextMenu={e=>{if((e.target as HTMLElement).closest("[data-world-item]"))return;e.preventDefault();const r=e.currentTarget.getBoundingClientRect(),p=screenToWorld(e.clientX,e.clientY);setContext({sx:e.clientX-r.left,sy:e.clientY-r.top,wx:p.x,wy:p.y})}}
