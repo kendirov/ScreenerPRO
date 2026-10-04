@@ -60,6 +60,7 @@ await clean.getByText("PDF / конспект",{exact:false}).first().waitFor({t
 await clean.getByText("Si — реальный объём текущей и прошлой сессии",{exact:false}).first().waitFor({timeout:20_000});
 console.log("PASS clean share canonical lesson");
 
+await page.bringToFront();
 const downloadPromise=page.waitForEvent("download",{timeout:30_000});
 await page.getByRole("button",{name:"PDF"}).click();
 const download=await downloadPromise;
