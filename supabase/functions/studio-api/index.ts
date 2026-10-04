@@ -197,18 +197,28 @@ async function ensureShare(ownerId:string,documentId:string,appOrigin:string){
   return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(doc.slug)}?t=${token}`,existing:false,slug:doc.slug};
 }
 async function createFreshShare(ownerId:string,documentId:string,appOrigin:string){
-  const {data:doc,error:de}=await admin.from("studio_documents").select("slug,revision").eq("id",documentId).eq("owner_id",ownerId).single();
-  if(de||!doc)throw de||new Error("DOCUMENT_NOT_FOUND");
-  const token=randomToken(32),hash=await sha256Hex(token),now=new Date().toISOString();
-  const {error:ie}=await admin.from("studio_share_links").insert({owner_id:ownerId,document_id:documentId,slug:doc.slug,token_hash:hash,mode:"unlisted",document_revision:doc.revision});
-  if(ie)throw ie;
-  const [revoke,mark]=await Promise.all([
-    admin.from("studio_share_links").update({revoked_at:now}).eq("owner_id",ownerId).eq("document_id",documentId).is("revoked_at",null).neq("token_hash",hash),
-    admin.from("studio_documents").update({share_mode:"unlisted",updated_at:now}).eq("id",documentId).eq("owner_id",ownerId)
-  ]);
-  if(revoke.error)throw revoke.error;
-  if(mark.error)throw mark.error;
-  return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(doc.slug)}?t=${token}`,slug:doc.slug,documentRevision:Number(doc.revision)};
+  const bundle=await loadDocument(ownerId,documentId);
+  if(!bundle?.document)throw new Error("DOCUMENT_NOT_FOUND");
+  const token=randomToken(32),hash=await sha256Hex(token);
+  const snapshot={...bundle,share:{mode:"unlisted",documentRevision:Number(bundle.document.revision),slug:bundle.document.slug,publishedAt:new Date().toISOString()}};
+  const bytes=enc.encode(JSON.stringify(snapshot));
+  const {error}=await admin.storage.from("studio-assets").upload(`public-shares/${hash}.json`,bytes,{contentType:"application/json; charset=utf-8",upsert:false});
+  if(error)throw error;
+  return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(bundle.document.slug)}?t=${token}`,slug:bundle.document.slug,documentRevision:Number(bundle.document.revision),transport:"storage_snapshot"};
+}
+async function loadStorageShare(token:string){
+  const hash=await sha256Hex(token),path=`public-shares/${hash}.json`;
+  const {data,error}=await admin.storage.from("studio-assets").download(path);
+  if(error||!data)return null;
+  try{return JSON.parse(await data.text())}catch{return null}
+}
+async function disableStorageShare(shareUrl:string){
+  try{
+    const u=new URL(shareUrl),token=u.searchParams.get("t");if(!token)return false;
+    const hash=await sha256Hex(token);
+    const {error}=await admin.storage.from("studio-assets").remove([`public-shares/${hash}.json`]);if(error)throw error;
+    return true;
+  }catch{return false}
 }
 function decodeDataUrl(dataUrl:string){
   const m=dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/s); if(!m) throw new Error("INVALID_DATA_URL");
@@ -394,10 +404,10 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     return createFreshShare(owner.id,p.documentId,appOrigin);
   }
   if(name==="disableShare"){
+    if(p.shareUrl&&await disableStorageShare(String(p.shareUrl)))return {disabled:true,documentId:p.documentId,transport:"storage_snapshot"};
     const now=new Date().toISOString();
     const {error}=await admin.from("studio_share_links").update({revoked_at:now}).eq("owner_id",owner.id).eq("document_id",p.documentId).is("revoked_at",null);if(error)throw error;
-    const {error:de}=await admin.from("studio_documents").update({share_mode:"private",updated_at:now}).eq("owner_id",owner.id).eq("id",p.documentId);if(de)throw de;
-    return {disabled:true,documentId:p.documentId};
+    return {disabled:true,documentId:p.documentId,transport:"legacy_db"};
   }
   if(name==="configureDriveOAuth"){
     const clientId=String(p.clientId||"").trim(),clientSecret=String(p.clientSecret||"").trim();
@@ -550,7 +560,7 @@ Deno.serve(async(req:Request)=>{
     if(path==="/owner/bootstrap"&&req.method==="GET") return ownerBootstrap(url);
     if(path==="/oauth/callback") return oauthCallback(url);
     if(path==="/share"){
-      const token=url.searchParams.get("token")||"";const bundle=token?await loadShare(token):null;
+      const token=url.searchParams.get("token")||"";const bundle=token?(await loadStorageShare(token)||await loadShare(token)):null;
       if(!bundle)return json({error:"SHARE_NOT_FOUND"},404,origin);return json(bundle,200,origin);
     }
     if(path==="/public/qa"&&req.method==="GET"){
