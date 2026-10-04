@@ -429,6 +429,14 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     const worldRevision=restored.length?await bumpWorld(owner.id):null;await logActivity(owner.id,null,"TQS Studio","ai_undo",`Undo AI run ${runId}`,{actor:String(p.actor||"chatgpt"),generation_run_id:runId,operation:"undo",restored_ids:restored.map(x=>x.id)});
     return{generation_run_id:runId,restored,world_revision:worldRevision,canonical_readback:true};
   }
+  if(name==="redoAiRun"){
+    const runId=String(p.generationRunId||"");if(!runId)throw Object.assign(new Error("GENERATION_RUN_ID_REQUIRED"),{status:400});
+    const {data:events,error}=await admin.from("studio_activity").select("*").eq("owner_id",owner.id).contains("payload",{generation_run_id:runId}).order("occurred_at",{ascending:true});if(error)throw error;
+    const replayed:any[]=[];
+    for(const evt of events||[]){const h=evt.payload||{};if(!["create","update"].includes(String(h.operation||""))||!h.after?.id)continue;const after=canonicalObjectSnapshot(h.after),patch=sanitizeObjectPatch(after);const {data:cur}=await admin.from("studio_world_objects").select("revision").eq("owner_id",owner.id).eq("id",after.id).maybeSingle();if(!cur){const row={...patch,id:after.id,world_key:OWNER_WORLD,owner_id:owner.id,revision:1};const {data,error:ce}=await admin.from("studio_world_objects").insert(row).select().single();if(ce)throw ce;replayed.push(data);continue}patch.hidden=Boolean(after.hidden);patch.revision=Number(cur.revision||1)+1;patch.updated_at=new Date().toISOString();const {data,error:ue}=await admin.from("studio_world_objects").update(patch).eq("owner_id",owner.id).eq("id",after.id).select().single();if(ue)throw ue;replayed.push(data)}
+    const worldRevision=replayed.length?await bumpWorld(owner.id):null;await logActivity(owner.id,null,"TQS Studio","ai_redo",`Redo AI run ${runId}`,{actor:String(p.actor||"chatgpt"),generation_run_id:runId,operation:"redo",replayed_ids:replayed.map(x=>x.id)});
+    return{generation_run_id:runId,replayed,world_revision:worldRevision,canonical_readback:true};
+  }
   if(name==="getDocument") return loadDocument(owner.id,p.documentId);
   if(name==="listDocuments"){
     const {data,error}=await admin.from("studio_documents").select("*").eq("owner_id",owner.id).eq("world_key",OWNER_WORLD).order("updated_at",{ascending:false});if(error)throw error;return data||[];
@@ -648,7 +656,7 @@ Deno.serve(async(req:Request)=>{
     }
     if(path==="/public/action"&&req.method==="POST"){
       const body=await req.json();
-      const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","disableShare","driveStatus"]);
+      const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","disableShare","driveStatus"]);
       if(!allowed.has(body.action)) return json({ok:false,error:"PUBLIC_ACTION_FORBIDDEN"},403,origin);
       const o=await publicOwner();
       return json({ok:true,data:await action({id:o.id,email:o.email},body.action,body.payload||{},origin||"")},200,origin);
