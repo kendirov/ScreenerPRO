@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import {chromium} from "playwright";
 
 const base=process.env.STUDIO_PROD_BASE||"https://screenerpro.vercel.app";
@@ -61,15 +60,17 @@ await clean.getByText("Si — реальный объём текущей и пр
 console.log("PASS clean share canonical lesson");
 
 await page.bringToFront();
-const downloadPromise=page.waitForEvent("download",{timeout:30_000});
-await page.getByRole("button",{name:"PDF"}).click();
-const download=await downloadPromise;
-const path=await download.path();
-assert(path,"PDF download path missing");
-const bytes=await fs.readFile(path);
+const pdfLink=page.getByRole("button",{name:"PDF"});
+const pdfHref=await pdfLink.getAttribute("href");
+const pdfName=await pdfLink.getAttribute("download");
+assert(pdfHref?.startsWith("data:application/pdf"),"PDF link is not a native PDF data download");
+assert(pdfName?.toLowerCase().endsWith(".pdf"),"PDF download filename missing");
+const comma=pdfHref.indexOf(",");
+assert(comma>0,"PDF data URL malformed");
+const bytes=Buffer.from(decodeURIComponent(pdfHref.slice(comma+1)),"latin1");
 assert(bytes.subarray(0,4).toString()==="%PDF","PDF signature invalid");
 assert(bytes.length>1000,`PDF too small: ${bytes.length}`);
-console.log("PASS PDF",bytes.length);
+console.log("PASS PDF",bytes.length,pdfName);
 
 assert(pageErrors.length===0,`page errors: ${pageErrors.join(" | ")}`);
 assert(badResponses.length===0,`5xx responses: ${badResponses.join(" | ")}`);
