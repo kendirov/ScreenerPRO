@@ -742,6 +742,10 @@ Deno.serve(async(req:Request)=>{
       const o=await publicOwner();
       return json(await runV5SelfTest({id:o.id,email:o.email},origin||""),200,origin);
     }
+    if(path==="/public/qa-ai"&&req.method==="GET"){
+      const o=await publicOwner();
+      return json(await runV6AiSelfTest({id:o.id,email:o.email},origin||""),200,origin);
+    }
     if(path==="/public/smoke"&&req.method==="GET"){
       const o=await publicOwner();
       const world=await action({id:o.id,email:o.email},"getWorldOverview",{},origin||"");
