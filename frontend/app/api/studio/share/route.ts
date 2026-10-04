@@ -1,24 +1,32 @@
 const SUPABASE_URL=process.env.NEXT_PUBLIC_SUPABASE_URL||"https://hppbuzbrjoyrwpdinlxk.supabase.co";
-const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||"";
+const SUPABASE_KEY=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||"sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh";
 
 async function rpc(name:string,payload:any,keyOverride?:string|null){
   const key=SUPABASE_KEY||keyOverride||"";
   if(!key)throw Object.assign(new Error("SUPABASE_PUBLIC_KEY_MISSING"),{status:500});
-  const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "apikey":key,
-      "Authorization":`Bearer ${key}`
-    },
-    body:JSON.stringify(payload),
-    cache:"no-store",
-    signal:AbortSignal.timeout(10000)
-  });
-  const text=await r.text();
+  let last:Response|null=null;
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "apikey":key,
+          "Authorization":`Bearer ${key}`
+        },
+        body:JSON.stringify(payload),
+        cache:"no-store",
+        signal:AbortSignal.timeout(8000)
+      });
+      if(r.ok){const text=await r.text();try{return text?JSON.parse(text):null}catch{return text}}
+      last=r;if(r.status<500)break;
+    }catch(error){if(attempt===1)throw error}
+    await new Promise(r=>setTimeout(r,250));
+  }
+  if(!last)throw Object.assign(new Error("SUPABASE_RPC_UNAVAILABLE"),{status:502});
+  const text=await last.text();
   let data:any=null;try{data=text?JSON.parse(text):null}catch{data=text}
-  if(!r.ok)throw Object.assign(new Error(data?.message||data?.error||`RPC ${r.status}`),{status:r.status,details:data});
-  return data;
+  throw Object.assign(new Error(data?.message||data?.error||`RPC ${last.status}`),{status:last.status,details:data});
 }
 
 export async function POST(req:Request){
