@@ -458,7 +458,7 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
       {block_id:"s-"+crypto.randomUUID(),document_id:id,owner_id:owner.id,ordinal:3,block_type:"sources",content:{items:sourceObjects.map((x:any)=>({label:x.title,objectId:x.id,kind:x.kind,semanticPath:x.semantic_path}))},revision:1}
     ];
     const {error:be}=await admin.from("studio_document_blocks").insert(blocks);if(be)throw be;
-    await admin.from("studio_document_revisions").insert({document_id:id,owner_id:owner.id,revision:1,snapshot:{document:doc,blocks},reason:"ai frame to document",metadata});
+    await admin.from("studio_document_revisions").insert({document_id:id,owner_id:owner.id,revision:1,snapshot:{document:doc,blocks,metadata},reason:"ai frame to document"});
     const evt=await logActivity(owner.id,id,frame.semantic_path,"ai_document",`AI собрал документ: ${title}`,{actor:String(p.actor||"chatgpt"),generation_run_id:runId,source_object_ids:sourceIds,source_refs:metadata.source_refs,frame_id:frame.id,document_id:id});
     return{generation_run_id:runId,document:doc,blocks,source_object_ids:sourceIds,activity_id:evt.id,focus_target_id:id,canonical_readback:true};
   }
