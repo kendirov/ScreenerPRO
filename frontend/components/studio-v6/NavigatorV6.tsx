@@ -3,7 +3,7 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import {BookOpen,ChevronDown,ChevronRight,Clock3,FileText,Folder,PanelLeftClose,PanelLeftOpen,Search,SquareStack} from "lucide-react";
 import type {StudioActivity,StudioDocument,StudioObject} from "@/lib/studio-v5/types";
 
-type Props={objects:StudioObject[];documents:StudioDocument[];activity:StudioActivity[];selectedId:string|null;onFocus:(id:string)=>void;onOpenDocument:(id:string)=>void};
+type Props={objects:StudioObject[];documents:StudioDocument[];activity:StudioActivity[];selectedId:string|null;onFocus:(id:string)=>void;onOpenDocument:(id:string)=>void;onOpenDrive:()=>void};
 type Node={id:string;title:string;path:string;kind:string;object?:StudioObject;document?:StudioDocument;children:Node[]};
 const NAV_KEY="tqs-studio-v6-nav-open";
 const EXP_KEY="tqs-studio-v6-nav-expanded";
@@ -23,7 +23,7 @@ function buildTree(objects:StudioObject[],documents:StudioDocument[]):Node[]{
  }
  const sort=(a:Node,b:Node)=>a.path.localeCompare(b.path,"ru");const walk=(a:Node[])=>{a.sort(sort);for(const n of a)walk(n.children)};walk(roots);return roots;
 }
-export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpenDocument}:Props){
+export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpenDocument,onOpenDrive}:Props){
  const [open,setOpen]=useState(true),[query,setQuery]=useState(""),[expanded,setExpanded]=useState<Set<string>>(new Set());const input=useRef<HTMLInputElement>(null);
  useEffect(()=>{try{const raw=localStorage.getItem(NAV_KEY);if(raw!=null)setOpen(raw!=="0");const x=JSON.parse(localStorage.getItem(EXP_KEY)||"[]");if(Array.isArray(x))setExpanded(new Set(x))}catch{}},[]);
  useEffect(()=>{try{localStorage.setItem(NAV_KEY,open?"1":"0")}catch{}},[open]);
@@ -45,7 +45,7 @@ export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpe
    <button title={open?"Свернуть навигатор":"Развернуть навигатор"} onClick={()=>setOpen(v=>!v)}>{open?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button>
    <button title="Поиск" onClick={()=>{setOpen(true);requestAnimationFrame(()=>input.current?.focus())}}><Search size={17}/></button>
    <span className="v6-nav-divider"/>
-   <button title="Мир"><SquareStack size={17}/></button><button title="Документы"><BookOpen size={17}/></button><button title="Недавние"><Clock3 size={17}/></button>
+   <button title="Мир"><SquareStack size={17}/></button><button title="Документы"><BookOpen size={17}/></button><button title="Диск" onClick={onOpenDrive}><FileText size={17}/></button><button title="Недавние"><Clock3 size={17}/></button>
   </div>
   {open&&<div className="v6-nav-overlay">
    <header><div><strong>Навигатор</strong><small>Мир · Документы · Активность</small></div></header>
