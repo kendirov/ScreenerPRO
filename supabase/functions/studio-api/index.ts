@@ -196,8 +196,15 @@ async function ensureShare(ownerId:string,documentId:string,appOrigin:string){
   await admin.from("studio_documents").update({share_mode:"unlisted",updated_at:new Date().toISOString()}).eq("id",documentId);
   return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(doc.slug)}?t=${token}`,existing:false,slug:doc.slug};
 }
-async function createFreshShare(ownerId:string,documentId:string,appOrigin:string){
-  const bundle=await loadDocument(ownerId,documentId);
+function publicDocumentBundle(input:any,documentId:string){
+  const d=input?.document,b=Array.isArray(input?.blocks)?input.blocks:[];
+  if(!d||String(d.id)!==documentId)throw Object.assign(new Error("PUBLICATION_SNAPSHOT_MISMATCH"),{status:400});
+  const document={id:String(d.id),world_key:String(d.world_key||OWNER_WORLD),slug:String(d.slug||"document"),kind:String(d.kind||"document"),title:String(d.title||"TQS Studio"),semantic_path:String(d.semantic_path||""),frame_id:d.frame_id?String(d.frame_id):null,revision:Number(d.revision||1),status:String(d.status||"DRAFT"),share_mode:"unlisted",metadata:d.metadata||{}};
+  const blocks=b.filter((x:any)=>String(x?.document_id||"")===documentId).map((x:any)=>({block_id:String(x.block_id),document_id:documentId,ordinal:Number(x.ordinal||0),block_type:String(x.block_type||"rich_text"),content:x.content||{},data_spec:x.data_spec||null,asset_id:x.asset_id||null,revision:Number(x.revision||1)}));
+  return {document,blocks};
+}
+async function createFreshShare(ownerId:string,documentId:string,appOrigin:string,bundleInput?:any){
+  const bundle=bundleInput?publicDocumentBundle(bundleInput,documentId):await loadDocument(ownerId,documentId);
   if(!bundle?.document)throw new Error("DOCUMENT_NOT_FOUND");
   const token=randomToken(32),hash=await sha256Hex(token);
   const snapshot={...bundle,share:{mode:"unlisted",documentRevision:Number(bundle.document.revision),slug:bundle.document.slug,publishedAt:new Date().toISOString()}};
@@ -467,7 +474,7 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
   if(name==="markActivityDone"){const {data,error}=await admin.from("studio_activity").update({status:"DONE"}).eq("owner_id",owner.id).eq("id",p.id).select().single();if(error)throw error;return data}
   if(name==="createShare"){
     const appOrigin=safeReturnTo(p.appOrigin)||origin; if(!appOrigin)throw new Error("APP_ORIGIN_REQUIRED");
-    return createFreshShare(owner.id,p.documentId,appOrigin);
+    return createFreshShare(owner.id,p.documentId,appOrigin,p.bundle||null);
   }
   if(name==="disableShare"){
     if(p.shareUrl&&await disableStorageShare(String(p.shareUrl)))return {disabled:true,documentId:p.documentId,transport:"storage_snapshot"};
