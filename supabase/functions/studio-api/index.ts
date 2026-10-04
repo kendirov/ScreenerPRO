@@ -660,13 +660,10 @@ async function runV5SelfTest(owner:{id:string;email:string},origin:string){
   }
 }
 
-let publicOwnerCache:{id:string;email:string;at:number}|null=null;
+const PUBLIC_OWNER_ID=Deno.env.get("STUDIO_PUBLIC_OWNER_ID")||"8b89b5b2-5458-4a84-b6e4-29ee8c8c8490";
+const PUBLIC_OWNER_EMAIL=Deno.env.get("STUDIO_PUBLIC_OWNER_EMAIL")||"kendirov@gmail.com";
 async function publicOwner(){
-  if(publicOwnerCache&&Date.now()-publicOwnerCache.at<10*60_000)return {id:publicOwnerCache.id,email:publicOwnerCache.email};
-  const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
-  if(e||!o)throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
-  publicOwnerCache={id:o.owner_id,email:o.email,at:Date.now()};
-  return {id:o.owner_id as string,email:o.email as string};
+  return {id:PUBLIC_OWNER_ID,email:PUBLIC_OWNER_EMAIL};
 }
 
 Deno.serve(async(req:Request)=>{
