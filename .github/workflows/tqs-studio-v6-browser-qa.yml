@@ -32,5 +32,12 @@ jobs:
           cat /tmp/tqs-v6.log
           exit 1
       - run: node frontend/scripts/qa-studio-v6.mjs
+      - name: Upload visual acceptance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tqs-studio-v6-visual
+          path: frontend/.qa-artifacts/*.png
+          if-no-files-found: ignore
       - if: always()
         run: tail -n 200 /tmp/tqs-v6.log || true
