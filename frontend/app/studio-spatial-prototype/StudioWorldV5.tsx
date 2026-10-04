@@ -3,7 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from "react";
 import {BookOpen,ChevronLeft,ChevronRight,CircleDot,Download,FileJson,FileText,FolderSync,Image as ImageIcon,Link as LinkIcon,ListTodo,Maximize2,Menu,Mic,Moon,MoreHorizontal,PanelLeftClose,PanelLeftOpen,PenLine,Plus,Search,Settings,SquarePen,Sun,Type,Upload,Volume2,X} from "lucide-react";
 import {DocumentEditorV5} from "@/components/studio-v5/DocumentEditorV5";
 import {StudioMarketChart} from "@/components/studio-v5/MarketChart";
-import {downloadPdf,driveOAuthStart,studioAction} from "@/lib/studio-v5/api";
+import {driveOAuthStart,studioAction} from "@/lib/studio-v5/api";
 import {resetLocalStudio,saveLocalObjectDraft} from "@/lib/studio-v5/local-store";
 import type {DataSpec,DocumentBundle,StudioActivity,StudioDocument,StudioObject,WorldOverview} from "@/lib/studio-v5/types";
 import styles from "./studio-v5.module.css";
@@ -83,7 +83,7 @@ export default function StudioWorldV5(){
  const openDocument=async(id:string)=>{setSurface("documents");setBundle(await studioAction<DocumentBundle>("getDocument",{documentId:id}));};
  const createDocumentFromSelected=async()=>{if(!selectedObject)return;const d=await studioAction<DocumentBundle>("createDocument",{title:"Документ — "+selectedObject.title,semanticPath:selectedObject.semantic_path,frameId:selectedObject.kind==="frame"?selectedObject.id:selectedObject.parent_id,kind:selectedObject.semantic_path.startsWith("Статьи")?"article":"instruction"});setDocuments(await studioAction("listDocuments"));setBundle(d);setSurface("documents")};
  const share=async()=>{if(!bundle)return;const x=await studioAction<any>("createShare",{documentId:bundle.document.id,appOrigin:window.location.origin});await navigator.clipboard.writeText(x.url);setNotice("Ссылка скопирована: "+x.url)};
- const pdf=async()=>{if(!bundle)return;const share=await studioAction<any>("createShare",{documentId:bundle.document.id,appOrigin:window.location.origin});const x=await downloadPdf(bundle,share.url);const u=URL.createObjectURL(x.blob),a=document.createElement("a");a.href=u;a.download=bundle.document.title+".pdf";a.click();setTimeout(()=>URL.revokeObjectURL(u),0);setNotice("PDF создан · актуальная версия привязана")};
+ const pdf=()=>{if(!bundle)return;const form=document.createElement("form"),input=document.createElement("input");form.method="POST";form.action="/api/studio/pdf";form.style.display="none";input.type="hidden";input.name="payload";input.value=JSON.stringify({bundle,liveUrl:window.location.origin+"/studio"});form.appendChild(input);document.body.appendChild(form);form.submit();form.remove();setNotice("PDF создан · актуальная версия привязана")};
  const refreshDrive=async()=>{try{const d=await studioAction<any>("driveStatus");setDrive(d);if(d.connection?.status==="CONNECTED")setDriveFiles(await studioAction<any[]>("driveListRoot"))}catch(e){setNotice(e instanceof Error?e.message:String(e))}};
  const connectDrive=async()=>{try{const x=await driveOAuthStart(window.location.href);window.location.href=x.url}catch(e:any){setDrive(e.details||{error:e.message});setNotice(e.message)}};
  useEffect(()=>{if(diagnostics)setDrive((d:any)=>d||{connection:{status:"OPTIONAL_AUTH_LATER"},oauthConfigured:false,conflicts:[]})},[diagnostics]);

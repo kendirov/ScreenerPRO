@@ -72,7 +72,14 @@ function fallbackPdf(body:any){
 }
 
 export async function POST(req:Request){
-  const body=await req.json();
+  const contentType=req.headers.get("content-type")||"";
+  let body:any;
+  if(contentType.includes("application/x-www-form-urlencoded")||contentType.includes("multipart/form-data")){
+    const form=await req.formData();
+    body=JSON.parse(String(form.get("payload")||"{}"));
+  }else{
+    body=await req.json();
+  }
   try{
     const r=await fetch(EDGE,{
       method:"POST",
