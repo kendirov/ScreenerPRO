@@ -34,3 +34,18 @@
 .v6-brand span{display:none}.v6-brand strong{font-size:12px}
 .v6-sync{display:none}
 .v6-diagnostics section:first-of-type{display:none}
+
+
+/* V6 owner-first document navigation: rail by default, one temporary overlay. */
+.v6-doc-shell{position:relative}
+.v6-doc-nav{position:relative;width:46px!important;flex:0 0 46px!important;border-right:1px solid var(--line);background:var(--panel);overflow:visible!important;padding:6px 5px}
+.v6-doc-nav-toggle{width:34px;height:34px;border:0;background:transparent;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
+.v6-doc-nav-toggle:hover,.v6-doc-nav-toggle[aria-expanded=true]{background:var(--surface);color:var(--text)}
+.v6-doc-nav-overlay{position:absolute;left:46px;top:0;bottom:0;width:264px;z-index:420;background:var(--panel);border-right:1px solid var(--line);box-shadow:14px 0 38px #0006;overflow:auto;padding:0!important}
+.v6-doc-nav-overlay>header{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line)}
+.v6-doc-nav-overlay>header strong{font-size:11px}.v6-doc-nav-overlay>header button{border:0;background:transparent;color:var(--muted)}
+.v6-doc-nav-overlay>div{padding:6px}
+.v6-doc-nav-overlay>div>button{width:100%;border:0;background:transparent;border-radius:8px;padding:8px;text-align:left;display:flex;flex-direction:column;gap:3px}
+.v6-doc-nav-overlay>div>button:hover,.v6-doc-nav-overlay>div>button.active{background:var(--surface)}
+.v6-doc-nav-overlay button small{font-size:7px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:236px}
+.v6-doc-nav-overlay button strong{font-size:9px}
