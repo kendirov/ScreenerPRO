@@ -197,12 +197,12 @@ async function ensureShare(ownerId:string,documentId:string,appOrigin:string){
   return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(doc.slug)}?t=${token}`,existing:false,slug:doc.slug};
 }
 async function createFreshShare(ownerId:string,documentId:string,appOrigin:string){
-  const {data:doc}=await admin.from("studio_documents").select("*").eq("id",documentId).eq("owner_id",ownerId).single();
-  await admin.from("studio_share_links").update({revoked_at:new Date().toISOString()}).eq("owner_id",ownerId).eq("document_id",documentId).is("revoked_at",null);
   const token=randomToken(32),hash=await sha256Hex(token);
-  await admin.from("studio_share_links").insert({owner_id:ownerId,document_id:documentId,slug:doc.slug,token_hash:hash,mode:"unlisted",document_revision:doc.revision});
-  await admin.from("studio_documents").update({share_mode:"unlisted",updated_at:new Date().toISOString()}).eq("id",documentId);
-  return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(doc.slug)}?t=${token}`,slug:doc.slug,documentRevision:doc.revision};
+  const {data,error}=await admin.rpc("studio_create_share_link",{p_owner_id:ownerId,p_document_id:documentId,p_token_hash:hash});
+  if(error)throw error;
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row?.slug||!row?.document_revision)throw new Error("CREATE_SHARE_RPC_INVALID");
+  return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(row.slug)}?t=${token}`,slug:row.slug,documentRevision:Number(row.document_revision)};
 }
 function decodeDataUrl(dataUrl:string){
   const m=dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/s); if(!m) throw new Error("INVALID_DATA_URL");
