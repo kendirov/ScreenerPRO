@@ -2,7 +2,7 @@ const EDGE="https://hppbuzbrjoyrwpdinlxk.supabase.co/functions/v1/studio-api/pub
 
 async function forward(body:string){
   let action="";try{action=String(JSON.parse(body)?.action||"")}catch{}
-  const mustComplete=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe"]).has(action),attempts=mustComplete?1:2,timeoutMs=action==="createShare"?30000:mustComplete?20000:3400;
+  const mustComplete=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun","aiCreateDocumentFromFrame"]).has(action),attempts=mustComplete?1:2,timeoutMs=action==="createShare"?30000:mustComplete?20000:3400;
   let last={status:503,contentType:"application/json",body:JSON.stringify({ok:false,error:"STUDIO_UPSTREAM_UNAVAILABLE"})};
   for(let attempt=0;attempt<attempts;attempt++){
     try{
