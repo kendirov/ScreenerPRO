@@ -16,6 +16,19 @@ function obj(o:Partial<StudioObject>&Pick<StudioObject,"id"|"kind"|"semantic_pat
 function block(b:Partial<StudioDocumentBlock>&Pick<StudioDocumentBlock,"block_id"|"document_id"|"ordinal"|"block_type">):StudioDocumentBlock{
  return {content:{},data_spec:null,asset_id:null,revision:1,...b};
 }
+function ownerSceneObjects():StudioObject[]{return[
+ obj({id:"lesson-miro-scene",kind:"frame",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство",parent_id:"course-free",x:4080,y:1760,w:1740,h:720,z:3,title:"ЗАНЯТИЕ 1 · РАБОЧЕЕ ПРОСТРАНСТВО",body:{ownerReference:true,sceneVersion:1},relations:[{type:"contains",targetId:"course-free"}]}),
+ obj({id:"lesson-miro-l100",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/L1.00",parent_id:"lesson-miro-scene",x:4170,y:1880,w:210,h:74,z:10,title:"L1.00 · Подготовка",body:{html:"<p><b>L1.00</b><br/>Подготовить рабочее пространство</p>"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
+ obj({id:"lesson-miro-l101",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/L1.01",parent_id:"lesson-miro-scene",x:4470,y:1880,w:220,h:74,z:10,title:"L1.01 · График",body:{html:"<p><b>L1.01</b><br/>Настроить график Si</p>"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
+ obj({id:"lesson-miro-l102",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/L1.02",parent_id:"lesson-miro-scene",x:4780,y:1880,w:220,h:74,z:10,title:"L1.02 · Стакан",body:{html:"<p><b>L1.02</b><br/>Стакан и лента рядом</p>"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
+ obj({id:"lesson-miro-shot",kind:"image",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Скрин рабочего места",parent_id:"lesson-miro-scene",x:4360,y:2040,w:560,h:300,z:10,title:"Скрин рабочего пространства",body:{previewUrl:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 440'%3E%3Crect width='800' height='440' fill='%231b1d20'/%3E%3Crect x='32' y='34' width='470' height='235' rx='10' fill='%23272b30' stroke='%236f7780'/%3E%3Cpolyline points='55,220 110,188 180,202 245,135 315,160 382,92 470,118' fill='none' stroke='%23d5ad5b' stroke-width='6'/%3E%3Crect x='525' y='34' width='242' height='360' rx='10' fill='%2323272b' stroke='%236f7780'/%3E%3Cpath d='M548 80h190M548 118h190M548 156h190M548 194h190M548 232h190M548 270h190' stroke='%23545b63' stroke-width='7'/%3E%3Crect x='32' y='292' width='470' height='102' rx='10' fill='%2323272b'/%3E%3Cpath d='M55 322h410M55 350h330' stroke='%23656d75' stroke-width='8'/%3E%3C/svg%3E",mimeType:"image/svg+xml",filename:"workspace-reference.svg"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
+ obj({id:"lesson-miro-correction",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Правка",parent_id:"lesson-miro-scene",x:5020,y:2070,w:300,h:116,z:12,title:"Правка рабочего места",body:{html:"<p><b>Это переделать</b><br/>Стакан ближе к графику, убрать лишнюю панель.</p>",accent:"purple"},relations:[{type:"contains",targetId:"lesson-miro-scene"},{type:"annotates",targetId:"lesson-miro-shot"}]}),
+ obj({id:"lesson-miro-arrow-1",kind:"annotation",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Связь 1",parent_id:"lesson-miro-scene",x:4385,y:1908,w:78,h:24,z:20,title:"Связь",body:{annotationKind:"arrow",points:[{x:0,y:12},{x:78,y:12}]},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
+ obj({id:"lesson-miro-arrow-2",kind:"annotation",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Связь 2",parent_id:"lesson-miro-scene",x:4695,y:1908,w:78,h:24,z:20,title:"Связь",body:{annotationKind:"arrow",points:[{x:0,y:12},{x:78,y:12}]},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
+ obj({id:"lesson-miro-arrow-correction",kind:"annotation",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Правка скрина",parent_id:"lesson-miro-scene",x:4915,y:2110,w:105,h:54,z:21,title:"Стрелка правки",body:{annotationKind:"arrow",points:[{x:0,y:45},{x:105,y:8}]},relations:[{type:"contains",targetId:"lesson-miro-scene"},{type:"annotates",targetId:"lesson-miro-shot"}]}),
+ obj({id:"lesson-miro-chart",kind:"chart",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Si",parent_id:"lesson-miro-scene",x:5350,y:1880,w:380,h:280,z:10,title:"Si · объём",body:{dataSpec:liveSpec},relations:[{type:"contains",targetId:"lesson-miro-scene"}]})
+]}
+
 function initialState():LocalState{
  const objects:StudioObject[]=[
   obj({id:"frame-agent",kind:"frame",semantic_path:"ARTEM OS/Agent",x:260,y:300,w:1180,h:850,z:1,title:"ARTEM OS / Agent"}),
@@ -35,7 +48,8 @@ function initialState():LocalState{
   obj({id:"lesson-demo-task",kind:"task",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Практика",parent_id:"lesson-free-1",x:4590,y:820,w:280,h:90,z:10,title:"Практика урока",body:{title:"Добавить свой скрин рабочего пространства",done:false},relations:[{type:"contains",targetId:"lesson-free-1"}],status:"NEW"}),
   obj({id:"lesson-demo-voice",kind:"voice",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Голосовая заметка",parent_id:"lesson-free-1",x:4280,y:950,w:320,h:84,z:10,title:"Голосовая заметка",body:{status:"Ожидает записи"},relations:[{type:"contains",targetId:"lesson-free-1"}],status:"WAITING_RECORDING"}),
   obj({id:"lesson-doc-ref",kind:"documentRef",semantic_path:"Обучение/Бесплатный курс/Занятие 1",parent_id:"lesson-free-1",x:4630,y:945,w:240,h:84,z:10,title:"Открыть документ занятия",body:{documentId:"doc-lesson-workspace"},relations:[{type:"document_of",targetId:"doc-lesson-workspace"},{type:"contains",targetId:"lesson-free-1"}]}),
-  obj({id:"article-si-frame",kind:"documentRef",semantic_path:"Статьи/Si — история ликвидности",parent_id:"frame-articles",x:820,y:2070,w:650,h:240,z:5,title:"Статья — Si: история ликвидности",body:{documentId:"doc-si"},relations:[{type:"document_of",targetId:"doc-si"},{type:"contains",targetId:"frame-articles"}]})
+  obj({id:"article-si-frame",kind:"documentRef",semantic_path:"Статьи/Si — история ликвидности",parent_id:"frame-articles",x:820,y:2070,w:650,h:240,z:5,title:"Статья — Si: история ликвидности",body:{documentId:"doc-si"},relations:[{type:"document_of",targetId:"doc-si"},{type:"contains",targetId:"frame-articles"}]}),
+  ...ownerSceneObjects()
  ];
  const documents:StudioDocument[]=[
   {id:"doc-lesson-workspace",world_key:"tqs-studio-world",slug:"zanyatie-1-rabochee-prostranstvo",kind:"lesson",title:"Занятие 1 — Рабочее пространство",semantic_path:"Обучение/Бесплатный курс/Занятие 1",frame_id:"lesson-free-1",revision:1,status:"DRAFT",share_mode:"private",metadata:{demo:true}},
@@ -66,7 +80,7 @@ function load():LocalState{
  if(typeof window==="undefined")return initialState();
  try{
   const raw=localStorage.getItem(KEY);
-  if(raw){const x=JSON.parse(raw) as LocalState;if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay"))return x}
+  if(raw){const x=JSON.parse(raw) as LocalState;if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;save(x)}return x}}
  }catch{}
  const s=initialState();save(s);return s;
 }
