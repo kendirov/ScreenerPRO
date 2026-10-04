@@ -660,6 +660,66 @@ async function runV5SelfTest(owner:{id:string;email:string},origin:string){
   }
 }
 
+
+async function runV6AiSelfTest(owner:{id:string;email:string},origin:string){
+  const nonce=crypto.randomUUID(),objectId="qa-ai-object-"+nonce,documentId="qa-ai-doc-"+nonce;
+  const generateRun="qa-generate-"+nonce,redesignRun="qa-redesign-"+nonce,documentRun="qa-document-"+nonce;
+  const runIds=[generateRun,redesignRun,documentRun],checks:Record<string,unknown>={};
+  try{
+    await ensureStudioSeed(owner);
+    const context=await action(owner,"getStudioContext",{frameId:"lesson-miro-scene",documentId:"doc-lesson-workspace",objectIds:["lesson-miro-l101"],blockIds:["lesson-chart"],pointer:{x:5250,y:2280},viewport:{x:-1200,y:-700,zoom:.82,width:1440,height:900}},origin);
+    if(context?.frame?.id!=="lesson-miro-scene"||context?.selection?.object_ids?.[0]!=="lesson-miro-l101"||context?.selection?.block_ids?.[0]!=="lesson-chart"||context?.pointer?.x!==5250||context?.viewport?.zoom!==.82||context?.linked_documents?.[0]?.id!=="doc-lesson-workspace"||context?.selected_blocks?.[0]?.block_id!=="lesson-chart")throw new Error("QA_AI_CONTEXT_FAILED");
+    checks.context={frame:context.frame.id,objects:context.selection.object_ids,blocks:context.selection.block_ids,pointer:context.pointer,viewport:context.viewport,document:context.linked_documents[0].id};
+
+    const neighborBefore=await action(owner,"getEntityContext",{id:"lesson-miro-l102"},origin);
+    const generated=await action(owner,"aiApplyMutation",{actor:"chatgpt",generationRunId:generateRun,scope:"world",context:{frameId:"lesson-miro-scene",documentId:"doc-lesson-workspace",objectIds:["lesson-miro-l101"],blockIds:["lesson-chart"],pointer:{x:5250,y:2280},viewport:{x:-1200,y:-700,zoom:.82,width:1440,height:900}},sourceRefs:[{kind:"owner_miro",ref:"ЗАНЯТИЕ 1 · РАБОЧЕЕ ПРОСТРАНСТВО"}],mutations:[{operation:"create",object:{id:objectId,kind:"text",title:"QA Generate Here",body:{html:"<p>generated here</p>"}},summary:"QA Generate here"}]},origin);
+    const created=generated?.changed?.find((x:any)=>x.id===objectId);
+    if(!created||created.parent_id!=="lesson-miro-scene"||created.x!==5250||created.y!==2280||generated.focus_target_id!==objectId||generated.canonical_readback!==true)throw new Error("QA_AI_GENERATE_HERE_FAILED");
+    checks.generateHere={id:created.id,parent_id:created.parent_id,x:created.x,y:created.y,focus:generated.focus_target_id};
+
+    const generateHistory=await action(owner,"getChangeHistory",{generationRunId:generateRun,limit:20},origin);
+    const createEvent=generateHistory.find((x:any)=>x.entity_id===objectId&&x.payload?.operation==="create");
+    if(!createEvent||createEvent.payload?.actor!=="chatgpt"||createEvent.payload?.generation_run_id!==generateRun||createEvent.payload?.after?.id!==objectId)throw new Error("QA_AI_PROVENANCE_FAILED");
+    const freshActivity=await action(owner,"getRecentActivity",{semanticPath:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство",limit:100},origin);
+    if(!freshActivity.some((x:any)=>x.entity_id===objectId&&x.payload?.generation_run_id===generateRun))throw new Error("QA_AI_FRESH_SESSION_RECOVERY_FAILED");
+    checks.provenance={history:createEvent.id,freshActivity:true,generation_run_id:generateRun};
+
+    const redesigned=await action(owner,"aiApplyMutation",{actor:"chatgpt",generationRunId:redesignRun,scope:"selection",context:{frameId:"lesson-miro-scene",objectIds:[objectId],pointer:{x:5250,y:2280},viewport:{x:-1200,y:-700,zoom:.82,width:1440,height:900}},sourceRefs:[{kind:"selection",ref:objectId}],mutations:[{operation:"update",id:objectId,patch:{title:"QA Redesigned",body:{html:"<p>redesigned</p>"}},summary:"QA Redesign this"}]},origin);
+    if(redesigned?.changed?.[0]?.title!=="QA Redesigned"||redesigned.focus_target_id!==objectId)throw new Error("QA_AI_REDESIGN_FAILED");
+    const neighborAfter=await action(owner,"getEntityContext",{id:"lesson-miro-l102"},origin);
+    if(neighborAfter?.entity?.title!==neighborBefore?.entity?.title||neighborAfter?.entity?.revision!==neighborBefore?.entity?.revision)throw new Error("QA_AI_SCOPE_LEAK");
+    const redesignHistory=await action(owner,"getChangeHistory",{generationRunId:redesignRun,limit:20},origin);
+    if(!redesignHistory.some((x:any)=>x.entity_id===objectId&&x.payload?.before?.title==="QA Generate Here"&&x.payload?.after?.title==="QA Redesigned"))throw new Error("QA_AI_REDESIGN_HISTORY_FAILED");
+
+    await action(owner,"undoAiRun",{generationRunId:redesignRun,actor:"chatgpt"},origin);
+    const undoRead=await action(owner,"getEntityContext",{id:objectId},origin);
+    if(undoRead?.entity?.title!=="QA Generate Here")throw new Error("QA_AI_UNDO_FAILED");
+    await action(owner,"redoAiRun",{generationRunId:redesignRun,actor:"chatgpt"},origin);
+    const redoRead=await action(owner,"getEntityContext",{id:objectId},origin);
+    if(redoRead?.entity?.title!=="QA Redesigned")throw new Error("QA_AI_REDO_FAILED");
+    checks.redesign={id:objectId,neighborUnchanged:true,undo:"QA Generate Here",redo:"QA Redesigned"};
+
+    const built=await action(owner,"aiCreateDocumentFromFrame",{id:documentId,frameId:"lesson-miro-scene",title:"QA AI owner scene",kind:"lesson",generationRunId:documentRun,actor:"chatgpt",sourceRefs:[{kind:"owner_miro",ref:"lesson-1-workspace"}]},origin);
+    if(built?.document?.id!==documentId||built?.document?.metadata?.generation_run_id!==documentRun||built?.document?.metadata?.source_frame_id!=="lesson-miro-scene"||!built?.source_object_ids?.includes("lesson-miro-l101")||!built?.source_object_ids?.includes(objectId))throw new Error("QA_AI_FRAME_DOCUMENT_FAILED");
+    const docRead=await action(owner,"getDocument",{documentId},origin);
+    const sources=docRead?.blocks?.find((x:any)=>x.block_type==="sources")?.content?.items||[];
+    if(!sources.some((x:any)=>x.objectId==="lesson-miro-l101")||!sources.some((x:any)=>x.objectId===objectId))throw new Error("QA_AI_FRAME_DOCUMENT_SOURCE_REFS_FAILED");
+    await action(owner,"undoAiRun",{generationRunId:documentRun,actor:"chatgpt"},origin);
+    const archived=await action(owner,"getDocument",{documentId},origin);if(archived?.document?.status!=="ARCHIVED")throw new Error("QA_AI_DOCUMENT_UNDO_FAILED");
+    await action(owner,"redoAiRun",{generationRunId:documentRun,actor:"chatgpt"},origin);
+    const restored=await action(owner,"getDocument",{documentId},origin);if(restored?.document?.status!=="DRAFT")throw new Error("QA_AI_DOCUMENT_REDO_FAILED");
+    checks.frameToDocument={id:documentId,sources:sources.length,undo:"ARCHIVED",redo:"DRAFT"};
+
+    return {ok:true,gate:"P",checks};
+  }finally{
+    for(const runId of runIds){try{await admin.from("studio_activity").delete().contains("payload",{generation_run_id:runId})}catch{}}
+    try{await admin.from("studio_document_blocks").delete().eq("document_id",documentId)}catch{}
+    try{await admin.from("studio_document_revisions").delete().eq("document_id",documentId)}catch{}
+    try{await admin.from("studio_documents").delete().eq("id",documentId)}catch{}
+    try{await admin.from("studio_world_objects").delete().eq("id",objectId)}catch{}
+  }
+}
+
 const PUBLIC_OWNER_ID=Deno.env.get("STUDIO_PUBLIC_OWNER_ID")||"8b89b5b2-5458-4a84-b6e4-29ee8c8c8490";
 const PUBLIC_OWNER_EMAIL=Deno.env.get("STUDIO_PUBLIC_OWNER_EMAIL")||"kendirov@gmail.com";
 async function publicOwner(){
