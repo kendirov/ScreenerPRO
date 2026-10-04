@@ -5,10 +5,9 @@ import {
   shiftCalendarDaysKey,
   TRADING_DATE_MESSAGES,
 } from "@/lib/domain/trading-calendar";
-import { fetchHistoricalMoexIndexBenchmark } from "@/lib/server/services/moex-index-benchmark";
+import { fetchHistoricalMoexIndexBenchmarks } from "@/lib/server/services/moex-index-benchmark";
 import { enrichMoexStocksWithInPlayMetrics } from "@/lib/server/domain/screener-math";
 import { stockBoardHistoryByDateUrl } from "@/lib/server/integrations/moex/endpoints";
-import { mapHistoryBars } from "@/lib/server/integrations/moex/mappers";
 import { moexGetJson } from "@/lib/server/integrations/moex/client";
 import { moexPayloadSchema } from "@/lib/server/integrations/moex/validators";
 
@@ -214,11 +213,10 @@ async function fetchIndexBenchmarkForDate(
 ): Promise<ScreenerBenchmark[]> {
   const aggregateTurnover = stocks.reduce((sum, row) => sum + (row.turnover ?? 0), 0);
   const aggregateTrades = stocks.reduce((sum, row) => sum + (row.tradesCount ?? 0), 0);
-  const benchmark = await fetchHistoricalMoexIndexBenchmark(dateKey, nowIso, {
+  return fetchHistoricalMoexIndexBenchmarks(dateKey, nowIso, {
     aggregateTurnover: aggregateTurnover > 0 ? aggregateTurnover : null,
     aggregateTrades: aggregateTrades > 0 ? aggregateTrades : null,
   });
-  return benchmark ? [benchmark] : [];
 }
 
 function buildHistoricalStatus(input: {
