@@ -77,7 +77,8 @@
     "@radix-ui/react-context-menu": "^2.2.16",
     "@radix-ui/react-popover": "^1.1.15",
     "echarts": "^6.0.0",
-    "pdfjs-dist": "^5.4.149"
+    "pdfjs-dist": "^5.4.149",
+    "@tiptap/core": "^3.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
