@@ -51,7 +51,7 @@ export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpe
   </div>
   {open&&<div className="v6-nav-overlay">
    <header><div><strong>Навигатор</strong><small>Мир · Документы · Активность</small></div></header>
-   <label className="v6-nav-search"><Search size={13}/><input ref={input} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&matches[0]){e.preventDefault();activate(matches[0])}}} placeholder="Найти объект, материал или документ"/><kbd>Ctrl K</kbd></label>
+   <label className="v6-nav-search"><Search size={13}/><input ref={input} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const q=e.currentTarget.value.trim().toLowerCase(),target=searchable.find(n=>(n.title+" "+n.path).toLowerCase().includes(q));if(target){e.preventDefault();activate(target)}}}} placeholder="Найти объект, материал или документ"/><kbd>Ctrl K</kbd></label>
    <div className="v6-nav-scroll">
     {query?<section><h3>Результаты</h3>{matches.length?matches.map(n=><button className="v6-nav-result" key={n.id} onClick={()=>activate(n)}><span>{n.title}</span><small>{n.path}</small></button>):<p className="v6-nav-empty">Ничего не найдено</p>}</section>:<>
      <section><h3>Структура мира</h3>{tree.map(n=>row(n,0))}</section>
