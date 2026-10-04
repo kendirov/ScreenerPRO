@@ -12,7 +12,7 @@ export async function studioSession(){const {data,error}=await studioSupabase().
 
 type SyncJob={key:string;action:string;payload:any;createdAt:number;attempts:number};
 let flushing=false,syncTimer:number|null=null;
-const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun"]);
+const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","aiCreateDocumentFromFrame","redoAiRun"]);
 const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
 function productionServer(){return typeof window!=="undefined"&&!["localhost","127.0.0.1"].includes(window.location.hostname)}
 function readOutbox():SyncJob[]{try{const x=JSON.parse(localStorage.getItem(OUTBOX_KEY)||"[]");return Array.isArray(x)?x:[]}catch{return[]}}
@@ -70,3 +70,5 @@ export async function studioAiUndo(generationRunId:string){return studioAction("
 export async function studioChangeHistory(args:{entityId?:string;generationRunId?:string;limit?:number}={}){return studioAction("getChangeHistory",args)}
 
 export async function studioAiRedo(generationRunId:string){return studioAction("redoAiRun",{generationRunId,actor:"chatgpt"})}
+
+export async function studioAiDocumentFromFrame(args:{frameId:string;title?:string;kind?:string;generationRunId?:string;actor?:string;sourceRefs?:any[]}){return studioAction("aiCreateDocumentFromFrame",{actor:"chatgpt",...args})}
