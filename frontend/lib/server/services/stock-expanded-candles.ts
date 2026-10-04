@@ -105,15 +105,18 @@ function aggregateIntradayBars(bars: NormalizedIntradayBar[], bucketSize: number
 
 async function fetchRawIntradayBars(secid: string, moexInterval: 1 | 10 | 60): Promise<NormalizedIntradayBar[]> {
   const today = moscowDateKey();
+  const from = formatDate(new Date(Date.now() - 8 * 24 * 3600 * 1000));
   const payload = moexPayloadSchema.parse(
-    await moexGetJson(stockCandlesUrl(secid, today, today, moexInterval), 60),
+    await moexGetJson(stockCandlesUrl(secid, from, today, moexInterval), 60),
   );
   const table = payload.candles;
   if (!table?.data?.length) return [];
 
-  return mapIntradayCandlesBars(table.columns, table.data)
+  const bars = mapIntradayCandlesBars(table.columns, table.data)
     .filter((bar) => bar.close != null && Number.isFinite(bar.close))
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  const latestSession = bars.at(-1)?.timestamp.slice(0, 10);
+  return latestSession ? bars.filter((bar) => bar.timestamp.slice(0, 10) === latestSession) : [];
 }
 
 async function fetchIntradayExpandedSeries(

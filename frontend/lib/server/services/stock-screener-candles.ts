@@ -68,21 +68,15 @@ function candleSessionKey(timestamp: string): string {
   }).format(new Date(timestamp));
 }
 
-function previousTradingDateKey(from = new Date()): string {
-  const cursor = new Date(from);
-  for (let i = 0; i < 8; i++) {
-    cursor.setDate(cursor.getDate() - 1);
-    const weekday = moscowWeekday(cursor);
-    if (weekday >= 1 && weekday <= 5) {
-      return moscowDateKey(cursor);
-    }
-  }
-  return moscowDateKey(cursor);
+function lookbackDateKey(days: number, from = new Date()): string {
+  return moscowDateKey(new Date(from.getTime() - days * 24 * 3600 * 1000));
 }
 
-async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): Promise<StockSparklineSeries> {
+async function fetchMultiSessionIntradaySeries(secid: string, interval: 10 | 60, sessionCount: 2 | 3): Promise<StockSparklineSeries> {
   const till = moscowDateKey();
-  const from = previousTradingDateKey();
+  // A calendar window is intentional: on weekends and holidays the nearest
+  // previous weekday alone contains only one real trading session.
+  const from = lookbackDateKey(7);
 
   try {
     const payload = moexPayloadSchema.parse(
@@ -90,10 +84,10 @@ async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): 
     );
     const table = payload.candles;
     if (!table?.data?.length) {
-      return { ...emptySeries(secid, "intraday", interval), scope: "twoSessions", sessionKeys: [] };
+      return { ...emptySeries(secid, "intraday", interval), scope: sessionCount === 3 ? "threeSessions" : "twoSessions", sessionKeys: [] };
     }
 
-    const candles: StockSparklineCandle[] = mapIntradayCandlesBars(table.columns, table.data)
+    const allCandles: StockSparklineCandle[] = mapIntradayCandlesBars(table.columns, table.data)
       .filter((bar) => bar.close != null && Number.isFinite(bar.close))
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
       .map((bar) => ({
@@ -104,12 +98,16 @@ async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): 
         sessionKey: candleSessionKey(bar.timestamp),
       }));
 
-    const sessionKeys = [...new Set(candles.map((c) => c.sessionKey).filter(Boolean))] as string[];
+    const allSessionKeys = [...new Set(allCandles.map((c) => c.sessionKey).filter(Boolean))] as string[];
+    const sessionKeys = allSessionKeys.slice(-sessionCount);
+    const selectedSessions = new Set(sessionKeys);
+    const candles = allCandles.filter((candle) => candle.sessionKey && selectedSessions.has(candle.sessionKey));
 
-    if (candles.length < 3 || sessionKeys.length < 2) {
+    const scope = sessionCount === 3 ? "threeSessions" : "twoSessions";
+    if (candles.length < 3 || sessionKeys.length < sessionCount) {
       return {
         ...emptySeries(secid, "intraday", interval),
-        scope: "twoSessions",
+        scope,
         sessionKeys,
         candles,
         candleCount: candles.length,
@@ -122,15 +120,19 @@ async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): 
       status: "ok",
       source: "intraday",
       interval,
-      scope: "twoSessions",
+      scope,
       sessionKeys,
       candles,
       candleCount: candles.length,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return { ...emptySeries(secid, "intraday", interval, message), scope: "twoSessions", sessionKeys: [] };
+    return { ...emptySeries(secid, "intraday", interval, message), scope: sessionCount === 3 ? "threeSessions" : "twoSessions", sessionKeys: [] };
   }
+}
+
+async function fetchTwoSessionIntradaySeries(secid: string, interval: 10 | 60): Promise<StockSparklineSeries> {
+  return fetchMultiSessionIntradaySeries(secid, interval, 2);
 }
 
 async function fetchIntradaySeries(secid: string, interval: 10 | 60): Promise<StockSparklineSeries> {
@@ -228,15 +230,16 @@ async function fetchSeriesForTicker(
 
 export async function buildStockSparklineBatch(
   secids: string[],
-  options?: { interval?: 10 | 60; days?: number; sessions?: 1 | 2 },
+  options?: { interval?: 10 | 60; days?: number; sessions?: 1 | 2 | 3 },
 ): Promise<StockSparklineBatchResponse> {
   const interval = options?.interval === 60 ? 60 : 10;
   const days = Math.min(10, Math.max(3, options?.days ?? 5));
-  const twoSessions = options?.sessions === 2;
-  const maxSecids = twoSessions ? RADAR_SPARKLINE_MAX_SECIDS : MAX_SECIDS;
+  const multiSessions = options?.sessions === 2 || options?.sessions === 3;
+  const sessionCount = options?.sessions === 3 ? 3 : 2;
+  const maxSecids = multiSessions ? RADAR_SPARKLINE_MAX_SECIDS : MAX_SECIDS;
 
   const unique = [...new Set(secids.map((s) => s.trim().toUpperCase()).filter(Boolean))].slice(0, maxSecids);
-  const cacheKey = `${unique.join(",")}|${interval}|${days}|${twoSessions ? "2s" : "1s"}|${moscowDateKey()}|${isMoexStockSessionOpen() ? "open" : "closed"}`;
+  const cacheKey = `${unique.join(",")}|${interval}|${days}|${multiSessions ? `${sessionCount}s` : "1s"}|${moscowDateKey()}|${isMoexStockSessionOpen() ? "open" : "closed"}`;
   const cached = batchCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.payload;
@@ -245,8 +248,8 @@ export async function buildStockSparklineBatch(
   const preferIntraday = isMoexStockSessionOpen();
   const series = await Promise.all(
     unique.map((secid) =>
-      twoSessions
-        ? fetchTwoSessionIntradaySeries(secid, interval)
+      multiSessions
+        ? fetchMultiSessionIntradaySeries(secid, interval, sessionCount)
         : fetchSeriesForTicker(secid, { interval, days, preferIntraday }),
     ),
   );
