@@ -43,6 +43,8 @@ export function PublicDocumentClient({slug,token}:{slug:string;token:string}){
   if(error)return <main className={styles.sharePage}><article className={styles.cleanDocument}><h1>{error}</h1></article></main>;
   if(!bundle)return <main className={styles.sharePage}><article className={styles.cleanDocument}><p>Загрузка документа…</p></article></main>;
 
+  const cleanBlocks=[...bundle.blocks].sort((a,b)=>a.ordinal-b.ordinal).filter((block,index)=>!(index===0&&block.block_type==="heading"&&String(block.content?.text||"").trim()===bundle.document.title.trim()));
+
   return <main className={styles.sharePage}>
     <article className={styles.cleanDocument}>
       <header>
@@ -50,7 +52,7 @@ export function PublicDocumentClient({slug,token}:{slug:string;token:string}){
         <h1>{bundle.document.title}</h1>
         <p>Ревизия {bundle.document.revision} · {bundle.document.semantic_path}</p>
       </header>
-      <DocumentBlocksView blocks={bundle.blocks} clean/>
+      <DocumentBlocksView blocks={cleanBlocks} clean/>
       <footer>Актуальная версия · live blocks сохраняют updatePolicy</footer>
     </article>
   </main>;
