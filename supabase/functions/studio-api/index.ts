@@ -197,12 +197,18 @@ async function ensureShare(ownerId:string,documentId:string,appOrigin:string){
   return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(doc.slug)}?t=${token}`,existing:false,slug:doc.slug};
 }
 async function createFreshShare(ownerId:string,documentId:string,appOrigin:string){
-  const token=randomToken(32),hash=await sha256Hex(token);
-  const {data,error}=await admin.rpc("studio_create_share_link",{p_owner_id:ownerId,p_document_id:documentId,p_token_hash:hash});
-  if(error)throw error;
-  const row=Array.isArray(data)?data[0]:data;
-  if(!row?.slug||!row?.document_revision)throw new Error("CREATE_SHARE_RPC_INVALID");
-  return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(row.slug)}?t=${token}`,slug:row.slug,documentRevision:Number(row.document_revision)};
+  const {data:doc,error:de}=await admin.from("studio_documents").select("slug,revision").eq("id",documentId).eq("owner_id",ownerId).single();
+  if(de||!doc)throw de||new Error("DOCUMENT_NOT_FOUND");
+  const token=randomToken(32),hash=await sha256Hex(token),now=new Date().toISOString();
+  const {error:ie}=await admin.from("studio_share_links").insert({owner_id:ownerId,document_id:documentId,slug:doc.slug,token_hash:hash,mode:"unlisted",document_revision:doc.revision});
+  if(ie)throw ie;
+  const [revoke,mark]=await Promise.all([
+    admin.from("studio_share_links").update({revoked_at:now}).eq("owner_id",ownerId).eq("document_id",documentId).is("revoked_at",null).neq("token_hash",hash),
+    admin.from("studio_documents").update({share_mode:"unlisted",updated_at:now}).eq("id",documentId).eq("owner_id",ownerId)
+  ]);
+  if(revoke.error)throw revoke.error;
+  if(mark.error)throw mark.error;
+  return {token,url:`${appOrigin.replace(/\/$/,"")}/d/${encodeURIComponent(doc.slug)}?t=${token}`,slug:doc.slug,documentRevision:Number(doc.revision)};
 }
 function decodeDataUrl(dataUrl:string){
   const m=dataUrl.match(/^data:([^;,]+)?(;base64)?,(.*)$/s); if(!m) throw new Error("INVALID_DATA_URL");
@@ -526,6 +532,15 @@ async function runV5SelfTest(owner:{id:string;email:string},origin:string){
   }
 }
 
+let publicOwnerCache:{id:string;email:string;at:number}|null=null;
+async function publicOwner(){
+  if(publicOwnerCache&&Date.now()-publicOwnerCache.at<10*60_000)return {id:publicOwnerCache.id,email:publicOwnerCache.email};
+  const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
+  if(e||!o)throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
+  publicOwnerCache={id:o.owner_id,email:o.email,at:Date.now()};
+  return {id:o.owner_id as string,email:o.email as string};
+}
+
 Deno.serve(async(req:Request)=>{
   const origin=req.headers.get("Origin")||undefined;
   if(req.method==="OPTIONS"){const h=new Headers();applyCors(h,origin);return new Response(null,{status:204,headers:h})}
@@ -539,32 +554,28 @@ Deno.serve(async(req:Request)=>{
       if(!bundle)return json({error:"SHARE_NOT_FOUND"},404,origin);return json(bundle,200,origin);
     }
     if(path==="/public/qa"&&req.method==="GET"){
-      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
-      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
-      return json(await runV5SelfTest({id:o.owner_id,email:o.email},origin||""),200,origin);
+      const o=await publicOwner();
+      return json(await runV5SelfTest({id:o.id,email:o.email},origin||""),200,origin);
     }
     if(path==="/public/smoke"&&req.method==="GET"){
-      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
-      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
-      const world=await action({id:o.owner_id,email:o.email},"getWorldOverview",{},origin||"");
-      const docs=await action({id:o.owner_id,email:o.email},"listDocuments",{},origin||"");
+      const o=await publicOwner();
+      const world=await action({id:o.id,email:o.email},"getWorldOverview",{},origin||"");
+      const docs=await action({id:o.id,email:o.email},"listDocuments",{},origin||"");
       return json({ok:true,mode:"open-prototype",world:world?.world?.title||null,objects:world?.objects?.length||0,documents:docs?.length||0},200,origin);
     }
     if(path==="/public/action"&&req.method==="POST"){
       const body=await req.json();
       const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","disableShare","driveStatus"]);
       if(!allowed.has(body.action)) return json({ok:false,error:"PUBLIC_ACTION_FORBIDDEN"},403,origin);
-      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
-      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
-      return json({ok:true,data:await action({id:o.owner_id,email:o.email},body.action,body.payload||{},origin||"")},200,origin);
+      const o=await publicOwner();
+      return json({ok:true,data:await action({id:o.id,email:o.email},body.action,body.payload||{},origin||"")},200,origin);
     }
     if(path==="/public/pdf"&&req.method==="GET"){
-      const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
-      if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
+      const o=await publicOwner();
       const documentId=url.searchParams.get("documentId")||"";const appOrigin=safeReturnTo(url.searchParams.get("appOrigin"))||origin||"";
       if(!documentId||!appOrigin)return json({error:"documentId/appOrigin required"},400,origin);
-      const share=await createFreshShare(o.owner_id,documentId,appOrigin);const liveUrl=share.url;
-      const bundle=await loadDocument(o.owner_id,documentId);const pdf=await generatePdf(bundle,liveUrl);
+      const share=await createFreshShare(o.id,documentId,appOrigin);const liveUrl=share.url;
+      const bundle=await loadDocument(o.id,documentId);const pdf=await generatePdf(bundle,liveUrl);
       const h=new Headers({"Content-Type":"application/pdf","Content-Disposition":`attachment; filename*=UTF-8''${encodeURIComponent(bundle.document.title+".pdf")}`,"X-TQS-Share-Url":liveUrl});applyCors(h,origin);return new Response(pdf,{headers:h});
     }
     const owner=await ownerFromRequest(req);
