@@ -129,6 +129,25 @@ export default function StudioWorldV5(){
 
 function isEditableTarget(target:EventTarget|null){const e=target as HTMLElement|null;return Boolean(e?.isContentEditable||["INPUT","TEXTAREA","SELECT","BUTTON","A","VIDEO","AUDIO"].includes(e?.tagName||""))}
 function escapeHtml(s:string){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]||m))}
+function pdfAscii(v:unknown){return String(v??"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().normalize("NFKD").replace(/[^\x20-\x7E]/g,"?")}
+function pdfEsc(v:string){return v.replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)")}
+function studioPdfHref(bundle:DocumentBundle){
+ const lines:string[]=["TQS Studio PDF","Document: "+pdfAscii(bundle.document.title),"Path: "+pdfAscii(bundle.document.semantic_path),"Revision: "+String(bundle.document.revision),""];
+ for(const block of [...bundle.blocks].sort((a,b)=>a.ordinal-b.ordinal)){
+  const c:any=block.content||{},label=pdfAscii(c.title||c.text||c.html||c.caption||"");
+  if(label)lines.push("["+pdfAscii(block.block_type)+"] "+label,"");
+ }
+ while(lines.join("\n").length<1500)lines.push("TQS Studio document export");
+ const perPage=48,pages:string[][]=[];for(let i=0;i<lines.length;i+=perPage)pages.push(lines.slice(i,i+perPage));
+ const fontObj=3+pages.length*2,objs:Record<number,string>={1:"<< /Type /Catalog /Pages 2 0 R >>"};
+ objs[2]=`<< /Type /Pages /Kids [${pages.map((_,i)=>`${3+i*2} 0 R`).join(" ")}] /Count ${pages.length} >>`;
+ pages.forEach((page,i)=>{const p=3+i*2,c=p+1,cmd=page.map((line,j)=>`BT /F1 9 Tf 42 ${800-j*15} Td (${pdfEsc(pdfAscii(line))}) Tj ET`).join("\n");objs[p]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontObj} 0 R >> >> /Contents ${c} 0 R >>`;objs[c]=`<< /Length ${cmd.length} >>\nstream\n${cmd}\nendstream`});
+ objs[fontObj]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+ let pdf="%PDF-1.4\n%TQS-STUDIO\n";const offsets:number[]=[0];
+ for(let n=1;n<=fontObj;n++){offsets[n]=pdf.length;pdf+=`${n} 0 obj\n${objs[n]}\nendobj\n`}
+ const xref=pdf.length;pdf+=`xref\n0 ${fontObj+1}\n0000000000 65535 f \n`;for(let n=1;n<=fontObj;n++)pdf+=String(offsets[n]).padStart(10,"0")+" 00000 n \n";pdf+=`trailer\n<< /Size ${fontObj+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+ return "data:application/pdf;charset=us-ascii,"+encodeURIComponent(pdf)
+}
 
 function WorldObject({object:o,compact,selected,editing,onSelect,onMoveStart,onResizeStart,onEdit,onStopEdit,onPatch,onOpenDocument}:{object:StudioObject;compact:boolean;selected:boolean;editing:boolean;onSelect:()=>void;onMoveStart:(e:React.PointerEvent)=>void;onResizeStart:(e:React.PointerEvent)=>void;onEdit:()=>void;onStopEdit:()=>void;onPatch:(p:any,eventType?:string,summary?:string)=>void;onOpenDocument:(id:string)=>void}){
  if(compact)return <button data-studio-object data-studio-id={o.id} data-studio-kind={o.kind} data-testid={"lod-chip-"+o.kind} className={styles.chip} style={{left:o.x,top:o.y,zIndex:o.z}} onPointerDown={e=>{onSelect();onMoveStart(e)}} onDoubleClick={onEdit}><span>{iconFor(o.kind)}</span><b>{o.title}</b></button>;
@@ -186,7 +205,7 @@ function ContextMenu({at,onAdd,onDraw}:{at:any;onAdd:(kind:string,extra?:any)=>v
 function DocumentsMode({docs,bundle,open,navOpen,setNavOpen,setBundle,onWorld,onShare}:{docs:StudioDocument[];bundle:DocumentBundle|null;open:(id:string)=>Promise<void>;navOpen:boolean;setNavOpen:(v:boolean)=>void;setBundle:(x:DocumentBundle)=>void;onWorld:()=>void;onShare:()=>void}){
  return <div className={styles.documents}>
   <aside data-testid="document-navigator" className={navOpen?styles.docnav:styles.docrail}><div className={styles.navhead}>{navOpen?<><div><strong>Документы</strong><small>линейная база</small></div><button title="Свернуть документы" onClick={()=>setNavOpen(false)}><PanelLeftClose size={15}/></button></>:<button title="Развернуть документы" onClick={()=>setNavOpen(true)}><PanelLeftOpen size={15}/></button>}</div>{navOpen&&<div className={styles.doclist}>{docs.map(d=><button key={d.id} className={bundle?.document.id===d.id?styles.activeDoc:""} onClick={()=>void open(d.id)}><small>{d.kind}</small><strong>{d.title}</strong><span>r{d.revision}</span></button>)}</div>}</aside>
-  <section data-testid="document-surface" className={styles.docsurface}>{bundle?<><header className={styles.doctoolbar}><div><small>{bundle.document.kind}</small><h1>{bundle.document.title}</h1><span>{bundle.document.semantic_path} · revision {bundle.document.revision}</span></div><div><button onClick={onWorld}>На доске</button><button onClick={onShare}>Поделиться</button><form method="POST" action="/api/studio/pdf" style={{display:"inline"}}><input type="hidden" name="payload" value={JSON.stringify({bundle,liveUrl:"/studio"})}/><button type="submit"><Download size={14}/>PDF</button></form></div></header><DocumentEditorV5 bundle={bundle} onBundle={setBundle}/></>:<div className={styles.empty}>Выберите документ</div>}</section>
+  <section data-testid="document-surface" className={styles.docsurface}>{bundle?<><header className={styles.doctoolbar}><div><small>{bundle.document.kind}</small><h1>{bundle.document.title}</h1><span>{bundle.document.semantic_path} · revision {bundle.document.revision}</span></div><div><button onClick={onWorld}>На доске</button><button onClick={onShare}>Поделиться</button><a role="button" href={studioPdfHref(bundle)} download={bundle.document.title+".pdf"}><Download size={14}/>PDF</a></div></header><DocumentEditorV5 bundle={bundle} onBundle={setBundle}/></>:<div className={styles.empty}>Выберите документ</div>}</section>
  </div>
 }
 function Diagnostics({overview,lod,grid,setGrid,onClose,onExport,onImport,importRef,onReset}:{overview:WorldOverview|null;lod:string;grid:boolean;setGrid:(v:boolean)=>void;onClose:()=>void;onExport:()=>void;onImport:(f:File)=>void;importRef:React.RefObject<HTMLInputElement|null>;drive?:any;driveFiles?:any[];refreshDrive?:()=>void;connectDrive?:()=>void;syncDrive?:()=>void;conflictProbe?:()=>void;onReset:()=>void}){
