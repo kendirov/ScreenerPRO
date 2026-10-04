@@ -12,11 +12,16 @@ export function PublicDocumentClient({slug,token}:{slug:string;token:string}){
   const [error,setError]=useState("");
   useEffect(()=>{
     let live=true;
-    studioSupabase().rpc("studio_public_share_load",{p_token:token}).then(({data,error})=>{
-      if(!live)return;
-      if(error||!data||data.document?.slug!==slug){setError("Документ недоступен");return}
-      setBundle(data as SharedBundle);
-    }).catch(()=>live&&setError("Документ недоступен"));
+    void (async()=>{
+      try{
+        const {data,error}=await studioSupabase().rpc("studio_public_share_load",{p_token:token});
+        if(!live)return;
+        if(error||!data||data.document?.slug!==slug){setError("Документ недоступен");return}
+        setBundle(data as SharedBundle);
+      }catch{
+        if(live)setError("Документ недоступен");
+      }
+    })();
     return()=>{live=false};
   },[slug,token]);
 
