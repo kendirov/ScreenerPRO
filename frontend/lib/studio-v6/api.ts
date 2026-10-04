@@ -12,7 +12,7 @@ export async function studioSession(){const {data,error}=await studioSupabase().
 
 type SyncJob={key:string;action:string;payload:any;createdAt:number;attempts:number};
 let flushing=false,syncTimer:number|null=null;
-const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun"]);
+const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun"]);
 const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
 function productionServer(){return typeof window!=="undefined"&&!["localhost","127.0.0.1"].includes(window.location.hostname)}
 function readOutbox():SyncJob[]{try{const x=JSON.parse(localStorage.getItem(OUTBOX_KEY)||"[]");return Array.isArray(x)?x:[]}catch{return[]}}
@@ -68,3 +68,5 @@ export async function studioStructuredContext(context:StudioContextRequest){retu
 export async function studioAiMutate(args:{context:StudioContextRequest;scope?:"selection"|"world";generationRunId?:string;actor?:string;sourceRefs?:any[];mutations:Array<{operation:"create";object:any;summary?:string}|{operation:"update";id:string;patch:any;summary?:string}>}){return studioAction("aiApplyMutation",args)}
 export async function studioAiUndo(generationRunId:string){return studioAction("undoAiRun",{generationRunId,actor:"chatgpt"})}
 export async function studioChangeHistory(args:{entityId?:string;generationRunId?:string;limit?:number}={}){return studioAction("getChangeHistory",args)}
+
+export async function studioAiRedo(generationRunId:string){return studioAction("redoAiRun",{generationRunId,actor:"chatgpt"})}
