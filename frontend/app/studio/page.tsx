@@ -1,4 +1,4 @@
 "use client";
 import dynamic from "next/dynamic";
-const StudioWorldV5=dynamic(()=>import("../studio-spatial-prototype/StudioWorldV5"),{ssr:false});
-export default function StudioPage(){return <StudioWorldV5/>}
+const StudioWorldV6=dynamic(()=>import("@/components/studio-v6/StudioWorldV6"),{ssr:false,loading:()=>null});
+export default function StudioPage(){return <StudioWorldV6/>}
