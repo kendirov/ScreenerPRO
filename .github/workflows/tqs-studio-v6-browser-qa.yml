@@ -1,0 +1,33 @@
+name: TQS Studio V6 Browser QA
+on:
+  push:
+    branches: [chatgpt/tqs-studio-v6-productization-2026-10-04]
+  workflow_dispatch:
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir frontend add -D playwright@1.55.0 --ignore-workspace-root-check
+      - run: pnpm --dir frontend exec playwright install --with-deps chromium
+      - name: Start Studio
+        run: |
+          pnpm -C frontend dev --hostname 127.0.0.1 > /tmp/tqs-v6.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:3000/studio >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/tqs-v6.log
+          exit 1
+      - run: node frontend/scripts/qa-studio-v6.mjs
+      - if: always()
+        run: tail -n 200 /tmp/tqs-v6.log || true
