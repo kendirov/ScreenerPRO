@@ -405,17 +405,23 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     for(const m of mutations){
       const op=String(m?.operation||"update");
       if(op==="create"){
-        const raw=m.object||{},id=String(raw.id||(`${raw.kind||"object"}-${crypto.randomUUID()}`)),row={...sanitizeObjectPatch(raw),id,world_key:OWNER_WORLD,owner_id:owner.id,revision:1};
-        if(!row.kind||!row.semantic_path)throw Object.assign(new Error("AI_CREATE_REQUIRES_KIND_AND_SEMANTIC_PATH"),{status:400});
+        const raw=m.object||{},id=String(raw.id||(`${raw.kind||"object"}-${crypto.randomUUID()}`));
+        let parent:any=null;
+        if(raw.parent_id||input.frameId){const {data}=await admin.from("studio_world_objects").select("*").eq("owner_id",owner.id).eq("id",String(raw.parent_id||input.frameId)).maybeSingle();parent=data}
+        if(!parent&&input.pointer){const {data}=await admin.from("studio_world_objects").select("*").eq("owner_id",owner.id).eq("kind","frame").lte("x",input.pointer.x).lte("y",input.pointer.y);parent=(data||[]).filter((x:any)=>input.pointer!.x<=Number(x.x)+Number(x.w)&&input.pointer!.y<=Number(x.y)+Number(x.h)).sort((a:any,b:any)=>Number(a.w)*Number(a.h)-Number(b.w)*Number(b.h))[0]||null}
+        const title=String(raw.title||raw.kind||"Объект"),semanticPath=String(raw.semantic_path||(parent?parent.semantic_path+"/"+title:title));
+        const relations=Array.isArray(raw.relations)?raw.relations:[...(parent?[{type:"contains",targetId:parent.id}]:[])];
+        const row={...sanitizeObjectPatch({...raw,parent_id:raw.parent_id??parent?.id??null,semantic_path:semanticPath,relations,title}),id,world_key:OWNER_WORLD,owner_id:owner.id,revision:1};
+        if(!row.kind)throw Object.assign(new Error("AI_CREATE_REQUIRES_KIND"),{status:400});
         const {data,error}=await admin.from("studio_world_objects").insert(row).select().single();if(error)throw error;
-        const evt=await logActivity(owner.id,data.id,data.semantic_path,"ai_create",m.summary||`AI создал: ${data.title||data.kind}`,{actor,generation_run_id:runId,source_refs:sourceRefs,operation:"create",before:null,after:canonicalObjectSnapshot(data),context:input});changed.push(data);activity.push(evt);continue;
+        const evt=await logActivity(owner.id,data.id,data.semantic_path,"ai_create",m.summary||`AI создал: ${data.title||data.kind}`,{actor,generation_run_id:runId,source_object_ids:input.objectIds,source_refs:sourceRefs,operation:"create",before:null,after:canonicalObjectSnapshot(data),context:input});changed.push(data);activity.push(evt);continue;
       }
       const id=String(m?.id||"");if(!id)throw Object.assign(new Error("AI_UPDATE_ID_REQUIRED"),{status:400});
       if(scope==="selection"&&!allowed.has(id))throw Object.assign(new Error("AI_MUTATION_OUT_OF_SELECTION_SCOPE"),{status:409,details:{id,allowed:[...allowed]}});
       const {data:before,error:be}=await admin.from("studio_world_objects").select("*").eq("owner_id",owner.id).eq("id",id).single();if(be)throw be;
       const patch=sanitizeObjectPatch(m.patch||{});patch.revision=Number(before.revision||1)+1;patch.updated_at=new Date().toISOString();
       const {data,error}=await admin.from("studio_world_objects").update(patch).eq("owner_id",owner.id).eq("id",id).select().single();if(error)throw error;
-      const evt=await logActivity(owner.id,data.id,data.semantic_path,"ai_update",m.summary||`AI обновил: ${data.title||data.kind}`,{actor,generation_run_id:runId,source_refs:sourceRefs,operation:"update",before:canonicalObjectSnapshot(before),after:canonicalObjectSnapshot(data),context:input});changed.push(data);activity.push(evt);
+      const evt=await logActivity(owner.id,data.id,data.semantic_path,"ai_update",m.summary||`AI обновил: ${data.title||data.kind}`,{actor,generation_run_id:runId,source_object_ids:input.objectIds,source_refs:sourceRefs,operation:"update",before:canonicalObjectSnapshot(before),after:canonicalObjectSnapshot(data),context:input});changed.push(data);activity.push(evt);
     }
     const worldRevision=await bumpWorld(owner.id);
     const ids=changed.map(x=>x.id),{data:readback,error:re}=await admin.from("studio_world_objects").select("*").eq("owner_id",owner.id).in("id",ids);if(re)throw re;
@@ -436,6 +442,25 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     for(const evt of events||[]){const h=evt.payload||{};if(!["create","update"].includes(String(h.operation||""))||!h.after?.id)continue;const after=canonicalObjectSnapshot(h.after),patch=sanitizeObjectPatch(after);const {data:cur}=await admin.from("studio_world_objects").select("revision").eq("owner_id",owner.id).eq("id",after.id).maybeSingle();if(!cur){const row={...patch,id:after.id,world_key:OWNER_WORLD,owner_id:owner.id,revision:1};const {data,error:ce}=await admin.from("studio_world_objects").insert(row).select().single();if(ce)throw ce;replayed.push(data);continue}patch.hidden=Boolean(after.hidden);patch.revision=Number(cur.revision||1)+1;patch.updated_at=new Date().toISOString();const {data,error:ue}=await admin.from("studio_world_objects").update(patch).eq("owner_id",owner.id).eq("id",after.id).select().single();if(ue)throw ue;replayed.push(data)}
     const worldRevision=replayed.length?await bumpWorld(owner.id):null;await logActivity(owner.id,null,"TQS Studio","ai_redo",`Redo AI run ${runId}`,{actor:String(p.actor||"chatgpt"),generation_run_id:runId,operation:"redo",replayed_ids:replayed.map(x=>x.id)});
     return{generation_run_id:runId,replayed,world_revision:worldRevision,canonical_readback:true};
+  }
+  if(name==="aiCreateDocumentFromFrame"){
+    const frameId=String(p.frameId||p.context?.frameId||"");if(!frameId)throw Object.assign(new Error("FRAME_ID_REQUIRED"),{status:400});
+    const {data:frame,error:fe}=await admin.from("studio_world_objects").select("*").eq("owner_id",owner.id).eq("id",frameId).eq("kind","frame").single();if(fe)throw fe;
+    const {data:children,error:ce}=await admin.from("studio_world_objects").select("*").eq("owner_id",owner.id).like("semantic_path",`${frame.semantic_path}/%`).order("z");if(ce)throw ce;
+    const sourceObjects=(children||[]).filter((x:any)=>!x.hidden),sourceIds=sourceObjects.map((x:any)=>x.id),runId=String(p.generationRunId||crypto.randomUUID()),title=String(p.title||("Материал — "+frame.title));
+    const id=String(p.id||("doc-"+crypto.randomUUID())),slug=String(p.slug||title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi,"-").replace(/^-|-$/g,"")+"-"+id.slice(-6));
+    const metadata={created_by:String(p.actor||"chatgpt"),generation_run_id:runId,source_frame_id:frame.id,source_object_ids:sourceIds,source_refs:Array.isArray(p.sourceRefs)?p.sourceRefs:[],provenance_version:"tqs-studio-provenance/v1"};
+    const row={id,owner_id:owner.id,world_key:OWNER_WORLD,slug,kind:String(p.kind||"article"),title,semantic_path:frame.semantic_path,frame_id:frame.id,revision:1,status:"DRAFT",share_mode:"private",metadata};
+    const {data:doc,error:de}=await admin.from("studio_documents").insert(row).select().single();if(de)throw de;
+    const blocks:any[]=[
+      {block_id:"h-"+crypto.randomUUID(),document_id:id,owner_id:owner.id,ordinal:1,block_type:"heading",content:{text:title},revision:1},
+      {block_id:"t-"+crypto.randomUUID(),document_id:id,owner_id:owner.id,ordinal:2,block_type:"rich_text",content:{html:`<p>Материал собран из пространства «${frame.title}». Исходные объекты остаются canonical в World.</p>`},revision:1},
+      {block_id:"s-"+crypto.randomUUID(),document_id:id,owner_id:owner.id,ordinal:3,block_type:"sources",content:{items:sourceObjects.map((x:any)=>({label:x.title,objectId:x.id,kind:x.kind,semanticPath:x.semantic_path}))},revision:1}
+    ];
+    const {error:be}=await admin.from("studio_document_blocks").insert(blocks);if(be)throw be;
+    await admin.from("studio_document_revisions").insert({document_id:id,owner_id:owner.id,revision:1,snapshot:{document:doc,blocks},reason:"ai frame to document",metadata});
+    const evt=await logActivity(owner.id,id,frame.semantic_path,"ai_document",`AI собрал документ: ${title}`,{actor:String(p.actor||"chatgpt"),generation_run_id:runId,source_object_ids:sourceIds,source_refs:metadata.source_refs,frame_id:frame.id,document_id:id});
+    return{generation_run_id:runId,document:doc,blocks,source_object_ids:sourceIds,activity_id:evt.id,focus_target_id:id,canonical_readback:true};
   }
   if(name==="getDocument") return loadDocument(owner.id,p.documentId);
   if(name==="listDocuments"){
