@@ -12,7 +12,7 @@ export async function studioSession(){const {data,error}=await studioSupabase().
 
 type SyncJob={key:string;action:string;payload:any;createdAt:number;attempts:number};
 let flushing=false,syncTimer:number|null=null;
-const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe"]);
+const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun"]);
 const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
 function productionServer(){return typeof window!=="undefined"&&!["localhost","127.0.0.1"].includes(window.location.hostname)}
 function readOutbox():SyncJob[]{try{const x=JSON.parse(localStorage.getItem(OUTBOX_KEY)||"[]");return Array.isArray(x)?x:[]}catch{return[]}}
@@ -61,3 +61,10 @@ export async function secureStudioAction<T=any>(action:string,payload:any={}):Pr
 export async function driveOAuthStart(returnTo:string){const session=await studioSession();if(!session)throw new Error("AUTH_REQUIRED");const r=await fetch(`${FN}/oauth/start?return_to=${encodeURIComponent(returnTo)}`,{headers:{Authorization:`Bearer ${session.access_token}`}});const x=await r.json();if(!r.ok)throw Object.assign(new Error(x.code||x.error||"OAUTH_START_FAILED"),{details:x,status:r.status});return x as{url:string;redirectUri:string;scopes:string[]}}
 export async function ownerMagicLink(email:string){return studioSupabase().auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href}})}
 export async function studioSignOut(){return studioSupabase().auth.signOut()}
+
+
+export type StudioContextRequest={objectIds?:string[];blockIds?:string[];frameId?:string|null;documentId?:string|null;selectionBounds?:any;pointer?:{x:number;y:number}|null;viewport?:{x:number;y:number;zoom:number;width?:number;height?:number}|null};
+export async function studioStructuredContext(context:StudioContextRequest){return studioAction("getStudioContext",context)}
+export async function studioAiMutate(args:{context:StudioContextRequest;scope?:"selection"|"world";generationRunId?:string;actor?:string;sourceRefs?:any[];mutations:Array<{operation:"create";object:any;summary?:string}|{operation:"update";id:string;patch:any;summary?:string}>}){return studioAction("aiApplyMutation",args)}
+export async function studioAiUndo(generationRunId:string){return studioAction("undoAiRun",{generationRunId,actor:"chatgpt"})}
+export async function studioChangeHistory(args:{entityId?:string;generationRunId?:string;limit?:number}={}){return studioAction("getChangeHistory",args)}
