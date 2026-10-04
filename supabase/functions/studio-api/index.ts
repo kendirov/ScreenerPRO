@@ -387,6 +387,12 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     const appOrigin=safeReturnTo(p.appOrigin)||origin; if(!appOrigin)throw new Error("APP_ORIGIN_REQUIRED");
     return createFreshShare(owner.id,p.documentId,appOrigin);
   }
+  if(name==="disableShare"){
+    const now=new Date().toISOString();
+    const {error}=await admin.from("studio_share_links").update({revoked_at:now}).eq("owner_id",owner.id).eq("document_id",p.documentId).is("revoked_at",null);if(error)throw error;
+    const {error:de}=await admin.from("studio_documents").update({share_mode:"private",updated_at:now}).eq("owner_id",owner.id).eq("id",p.documentId);if(de)throw de;
+    return {disabled:true,documentId:p.documentId};
+  }
   if(name==="configureDriveOAuth"){
     const clientId=String(p.clientId||"").trim(),clientSecret=String(p.clientSecret||"").trim();
     if(!clientId||clientId.length<20||!clientSecret||clientSecret.length<10) throw Object.assign(new Error("INVALID_OAUTH_CLIENT_CONFIG"),{status:400});
@@ -546,7 +552,7 @@ Deno.serve(async(req:Request)=>{
     }
     if(path==="/public/action"&&req.method==="POST"){
       const body=await req.json();
-      const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","driveStatus"]);
+      const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","disableShare","driveStatus"]);
       if(!allowed.has(body.action)) return json({ok:false,error:"PUBLIC_ACTION_FORBIDDEN"},403,origin);
       const {data:o,error:e}=await admin.from("studio_owner_access").select("owner_id,email").eq("email","kendirov@gmail.com").single();
       if(e||!o) throw e||new Error("PUBLIC_OWNER_NOT_FOUND");
