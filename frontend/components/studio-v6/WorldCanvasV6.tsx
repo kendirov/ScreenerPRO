@@ -15,7 +15,8 @@ type Props={objects:StudioObject[];selected:Set<string>;setSelected:(ids:Set<str
 export function WorldCanvasV6({objects,selected,setSelected,focusId,onObjectsLocal,onPatch,onCreate,onOpenDocument,onRestore,notice}:Props){
  const canvas=useRef<HTMLElement|null>(null),gestureRef=useRef<Gesture>(null),lastPointer=useRef<Point&{at:number}>({x:800,y:500,at:0}),rightMoved=useRef(false),drawImage=useRef<string|null>(null),undo=useRef<StudioObject[][]>([]),redo=useRef<StudioObject[][]>([]),space=useRef(false);
  const [camera,setCamera]=useState<Camera>({x:40,y:30,zoom:.55}),[profile,setProfileState]=useState<InputProfile>("auto"),[tool,setTool]=useState<ToolMode>("select"),[gesture,setGesture]=useState<Gesture>(null),[context,setContext]=useState<Ctx|null>(null),[drawPoints,setDrawPoints]=useState<Point[]>([]),[editing,setEditing]=useState<string|null>(null),[grid,setGrid]=useState(false);
- const setProfile=(p:InputProfile)=>{setProfileState(p);try{localStorage.setItem(PROFILE_KEY,p)}catch{}};\n const beginGesture=(g:Gesture)=>{gestureRef.current=g;setGesture(g)};
+ const setProfile=(p:InputProfile)=>{setProfileState(p);try{localStorage.setItem(PROFILE_KEY,p)}catch{}};
+ const beginGesture=(g:Gesture)=>{gestureRef.current=g;setGesture(g)};
  useEffect(()=>{try{const p=localStorage.getItem(PROFILE_KEY) as InputProfile|null;if(p&&["auto","mouse","trackpad"].includes(p))setProfileState(p)}catch{}},[]);
  const selectedObjects=useMemo(()=>objects.filter(o=>selected.has(o.id)),[objects,selected]);const lod=camera.zoom<.22?"far":camera.zoom<.52?"mid":"near";
  const remember=useCallback(()=>{undo.current.push(structuredClone(objects));if(undo.current.length>60)undo.current.shift();redo.current=[]},[objects]);
