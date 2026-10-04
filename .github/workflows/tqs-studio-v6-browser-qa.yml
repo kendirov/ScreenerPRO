@@ -3,6 +3,9 @@ on:
   push:
     branches: [chatgpt/tqs-studio-v6-productization-2026-10-04]
   workflow_dispatch:
+concurrency:
+  group: tqs-studio-v6-browser-qa-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   qa:
     runs-on: ubuntu-latest
