@@ -34,7 +34,8 @@ export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpe
  const searchable=useMemo(()=>{const seenObjects=new Set(flat.map(n=>n.object?.id).filter(Boolean)),seenDocs=new Set(flat.map(n=>n.document?.id||n.object?.body?.documentId).filter(Boolean));const extraObjects=objects.filter(o=>!seenObjects.has(o.id)&&o.kind!=="annotation").map(o=>({id:o.id,title:o.title,path:o.semantic_path,kind:o.kind,object:o,children:[]} as Node));const extraDocs=documents.filter(d=>!seenDocs.has(d.id)).map(d=>({id:"doc:"+d.id,title:d.title,path:d.semantic_path,kind:"document",document:d,children:[]} as Node));return[...flat,...extraObjects,...extraDocs]},[flat,objects,documents]);
  const matches=query.trim()?searchable.filter(n=>(n.title+" "+n.path).toLowerCase().includes(query.trim().toLowerCase())).slice(0,40):[];
  const toggle=(id:string)=>setExpanded(v=>{const n=new Set(v);n.has(id)?n.delete(id):n.add(id);return n});
- const activate=(n:Node)=>{const docId=n.document?.id||n.object?.body?.documentId;setOpen(false);if(docId)onOpenDocument(docId);else if(n.object)onFocus(n.object.id)};
+ const closeNav=()=>{setOpen(false);setQuery("");try{localStorage.setItem(NAV_KEY,"0")}catch{}};
+ const activate=(n:Node)=>{const docId=n.document?.id||n.object?.body?.documentId;closeNav();if(docId)onOpenDocument(docId);else if(n.object)onFocus(n.object.id);queueMicrotask(()=>setOpen(false))};
  const row=(n:Node,depth:number)=><div className="v6-nav-node" key={n.id} data-depth={depth}>
   <button className={["v6-nav-row",selectedId===n.object?.id?"is-active":""].join(" ")} style={{paddingLeft:8+depth*14}} onClick={()=>activate(n)}>
    {n.children.length?<span className="v6-nav-expander" role="button" aria-label={expanded.has(n.id)?"Свернуть":"Развернуть"} onClick={e=>{e.stopPropagation();toggle(n.id)}}>{expanded.has(n.id)?<ChevronDown size={12}/>:<ChevronRight size={12}/>}</span>:<span className="v6-nav-expander"/>}
