@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useMemo,useRef} from "react";
+import {useEffect,useMemo,useRef,useState} from "react";
 import {EditorContent,useEditor} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {Extension,Mark,mergeAttributes} from "@tiptap/core";
@@ -24,15 +24,15 @@ const Alignment=Extension.create({name:"tqsAlignment",addGlobalAttributes(){retu
 
 type Props={html:string;editable?:boolean;className?:string;compact?:boolean;autofocus?:boolean;onChange?:(html:string)=>void;onBlur?:(html:string)=>void};
 export function RichEditor({html,editable=true,className,compact=false,autofocus=false,onChange,onBlur}:Props){
- const lastExternal=useRef(html),extensions=useMemo(()=>[StarterKit,TextStyle,LinkMark,Alignment],[]);
- const editor=useEditor({extensions,content:html||"<p></p>",editable,immediatelyRender:false,autofocus,onUpdate:({editor})=>onChange?.(editor.getHTML()),onBlur:({editor})=>onBlur?.(editor.getHTML())});
+ const lastExternal=useRef(html),[toolbarOpen,setToolbarOpen]=useState(false),extensions=useMemo(()=>[StarterKit,TextStyle,LinkMark,Alignment],[]);
+ const editor=useEditor({extensions,content:html||"<p></p>",editable,immediatelyRender:false,autofocus,onUpdate:({editor})=>onChange?.(editor.getHTML()),onFocus:({editor})=>setToolbarOpen(!editor.state.selection.empty),onSelectionUpdate:({editor})=>setToolbarOpen(editable&&!editor.state.selection.empty),onBlur:({editor})=>{setToolbarOpen(false);onBlur?.(editor.getHTML())}});
  useEffect(()=>{editor?.setEditable(editable)},[editor,editable]);
  useEffect(()=>{if(!editor||html===lastExternal.current)return;lastExternal.current=html;if(editor.getHTML()!==html)editor.commands.setContent(html||"<p></p>",{emitUpdate:false})},[editor,html]);
  if(!editor)return <div className={className}/>;
  const style=(attrs:Record<string,string|null>)=>editor.chain().focus().setMark("tqsTextStyle",attrs).run();
  const align=(value:string)=>{editor.chain().focus().updateAttributes("paragraph",{textAlign:value}).updateAttributes("heading",{textAlign:value}).run()};
  return <div className={["tqs-rich-editor",compact?"is-compact":"",className||""].join(" ")}>
-  {editable&&<div className="tqs-rich-toolbar" data-studio-ui>
+  {editable&&toolbarOpen&&<div className="tqs-rich-toolbar is-floating" data-studio-ui>
    <button type="button" aria-label="Полужирный" className={editor.isActive("bold")?"active":""} onMouseDown={e=>e.preventDefault()} onClick={()=>editor.chain().focus().toggleBold().run()}>B</button>
    <button type="button" aria-label="Курсив" className={editor.isActive("italic")?"active":""} onMouseDown={e=>e.preventDefault()} onClick={()=>editor.chain().focus().toggleItalic().run()}><i>I</i></button>
    <button type="button" aria-label="Подчёркивание" onMouseDown={e=>e.preventDefault()} onClick={()=>style({textDecoration:"underline"})}><u>U</u></button>
