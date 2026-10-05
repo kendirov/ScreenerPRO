@@ -347,10 +347,11 @@ async function ensureStudioSeed(owner:{id:string;email:string}){
   const {error:oe}=await admin.from("studio_world_objects").upsert(objects,{onConflict:"id",ignoreDuplicates:true}); if(oe)throw oe;
 
   const docs=[
-    {id:"doc-lesson-workspace",owner_id:owner.id,world_key:OWNER_WORLD,slug:"zanyatie-1-rabochee-prostranstvo",kind:"lesson",title:"Занятие 1 — Рабочее пространство",semantic_path:"Обучение/Бесплатный курс/Занятие 1",frame_id:"lesson-free-1",revision:1,status:"DRAFT",share_mode:"private",metadata:{demo:true}},
+    {id:"doc-lesson-workspace",owner_id:owner.id,world_key:OWNER_WORLD,slug:"zanyatie-1-rabochee-prostranstvo",kind:"lesson",title:"Занятие 1 — Рабочее пространство",semantic_path:"Обучение/Бесплатный курс/Занятие 1",frame_id:"lesson-miro-scene",revision:1,status:"DRAFT",share_mode:"private",metadata:{demo:true,ownerScene:true}},
     {id:"doc-si",owner_id:owner.id,world_key:OWNER_WORLD,slug:"si-istoriya-likvidnosti",kind:"article",title:"Статья — Si: история ликвидности",semantic_path:"Статьи/Si — история ликвидности",frame_id:"article-si-frame",revision:1,status:"DRAFT",share_mode:"private",metadata:{drive_package_id:"1UJVJUBPt5pEHmjmb79Pllm-hyIij0DkD"}}
   ];
   const {error:de}=await admin.from("studio_documents").upsert(docs,{onConflict:"id",ignoreDuplicates:true}); if(de)throw de;
+  const {error:ownerDocError}=await admin.from("studio_documents").update({frame_id:"lesson-miro-scene",metadata:{demo:true,ownerScene:true}}).eq("owner_id",owner.id).eq("id","doc-lesson-workspace"); if(ownerDocError)throw ownerDocError;
 
   const liveSpec={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart",crosshair:true,periodControl:true},updatePolicy:"LIVE",asOf:null};
   const replaySpec={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv",relativeRange:{tradingSessions:1},fixedRange:null,transforms:["chronological"],display:{renderer:"studio_market_replay",targetDurationSeconds:30},updatePolicy:"LIVE",asOf:null};
