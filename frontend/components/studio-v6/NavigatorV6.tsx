@@ -24,8 +24,8 @@ function buildTree(objects:StudioObject[],documents:StudioDocument[]):Node[]{
  const sort=(a:Node,b:Node)=>a.path.localeCompare(b.path,"ru");const walk=(a:Node[])=>{a.sort(sort);for(const n of a)walk(n.children)};walk(roots);return roots;
 }
 export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpenDocument}:Props){
- const [open,setOpen]=useState(false),[mode,setMode]=useState<NavMode>("map"),[query,setQuery]=useState(""),[expanded,setExpanded]=useState<Set<string>>(new Set());const input=useRef<HTMLInputElement>(null);
- useEffect(()=>{try{const x=JSON.parse(localStorage.getItem(EXP_KEY)||"[]");if(Array.isArray(x))setExpanded(new Set(x))}catch{}},[]);
+ const [open,setOpen]=useState(false),[mode,setMode]=useState<NavMode>("map"),[query,setQuery]=useState(""),[expanded,setExpanded]=useState<Set<string>>(new Set(["frame-learning","course-free","lesson-miro-scene"]));const input=useRef<HTMLInputElement>(null);
+ useEffect(()=>{try{const raw=localStorage.getItem(EXP_KEY);if(raw){const x=JSON.parse(raw);if(Array.isArray(x))setExpanded(new Set(x))}}catch{}},[]);
  useEffect(()=>{try{localStorage.setItem(EXP_KEY,JSON.stringify([...expanded]))}catch{}},[expanded]);
  useEffect(()=>{const f=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();setMode("search");setOpen(true);requestAnimationFrame(()=>input.current?.focus())}};window.addEventListener("keydown",f);return()=>window.removeEventListener("keydown",f)},[]);
  const tree=useMemo(()=>buildTree(objects,documents),[objects,documents]);
@@ -60,6 +60,6 @@ export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpe
     {mode==="documents"&&<section>{documents.slice().sort((a,b)=>a.title.localeCompare(b.title,"ru")).map(d=><button className="v6-nav-result" key={d.id} onClick={()=>{setOpen(false);onOpenDocument(d.id)}}><span>{d.title}</span><small>{d.semantic_path}</small></button>)}</section>}
     {mode==="recent"&&<section>{activity.length?activity.slice(0,18).map(a=><button className="v6-nav-result" key={a.id} onClick={()=>{setOpen(false);a.entity_id&&onFocus(a.entity_id)}}><span>{a.summary}</span><small>{a.semantic_path}</small></button>):<p className="v6-nav-empty">Изменения появятся здесь после работы с доской.</p>}</section>}
    </div>
-  </div>}}
+  </div>}
  </aside>
 }
