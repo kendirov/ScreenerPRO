@@ -14,6 +14,7 @@ type SyncJob={key:string;action:string;payload:any;createdAt:number;attempts:num
 let flushing=false,syncTimer:number|null=null;
 const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","aiCreateDocumentFromFrame","redoAiRun"]);
 const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
+const LOCAL_FIRST_MUTATIONS=new Set(["createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
 function productionServer(){return typeof window!=="undefined"&&!["localhost","127.0.0.1"].includes(window.location.hostname)}
 function readOutbox():SyncJob[]{try{const x=JSON.parse(localStorage.getItem(OUTBOX_KEY)||"[]");return Array.isArray(x)?x:[]}catch{return[]}}
 function writeOutbox(j:SyncJob[]){try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(j.slice(-250)))}catch{}}
@@ -36,14 +37,18 @@ export async function studioAction<T=any>(action:string,payload:any={}):Promise<
  if(SERVER_ONLY.has(action))return serverAction<T>(action,payload);
  if(!LOCAL_CAPABLE.has(action))return serverAction<T>(action,payload);
  if(productionServer()){
+  if(LOCAL_FIRST_MUTATIONS.has(action)){
+   // Interaction must never wait for a remote timeout. Persist to the durable browser store first,
+   // then reconcile to canonical server truth through the outbox in the background.
+   const local=await localStudioAction<T>(action,payload);
+   enqueue(action,payload);schedule(20);
+   return local;
+  }
   try{
    const server=await serverAction<T>(action,payload);
-   // Mirror server truth locally only for resilient reloads; the returned value is always canonical server state.
-   if(["ensureSeed","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"].includes(action))void localStudioAction(action,payload).catch(()=>{});
+   if(action==="ensureSeed")void localStudioAction(action,payload).catch(()=>{});
    return server;
-  }catch(error){
-   // Offline fallback is explicit: local state remains usable and the mutation is queued for canonical sync.
-   if(["createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"].includes(action)){const local=await localStudioAction<T>(action,payload);enqueue(action,payload);schedule(100);return local}
+  }catch{
    return localStudioAction<T>(action,payload);
   }
  }
