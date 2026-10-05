@@ -129,7 +129,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
     nodes={nodes} edges={edges} nodeTypes={nodeTypes}
     onNodesChange={onNodesChange}
     onNodeDragStop={(_,node)=>void persistDrag(node)}
-    onSelectionChange={({nodes:n})=>{const ids=new Set(n.map(x=>x.id));if(ids.size!==selected.size||[...ids].some(id=>!selected.has(id)))setSelected(ids)}}
+    onNodeClick={(_,node)=>setSelected(new Set([node.id]))}
     onConnect={c=>void connect(c)}
     onNodesDelete={ns=>{for(const n of ns)void remove(n.id)}}
     onInit={instance=>{rf.current=instance;const v=initialViewport();instance.setViewport(v)}}
