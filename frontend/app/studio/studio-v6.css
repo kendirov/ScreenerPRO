@@ -273,3 +273,86 @@
 .v6-auth-card input:focus{border-color:color-mix(in srgb,var(--accent) 65%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
 .v6-auth-card>.primary{height:42px;border:0;border-radius:10px;background:var(--accent);color:#15120b;font-size:11px;font-weight:750}
 .v6-auth-card>.primary:disabled{opacity:.45}
+
+
+/* Lesson 1 usability pass — Miro-like direct manipulation. */
+.v6-nav-rail button.active{background:var(--surface);color:var(--accent)}
+.v6-nav-overlay{background:color-mix(in srgb,var(--panel) 94%,transparent)}
+.v6-nav-scroll>section{padding:2px 0 10px}
+.v6-nav-map .v6-nav-row{height:31px}
+.v6-nav-empty{margin:12px 8px;line-height:1.45}
+
+.rf-workspace-card{
+  background:color-mix(in srgb,var(--panel) 64%,transparent);
+  border-color:color-mix(in srgb,var(--text) 14%,transparent);
+  box-shadow:none;
+}
+.v6-shell[data-theme=dark] .rf-workspace-card{
+  background:color-mix(in srgb,#17191c 72%,transparent);
+  border-color:#343941;
+  box-shadow:none;
+}
+.rf-workspace-actions{opacity:.28;transition:opacity .12s}
+.rf-workspace-card:hover .rf-workspace-actions,
+.react-flow__node-workspace.selected .rf-workspace-actions{opacity:1}
+.rf-workspace-hint{opacity:.48}
+
+.rf-content-node.kind-text{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  cursor:grab;
+}
+.rf-content-node.kind-text.is-selected:not(.is-editing){
+  border-color:color-mix(in srgb,var(--accent) 65%,transparent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent)!important;
+}
+.rf-content-node.kind-text.is-editing{
+  cursor:text;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  z-index:40;
+}
+.rf-content-node.kind-text.is-editing .react-flow__resize-control,
+.rf-content-node.kind-text.is-editing .rf-handle{display:none!important}
+.rf-rich-text-view{
+  padding:5px 7px;
+  overflow:hidden;
+  font-size:14px;
+  line-height:1.5;
+  cursor:text;
+  user-select:text;
+}
+.rf-rich-text-view h1,.rf-rich-text-view h2,.rf-rich-text-view h3{margin:.12em 0 .25em}
+.rf-text-edit{position:relative;width:100%;height:100%;padding:4px 6px;overflow:visible}
+.rf-text-edit .tqs-rich-editor{position:relative;width:100%;height:100%;overflow:visible}
+.rf-text-edit .tqs-rich-editor .tiptap{
+  min-height:100%;
+  font-size:14px;
+  line-height:1.5;
+  cursor:text;
+}
+.tqs-rich-toolbar.is-floating{
+  position:absolute;
+  left:0;
+  bottom:calc(100% + 7px);
+  z-index:120;
+  width:max-content;
+  max-width:min(720px,80vw);
+  margin:0;
+  padding:4px;
+  flex-wrap:nowrap;
+  border-color:color-mix(in srgb,var(--text) 14%,transparent);
+  background:color-mix(in srgb,var(--panel) 96%,transparent);
+  backdrop-filter:blur(18px);
+  box-shadow:0 14px 38px #0006;
+}
+.rf-content-node.kind-image{cursor:grab}
+.rf-content-node.kind-image:active{cursor:grabbing}
+.rf-content-node.kind-image .rf-asset{pointer-events:none}
+.rf-content-node.kind-image.is-selected .rf-asset{outline:1px solid color-mix(in srgb,var(--accent) 45%,transparent)}
+
+@media(max-width:1100px){
+ .rf-workspace-actions{opacity:.55}
+ .tqs-rich-toolbar.is-floating{max-width:72vw;overflow-x:auto}
+}
