@@ -56,7 +56,7 @@ function initialState():LocalState{
   ...ownerSceneObjects()
  ];
  const documents:StudioDocument[]=[
-  {id:"doc-lesson-workspace",world_key:"tqs-studio-world",slug:"zanyatie-1-rabochee-prostranstvo",kind:"lesson",title:"Занятие 1 — Рабочее пространство",semantic_path:"Обучение/Бесплатный курс/Занятие 1",frame_id:"lesson-free-1",revision:1,status:"DRAFT",share_mode:"private",metadata:{demo:true}},
+  {id:"doc-lesson-workspace",world_key:"tqs-studio-world",slug:"zanyatie-1-rabochee-prostranstvo",kind:"lesson",title:"Занятие 1 — Рабочее пространство",semantic_path:"Обучение/Бесплатный курс/Занятие 1",frame_id:"lesson-miro-scene",revision:1,status:"DRAFT",share_mode:"private",metadata:{demo:true,ownerScene:true}},
   {id:"doc-si",world_key:"tqs-studio-world",slug:"si-istoriya-likvidnosti",kind:"article",title:"Статья — Si: история ликвидности",semantic_path:"Статьи/Si — история ликвидности",frame_id:"article-si-frame",revision:1,status:"DRAFT",share_mode:"private",metadata:{drive_package_id:"1UJVJUBPt5pEHmjmb79Pllm-hyIij0DkD"}}
  ];
  const blocks:StudioDocumentBlock[]=[
@@ -64,7 +64,7 @@ function initialState():LocalState{
   block({block_id:"lesson-t1",document_id:"doc-lesson-workspace",ordinal:2,block_type:"rich_text",content:{html:"<p>Настраиваем рабочее пространство так, чтобы график, стакан, лента и заметки помогали принимать решения. Этот документ — тестовая поверхность Studio V5.</p>"}}),
   block({block_id:"lesson-call",document_id:"doc-lesson-workspace",ordinal:3,block_type:"callout",content:{text:"Практика: оставляем на экране только то, что влияет на торговое решение."}}),
   block({block_id:"lesson-table",document_id:"doc-lesson-workspace",ordinal:4,block_type:"table",content:{columns:["Элемент","Зачем"],rows:[["График","Контекст цены"],["Стакан","Текущая ликвидность"],["Лента","Агрессор и темп"]]}}),
-  block({block_id:"lesson-sources",document_id:"doc-lesson-workspace",ordinal:5,block_type:"sources",content:{items:[{label:"Связанный World Frame",entityId:"lesson-free-1"},{label:"MOEX ISS",type:"market_data"}]}}),
+  block({block_id:"lesson-sources",document_id:"doc-lesson-workspace",ordinal:5,block_type:"sources",content:{items:[{label:"Связанный World Frame",entityId:"lesson-miro-scene"},{label:"MOEX ISS",type:"market_data"}]}}),
   block({block_id:"lesson-chart",document_id:"doc-lesson-workspace",ordinal:6,block_type:"interactive_chart",content:{title:"Si — интерактивный график"},data_spec:liveSpec}),
   block({block_id:"lesson-live",document_id:"doc-lesson-workspace",ordinal:7,block_type:"live_data",content:{title:"Si — реальный объём текущей и прошлой сессии"},data_spec:liveSpec}),
   block({block_id:"lesson-replay",document_id:"doc-lesson-workspace",ordinal:8,block_type:"market_replay",content:{title:"Market Replay — Si, день за 30 секунд"},data_spec:replaySpec}),
@@ -84,7 +84,7 @@ function load():LocalState{
  if(typeof window==="undefined")return initialState();
  try{
   const raw=localStorage.getItem(KEY);
-  if(raw){const x=JSON.parse(raw) as LocalState;if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;save(x)}return x}}
+  if(raw){const x=JSON.parse(raw) as LocalState;if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){let changed=false;const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;changed=true}const lesson=x.documents?.find(d=>d.id==="doc-lesson-workspace");if(lesson&&lesson.frame_id!=="lesson-miro-scene"){lesson.frame_id="lesson-miro-scene";lesson.metadata={...(lesson.metadata||{}),ownerScene:true};changed=true}const sources=x.blocks?.find(b=>b.block_id==="lesson-sources");if(sources?.content?.items?.[0]?.entityId==="lesson-free-1"){sources.content.items[0].entityId="lesson-miro-scene";changed=true}if(changed)save(x);return x}}
  }catch{}
  const s=initialState();save(s);return s;
 }
