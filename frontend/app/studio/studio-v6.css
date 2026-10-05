@@ -254,3 +254,5 @@
 .v6-file-picker{display:none!important}
 
 @media(max-width:1050px){.rf-workspace-actions button:nth-child(n+2){display:none}.rf-studio-toolbar button span{display:none}.rf-profile{right:142px}.rf-workspace-head>strong{font-size:18px}}
+
+.rf-studio-canvas .react-flow__attribution{font-size:7px!important;opacity:.35;background:transparent!important;color:var(--muted)!important;right:6px!important;bottom:4px!important}
