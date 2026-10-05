@@ -4,7 +4,7 @@ const EDGE="https://hppbuzbrjoyrwpdinlxk.supabase.co/functions/v1/studio-api/pub
 async function forward(body:string){
   let parsed:any=null,action="";try{parsed=JSON.parse(body);action=String(parsed?.action||"")}catch{}
   const mustComplete=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun","aiCreateDocumentFromFrame"]).has(action),attempts=mustComplete?1:2,timeoutMs=action==="createShare"?30000:mustComplete?20000:3400;
-  let last={status:503,contentType:"application/json",body:JSON.stringify({ok:false,error:"STUDIO_UPSTREAM_UNAVAILABLE"})};
+  let last:{status:number;contentType:string;body:string;transport?:string}={status:503,contentType:"application/json",body:JSON.stringify({ok:false,error:"STUDIO_UPSTREAM_UNAVAILABLE"}),transport:"upstream"};
   for(let attempt=0;attempt<attempts;attempt++){
     try{
       const r=await fetch(EDGE,{method:"POST",headers:{"Content-Type":"application/json"},body,cache:"no-store",signal:AbortSignal.timeout(timeoutMs)});
