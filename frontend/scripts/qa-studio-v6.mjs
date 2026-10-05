@@ -58,7 +58,8 @@ try{
  const marker="QA-"+Date.now();
  await pane.click({position:{x:pb.width*.65,y:pb.height*.35}});
  await p.evaluate(async marker=>{await navigator.clipboard.writeText(marker)},marker);
- await p.locator("body").click({position:{x:1100,y:760}});
+ const canvas=p.getByTestId("world-canvas-v6");
+ await canvas.focus();
  await p.keyboard.press("Control+V");
  await p.getByText(marker,{exact:true}).waitFor();
  ok((await p.locator(".v6-sync").innerText()).includes("Сохранено"),"no honest save state");
