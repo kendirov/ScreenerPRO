@@ -31,8 +31,8 @@ export async function studioAction<T=any>(action:string,payload:any={}):Promise<
  if(action==="createDocument"&&!payload.id)payload={...payload,id:"doc-"+crypto.randomUUID()};
  if(action==="attachAsset"){
   const local:any=await localStudioAction<any>(action,payload);
-  if(!productionServer())return local as T;
-  try{const server=await serverAction<T>(action,{...payload,assetId:local?.asset?.id});return server}catch{enqueue(action,{assetId:local?.asset?.id,filename:payload?.filename});schedule(80);return local as T}
+  if(productionServer()){enqueue(action,{assetId:local?.asset?.id,filename:payload?.filename});schedule(20)}
+  return local as T;
  }
  if(SERVER_ONLY.has(action))return serverAction<T>(action,payload);
  if(!LOCAL_CAPABLE.has(action))return serverAction<T>(action,payload);
