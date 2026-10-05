@@ -17,30 +17,32 @@ function block(b:Partial<StudioDocumentBlock>&Pick<StudioDocumentBlock,"block_id
  return {content:{},data_spec:null,asset_id:null,revision:1,...b};
 }
 
-const WORKSPACE_LAYOUT_VERSION=3;
+const WORKSPACE_LAYOUT_VERSION=4;
 const WORKSPACE_LAYOUT:Record<string,Partial<StudioObject>>={
- "frame-learning":{x:3800,y:260,w:5600,h:2650},
- "course-free":{x:4050,y:520,w:2600,h:2180},
- "course-scalp":{x:6900,y:520,w:2200,h:2180},
- "lesson-miro-scene":{x:4200,y:800,w:2250,h:1220,body:{ownerReference:true,sceneVersion:2,workspaceCard:true,layoutVersion:WORKSPACE_LAYOUT_VERSION}},
- "lesson-free-2":{x:4200,y:2180,w:1050,h:330},
- "lesson-free-3":{x:5360,y:2180,w:1050,h:330},
- "lesson-scalp-1":{x:7060,y:820,w:1880,h:430},
- "lesson-scalp-2":{x:7060,y:1360,w:1880,h:430},
- "lesson-scalp-3":{x:7060,y:1900,w:1880,h:430},
- "lesson-miro-l100":{x:4360,y:980,w:250,h:92},
- "lesson-miro-l101":{x:4690,y:980,w:260,h:92},
- "lesson-miro-l102":{x:5030,y:980,w:260,h:92},
- "lesson-miro-shot":{x:4470,y:1140,w:650,h:360},
- "lesson-miro-correction":{x:5240,y:1180,w:340,h:146},
- "lesson-miro-chart":{x:5660,y:980,w:610,h:360},
- "lesson-miro-task":{x:4360,y:1600,w:360,h:92},
- "lesson-miro-voice":{x:4770,y:1600,w:360,h:92},
- "lesson-miro-doc":{x:5180,y:1600,w:320,h:92},
- "lesson-miro-arrow-1":{x:4615,y:1015,w:72,h:24},
- "lesson-miro-arrow-2":{x:4955,y:1015,w:72,h:24},
- "lesson-miro-arrow-correction":{x:5120,y:1245,w:120,h:58},
- "lesson-miro-marker":{x:4560,y:1450,w:360,h:24}
+ "frame-learning":{x:3800,y:260,w:6500,h:3300},
+ "course-free":{x:4050,y:520,w:3300,h:2720},
+ "course-scalp":{x:7600,y:520,w:2300,h:2450},
+ "lesson-miro-scene":{x:4200,y:800,w:2900,h:1560,body:{ownerReference:true,sceneVersion:4,workspaceCard:true,layoutVersion:WORKSPACE_LAYOUT_VERSION}},
+ "lesson-free-2":{x:4200,y:2540,w:1320,h:360},
+ "lesson-free-3":{x:5700,y:2540,w:1320,h:360},
+ "lesson-scalp-1":{x:7760,y:820,w:1900,h:430},
+ "lesson-scalp-2":{x:7760,y:1380,w:1900,h:430},
+ "lesson-scalp-3":{x:7760,y:1940,w:1900,h:430},
+ "lesson-miro-l100":{x:4400,y:1020,w:300,h:96},
+ "lesson-miro-l101":{x:4780,y:1020,w:300,h:96},
+ "lesson-miro-l102":{x:5160,y:1020,w:300,h:96},
+ "lesson-miro-shot":{x:4400,y:1220,w:820,h:470},
+ "lesson-miro-correction":{x:5280,y:1300,w:360,h:150},
+ "lesson-miro-person":{x:5720,y:1180,w:360,h:430},
+ "lesson-miro-caption":{x:6120,y:1210,w:500,h:190},
+ "lesson-miro-chart":{x:6120,y:1510,w:720,h:420},
+ "lesson-miro-task":{x:4400,y:1840,w:360,h:94},
+ "lesson-miro-voice":{x:4810,y:1840,w:360,h:94},
+ "lesson-miro-doc":{x:5220,y:1840,w:340,h:94},
+ "lesson-miro-arrow-1":{x:4705,y:1055,w:72,h:24},
+ "lesson-miro-arrow-2":{x:5085,y:1055,w:72,h:24},
+ "lesson-miro-arrow-correction":{x:5180,y:1360,w:110,h:58},
+ "lesson-miro-marker":{x:4540,y:1640,w:420,h:24}
 };
 const LEGACY_LESSON_IDS=new Set(["lesson-free-1","lesson-demo-text","lesson-demo-task","lesson-demo-voice","lesson-doc-ref"]);
 function migrateWorkspaceCardLayout(s:LocalState){
@@ -64,6 +66,8 @@ function ownerSceneObjects():StudioObject[]{return[
  obj({id:"lesson-miro-l102",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/L1.02",parent_id:"lesson-miro-scene",x:4780,y:1880,w:220,h:74,z:10,title:"L1.02 · Стакан",body:{html:"<p><b>L1.02</b><br/>Стакан и лента рядом</p>"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
  obj({id:"lesson-miro-shot",kind:"image",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Скрин рабочего места",parent_id:"lesson-miro-scene",x:4360,y:2040,w:560,h:300,z:10,title:"Скрин рабочего пространства",body:{previewUrl:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 440'%3E%3Crect width='800' height='440' fill='%231b1d20'/%3E%3Crect x='32' y='34' width='470' height='235' rx='10' fill='%23272b30' stroke='%236f7780'/%3E%3Cpolyline points='55,220 110,188 180,202 245,135 315,160 382,92 470,118' fill='none' stroke='%23d5ad5b' stroke-width='6'/%3E%3Crect x='525' y='34' width='242' height='360' rx='10' fill='%2323272b' stroke='%236f7780'/%3E%3Cpath d='M548 80h190M548 118h190M548 156h190M548 194h190M548 232h190M548 270h190' stroke='%23545b63' stroke-width='7'/%3E%3Crect x='32' y='292' width='470' height='102' rx='10' fill='%2323272b'/%3E%3Cpath d='M55 322h410M55 350h330' stroke='%23656d75' stroke-width='8'/%3E%3C/svg%3E",mimeType:"image/svg+xml",filename:"workspace-reference.svg"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
  obj({id:"lesson-miro-correction",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Правка",parent_id:"lesson-miro-scene",x:5020,y:2070,w:300,h:116,z:12,title:"Правка рабочего места",body:{html:"<p><b>Это переделать</b><br/>Стакан ближе к графику, убрать лишнюю панель.</p>",accent:"purple"},relations:[{type:"contains",targetId:"lesson-miro-scene"},{type:"annotates",targetId:"lesson-miro-shot"}]}),
+ obj({id:"lesson-miro-person",kind:"image",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Пример преподавателя",parent_id:"lesson-miro-scene",x:5720,y:1180,w:360,h:430,z:10,title:"Пример фото преподавателя",body:{previewUrl:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 360 430'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23242a31'/%3E%3Cstop offset='1' stop-color='%2311161b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='360' height='430' rx='18' fill='url(%23g)'/%3E%3Ccircle cx='180' cy='138' r='68' fill='%23c8a889'/%3E%3Cpath d='M104 133c7-76 145-86 155 0-18-20-39-34-77-34-34 0-59 12-78 34z' fill='%23302b29'/%3E%3Cpath d='M72 430c8-117 51-168 108-168s100 51 108 168z' fill='%23445263'/%3E%3Crect x='24' y='24' width='122' height='28' rx='14' fill='%23ffffff16'/%3E%3Ctext x='85' y='43' fill='%23e9e4da' font-family='Arial' font-size='12' text-anchor='middle'%3EФОТО / ВИДЕО%3C/text%3E%3C/svg%3E",mimeType:"image/svg+xml",filename:"teacher-reference.svg"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
+ obj({id:"lesson-miro-caption",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Комментарий к примеру",parent_id:"lesson-miro-scene",x:6120,y:1210,w:500,h:190,z:11,title:"Комментарий",body:{html:"<h2>Рабочее место должно помогать решению</h2><p>Слева — контекст и график. Рядом — стакан и лента. Всё, что не помогает принять решение, убираем.</p>"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
  obj({id:"lesson-miro-arrow-1",kind:"annotation",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Связь 1",parent_id:"lesson-miro-scene",x:4385,y:1908,w:78,h:24,z:20,title:"Связь",body:{annotationKind:"arrow",points:[{x:0,y:12},{x:78,y:12}]},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
  obj({id:"lesson-miro-arrow-2",kind:"annotation",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Связь 2",parent_id:"lesson-miro-scene",x:4695,y:1908,w:78,h:24,z:20,title:"Связь",body:{annotationKind:"arrow",points:[{x:0,y:12},{x:78,y:12}]},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
  obj({id:"lesson-miro-arrow-correction",kind:"annotation",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/Правка скрина",parent_id:"lesson-miro-scene",x:4915,y:2110,w:105,h:54,z:21,title:"Стрелка правки",body:{annotationKind:"arrow",points:[{x:0,y:45},{x:105,y:8}]},relations:[{type:"contains",targetId:"lesson-miro-scene"},{type:"annotates",targetId:"lesson-miro-shot"}]}),
