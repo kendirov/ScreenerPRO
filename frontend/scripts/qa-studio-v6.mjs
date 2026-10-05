@@ -60,9 +60,14 @@ try{
  const canvas=p.getByTestId("world-canvas-v6");
  await canvas.focus();
  await canvas.evaluate((el,marker)=>{const d=new DataTransfer();d.setData("text/plain",String(marker));const ev=new Event("paste",{bubbles:true,cancelable:true});Object.defineProperty(ev,"clipboardData",{value:d});el.dispatchEvent(ev)},marker);
- await p.getByText(marker,{exact:true}).waitFor();
+ await p.waitForFunction(marker=>(localStorage.getItem("tqs-studio-v5-local-state-v2")||"").includes(String(marker)),marker);
+ const pastedId=await p.evaluate(marker=>{const s=JSON.parse(localStorage.getItem("tqs-studio-v5-local-state-v2")||"{}");return s?.overview?.objects?.find(o=>JSON.stringify(o.body||{}).includes(String(marker)))?.id||null},marker);
+ ok(Boolean(pastedId),"pasted object not persisted");
  ok((await p.locator(".v6-sync").innerText()).includes("Сохранено"),"no honest save state");
- await p.reload({waitUntil:"domcontentloaded"});await p.getByTestId("world-canvas-v6").waitFor();await p.getByText(marker,{exact:true}).waitFor();
+ await p.reload({waitUntil:"domcontentloaded"});await p.getByTestId("world-canvas-v6").waitFor();
+ ok((await p.locator(`[data-studio-id="${pastedId}"]`).count())===1,"pasted node not restored");
+ let pasteGuard=0;while(scale(await viewport())<.66&&pasteGuard++<6)await wheel(-220);
+ await p.getByText(marker,{exact:true}).waitFor({timeout:8000});
  console.log("PASS RF-D persistence");
 
  // Semantic zoom: MID keeps material summaries, FAR keeps large semantic workspaces instead of microscopic DOM.
