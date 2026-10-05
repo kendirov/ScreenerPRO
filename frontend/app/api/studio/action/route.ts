@@ -16,7 +16,7 @@ async function forward(body:string){
     }
     if(attempt+1<attempts)await new Promise(r=>setTimeout(r,250));
   }
-  if(last.status>=500&&action==="createShare"&&parsed?.payload?.bundle&&parsed?.payload?.appOrigin){
+  if((last.status===408||last.status===425||last.status===429||last.status>=500)&&action==="createShare"&&parsed?.payload?.bundle&&parsed?.payload?.appOrigin){
     try{
       const snapshot=createStatelessShare(parsed.payload.bundle,parsed.payload.appOrigin);
       return {status:200,contentType:"application/json",body:JSON.stringify({ok:true,data:snapshot}),transport:"stateless-share"};
