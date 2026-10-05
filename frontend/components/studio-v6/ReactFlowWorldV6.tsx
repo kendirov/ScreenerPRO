@@ -115,7 +115,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   const text=e.clipboardData.getData("text/plain");if(text){e.preventDefault();e.stopPropagation();await classify(text)}
  },[classify,onCreate]);
 
- useEffect(()=>{if(!focusId||!rf.current||focusSeen.current===focusId)return;focusSeen.current=focusId;void rf.current.fitView({nodes:[{id:focusId}],padding:.12,maxZoom:1.05,duration:420})},[focusId,nodes]);
+ useEffect(()=>{if(!focusId||!rf.current||focusSeen.current===focusId)return;const o=byId.get(focusId);if(!o)return;focusSeen.current=focusId;const z=Math.min(1.05,Math.max(.18,Math.min((window.innerWidth*.82)/Math.max(1,o.w),(window.innerHeight*.74)/Math.max(1,o.h))));void rf.current.setCenter(o.x+o.w/2,o.y+o.h/2,{zoom:z,duration:420})},[focusId,nodes,byId]);
  useEffect(()=>{if(!focusId)focusSeen.current=null},[focusId]);
 
  const duplicate=async(id:string)=>{const o=byId.get(id);if(!o)return;await onCreate(o.kind,{point:{x:o.x+48,y:o.y+48},w:o.w,h:o.h,title:o.title,body:structuredClone(o.body),status:o.status,relations:structuredClone(o.relations||[]) });setMenu(null)};
