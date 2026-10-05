@@ -5,6 +5,7 @@ import type {StudioActivity,StudioDocument,StudioObject} from "@/lib/studio-v5/t
 
 type Props={objects:StudioObject[];documents:StudioDocument[];activity:StudioActivity[];selectedId:string|null;onFocus:(id:string)=>void;onOpenDocument:(id:string)=>void};
 type Node={id:string;title:string;path:string;kind:string;object?:StudioObject;document?:StudioDocument;children:Node[]};
+type NavMode="map"|"search"|"documents"|"recent";
 const EXP_KEY="tqs-studio-v6-nav-expanded";
 function isDocRef(o:StudioObject){return o.kind==="documentRef"&&Boolean(o.body?.documentId)}
 function buildTree(objects:StudioObject[],documents:StudioDocument[]):Node[]{
@@ -23,16 +24,17 @@ function buildTree(objects:StudioObject[],documents:StudioDocument[]):Node[]{
  const sort=(a:Node,b:Node)=>a.path.localeCompare(b.path,"ru");const walk=(a:Node[])=>{a.sort(sort);for(const n of a)walk(n.children)};walk(roots);return roots;
 }
 export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpenDocument}:Props){
- const [open,setOpen]=useState(false),[query,setQuery]=useState(""),[expanded,setExpanded]=useState<Set<string>>(new Set());const input=useRef<HTMLInputElement>(null);
+ const [open,setOpen]=useState(false),[mode,setMode]=useState<NavMode>("map"),[query,setQuery]=useState(""),[expanded,setExpanded]=useState<Set<string>>(new Set());const input=useRef<HTMLInputElement>(null);
  useEffect(()=>{try{const x=JSON.parse(localStorage.getItem(EXP_KEY)||"[]");if(Array.isArray(x))setExpanded(new Set(x))}catch{}},[]);
  useEffect(()=>{try{localStorage.setItem(EXP_KEY,JSON.stringify([...expanded]))}catch{}},[expanded]);
- useEffect(()=>{const f=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();setOpen(true);requestAnimationFrame(()=>input.current?.focus())}};window.addEventListener("keydown",f);return()=>window.removeEventListener("keydown",f)},[]);
+ useEffect(()=>{const f=(e:KeyboardEvent)=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();setMode("search");setOpen(true);requestAnimationFrame(()=>input.current?.focus())}};window.addEventListener("keydown",f);return()=>window.removeEventListener("keydown",f)},[]);
  const tree=useMemo(()=>buildTree(objects,documents),[objects,documents]);
  const flat=useMemo(()=>{const out:Node[]=[];const walk=(n:Node[])=>{for(const x of n){out.push(x);walk(x.children)}};walk(tree);return out},[tree]);
  const searchable=useMemo(()=>{const seenObjects=new Set(flat.map(n=>n.object?.id).filter(Boolean)),seenDocs=new Set(flat.map(n=>n.document?.id||n.object?.body?.documentId).filter(Boolean));const extraObjects=objects.filter(o=>!seenObjects.has(o.id)&&o.kind!=="annotation").map(o=>({id:o.id,title:o.title,path:o.semantic_path,kind:o.kind,object:o,children:[]} as Node));const extraDocs=documents.filter(d=>!seenDocs.has(d.id)).map(d=>({id:"doc:"+d.id,title:d.title,path:d.semantic_path,kind:"document",document:d,children:[]} as Node));return[...flat,...extraObjects,...extraDocs]},[flat,objects,documents]);
  const matches=query.trim()?searchable.filter(n=>(n.title+" "+n.path).toLowerCase().includes(query.trim().toLowerCase())).slice(0,40):[];
  const toggle=(id:string)=>setExpanded(v=>{const n=new Set(v);n.has(id)?n.delete(id):n.add(id);return n});
  const closeNav=()=>{setOpen(false);setQuery("")};
+ const openMode=(next:NavMode)=>{setMode(next);setOpen(true);if(next==="search")requestAnimationFrame(()=>input.current?.focus())};
  const activate=(n:Node)=>{const docId=n.document?.id||n.object?.body?.documentId;closeNav();if(docId)onOpenDocument(docId);else if(n.object)onFocus(n.object.id);queueMicrotask(()=>setOpen(false))};
  const row=(n:Node,depth:number)=><div className="v6-nav-node" key={n.id} data-depth={depth}>
   <button className={["v6-nav-row",selectedId===n.object?.id?"is-active":""].join(" ")} style={{paddingLeft:8+depth*14}} onClick={()=>activate(n)}>
@@ -42,21 +44,22 @@ export function NavigatorV6({objects,documents,activity,selectedId,onFocus,onOpe
  </div>;
  return <aside className={["v6-navigator",open?"is-open":"is-closed"].join(" ")} data-testid="v6-navigator" data-studio-ui>
   <div className="v6-nav-rail">
-   <button title={open?"Свернуть навигатор":"Развернуть навигатор"} onClick={()=>setOpen(v=>!v)}>{open?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button>
-   <button title="Поиск" onClick={()=>{setOpen(true);requestAnimationFrame(()=>input.current?.focus())}}><Search size={17}/></button>
+   <button title={open?"Свернуть":"Открыть карту"} onClick={()=>open?closeNav():openMode("map")}>{open?<PanelLeftClose size={18}/>:<PanelLeftOpen size={18}/>}</button>
+   <button className={open&&mode==="search"?"active":""} title="Поиск" onClick={()=>openMode("search")}><Search size={17}/></button>
    <span className="v6-nav-divider"/>
-   <button title="Мир" onClick={()=>{closeNav();onFocus(objects.some(o=>o.id==="lesson-miro-scene")?"lesson-miro-scene":objects.find(o=>o.kind==="frame"&&!o.parent_id)?.id||"")}}><SquareStack size={17}/></button><button title="Документы"><BookOpen size={17}/></button><button title="Недавние"><Clock3 size={17}/></button>
+   <button className={open&&mode==="map"?"active":""} title="Карта курса" onClick={()=>openMode("map")}><SquareStack size={17}/></button>
+   <button className={open&&mode==="documents"?"active":""} title="Документы" onClick={()=>openMode("documents")}><BookOpen size={17}/></button>
+   <button className={open&&mode==="recent"?"active":""} title="Недавние" onClick={()=>openMode("recent")}><Clock3 size={17}/></button>
   </div>
   {open&&<div className="v6-nav-overlay">
-   <header><div><strong>Навигатор</strong><small>Мир · Документы · Активность</small></div></header>
-   <label className="v6-nav-search"><Search size={13}/><input ref={input} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const q=e.currentTarget.value.trim().toLowerCase(),target=searchable.find(n=>(n.title+" "+n.path).toLowerCase().includes(q));if(target){e.preventDefault();activate(target)}}}} placeholder="Найти объект, материал или документ"/><kbd>Ctrl K</kbd></label>
+   <header><div><strong>{mode==="map"?"Карта курса":mode==="search"?"Поиск":mode==="documents"?"Документы":"Недавние"}</strong><small>{mode==="map"?"Проект → курс → занятие":mode==="search"?"Найти материал на доске":mode==="documents"?"Материалы и статьи":"Последние изменения"}</small></div></header>
+   {mode==="search"&&<label className="v6-nav-search"><Search size={13}/><input ref={input} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const q=e.currentTarget.value.trim().toLowerCase(),target=searchable.find(n=>(n.title+" "+n.path).toLowerCase().includes(q));if(target){e.preventDefault();activate(target)}}}} placeholder="Найти занятие, текст, изображение…"/><kbd>Ctrl K</kbd></label>}
    <div className="v6-nav-scroll">
-    {query?<section><h3>Результаты</h3>{matches.length?matches.map(n=><button className="v6-nav-result" key={n.id} onClick={()=>activate(n)}><span>{n.title}</span><small>{n.path}</small></button>):<p className="v6-nav-empty">Ничего не найдено</p>}</section>:<>
-     <section><h3>Структура мира</h3>{tree.map(n=>row(n,0))}</section>
-     <section><h3>Документы</h3>{documents.slice().sort((a,b)=>a.title.localeCompare(b.title,"ru")).map(d=><button className="v6-nav-result" key={d.id} onClick={()=>{setOpen(false);onOpenDocument(d.id)}}><span>{d.title}</span><small>{d.semantic_path}</small></button>)}</section>
-     <section><h3>Недавние изменения</h3>{activity.slice(0,14).map(a=><button className="v6-nav-result" key={a.id} onClick={()=>{setOpen(false);a.entity_id&&onFocus(a.entity_id)}}><span>{a.summary}</span><small>{a.semantic_path}</small></button>)}</section>
-    </>}
+    {mode==="map"&&<section className="v6-nav-map">{tree.map(n=>row(n,0))}</section>}
+    {mode==="search"&&<section>{query?matches.length?matches.map(n=><button className="v6-nav-result" key={n.id} onClick={()=>activate(n)}><span>{n.title}</span><small>{n.path}</small></button>):<p className="v6-nav-empty">Ничего не найдено</p>:<p className="v6-nav-empty">Начните вводить название или текст материала.</p>}</section>}
+    {mode==="documents"&&<section>{documents.slice().sort((a,b)=>a.title.localeCompare(b.title,"ru")).map(d=><button className="v6-nav-result" key={d.id} onClick={()=>{setOpen(false);onOpenDocument(d.id)}}><span>{d.title}</span><small>{d.semantic_path}</small></button>)}</section>}
+    {mode==="recent"&&<section>{activity.length?activity.slice(0,18).map(a=><button className="v6-nav-result" key={a.id} onClick={()=>{setOpen(false);a.entity_id&&onFocus(a.entity_id)}}><span>{a.summary}</span><small>{a.semantic_path}</small></button>):<p className="v6-nav-empty">Изменения появятся здесь после работы с доской.</p>}</section>}
    </div>
-  </div>}
+  </div>}}
  </aside>
 }
