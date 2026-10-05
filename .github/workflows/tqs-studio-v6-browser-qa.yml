@@ -39,5 +39,6 @@ jobs:
           name: tqs-studio-v6-visual
           path: frontend/.qa-artifacts/*.png
           if-no-files-found: ignore
+          include-hidden-files: true
       - if: always()
         run: tail -n 200 /tmp/tqs-v6.log || true
