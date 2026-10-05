@@ -501,8 +501,8 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
   }
   if(name==="createWorldObject"){
     const row={...sanitizeObjectPatch(p.object),id:p.object.id||crypto.randomUUID(),world_key:OWNER_WORLD,owner_id:owner.id,revision:1};
-    const {data,error}=await admin.from("studio_world_objects").insert(row).select().single();if(error)throw error;const worldRevision=await bumpWorld(owner.id);
-    await logActivity(owner.id,data.id,data.semantic_path,"create",`Создано: ${data.title||data.kind}`);return {object:data,worldRevision};
+    const {data,error}=await admin.from("studio_world_objects").upsert(row,{onConflict:"id"}).select().single();if(error)throw error;const worldRevision=await bumpWorld(owner.id);
+    await logActivity(owner.id,data.id,data.semantic_path,"create",`Создано/синхронизировано: ${data.title||data.kind}`);return {object:data,worldRevision};
   }
   if(name==="updateObject"){
     const patch=sanitizeObjectPatch(p.patch);patch.revision=Number(p.revision||1)+1;patch.updated_at=new Date().toISOString();
