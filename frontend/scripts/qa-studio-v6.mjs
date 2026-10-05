@@ -27,11 +27,12 @@ try{
  ok(nearBox&&nearBox.width>850&&nearBox.height>430,"Lesson workspace is not the primary visible surface");
  ok(await scene.getByText("ЗАНЯТИЕ",{exact:true}).count()===1,"semantic lesson label");
  ok(await scene.getByText("ЗАНЯТИЕ 1 · РАБОЧЕЕ ПРОСТРАНСТВО",{exact:true}).count()===1,"lesson title");
+ await p.screenshot({path:"frontend/.qa-artifacts/world-reactflow-near.png"});
+ const ids=await p.locator("[data-studio-id]").evaluateAll(es=>es.map(e=>e.getAttribute("data-studio-id")));console.log("VISIBLE_IDS",ids.join(","));
  ok(await p.locator('[data-studio-id="lesson-miro-shot"]').count()===1,"screenshot material");
  ok(await p.locator('[data-studio-id="lesson-miro-chart"]').count()===1,"interactive chart");
  ok(await p.locator('[data-studio-id="lesson-miro-task"]').count()===1,"task material");
  ok(await p.locator('[data-studio-id="lesson-miro-doc"]').count()===1,"document material");
- await p.screenshot({path:"frontend/.qa-artifacts/world-reactflow-near.png"});
  console.log("PASS RF-A owner scene");
 
  let a=await viewport();await wheel(-260);let b=await viewport();ok(scale(b)>scale(a),"mouse wheel zoom");a=b;
