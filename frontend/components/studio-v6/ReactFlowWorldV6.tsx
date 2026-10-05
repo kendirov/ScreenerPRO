@@ -111,11 +111,8 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   await onCreate("text",{point:p,title:"Текст",body:{html:`<p>${escapeHtml(t)}</p>`}})
  },[onCreate]);
 
- const paste=useCallback(async(e:React.ClipboardEvent)=>{
-  const tag=(e.target as HTMLElement)?.tagName;if(["INPUT","TEXTAREA"].includes(tag)||(e.target as HTMLElement)?.isContentEditable)return;
-  const files=Array.from(e.clipboardData.files);if(files.length){e.preventDefault();e.stopPropagation();const p=rf.current?.screenToFlowPosition(pointer.current);for(const [i,file] of files.entries()){const dataUrl=await fileToDataUrl(file),a=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),kind=file.type.startsWith("image/")?"image":file.type.startsWith("video/")?"video":"file";await onCreate(kind,{point:{x:(p?.x||900)+i*26,y:(p?.y||600)+i*26},title:file.name,body:{assetId:a.asset.id,previewUrl:a.signedUrl||dataUrl,mimeType:file.type,filename:file.name}})}return}
-  const text=e.clipboardData.getData("text/plain");if(text){e.preventDefault();e.stopPropagation();await classify(text)}
- },[classify,onCreate]);
+ const handleClipboardFiles=useCallback(async(files:File[])=>{const p=rf.current?.screenToFlowPosition(pointer.current);for(const [i,file] of files.entries()){const dataUrl=await fileToDataUrl(file),a=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),kind=file.type.startsWith("image/")?"image":file.type.startsWith("video/")?"video":"file";await onCreate(kind,{point:{x:(p?.x||900)+i*26,y:(p?.y||600)+i*26},title:file.name,body:{assetId:a.asset.id,previewUrl:a.signedUrl||dataUrl,mimeType:file.type,filename:file.name}})}},[onCreate]);
+ useEffect(()=>{const handler=(e:ClipboardEvent)=>{const target=e.target as HTMLElement|null,tag=target?.tagName||"";if(target?.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(tag))return;const data=e.clipboardData;if(!data)return;const files=Array.from(data.files);if(files.length){e.preventDefault();e.stopPropagation();void handleClipboardFiles(files);return}const text=data.getData("text/plain");if(text){e.preventDefault();e.stopPropagation();void classify(text)}};window.addEventListener("paste",handler,true);return()=>window.removeEventListener("paste",handler,true)},[classify,handleClipboardFiles]);
 
  useEffect(()=>{if(!focusId||!rf.current||focusSeen.current===focusId)return;focusCanonical(rf.current,focusId)},[focusId,nodes,focusCanonical]);
  useEffect(()=>{if(!focusId)focusSeen.current=null},[focusId]);
@@ -125,7 +122,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
  const connect=async(c:Connection)=>{if(!c.source||!c.target)return;const a=byId.get(c.source),b=byId.get(c.target);if(!a||!b)return;const ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2;await onCreate("annotation",{point:{x:Math.min(ax,bx),y:Math.min(ay,by)},w:Math.max(20,Math.abs(bx-ax)),h:Math.max(20,Math.abs(by-ay)),title:"Связь",body:{annotationKind:"arrow",fromId:a.id,toId:b.id,points:[{x:0,y:0},{x:Math.abs(bx-ax),y:Math.abs(by-ay)}]},relations:[{type:"connects_from",targetId:a.id},{type:"connects_to",targetId:b.id}]})};
 
  return <CanvasContext.Provider value={actions}>
-  <section className="rf-studio-canvas" data-testid="world-canvas-v6" onPointerMove={e=>{pointer.current={x:e.clientX,y:e.clientY}}} onPasteCapture={e=>void paste(e)}>
+  <section className="rf-studio-canvas" data-testid="world-canvas-v6" onPointerMove={e=>{pointer.current={x:e.clientX,y:e.clientY}}}>
    <input ref={fileInput} className="v6-file-picker" type="file" tabIndex={-1} onChange={e=>{const file=e.currentTarget.files?.[0],target=fileTarget.current;fileTarget.current=null;if(!file||!target)return;void (async()=>{const dataUrl=await fileToDataUrl(file),a=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),frame=target.frameId?byId.get(target.frameId):null,p=frame?{x:frame.x+140,y:frame.y+180}:rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600};await onCreate(target.kind,{point:p,title:file.name,body:{assetId:a.asset.id,previewUrl:a.signedUrl||dataUrl,mimeType:file.type,filename:file.name}})})()}}/>
    <ReactFlow<StudioNode,Edge>
     nodes={nodes} edges={edges} nodeTypes={nodeTypes}
