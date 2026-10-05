@@ -256,3 +256,20 @@
 @media(max-width:1050px){.rf-workspace-actions button:nth-child(n+2){display:none}.rf-studio-toolbar button span{display:none}.rf-profile{right:142px}.rf-workspace-head>strong{font-size:18px}}
 
 .rf-studio-canvas .react-flow__attribution{font-size:7px!important;opacity:.35;background:transparent!important;color:var(--muted)!important;right:6px!important;bottom:4px!important}
+
+
+/* SHARED STUDIO AUTH */
+.v6-auth-chip{padding:0 10px!important;border:1px solid color-mix(in srgb,var(--text) 12%,transparent)!important;border-radius:8px!important}
+.v6-auth-chip.is-on{color:#4a8f61!important;background:color-mix(in srgb,#58a96f 12%,transparent)!important;border-color:color-mix(in srgb,#58a96f 35%,transparent)!important}
+.v6-auth-backdrop{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:#0006;backdrop-filter:blur(8px)}
+.v6-auth-card{width:min(420px,calc(100vw - 32px));padding:18px;border:1px solid color-mix(in srgb,var(--text) 14%,transparent);border-radius:18px;background:var(--panel);box-shadow:0 28px 90px #0008;display:flex;flex-direction:column;gap:14px}
+.v6-auth-card header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.v6-auth-card header>div{display:flex;flex-direction:column;gap:3px}.v6-auth-card header strong{font-size:16px}.v6-auth-card header small,.v6-auth-card>small{font-size:9px;color:var(--muted);line-height:1.45}
+.v6-auth-card header button{width:30px;height:30px;border:0;border-radius:8px;background:transparent;color:var(--muted)}
+.v6-auth-card header button:hover{background:var(--surface);color:var(--text)}
+.v6-auth-card p{margin:0;color:var(--muted);font-size:11px;line-height:1.55}
+.v6-auth-card label{display:flex;flex-direction:column;gap:6px}.v6-auth-card label span{font-size:9px;color:var(--muted);font-weight:650}
+.v6-auth-card input{height:42px;padding:0 12px;border:1px solid color-mix(in srgb,var(--text) 14%,transparent);border-radius:10px;background:var(--surface);color:var(--text);outline:0;font-size:12px}
+.v6-auth-card input:focus{border-color:color-mix(in srgb,var(--accent) 65%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}
+.v6-auth-card>.primary{height:42px;border:0;border-radius:10px;background:var(--accent);color:#15120b;font-size:11px;font-weight:750}
+.v6-auth-card>.primary:disabled{opacity:.45}
