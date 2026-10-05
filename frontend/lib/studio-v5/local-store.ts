@@ -16,6 +16,47 @@ function obj(o:Partial<StudioObject>&Pick<StudioObject,"id"|"kind"|"semantic_pat
 function block(b:Partial<StudioDocumentBlock>&Pick<StudioDocumentBlock,"block_id"|"document_id"|"ordinal"|"block_type">):StudioDocumentBlock{
  return {content:{},data_spec:null,asset_id:null,revision:1,...b};
 }
+
+const WORKSPACE_LAYOUT_VERSION=3;
+const WORKSPACE_LAYOUT:Record<string,Partial<StudioObject>>={
+ "frame-learning":{x:3800,y:260,w:5600,h:2650},
+ "course-free":{x:4050,y:520,w:2600,h:2180},
+ "course-scalp":{x:6900,y:520,w:2200,h:2180},
+ "lesson-miro-scene":{x:4200,y:800,w:2250,h:1220,body:{ownerReference:true,sceneVersion:2,workspaceCard:true,layoutVersion:WORKSPACE_LAYOUT_VERSION}},
+ "lesson-free-2":{x:4200,y:2180,w:1050,h:330},
+ "lesson-free-3":{x:5360,y:2180,w:1050,h:330},
+ "lesson-scalp-1":{x:7060,y:820,w:1880,h:430},
+ "lesson-scalp-2":{x:7060,y:1360,w:1880,h:430},
+ "lesson-scalp-3":{x:7060,y:1900,w:1880,h:430},
+ "lesson-miro-l100":{x:4360,y:980,w:250,h:92},
+ "lesson-miro-l101":{x:4690,y:980,w:260,h:92},
+ "lesson-miro-l102":{x:5030,y:980,w:260,h:92},
+ "lesson-miro-shot":{x:4470,y:1140,w:650,h:360},
+ "lesson-miro-correction":{x:5240,y:1180,w:340,h:146},
+ "lesson-miro-chart":{x:5660,y:980,w:610,h:360},
+ "lesson-miro-task":{x:4360,y:1600,w:360,h:92},
+ "lesson-miro-voice":{x:4770,y:1600,w:360,h:92},
+ "lesson-miro-doc":{x:5180,y:1600,w:320,h:92},
+ "lesson-miro-arrow-1":{x:4615,y:1015,w:72,h:24},
+ "lesson-miro-arrow-2":{x:4955,y:1015,w:72,h:24},
+ "lesson-miro-arrow-correction":{x:5120,y:1245,w:120,h:58},
+ "lesson-miro-marker":{x:4560,y:1450,w:360,h:24}
+};
+const LEGACY_LESSON_IDS=new Set(["lesson-free-1","lesson-demo-text","lesson-demo-task","lesson-demo-voice","lesson-doc-ref"]);
+function migrateWorkspaceCardLayout(s:LocalState){
+ let changed=false;
+ for(const o of s.overview.objects){
+  const patch=WORKSPACE_LAYOUT[o.id];
+  if(patch){
+   const next={...o,...patch,body:patch.body?{...(o.body||{}),...(patch.body as any)}:o.body};
+   if(JSON.stringify(next)!==JSON.stringify(o)){Object.assign(o,next);changed=true}
+  }
+  if(LEGACY_LESSON_IDS.has(o.id)&&!o.hidden){o.hidden=true;changed=true}
+ }
+ if(changed){s.overview.world.revision=Number(s.overview.world.revision||0)+1;save(s)}
+ return changed;
+}
+
 function ownerSceneObjects():StudioObject[]{return[
  obj({id:"lesson-miro-scene",kind:"frame",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство",parent_id:"course-free",x:4080,y:1760,w:1740,h:720,z:3,title:"ЗАНЯТИЕ 1 · РАБОЧЕЕ ПРОСТРАНСТВО",body:{ownerReference:true,sceneVersion:1},relations:[{type:"contains",targetId:"course-free"}]}),
  obj({id:"lesson-miro-l100",kind:"text",semantic_path:"Обучение/Бесплатный курс/Занятие 1/Рабочее пространство/L1.00",parent_id:"lesson-miro-scene",x:4170,y:1880,w:210,h:74,z:10,title:"L1.00 · Подготовка",body:{html:"<p><b>L1.00</b><br/>Подготовить рабочее пространство</p>"},relations:[{type:"contains",targetId:"lesson-miro-scene"}]}),
@@ -84,9 +125,9 @@ function load():LocalState{
  if(typeof window==="undefined")return initialState();
  try{
   const raw=localStorage.getItem(KEY);
-  if(raw){const x=JSON.parse(raw) as LocalState;if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){let changed=false;const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;changed=true}const lesson=x.documents?.find(d=>d.id==="doc-lesson-workspace");if(lesson&&lesson.frame_id!=="lesson-miro-scene"){lesson.frame_id="lesson-miro-scene";lesson.metadata={...(lesson.metadata||{}),ownerScene:true};changed=true}const sources=x.blocks?.find(b=>b.block_id==="lesson-sources");if(sources?.content?.items?.[0]?.entityId==="lesson-free-1"){sources.content.items[0].entityId="lesson-miro-scene";changed=true}if(changed)save(x);return x}}
+  if(raw){const x=JSON.parse(raw) as LocalState;if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){let changed=false;const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;changed=true}const lesson=x.documents?.find(d=>d.id==="doc-lesson-workspace");if(lesson&&lesson.frame_id!=="lesson-miro-scene"){lesson.frame_id="lesson-miro-scene";lesson.metadata={...(lesson.metadata||{}),ownerScene:true};changed=true}const sources=x.blocks?.find(b=>b.block_id==="lesson-sources");if(sources?.content?.items?.[0]?.entityId==="lesson-free-1"){sources.content.items[0].entityId="lesson-miro-scene";changed=true}if(changed)save(x);migrateWorkspaceCardLayout(x);return x}}
  }catch{}
- const s=initialState();save(s);return s;
+ const s=initialState();migrateWorkspaceCardLayout(s);save(s);return s;
 }
 function save(s:LocalState){if(typeof window!=="undefined")localStorage.setItem(KEY,JSON.stringify(s))}
 function activity(s:LocalState,entity_id:string|null,semantic_path:string,event_type:string,summary:string,payload:any={}){
