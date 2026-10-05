@@ -70,6 +70,27 @@ try{
  await p.getByText(marker,{exact:true}).waitFor({timeout:8000});
  console.log("PASS RF-D persistence");
 
+ // Direct text: T creates an immediately editable transparent text object, autosaves, moves by body drag, survives reload.
+ await p.evaluate(()=>window.dispatchEvent(new KeyboardEvent("keydown",{key:"t",bubbles:true,cancelable:true})));
+ const editNode=p.locator(".rf-content-node.kind-text.is-editing").last();await editNode.waitFor({timeout:5000});
+ const editor=editNode.locator(".tiptap");await editor.waitFor();const textMarker="TEXT-"+Date.now();await editor.fill(textMarker);await pane.click({position:{x:pb.width*.82,y:pb.height*.24}});await wait(650);
+ const textId=await editNode.locator("xpath=..").getAttribute("data-id").catch(()=>null)||await editNode.evaluate(el=>el.closest(".react-flow__node")?.getAttribute("data-id"));
+ ok(Boolean(textId),"new text id missing");
+ ok((localStorage=>localStorage.includes(textMarker))(await p.evaluate(()=>localStorage.getItem("tqs-studio-v5-local-state-v2")||"")),"new text not locally saved");
+ const textNode=p.locator(`[data-id="${textId}"]`),beforeText=await textNode.boundingBox();ok(beforeText,"text geometry missing");
+ await p.mouse.move(beforeText.x+beforeText.width*.45,beforeText.y+beforeText.height*.5);await p.mouse.down();await p.mouse.move(beforeText.x+beforeText.width*.45+95,beforeText.y+beforeText.height*.5+42,{steps:7});await p.mouse.up();await wait(260);
+ const afterText=await textNode.boundingBox();ok(Math.hypot(afterText.x-beforeText.x,afterText.y-beforeText.y)>35,"text did not move by direct drag");
+ await p.reload({waitUntil:"domcontentloaded"});await p.getByTestId("world-canvas-v6").waitFor();await p.getByText(textMarker,{exact:true}).waitFor({timeout:8000});
+ console.log("PASS RF-D2 direct text");
+
+ // Image drop: a real File dropped on blank canvas becomes a first-class movable image and survives local reload.
+ const dropMarker="DROP-"+Date.now();
+ await p.getByTestId("world-canvas-v6").evaluate((el,dropMarker)=>{const dt=new DataTransfer();dt.items.add(new File([`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#222"/><text x="20" y="90" fill="white">${dropMarker}</text></svg>`],dropMarker+".svg",{type:"image/svg+xml"}));const ev=new DragEvent("drop",{bubbles:true,cancelable:true,dataTransfer:dt,clientX:900,clientY:420});el.dispatchEvent(ev)},dropMarker);
+ await p.waitForFunction(dropMarker=>(localStorage.getItem("tqs-studio-v5-local-state-v2")||"").includes(dropMarker+".svg"),dropMarker,{timeout:8000});
+ const imageId=await p.evaluate(dropMarker=>{const s=JSON.parse(localStorage.getItem("tqs-studio-v5-local-state-v2")||"{}");return s?.overview?.objects?.find(o=>o.kind==="image"&&o.title===dropMarker+".svg")?.id||null},dropMarker);ok(Boolean(imageId),"dropped image object missing");
+ const imageNode=p.locator(`[data-id="${imageId}"]`);await imageNode.waitFor();const beforeImage=await imageNode.boundingBox();ok(beforeImage,"image geometry missing");await p.mouse.move(beforeImage.x+beforeImage.width*.5,beforeImage.y+beforeImage.height*.5);await p.mouse.down();await p.mouse.move(beforeImage.x+beforeImage.width*.5+90,beforeImage.y+beforeImage.height*.5+45,{steps:7});await p.mouse.up();await wait(260);const afterImage=await imageNode.boundingBox();ok(Math.hypot(afterImage.x-beforeImage.x,afterImage.y-beforeImage.y)>35,"image did not move directly");
+ console.log("PASS RF-D3 image drop and move");
+
  // Semantic zoom: MID keeps material summaries, FAR keeps large semantic workspaces instead of microscopic DOM.
  await p.evaluate(()=>window.dispatchEvent(new KeyboardEvent("keydown",{key:"k",ctrlKey:true,bubbles:true,cancelable:true})));
  const search2=p.locator(".v6-nav-search input");await search2.waitFor();await search2.fill("ЗАНЯТИЕ 1 · РАБОЧЕЕ ПРОСТРАНСТВО");await search2.press("Enter");await wait(480);
