@@ -57,8 +57,7 @@ try{
  // Paste real content through the board and prove local-first persistence survives reload.
  const marker="QA-"+Date.now();
  await pane.click({position:{x:pb.width*.65,y:pb.height*.35}});
- await p.evaluate(async marker=>{await navigator.clipboard.writeText(marker)},marker);
- await p.keyboard.press("Control+V");
+ await p.evaluate(marker=>{const d=new DataTransfer();d.setData("text/plain",marker);window.dispatchEvent(new ClipboardEvent("paste",{clipboardData:d,bubbles:true,cancelable:true}))},marker);
  await p.getByText(marker,{exact:true}).waitFor();
  ok((await p.locator(".v6-sync").innerText()).includes("Сохранено"),"no honest save state");
  await p.reload({waitUntil:"domcontentloaded"});await p.getByTestId("world-canvas-v6").waitFor();await p.getByText(marker,{exact:true}).waitFor();
