@@ -64,7 +64,7 @@ export async function secureStudioAction<T=any>(action:string,payload:any={}):Pr
  }finally{window.clearTimeout(timer)}
 }
 export async function driveOAuthStart(returnTo:string){const session=await studioSession();if(!session)throw new Error("AUTH_REQUIRED");const r=await fetch(`${FN}/oauth/start?return_to=${encodeURIComponent(returnTo)}`,{headers:{Authorization:`Bearer ${session.access_token}`}});const x=await r.json();if(!r.ok)throw Object.assign(new Error(x.code||x.error||"OAUTH_START_FAILED"),{details:x,status:r.status});return x as{url:string;redirectUri:string;scopes:string[]}}
-export async function ownerMagicLink(email:string){return studioSupabase().auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href}})}
+export async function ownerMagicLink(email:string){return studioSupabase().auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href,shouldCreateUser:false}})}
 export async function studioSignOut(){return studioSupabase().auth.signOut()}
 
 
