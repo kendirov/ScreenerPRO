@@ -88,3 +88,11 @@
 .v6-text.accent-purple{background:#6f5aa819;border:1px solid #7c65b854}
 .v6-shell[data-theme=light] .v6-text.accent-purple{background:#eee8fb;border-color:#c6b7e9;color:#392f52}
 .v6-shell[data-theme=dark] .v6-text.accent-purple{background:#2a2337;border-color:#5d4c78;color:#eee8fb}
+
+
+/* V6 semantic FAR rooms */
+.v6-world[data-lod=far] .v6-object.kind-frame{border-color:color-mix(in srgb,var(--text) 13%,transparent)!important;border-style:solid!important;background:color-mix(in srgb,var(--panel) 10%,transparent)!important;border-radius:28px}
+.v6-world[data-lod=far] .v6-frame-head{height:80px;transform:translateY(-92px);padding:0 10px;gap:18px}
+.v6-world[data-lod=far] .v6-frame-head strong{font-size:72px;font-weight:760;letter-spacing:-.035em}
+.v6-world[data-lod=far] .v6-frame-head small{font-size:28px;opacity:.52}
+.v6-world[data-lod=far] .v6-object.kind-frame:hover{border-color:color-mix(in srgb,var(--accent) 32%,transparent)!important}
