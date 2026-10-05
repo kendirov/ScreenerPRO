@@ -1,13 +1,15 @@
 import {createStatelessShare} from "@/lib/studio-v6/share-snapshot";
 const EDGE="https://hppbuzbrjoyrwpdinlxk.supabase.co/functions/v1/studio-api/public/action";
 
-async function forward(body:string){
+async function forward(body:string,authorization?:string|null){
   let parsed:any=null,action="";try{parsed=JSON.parse(body);action=String(parsed?.action||"")}catch{}
   const mustComplete=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun","aiCreateDocumentFromFrame"]).has(action),attempts=mustComplete?1:2,timeoutMs=action==="createShare"?30000:mustComplete?20000:3400;
   let last:{status:number;contentType:string;body:string;transport?:string}={status:503,contentType:"application/json",body:JSON.stringify({ok:false,error:"STUDIO_UPSTREAM_UNAVAILABLE"}),transport:"upstream"};
+  const endpoint=authorization?EDGE.replace("/public/action","/action"):EDGE;
   for(let attempt=0;attempt<attempts;attempt++){
     try{
-      const r=await fetch(EDGE,{method:"POST",headers:{"Content-Type":"application/json"},body,cache:"no-store",signal:AbortSignal.timeout(timeoutMs)});
+      const headers:Record<string,string>={"Content-Type":"application/json"};if(authorization)headers.Authorization=authorization;
+      const r=await fetch(endpoint,{method:"POST",headers,body,cache:"no-store",signal:AbortSignal.timeout(timeoutMs)});
       const text=await r.text();
       last={status:r.status,contentType:r.headers.get("content-type")||"application/json",body:text};
       if(r.status<500)return last;
@@ -31,6 +33,6 @@ async function forward(body:string){
   return {...last,transport:"upstream"};
 }
 export async function POST(req:Request){
-  const result=await forward(await req.text());
+  const result=await forward(await req.text(),req.headers.get("authorization"));
   return new Response(result.body,{status:result.status,headers:{"Content-Type":result.contentType,"Cache-Control":"no-store","X-TQS-Sync":result.status===202?"deferred":"upstream","X-TQS-Transport":result.transport||"upstream"}});
 }
