@@ -49,3 +49,34 @@
 .v6-doc-nav-overlay>div>button:hover,.v6-doc-nav-overlay>div>button.active{background:var(--surface)}
 .v6-doc-nav-overlay button small{font-size:7px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:236px}
 .v6-doc-nav-overlay button strong{font-size:9px}
+
+
+/* V6 spatial polish v2: the canvas is the product, chrome floats above it. */
+.v6-shell{--chrome-bg:color-mix(in srgb,var(--panel) 86%,transparent)}
+.v6-topbar{position:fixed;top:10px;left:14px;right:auto;width:auto;height:38px;z-index:520;gap:9px;padding:0 8px;border:1px solid color-mix(in srgb,var(--text) 11%,transparent);border-radius:12px;background:var(--chrome-bg);backdrop-filter:blur(16px) saturate(1.15);box-shadow:0 10px 30px #0002}
+.v6-brand strong{font-size:11px;letter-spacing:-.01em}.v6-surface-switch,.v6-top-actions{gap:1px}.v6-surface-switch button,.v6-top-actions button{padding:5px 7px;font-size:8px;border-radius:8px}.v6-surface-switch kbd{opacity:.55;font-size:6px}
+.v6-world-shell{height:100vh}.v6-world-main{margin-left:0}
+.v6-navigator{left:14px;top:60px;bottom:auto;z-index:500}
+.v6-nav-rail{width:40px;height:auto;padding:4px;border:1px solid color-mix(in srgb,var(--text) 11%,transparent);border-radius:12px;background:var(--chrome-bg);backdrop-filter:blur(16px) saturate(1.15);box-shadow:0 10px 30px #0002;gap:1px}
+.v6-nav-rail button{width:30px;height:30px;border-radius:8px}.v6-nav-divider{margin:2px 3px}
+.v6-nav-overlay{left:48px;top:0;bottom:auto;width:276px;max-height:calc(100vh - 78px);border:1px solid color-mix(in srgb,var(--text) 11%,transparent);border-radius:14px;background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(18px) saturate(1.1);box-shadow:0 22px 64px #0004;overflow:hidden}
+.v6-nav-overlay>header{padding:12px 13px}.v6-nav-scroll{max-height:calc(100vh - 178px);overflow:auto}
+.v6-nav-search{margin:9px;border-color:color-mix(in srgb,var(--text) 12%,transparent);background:color-mix(in srgb,var(--surface) 62%,transparent)}
+.v6-canvas{background-color:#f6f4ef;background-image:radial-gradient(circle at center,#29282316 1px,transparent 1.15px);background-size:24px 24px}
+.v6-shell[data-theme=dark] .v6-canvas{background-color:#0e0f10;background-image:radial-gradient(circle at center,#f3efe418 1px,transparent 1.15px)}
+.v6-object.kind-frame{background:transparent!important;border:1px solid transparent!important;border-radius:8px;box-shadow:none!important}
+.v6-object.kind-frame:not(.is-selected):hover{border-color:color-mix(in srgb,var(--text) 12%,transparent)!important;border-style:dashed!important}
+.v6-object.kind-frame.is-selected{border-color:color-mix(in srgb,var(--accent) 42%,transparent)!important;box-shadow:none!important}
+.v6-frame-head{height:34px;padding:0 2px;transform:translateY(-36px);gap:8px}.v6-frame-head strong{font-size:16px;font-weight:650;letter-spacing:-.025em;text-shadow:none}.v6-frame-head small{font-size:7px;opacity:.6}
+.v6-frame-head.lod-mid strong{font-size:21px}.v6-frame-head.lod-far strong{font-size:30px}
+.v6-resize{width:7px;height:7px;border-width:1px;border-radius:2px;opacity:.7}
+.v6-object:not(.kind-frame){border-radius:8px}.v6-object:not(.kind-frame) .v6-object-handle{top:-24px;height:22px;border-radius:8px;background:var(--chrome-bg);backdrop-filter:blur(10px);box-shadow:0 6px 18px #0002}
+.v6-text{padding:3px}.v6-text-read{font-size:13px;line-height:1.48}.v6-text-read p{margin:.15em 0}
+.v6-object.kind-task .v6-task,.v6-object.kind-voice .v6-voice,.v6-object.kind-link .v6-link,.v6-object.kind-file .v6-file{background:color-mix(in srgb,var(--panel) 72%,transparent);border-color:color-mix(in srgb,var(--text) 10%,transparent);box-shadow:0 2px 10px #0000000d}
+.v6-doc-ref{display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:8px;color:var(--muted);background:transparent;border:0}
+.v6-object.kind-image .v6-asset,.v6-object.kind-video .v6-asset,.v6-object.kind-chart .studio-market-block{border-radius:7px;box-shadow:0 8px 24px #0002}
+.v6-tools{top:12px;padding:3px;border-color:color-mix(in srgb,var(--text) 11%,transparent);background:var(--chrome-bg);backdrop-filter:blur(16px) saturate(1.15);box-shadow:0 10px 28px #0002}.v6-tools button{padding:6px}
+.v6-input-profile{right:14px;bottom:14px;border-radius:10px;background:var(--chrome-bg);backdrop-filter:blur(14px)}
+.v6-context{border-color:color-mix(in srgb,var(--text) 11%,transparent);background:color-mix(in srgb,var(--panel) 96%,transparent);backdrop-filter:blur(18px);box-shadow:0 18px 50px #0004}
+.v6-doc-shell{height:100vh;padding-top:58px}.v6-doc-main{padding-bottom:90px}
+@media(max-width:900px){.v6-topbar{left:8px;top:8px}.v6-navigator{left:8px;top:56px}.v6-nav-overlay{width:min(276px,calc(100vw - 70px))}}
