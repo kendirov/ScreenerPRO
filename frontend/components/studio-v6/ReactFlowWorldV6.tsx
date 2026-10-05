@@ -53,10 +53,10 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   .sort((a,b)=>depthOf(a,byId)-depthOf(b,byId)||a.z-b.z)
   .map(o=>{
    const depth=depthOf(o,byId),isWorkspace=o.kind==="frame",signatures=(directChildren.get(o.id)||[]).filter(x=>x.kind!=="frame").slice(0,3).map(x=>({kind:x.kind,title:x.title}));
-   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,selected:selected.has(o.id),zIndex:o.z,dragHandle:".tqs-drag-handle",data:{object:o,lod,depth,signatures,zoom}};
+   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,zIndex:o.z,dragHandle:".tqs-drag-handle",data:{object:o,lod,depth,signatures,zoom}};
    if(!isWorkspace&&lod==="far")n.hidden=true;
    return n
-  }),[visibleObjects,byId,directChildren,selected,lod,zoom]);
+  }),[visibleObjects,byId,directChildren,lod,zoom]);
 
  useEffect(()=>{const next=buildNodes();setNodes(next);nodesRef.current=next},[buildNodes]);
  useEffect(()=>{nodesRef.current=nodes},[nodes]);
@@ -144,7 +144,6 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
     multiSelectionKeyCode={["Control","Meta"]} deleteKeyCode={["Delete","Backspace"]}
     connectionLineType={ConnectionLineType.SmoothStep}
     fitViewOptions={{padding:.12,maxZoom:.9}}
-    proOptions={{hideAttribution:true}}
    >
     <Background variant={BackgroundVariant.Dots} gap={24} size={1}/>
     <Controls position="bottom-right" showInteractive={false} fitViewOptions={{padding:.12,maxZoom:.9}}/>
