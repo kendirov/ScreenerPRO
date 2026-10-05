@@ -44,8 +44,10 @@ export function ReactFlowWorldV6(props:Props){
 
 function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCreate,onOpenDocument,notice}:Props){
  const [nodes,setNodes]=useState<StudioNode[]>([]),[zoom,setZoom]=useState(.65),[profile,setProfileState]=useState<InputProfile>(()=>typeof window==="undefined"?"mouse":inputProfile()),[menu,setMenu]=useState<{x:number;y:number;point:{x:number;y:number};id?:string}|null>(null);
- const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video"}|null>(null),focusSeen=useRef<string|null>(null);
+ const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video"}|null>(null),focusSeen=useRef<string|null>(null),focusIdRef=useRef<string|null>(focusId||null),byIdRef=useRef<Map<string,StudioObject>>(new Map());
  const visibleObjects=useMemo(()=>objects.filter(o=>!o.hidden&&o.kind!=="annotation"),[objects]),byId=useMemo(()=>new Map(objects.map(o=>[o.id,o])),[objects]),lod:Lod=zoom<.28?"far":zoom<.6?"mid":"near";
+ focusIdRef.current=focusId||null;byIdRef.current=byId;
+ const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const z=Math.min(.92,Math.max(.18,Math.min((r.width-120)/Math.max(1,o.w),(r.height-120)/Math.max(1,o.h))));focusSeen.current=id;void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:r.height/2-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
  const directChildren=useMemo(()=>{const m=new Map<string,StudioObject[]>();for(const o of visibleObjects){if(!o.parent_id)continue;const a=m.get(o.parent_id)||[];a.push(o);m.set(o.parent_id,a)}return m},[visibleObjects]);
 
  const buildNodes=useCallback(()=>visibleObjects
@@ -115,7 +117,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   const text=e.clipboardData.getData("text/plain");if(text){e.preventDefault();e.stopPropagation();await classify(text)}
  },[classify,onCreate]);
 
- useEffect(()=>{if(!focusId||!rf.current||focusSeen.current===focusId)return;const node=rf.current.getNode(focusId);if(!node||!node.measured?.width||!node.measured?.height)return;focusSeen.current=focusId;void rf.current.fitView({nodes:[node],padding:.1,minZoom:.18,maxZoom:.82,duration:420})},[focusId,nodes]);
+ useEffect(()=>{if(!focusId||!rf.current||focusSeen.current===focusId)return;focusCanonical(rf.current,focusId)},[focusId,nodes,focusCanonical]);
  useEffect(()=>{if(!focusId)focusSeen.current=null},[focusId]);
 
  const duplicate=async(id:string)=>{const o=byId.get(id);if(!o)return;await onCreate(o.kind,{point:{x:o.x+48,y:o.y+48},w:o.w,h:o.h,title:o.title,body:structuredClone(o.body),status:o.status,relations:structuredClone(o.relations||[]) });setMenu(null)};
@@ -132,7 +134,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
     onNodeClick={(_,node)=>setSelected(new Set([node.id]))}
     onConnect={c=>void connect(c)}
     onNodesDelete={ns=>{for(const n of ns)void remove(n.id)}}
-    onInit={instance=>{rf.current=instance;const v=initialViewport();instance.setViewport(v)}}
+    onInit={instance=>{rf.current=instance;const id=focusIdRef.current;if(id)requestAnimationFrame(()=>{if(!focusCanonical(instance,id))instance.setViewport(initialViewport())});else instance.setViewport(initialViewport())}}
     onMove={(_,v)=>setZoom(v.zoom)}
     onMoveEnd={(_,v)=>{setZoom(v.zoom);try{localStorage.setItem(VIEW_KEY,JSON.stringify(v))}catch{}}}
     onPaneContextMenu={e=>{e.preventDefault();const rect=(e.currentTarget as HTMLElement).getBoundingClientRect(),p=rf.current?.screenToFlowPosition({x:e.clientX,y:e.clientY})||{x:0,y:0};setMenu({x:e.clientX-rect.left,y:e.clientY-rect.top,point:p})}}
