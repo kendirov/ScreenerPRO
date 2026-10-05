@@ -9,6 +9,7 @@ import {BookOpen,FileText,Image as ImageIcon,Maximize2,Mic,MousePointer2,Plus,Ty
 import type {DataSpec,StudioObject} from "@/lib/studio-v5/types";
 import {StudioMarketChart} from "@/components/studio-v5/MarketChart";
 import {studioAction} from "@/lib/studio-v6/api";
+import {saveLocalObjectDraft} from "@/lib/studio-v5/local-store";
 import {RichEditor} from "./RichEditor";
 import {classifyUrl,descendants,escapeHtml} from "./world-model";
 
@@ -44,7 +45,7 @@ export function ReactFlowWorldV6(props:Props){
 
 function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCreate,onOpenDocument,notice}:Props){
  const [nodes,setNodes]=useState<StudioNode[]>([]),[zoom,setZoom]=useState(.65),[profile,setProfileState]=useState<InputProfile>(()=>typeof window==="undefined"?"mouse":inputProfile()),[menu,setMenu]=useState<{x:number;y:number;point:{x:number;y:number};id?:string}|null>(null);
- const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video"}|null>(null),focusSeen=useRef<string|null>(null),focusIdRef=useRef<string|null>(focusId||null),byIdRef=useRef<Map<string,StudioObject>>(new Map()),lastNativePaste=useRef(0);
+ const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video";point?:{x:number;y:number}}|null>(null),focusSeen=useRef<string|null>(null),focusIdRef=useRef<string|null>(focusId||null),byIdRef=useRef<Map<string,StudioObject>>(new Map()),lastNativePaste=useRef(0);
  const visibleObjects=useMemo(()=>objects.filter(o=>!o.hidden&&o.kind!=="annotation"),[objects]),byId=useMemo(()=>new Map(objects.map(o=>[o.id,o])),[objects]),lod:Lod=zoom<.28?"far":zoom<.6?"mid":"near";
  focusIdRef.current=focusId||null;byIdRef.current=byId;
  const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const z=Math.min(.92,Math.max(.18,Math.min((r.width-120)/Math.max(1,o.w),(r.height-120)/Math.max(1,o.h))));focusSeen.current=id;void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:r.height/2-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
@@ -55,7 +56,8 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   .sort((a,b)=>depthOf(a,byId)-depthOf(b,byId)||a.z-b.z)
   .map(o=>{
    const depth=depthOf(o,byId),isWorkspace=o.kind==="frame",children=directChildren.get(o.id)||[],signatures=[...children].sort((a,b)=>(a.kind==="frame"?0:1)-(b.kind==="frame"?0:1)).slice(0,3).map(x=>({kind:x.kind,title:x.title}));
-   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,zIndex:o.z,dragHandle:".tqs-drag-handle",data:{object:o,lod,depth,signatures,childCount:children.length,zoom}};
+   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,zIndex:o.z,data:{object:o,lod,depth,signatures,childCount:children.length,zoom}};
+   if(isWorkspace)n.dragHandle=".tqs-drag-handle";
    if(!isWorkspace&&lod==="far")n.hidden=true;
    return n
   }),[visibleObjects,byId,directChildren,lod,zoom]);
@@ -75,7 +77,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   const frame=byId.get(frameId);if(!frame)return;
   if(kind==="image"||kind==="video"){fileTarget.current={frameId,kind:kind as"image"|"video"};const el=fileInput.current;if(el){el.accept=kind==="image"?"image/*":"video/*";el.value="";el.click()}return}
   const kids=directChildren.get(frameId)||[],p={x:frame.x+110+(kids.length%3)*48,y:frame.y+150+(kids.length%4)*38};
-  const extra=kind==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:kind==="text"?{body:{html:"<p>Новый текст</p>"}}:{};
+  const extra=kind==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:kind==="text"?{body:{html:"<p></p>",autoEdit:true}}:{};
   void onCreate(kind,{point:p,...extra})
  },[byId,directChildren,onCreate]);
  const actions=useMemo<CanvasActions>(()=>({patch:onPatch,resize:persistResize,quickAdd,openDocument:onOpenDocument}),[onPatch,persistResize,quickAdd,onOpenDocument]);
@@ -98,7 +100,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
 
  const addAt=useCallback(async(kind:string,point?:{x:number;y:number})=>{
   const p=point||rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600};
-  const extra=kind==="frame"?{title:"Новое рабочее пространство",w:1320,h:820,body:{workspaceCard:true}}:kind==="text"?{body:{html:"<p>Новый текст</p>"}}:kind==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:{};
+  const extra=kind==="frame"?{title:"Новое рабочее пространство",w:1320,h:820,body:{workspaceCard:true}}:kind==="text"?{body:{html:"<p></p>",autoEdit:true}}:kind==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:{};
   await onCreate(kind,{point:p,...extra});setMenu(null)
  },[onCreate]);
 
@@ -108,7 +110,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   if(u?.kind==="image"){await onCreate("image",{point:p,title:"Изображение",body:{url:u.url,provider:"url"}});return}
   if(u?.kind==="file"){await onCreate("file",{point:p,title:u.filename,body:{url:u.url,filename:u.filename,mimeType:"application/pdf"}});return}
   if(u){await onCreate("link",{point:p,title:u.host||"Ссылка",body:{url:u.url,host:u.host}});return}
-  await onCreate("text",{point:p,title:"Текст",body:{html:`<p>${escapeHtml(t)}</p>`}})
+  await onCreate("text",{point:p,title:"Текст",body:{html:`<p>${escapeHtml(t)}</p>`,autoEdit:true}})
  },[onCreate]);
 
  const handleClipboardFiles=useCallback(async(files:File[])=>{const p=rf.current?.screenToFlowPosition(pointer.current);for(const [i,file] of files.entries()){const dataUrl=await fileToDataUrl(file),a=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),kind=file.type.startsWith("image/")?"image":file.type.startsWith("video/")?"video":"file";await onCreate(kind,{point:{x:(p?.x||900)+i*26,y:(p?.y||600)+i*26},title:file.name,body:{assetId:a.asset.id,previewUrl:a.signedUrl||dataUrl,mimeType:file.type,filename:file.name}})}},[onCreate]);
@@ -123,8 +125,8 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
  const connect=async(c:Connection)=>{if(!c.source||!c.target)return;const a=byId.get(c.source),b=byId.get(c.target);if(!a||!b)return;const ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2;await onCreate("annotation",{point:{x:Math.min(ax,bx),y:Math.min(ay,by)},w:Math.max(20,Math.abs(bx-ax)),h:Math.max(20,Math.abs(by-ay)),title:"Связь",body:{annotationKind:"arrow",fromId:a.id,toId:b.id,points:[{x:0,y:0},{x:Math.abs(bx-ax),y:Math.abs(by-ay)}]},relations:[{type:"connects_from",targetId:a.id},{type:"connects_to",targetId:b.id}]})};
 
  return <CanvasContext.Provider value={actions}>
-  <section className="rf-studio-canvas" data-testid="world-canvas-v6" tabIndex={0} onPointerDown={e=>{if(e.currentTarget===e.target)e.currentTarget.focus()}} onPointerMove={e=>{pointer.current={x:e.clientX,y:e.clientY}}} onPasteCapture={e=>{if(consumeClipboard(e.clipboardData)){e.preventDefault();e.stopPropagation()}}}>
-   <input ref={fileInput} className="v6-file-picker" type="file" tabIndex={-1} onChange={e=>{const file=e.currentTarget.files?.[0],target=fileTarget.current;fileTarget.current=null;if(!file||!target)return;void (async()=>{const dataUrl=await fileToDataUrl(file),a=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),frame=target.frameId?byId.get(target.frameId):null,p=frame?{x:frame.x+140,y:frame.y+180}:rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600};await onCreate(target.kind,{point:p,title:file.name,body:{assetId:a.asset.id,previewUrl:a.signedUrl||dataUrl,mimeType:file.type,filename:file.name}})})()}}/>
+  <section className="rf-studio-canvas" data-testid="world-canvas-v6" tabIndex={0} onPointerDown={e=>{if(e.currentTarget===e.target)e.currentTarget.focus()}} onPointerMove={e=>{pointer.current={x:e.clientX,y:e.clientY}}} onPasteCapture={e=>{if(consumeClipboard(e.clipboardData)){e.preventDefault();e.stopPropagation()}}} onDragOver={e=>{if(Array.from(e.dataTransfer?.types||[]).includes("Files"))e.preventDefault()}} onDrop={e=>{if(e.dataTransfer?.files?.length){e.preventDefault();pointer.current={x:e.clientX,y:e.clientY};void handleClipboardFiles(Array.from(e.dataTransfer.files))}}}>
+   <input ref={fileInput} className="v6-file-picker" type="file" tabIndex={-1} onChange={e=>{const file=e.currentTarget.files?.[0],target=fileTarget.current;fileTarget.current=null;if(!file||!target)return;void (async()=>{const dataUrl=await fileToDataUrl(file),a=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),frame=target.frameId?byId.get(target.frameId):null,p=target.point||(frame?{x:frame.x+140,y:frame.y+180}:rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600});await onCreate(target.kind,{point:p,title:file.name,body:{assetId:a.asset.id,previewUrl:a.signedUrl||dataUrl,mimeType:file.type,filename:file.name}})})()}}/>
    <ReactFlow<StudioNode,Edge>
     nodes={nodes} edges={edges} nodeTypes={nodeTypes}
     onNodesChange={onNodesChange}
@@ -162,7 +164,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
    {menu&&<div className="rf-context" style={{left:menu.x,top:menu.y}} data-studio-ui>
     <header><strong>{menu.id?byId.get(menu.id)?.title||"Объект":"Добавить сюда"}</strong><button onClick={()=>setMenu(null)}><X size={13}/></button></header>
     {menu.id?<><button onClick={()=>void duplicate(menu.id!)}>Дублировать</button><button className="danger" onClick={()=>void remove(menu.id!)}>Удалить</button></>:<>
-     <button onClick={()=>void addAt("text",menu.point)}>Текст</button><button onClick={()=>void addAt("task",menu.point)}>Задача</button><button onClick={()=>void addAt("voice",menu.point)}>Голосовая заметка</button><button onClick={()=>void addAt("chart",menu.point)}>Интерактив / график</button><button onClick={()=>void addAt("frame",menu.point)}>Рабочее пространство</button>
+     <button onClick={()=>void addAt("text",menu.point)}>Текст</button><button onClick={()=>{fileTarget.current={kind:"image",point:menu.point};const el=fileInput.current;if(el){el.accept="image/*";el.value="";el.click()}setMenu(null)}}>Фото / скриншот</button><button onClick={()=>void addAt("task",menu.point)}>Задача</button><button onClick={()=>void addAt("voice",menu.point)}>Голосовая заметка</button><button onClick={()=>void addAt("chart",menu.point)}>Интерактив / график</button><button onClick={()=>void addAt("frame",menu.point)}>Рабочее пространство</button>
     </>}
    </div>}
   </section>
@@ -188,16 +190,25 @@ function WorkspaceNode({id,data,selected}:NodeProps<StudioNode>){
 }
 
 function ContentNode({id,data,selected}:NodeProps<StudioNode>){
- const ctx=useContext(CanvasContext)!,o=data.object;
- const [editing,setEditing]=useState(false);
+ const ctx=useContext(CanvasContext)!,o=data.object,isText=o.kind==="text",showGrip=!["text","image"].includes(o.kind);
+ const [editing,setEditing]=useState(()=>Boolean(isText&&o.body?.autoEdit)),saveTimer=useRef<number|null>(null);
+ useEffect(()=>()=>{if(saveTimer.current!==null)window.clearTimeout(saveTimer.current)},[]);
+ useEffect(()=>{if(isText&&o.body?.autoEdit&&!editing)setEditing(true)},[isText,o.body?.autoEdit,editing]);
  if(data.lod==="far")return null;
- return <div className={`rf-content-node kind-${o.kind} lod-${data.lod} ${selected?"is-selected":""}`} data-studio-id={id} data-testid={`world-${o.kind}`}>
-  <NodeResizer isVisible={selected} minWidth={120} minHeight={54} onResizeEnd={(_,p)=>ctx.resize(id,p)}/>
+ const persistText=(html:string,immediate=false)=>{
+  const body={...o.body,html,autoEdit:false};
+  saveLocalObjectDraft(o.id,{body});
+  if(saveTimer.current!==null)window.clearTimeout(saveTimer.current);
+  const commit=()=>{saveTimer.current=null;void ctx.patch(o.id,{body},"text_update","Текст обновлён")};
+  if(immediate)commit();else saveTimer.current=window.setTimeout(commit,450);
+ };
+ return <div className={`rf-content-node kind-${o.kind} lod-${data.lod} ${selected?"is-selected":""} ${editing?"is-editing":""}`} data-studio-id={id} data-testid={`world-${o.kind}`}>
+  <NodeResizer isVisible={selected&&!editing} minWidth={120} minHeight={54} onResizeEnd={(_,p)=>ctx.resize(id,p)}/>
   <Handle type="target" position={Position.Left} className="rf-handle"/><Handle type="source" position={Position.Right} className="rf-handle"/>
-  <div className="rf-node-grip tqs-drag-handle"><span>{iconFor(o.kind)}</span><strong>{o.title}</strong></div>
+  {showGrip&&<div className="rf-node-grip tqs-drag-handle"><span>{iconFor(o.kind)}</span><strong>{o.title}</strong></div>}
   <div className="rf-node-body">
    {data.lod==="mid"?<MidPreview object={o}/>:<>
-    {o.kind==="text"&&(editing?<RichEditor html={o.body?.html||"<p></p>"} autofocus onBlur={html=>{void ctx.patch(o.id,{body:{...o.body,html}},"text_update","Текст обновлён");setEditing(false)}}/>:<div className="rf-rich-text nodrag nopan" onDoubleClick={()=>setEditing(true)} dangerouslySetInnerHTML={{__html:o.body?.html||"<p></p>"}}/>)}
+    {isText&&(editing?<div className="rf-text-edit nodrag nopan" onPointerDown={e=>e.stopPropagation()}><RichEditor html={o.body?.html||"<p></p>"} autofocus onChange={html=>persistText(html)} onBlur={html=>{persistText(html,true);setEditing(false)}}/></div>:<div className="rf-rich-text rf-rich-text-view" onDoubleClick={e=>{e.stopPropagation();setEditing(true)}} dangerouslySetInnerHTML={{__html:o.body?.html||"<p></p>"}}/>)}
     {o.kind==="image"&&<Asset object={o}/>}
     {o.kind==="video"&&<Asset object={o}/>}
     {o.kind==="file"&&<Asset object={o}/>}
@@ -221,7 +232,7 @@ function MidPreview({object:o}:{object:StudioObject}){
 function Asset({object:o,compact=false}:{object:StudioObject;compact?:boolean}){
  const [url,setUrl]=useState(o.body?.previewUrl||o.body?.url||"");
  useEffect(()=>{if(!url&&o.body?.assetId)void studioAction<any>("getAssetUrl",{assetId:o.body.assetId}).then(x=>setUrl(x.signedUrl||"")).catch(()=>{})},[url,o.body?.assetId]);
- if(o.kind==="image")return <div className="rf-asset nodrag nopan">{url?<img src={url} alt={o.title}/>:<div className="rf-asset-empty"><ImageIcon size={24}/><span>Фото / скриншот</span></div>}</div>;
+ if(o.kind==="image")return <div className="rf-asset">{url?<img src={url} alt={o.title} draggable={false}/>:<div className="rf-asset-empty"><ImageIcon size={24}/><span>Фото / скриншот</span></div>}</div>;
  if(o.kind==="video")return <div className="rf-asset nodrag nopan nowheel">{o.body?.embedUrl?<iframe src={o.body.embedUrl} title={o.title} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen/>:url?<video controls src={url}/>:<div className="rf-asset-empty"><VideoIcon size={24}/><span>Видео</span></div>}</div>;
  return <a className="rf-file nodrag nopan" href={url||o.body?.url||"#"} target="_blank" rel="noreferrer"><FileText size={20}/><div><strong>{o.body?.filename||o.title}</strong><small>{o.body?.mimeType||"файл"}</small></div></a>
 }
