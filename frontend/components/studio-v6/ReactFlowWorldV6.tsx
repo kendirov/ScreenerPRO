@@ -143,7 +143,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
     panOnDrag={[1,2]} panActivationKeyCode="Space" selectionOnDrag selectionMode={"partial" as any}
     multiSelectionKeyCode={["Control","Meta"]} deleteKeyCode={["Delete","Backspace"]}
     connectionLineType={ConnectionLineType.SmoothStep}
-    fitViewOptions={{padding:.12,maxZoom:.9}} onlyRenderVisibleElements
+    fitViewOptions={{padding:.12,maxZoom:.9}}
     proOptions={{hideAttribution:true}}
    >
     <Background variant={BackgroundVariant.Dots} gap={24} size={1}/>
