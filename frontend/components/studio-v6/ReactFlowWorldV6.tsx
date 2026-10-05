@@ -14,7 +14,7 @@ import {classifyUrl,descendants,escapeHtml} from "./world-model";
 
 type Lod="far"|"mid"|"near";
 type InputProfile="mouse"|"trackpad";
-type FlowData={object:StudioObject;lod:Lod;depth:number;signatures:Array<{kind:string;title:string}>;zoom:number};
+type FlowData={object:StudioObject;lod:Lod;depth:number;signatures:Array<{kind:string;title:string}>;childCount:number;zoom:number};
 type StudioNode=Node<FlowData,"workspace"|"content">;
 type Props={objects:StudioObject[];selected:Set<string>;setSelected:(ids:Set<string>)=>void;focusId?:string|null;onObjectsLocal:(fn:(x:StudioObject[])=>StudioObject[])=>void;onPatch:(id:string,patch:any,eventType?:string,summary?:string)=>Promise<void>;onCreate:(kind:string,opts?:any)=>Promise<StudioObject>;onOpenDocument:(id:string)=>void;onRestore:(snapshot:StudioObject[])=>Promise<void>;notice:(s:string)=>void};
 
@@ -32,7 +32,7 @@ function depthOf(o:StudioObject,byId:Map<string,StudioObject>){let d=0,p=o.paren
 function flowPosition(o:StudioObject,byId:Map<string,StudioObject>){const p=o.parent_id?byId.get(o.parent_id):null;return p?{x:o.x-p.x,y:o.y-p.y}:{x:o.x,y:o.y}}
 function semanticLabel(o:StudioObject,depth:number){if(o.id==="lesson-miro-scene")return"ЗАНЯТИЕ";if(depth===0)return"ПРОЕКТ";if(depth===1)return"КУРС";if(depth===2)return"ЗАНЯТИЕ";return"РАЗДЕЛ"}
 function titleText(o:StudioObject){if(o.id==="frame-learning")return"ACADEMY · ОБУЧЕНИЕ";return o.title}
-function iconFor(kind:string){return kind==="text"?"T":kind==="task"?"✓":kind==="voice"?"◉":kind==="image"?"▧":kind==="video"?"▶":kind==="chart"?"⌁":kind==="documentRef"?"D":kind==="link"?"↗":kind==="file"?"F":"•"}
+function iconFor(kind:string){return kind==="frame"?"▣":kind==="text"?"T":kind==="task"?"✓":kind==="voice"?"◉":kind==="image"?"▧":kind==="video"?"▶":kind==="chart"?"⌁":kind==="documentRef"?"D":kind==="link"?"↗":kind==="file"?"F":"•"}
 function inputProfile(){try{const x=localStorage.getItem(PROFILE_KEY);if(x==="trackpad")return"trackpad"}catch{}return"mouse" as InputProfile}
 function initialViewport(){try{const x=JSON.parse(localStorage.getItem(VIEW_KEY)||"null");if(x&&Number.isFinite(x.x)&&Number.isFinite(x.y)&&Number.isFinite(x.zoom))return x}catch{}return{x:-3400,y:-1160,zoom:.65}}
 function absoluteFor(id:string,nodes:StudioNode[]){const m=new Map(nodes.map(n=>[n.id,n]));let n=m.get(id),x=0,y=0,guard=0;if(!n)return{x:0,y:0};x+=n.position.x;y+=n.position.y;let p=n.parentId;while(p&&guard++<30){const q=m.get(p);if(!q)break;x+=q.position.x;y+=q.position.y;p=q.parentId}return{x,y}}
@@ -54,8 +54,8 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCre
   .slice()
   .sort((a,b)=>depthOf(a,byId)-depthOf(b,byId)||a.z-b.z)
   .map(o=>{
-   const depth=depthOf(o,byId),isWorkspace=o.kind==="frame",signatures=(directChildren.get(o.id)||[]).filter(x=>x.kind!=="frame").slice(0,3).map(x=>({kind:x.kind,title:x.title}));
-   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,zIndex:o.z,dragHandle:".tqs-drag-handle",data:{object:o,lod,depth,signatures,zoom}};
+   const depth=depthOf(o,byId),isWorkspace=o.kind==="frame",children=directChildren.get(o.id)||[],signatures=[...children].sort((a,b)=>(a.kind==="frame"?0:1)-(b.kind==="frame"?0:1)).slice(0,3).map(x=>({kind:x.kind,title:x.title}));
+   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,zIndex:o.z,dragHandle:".tqs-drag-handle",data:{object:o,lod,depth,signatures,childCount:children.length,zoom}};
    if(!isWorkspace&&lod==="far")n.hidden=true;
    return n
   }),[visibleObjects,byId,directChildren,lod,zoom]);
@@ -177,7 +177,7 @@ function WorkspaceNode({id,data,selected}:NodeProps<StudioNode>){
   <header className="rf-workspace-head tqs-drag-handle" style={{["--semantic-scale" as any]:scale}}>
    <span className="rf-workspace-kicker">{semanticLabel(o,data.depth)}</span>
    <strong>{titleText(o)}</strong>
-   <small>{data.signatures.length?data.signatures.length+" ключевых материала":o.semantic_path}</small>
+   <small>{data.childCount?data.childCount+" внутри":o.semantic_path}</small>
    <div className="rf-workspace-actions nodrag nopan" onPointerDown={e=>e.stopPropagation()}>
     <button onClick={()=>ctx.quickAdd(id,"text")}>+ Текст</button><button onClick={()=>ctx.quickAdd(id,"image")}>+ Фото</button><button onClick={()=>ctx.quickAdd(id,"video")}>+ Видео</button><button onClick={()=>ctx.quickAdd(id,"chart")}>+ Интерактив</button>
    </div>
