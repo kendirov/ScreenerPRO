@@ -176,3 +176,81 @@
 }
 
 .v6-file-picker{display:none!important}
+
+
+/* REACT FLOW WORLD — V6 NEW ARCHITECTURE */
+.rf-studio-canvas{position:relative;width:100%;height:100%;overflow:hidden;background:#0d0f11;isolation:isolate}
+.v6-shell[data-theme=light] .rf-studio-canvas{background:#f4f1eb}
+.rf-studio-canvas .react-flow{background:transparent}
+.rf-studio-canvas .react-flow__pane{cursor:default}
+.rf-studio-canvas .react-flow__background{opacity:.58}
+.rf-studio-canvas .react-flow__edge-path{stroke:#9f8653;stroke-width:2.2}
+.rf-studio-canvas .react-flow__edge.selected .react-flow__edge-path{stroke:var(--accent);stroke-width:3}
+.rf-studio-canvas .react-flow__connection-path{stroke:var(--accent);stroke-width:2}
+.rf-studio-canvas .react-flow__controls{right:14px;bottom:14px;left:auto;display:flex;flex-direction:row;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:10px;overflow:hidden;background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(14px);box-shadow:0 10px 30px #0004}
+.rf-studio-canvas .react-flow__controls-button{width:30px;height:30px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--text)}
+.rf-studio-canvas .react-flow__controls-button:last-child{border-right:0}
+.rf-studio-canvas .react-flow__controls-button:hover{background:var(--surface)}
+.rf-studio-canvas .react-flow__resize-control.line{border-color:var(--accent)}
+.rf-studio-canvas .react-flow__resize-control.handle{width:10px;height:10px;border-radius:3px;background:var(--accent);border:2px solid var(--bg)}
+.rf-studio-canvas .react-flow__node{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.rf-studio-canvas .react-flow__node-workspace{pointer-events:none!important}
+.rf-studio-canvas .react-flow__node-workspace .rf-workspace-head,
+.rf-studio-canvas .react-flow__node-workspace .react-flow__resize-control,
+.rf-studio-canvas .react-flow__node-workspace .rf-handle{pointer-events:auto!important}
+
+.rf-workspace-card{position:relative;width:100%;height:100%;border:1px solid color-mix(in srgb,var(--text) 17%,transparent);border-radius:28px;background:color-mix(in srgb,var(--panel) 94%,transparent);box-shadow:0 26px 80px #00000024;overflow:visible}
+.v6-shell[data-theme=dark] .rf-workspace-card{background:#15181c;border-color:#3d4249;box-shadow:0 28px 90px #0008}
+.rf-workspace-card:after{content:"";position:absolute;inset:84px 0 0;border-radius:0 0 28px 28px;background-image:radial-gradient(circle at center,color-mix(in srgb,var(--text) 15%,transparent) 1px,transparent 1.1px);background-size:24px 24px;opacity:.38;pointer-events:none}
+.react-flow__node-workspace.selected .rf-workspace-card{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent),0 30px 90px #0008}
+.rf-workspace-head{position:absolute;left:0;right:0;top:0;height:84px;padding:14px 18px 13px 20px;border-radius:28px 28px 0 0;border-bottom:1px solid color-mix(in srgb,var(--text) 12%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--panel) 98%,transparent),color-mix(in srgb,var(--panel) 91%,transparent));display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto;column-gap:16px;cursor:grab;pointer-events:auto;z-index:4}
+.rf-workspace-head:active{cursor:grabbing}
+.rf-workspace-kicker{grid-column:1;font-size:8px;font-weight:750;letter-spacing:.14em;color:var(--accent);opacity:.9}
+.rf-workspace-head>strong{grid-column:1;font-size:22px;line-height:1.05;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:780px;transform-origin:left center;transform:scale(var(--semantic-scale,1));transform-box:fill-box}
+.rf-workspace-head>small{grid-column:1;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:720px}
+.rf-workspace-actions{grid-column:2;grid-row:1/4;display:flex;align-items:center;gap:5px;pointer-events:auto}
+.rf-workspace-actions button{height:30px;padding:0 9px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:8px;background:var(--surface);font-size:8px;cursor:pointer;white-space:nowrap}
+.rf-workspace-actions button:hover{border-color:color-mix(in srgb,var(--accent) 48%,transparent);color:var(--accent)}
+.rf-workspace-signatures{position:absolute;left:28px;top:122px;display:flex;align-items:center;gap:10px;pointer-events:none;transform-origin:left top;transform:scale(var(--semantic-scale,1));z-index:2}
+.rf-workspace-signatures>span{height:38px;max-width:260px;padding:0 12px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:999px;background:color-mix(in srgb,var(--panel) 92%,transparent);display:flex;align-items:center;gap:8px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 20px #0002}
+.rf-workspace-signatures b{width:18px;height:18px;border-radius:5px;background:color-mix(in srgb,var(--accent) 18%,transparent);display:grid;place-items:center;color:var(--accent);font-size:9px}
+.rf-workspace-hint{position:absolute;left:24px;top:102px;color:var(--muted);font-size:9px;pointer-events:none;z-index:2}
+.rf-workspace-card.level-0{background:color-mix(in srgb,var(--panel) 96%,#12151a 4%)}
+.rf-workspace-card.level-1{border-radius:24px}
+.rf-workspace-card.level-2{border-radius:22px}
+.rf-workspace-card.lod-far{border-width:2px}
+.rf-workspace-card.lod-far .rf-workspace-actions{display:none}
+.rf-workspace-card.lod-far .rf-workspace-head{height:92px}
+.rf-workspace-card.lod-mid .rf-workspace-actions button:nth-child(n+3){display:none}
+
+.rf-content-node{position:relative;width:100%;height:100%;border:1px solid color-mix(in srgb,var(--text) 13%,transparent);border-radius:14px;background:color-mix(in srgb,var(--panel) 96%,transparent);box-shadow:0 12px 34px #00000025;overflow:visible}
+.v6-shell[data-theme=dark] .rf-content-node{background:#1b1e22;border-color:#3c4148;box-shadow:0 16px 38px #0008}
+.rf-content-node.is-selected,.react-flow__node-content.selected .rf-content-node{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 15%,transparent),0 18px 44px #0008}
+.rf-node-grip{position:absolute;left:10px;right:10px;top:-28px;height:25px;padding:0 8px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:9px;background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(12px);box-shadow:0 7px 20px #0003;display:flex;align-items:center;gap:7px;opacity:0;transition:opacity .12s;cursor:grab;z-index:12}
+.rf-content-node:hover .rf-node-grip,.react-flow__node-content.selected .rf-node-grip{opacity:1}
+.rf-node-grip:active{cursor:grabbing}.rf-node-grip span{color:var(--accent);font-size:9px}.rf-node-grip strong{font-size:8px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rf-node-body{width:100%;height:100%;overflow:hidden;border-radius:13px}
+.rf-content-node.kind-text{background:transparent;border-color:transparent;box-shadow:none}
+.rf-content-node.kind-text.is-selected,.react-flow__node-content.selected .kind-text{border-color:var(--accent)}
+.rf-rich-text{width:100%;height:100%;padding:12px 14px;overflow:auto;font-size:14px;line-height:1.5;user-select:text;cursor:text}
+.rf-rich-text p{margin:.2em 0}.rf-rich-text h1,.rf-rich-text h2,.rf-rich-text h3{margin:.25em 0 .35em}
+.rf-asset{width:100%;height:100%;display:grid;place-items:center;overflow:hidden;border-radius:13px;background:#08090b}
+.rf-asset img,.rf-asset video,.rf-asset iframe{width:100%;height:100%;object-fit:contain;border:0}
+.rf-asset-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:10px}
+.rf-chart{width:100%;height:100%;min-height:160px}
+.rf-task{height:100%;padding:12px;display:flex;align-items:center;gap:10px}.rf-task button{width:28px;height:28px;border:1px solid var(--line);border-radius:50%;background:var(--surface);font-size:14px}.rf-task input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:13px}
+.rf-voice{height:100%;padding:14px;display:flex;align-items:center;gap:11px}.rf-voice>svg{color:var(--accent)}.rf-voice div{display:flex;flex-direction:column;gap:2px}.rf-voice strong{font-size:11px}.rf-voice span{font-size:8px;color:var(--muted)}
+.rf-document{width:100%;height:100%;padding:14px;border:0;background:transparent;display:flex;align-items:center;gap:12px;text-align:left}.rf-document>svg{color:var(--accent)}.rf-document div{display:flex;flex-direction:column;gap:3px}.rf-document strong{font-size:12px}.rf-document span{font-size:8px;color:var(--muted)}
+.rf-link,.rf-file{width:100%;height:100%;padding:14px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:11px}.rf-link>span{color:var(--accent);font-size:18px}.rf-link div,.rf-file div{min-width:0;display:flex;flex-direction:column;gap:3px}.rf-link strong,.rf-file strong{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rf-link small,.rf-file small{font-size:8px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rf-mid-copy,.rf-mid-media,.rf-mid-chart{width:100%;height:100%;padding:12px;display:flex;align-items:center;gap:9px;color:var(--muted)}
+.rf-mid-copy>span,.rf-mid-chart>span{width:28px;height:28px;border-radius:8px;background:color-mix(in srgb,var(--accent) 15%,transparent);display:grid;place-items:center;color:var(--accent)}
+.rf-mid-copy strong,.rf-mid-media span,.rf-mid-chart b{font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rf-mid-chart{display:grid;grid-template-columns:auto 1fr;grid-template-rows:1fr 1fr}.rf-mid-chart>span{grid-row:1/3}.rf-mid-chart small{font-size:8px}
+.rf-handle{width:9px!important;height:9px!important;border:2px solid var(--panel)!important;background:var(--accent)!important;opacity:0;transition:opacity .12s}.react-flow__node:hover .rf-handle,.react-flow__node.selected .rf-handle{opacity:.9}
+
+.rf-studio-toolbar{position:absolute;z-index:30;left:50%;top:12px;transform:translateX(-50%);display:flex;align-items:center;gap:3px;padding:4px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:12px;background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(16px);box-shadow:0 12px 34px #0004}
+.rf-studio-toolbar button{height:32px;padding:0 9px;border:0;border-radius:8px;background:transparent;color:var(--muted);display:flex;align-items:center;gap:6px;font-size:8px;cursor:pointer}.rf-studio-toolbar button:hover{background:var(--surface);color:var(--text)}.rf-studio-toolbar .rf-add-workspace{margin-left:3px;border-left:1px solid var(--line);border-radius:0 8px 8px 0;color:var(--accent)}.rf-glyph{font-size:16px;line-height:1}
+.rf-profile{position:absolute;z-index:30;right:150px;bottom:14px;display:flex;align-items:center;gap:2px;padding:4px;border:1px solid color-mix(in srgb,var(--text) 12%,transparent);border-radius:10px;background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(14px)}.rf-profile span{min-width:42px;text-align:center;font-size:8px;color:var(--muted)}.rf-profile button{height:26px;padding:0 7px;border:0;border-radius:6px;background:transparent;font-size:8px;color:var(--muted)}.rf-profile button.active{background:var(--surface);color:var(--text)}
+.rf-context{position:absolute;z-index:70;width:220px;padding:6px;border:1px solid color-mix(in srgb,var(--text) 14%,transparent);border-radius:12px;background:color-mix(in srgb,var(--panel) 97%,transparent);backdrop-filter:blur(18px);box-shadow:0 22px 64px #0009;display:flex;flex-direction:column}.rf-context header{height:34px;padding:0 7px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:4px}.rf-context header strong{font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rf-context header button{border:0;background:transparent}.rf-context>button{border:0;background:transparent;border-radius:7px;padding:8px;text-align:left;font-size:9px}.rf-context>button:hover{background:var(--surface)}
+.v6-file-picker{display:none!important}
+
+@media(max-width:1050px){.rf-workspace-actions button:nth-child(n+2){display:none}.rf-studio-toolbar button span{display:none}.rf-profile{right:142px}.rf-workspace-head>strong{font-size:18px}}
