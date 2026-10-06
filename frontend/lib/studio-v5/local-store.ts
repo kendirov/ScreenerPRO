@@ -11,7 +11,7 @@ const clone=<T,>(x:T):T=>JSON.parse(JSON.stringify(x));
 
 type DocRun={runId:string;documentId:string;at:string;actor:string;summary:string;before:StudioDocumentBlock[]};
 type AiRun={runId:string;at:string;actor:string;summary:string;before:StudioObject[];mutations:any[];applied?:boolean};
-type LocalState={overview:WorldOverview;documents:StudioDocument[];blocks:StudioDocumentBlock[];assets:Record<string,{id:string;dataUrl:string;filename?:string;mime_type:string;storage_path:string}>;documentRuns?:DocRun[];aiRuns?:AiRun[]};
+type LocalState={overview:WorldOverview;documents:StudioDocument[];blocks:StudioDocumentBlock[];assets:Record<string,{id:string;dataUrl:string;filename?:string;mime_type:string;storage_path:string}>;documentRuns?:DocRun[];aiRuns?:AiRun[];source?:"canonical"|"local"};
 
 const liveSpec:any={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart",crosshair:true,periodControl:true},updatePolicy:"LIVE",asOf:null};
 const replaySpec:any={provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv",relativeRange:{tradingSessions:1},fixedRange:null,transforms:["chronological"],display:{renderer:"studio_market_replay",targetDurationSeconds:30},updatePolicy:"LIVE",asOf:null};
@@ -160,7 +160,7 @@ function load():LocalState{
  if(typeof window==="undefined")return initialState();
  try{
   const raw=localStorage.getItem(KEY);
-  if(raw){const x=JSON.parse(raw) as LocalState;if(!Array.isArray(x.documentRuns))x.documentRuns=[];if(!Array.isArray(x.aiRuns))x.aiRuns=[];if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){let changed=false;const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;changed=true}const lesson=x.documents?.find(d=>d.id==="doc-lesson-workspace");if(lesson&&lesson.frame_id!=="lesson-miro-scene"){lesson.frame_id="lesson-miro-scene";lesson.metadata={...(lesson.metadata||{}),ownerScene:true};changed=true}const sources=x.blocks?.find(b=>b.block_id==="lesson-sources");if(sources?.content?.items?.[0]?.entityId==="lesson-free-1"){sources.content.items[0].entityId="lesson-miro-scene";changed=true}if(changed)save(x);migrateWorkspaceCardLayout(x);applyPortalStudio(x);return x}}
+  if(raw){const x=JSON.parse(raw) as LocalState;if(!Array.isArray(x.documentRuns))x.documentRuns=[];if(!Array.isArray(x.aiRuns))x.aiRuns=[];if(x.source==="canonical")return x;if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){let changed=false;const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;changed=true}const lesson=x.documents?.find(d=>d.id==="doc-lesson-workspace");if(lesson&&lesson.frame_id!=="lesson-miro-scene"){lesson.frame_id="lesson-miro-scene";lesson.metadata={...(lesson.metadata||{}),ownerScene:true};changed=true}const sources=x.blocks?.find(b=>b.block_id==="lesson-sources");if(sources?.content?.items?.[0]?.entityId==="lesson-free-1"){sources.content.items[0].entityId="lesson-miro-scene";changed=true}if(changed)save(x);migrateWorkspaceCardLayout(x);applyPortalStudio(x);return x}}
  }catch{}
  const s=initialState();migrateWorkspaceCardLayout(s);applyPortalStudio(s);save(s);return s;
 }
@@ -181,10 +181,9 @@ function bumpWorld(s:LocalState){s.overview.world.revision+=1}
 export function readLocalStudio(){return clone(load())}
 export function adoptSharedStudio(shared:{overview:WorldOverview;documents:StudioDocument[];blocks:StudioDocumentBlock[]}){
  const current=load();
- const next:LocalState={overview:clone(shared.overview),documents:clone(shared.documents),blocks:clone(shared.blocks),assets:current.assets,documentRuns:current.documentRuns||[],aiRuns:current.aiRuns||[]};
+ const next:LocalState={overview:clone(shared.overview),documents:clone(shared.documents),blocks:clone(shared.blocks),assets:current.assets,documentRuns:current.documentRuns||[],aiRuns:current.aiRuns||[],source:"canonical"};
  save(next);
- applyPortalStudio(next);
- return clone(load());
+ return clone(next);
 }
 export function resetLocalStudio(){const s=initialState();save(s);return clone(s)}
 export function getLocalSeed(){return clone(initialState())}
