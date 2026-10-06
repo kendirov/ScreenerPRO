@@ -1,44 +1,36 @@
-# AI_SESSION_STATE — ScreenerPRO migration checkpoint
+# AI SESSION STATE — ScreenerPRO migration checkpoint
 
 ## Status
 
-**MIGRATION SOURCE ONLY.**
+**MIGRATION SOURCE ONLY**
 
-The owner has explicitly separated Trading QS into distinct projects. New cross-product work must not accumulate in ScreenerPRO.
+## Active destination map
 
-## Target project map
+- Studio -> `kendirov/Studio`
+- Intelligence -> `kendirov/Intelligence`
+- Screener -> `kendirov/Screener`
+- System -> `kendirov/System`
+- Academy -> `kendirov/Academy`
+- Trading -> `kendirov/Trading`
+- Family -> `kendirov/Family`
 
-- Studio -> `kendirov/tqs-studio` (private target; current implementation still here until migration).
-- Intelligence -> `kendirov/tqs-intelligence` (private target; clean-slate implementation, old components are reference candidates only).
-- Cockpit -> `kendirov/tqs-cockpit` (private target; extract current screener/preparation surfaces).
-- Academy -> Drive-first project; no repo by default.
-- Trading -> Drive-first project; no repo by default.
-- Agent/device execution -> Artem OS, not this repository.
+## Current runtime rule
 
-## Current Studio runtime
+Do not break a live runtime merely to clean repository names. Extract, repoint, verify, then archive the legacy source.
 
-The current production Studio and its accepted behavior must remain operational during migration. Do not rebuild or replace it merely because the repository boundary changes.
+## Allowed here
 
-## New work policy
+- migration/extraction
+- urgent production repair
+- evidence gathering
 
-Allowed here:
-- migration/extraction;
-- urgent production repair;
-- evidence gathering for migration.
+## Not allowed here
 
-Not allowed here:
-- new Intelligence product implementation;
-- new Agent implementation;
-- new cross-product TQS features that have an owning target project.
+- new cross-project features
+- new Intelligence architecture
+- System / Node Agent implementation
+- treating old TQS/Cockpit naming as active
 
-## Migration acceptance
+## Archive condition
 
-ScreenerPRO can be archived only after:
-1. Studio code is extracted to `tqs-studio`;
-2. Studio deployment is repointed and verified;
-3. Cockpit code is extracted to `tqs-cockpit`;
-4. Cockpit deployment/runtime is verified;
-5. all required shared code is either duplicated intentionally with ownership or moved into a justified shared package;
-6. no active deployment still depends on ScreenerPRO.
-
-Do not delete the repository.
+Archive ScreenerPRO only after all live Studio/Screener dependencies are moved and verified.
