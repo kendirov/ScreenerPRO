@@ -1,0 +1,40 @@
+name: Family Control Center Production
+
+on:
+  push:
+    branches: [chatgpt/family-control-center-2026-09-20]
+    paths:
+      - "family-control-center/**"
+      - ".github/workflows/family-control-center-deploy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "family-control-center/**"
+      - ".github/workflows/family-control-center-deploy.yml"
+
+concurrency:
+  group: family-control-center-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_UlcqTRuXrJX6nnzszbKGT3QD
+      VERCEL_PROJECT_ID: prj_GPr75GrSb7Hqc7LvnUdBxl07Y5Jo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Configure Family production project
+        run: |
+          curl --fail --silent --show-error -X PATCH             "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID"             -H "Authorization: Bearer $VERCEL_TOKEN"             -H "Content-Type: application/json"             --data '{"framework":"nextjs"}' > /dev/null
+
+      - name: Deploy Family Control Center
+        working-directory: family-control-center
+        run: |
+          npx vercel@59.23.2 deploy --prod --yes --force --token "$VERCEL_TOKEN"             -b NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co             -b NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh             -e NEXT_PUBLIC_SUPABASE_URL=https://hppbuzbrjoyrwpdinlxk.supabase.co             -e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_FPnSkBjbvgAW0VBE_u4_Kw_QAfJ_DFh
