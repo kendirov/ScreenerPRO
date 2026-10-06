@@ -1,0 +1,16 @@
+---
+description: Artem Cursor-first development contract
+alwaysApply: true
+---
+
+- This repo is developed under the active Cursor-first experiment unless owner/canon explicitly supersedes it.
+- Recover AGENTS.md -> START_HERE_FOR_AI.md -> TQS_PLATFORM.md -> AI_SESSION_STATE.md -> current branch+HEAD before editing.
+- Optimize for the owner-facing outcome, not literal micro-instructions.
+- Preserve the existing TQS/Studio architecture unless acceptance or a proven technical boundary requires change.
+- Reuse existing components/data paths and mature maintained libraries before custom replacements.
+- You may improve reversible implementation details autonomously if MUST/MUST NOT and acceptance remain satisfied.
+- Verify targeted tests/build and real browser/runtime behavior for user-visible work.
+- Do not call self-report/build/deploy READY a product PASS without observable acceptance.
+- Persist exact branch/SHA/evidence in repo technical state.
+- Update Google Drive only with a verified connector+readback; otherwise emit PERSISTENCE_PACKET for ChatGPT to sync.
+- Never store private Drive content, account payloads or secrets in this repository.
