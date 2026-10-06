@@ -1,52 +1,55 @@
-# TQS_PLATFORM — Technical System Map
+# TQS PLATFORM — Repository and product map
 
-## Identity
+## Product identity
 
-**Trading QS / TQS** is the umbrella trading platform.
+Trading QS is an umbrella **domain**, not one monolithic codebase.
 
-`ScreenerPRO` is the historical GitHub repository name. Treat it as a codebase containing several TQS modules, not as the definition of the whole system.
+The owner-facing projects are deliberately separated:
 
-## Canonical modules
-
-| Module | Purpose | Current ownership |
+| Product | Canonical truth | Target repo |
 |---|---|---|
-| Intelligence | canonical market state, features, anomalies, health | TQS runtime / platform contracts |
-| Launcher | local runtime/update/health/rollback | TQS WORK runtime |
-| Screener / Cockpit | trader-facing selection and decision surface | this repo |
-| Knowledge | validated cases, concepts, provenance | Drive canon + controlled product surfaces |
-| Research / Strategy Lab | hypotheses, event studies, replay, OOS/stability/costs | this repo + canonical TQS runtime/data |
-| Academy / Materials | interactive learning surfaces tied to real TQS practice | this repo |
-| Briefing / Publishing | briefings, visual explanations, owner-facing outputs | TQS ecosystem |
-| Connectors / Data | MOEX/market sources, normalized contracts, Data Lake | canonical TQS data/runtime |
+| Trading | Drive: `Trading QS / 01_TRADING` | no repo by default |
+| TQS Studio | Drive: `Trading QS / 02_TQS STUDIO` | `kendirov/tqs-studio` |
+| TQS Intelligence | Drive: `Trading QS / 03_TQS INTELLIGENCE` | `kendirov/tqs-intelligence` |
+| TQS Academy | Drive: `Trading QS / 04_TQS ACADEMY` | no repo by default |
+| TQS Cockpit | Drive: `Trading QS / 05_TQS COCKPIT` | `kendirov/tqs-cockpit` |
+| Artem OS / Agent | Development canon | `kendirov/artem-os` target name; current source `kendirov/tqs-development-factory` |
 
-## Source-of-truth split
+## Current repository role
 
-- **Google Drive**: private owner/product/knowledge canon and decisions.
-- **GitHub**: public-safe code, contracts, tests, CI and technical history.
-- **Runtime / DB / deployment**: actual operational state.
-- **Fresh primary sources**: current external facts.
+`ScreenerPRO` is a historical mixed repository and is now **MIGRATION_SOURCE_ONLY**.
 
-Do not mirror private Drive into GitHub. Use stable IDs/contracts/manifests and controlled exports.
+It must not become the owner of new Studio, Intelligence, Academy, Agent, or unrelated TQS work merely because code already exists here.
 
-## Runtime identity
+Current Studio and Cockpit functionality remain here only until extraction and deployment cutover are verified.
 
-For live/local claims, inspect the current WORK/KENDIROV runtime and configuration. Do not infer liveness from an old URL, old screenshot, green CI or a stale document.
+## TQS Intelligence rule
 
-A web page being open does not prove Intelligence/Research is healthy.
+Intelligence is currently treated as **no accepted implementation**. Existing collectors, detectors, market-map, research and Strategy Lab code may be reused only after explicit inspection. Old code does not automatically define the new Intelligence architecture.
 
-## Repo boundaries
+## TQS Studio rule
 
-This repository is canonical for the current Screener/Cockpit code and Academy/material surfaces already implemented here.
+Studio is a separate product. Preserve the accepted current Studio behavior during extraction, but future Studio development belongs in `tqs-studio`, not ScreenerPRO.
 
-It is **not** the canonical source for generic device automation. The older TQS Desktop Agent code/docs in this repository are historical/reference material; the generic persistent execution fabric is **Artem OS** in `kendirov/tqs-development-factory`.
+## TQS Cockpit rule
 
-Standalone experiments such as market maps, collectors or trainers must not silently become new canonical products. They graduate only after explicit ownership, verification and integration decisions.
+Screener/Preparation/decision-surface functionality becomes TQS Cockpit and belongs in `tqs-cockpit` after extraction.
 
-## New capability rule
+## Academy and Trading
 
-1. Identify the owning TQS module.
-2. Find the existing code/runtime path.
-3. Reuse mature compatible implementations and official APIs where useful.
-4. Extend the existing module by default.
-5. Split a repo/service only for a proven deployment, security, runtime, toolchain or scale boundary.
-6. Verify the owner-facing outcome end-to-end.
+These are separate visible projects in Drive, but code repositories are not created just to mirror content. Studio can render/publish Academy material; that does not make Academy part of Studio's code ownership.
+
+## Draft/prototype policy
+
+Do not create a shared scratch repository. Use branches such as `experiment/*`, preview deployments, and explicit acceptance inside the owning product. Accepted work merges there; rejected work is archived there.
+
+## Sources of truth
+
+- Drive = product/knowledge/owner canon.
+- GitHub = code/tests/technical history for each product.
+- Runtime/deployment/DB = operational truth.
+- ScreenerPRO = migration source until retired.
+
+## Retirement
+
+Do not delete old repos as a cleanup mechanism. First migrate/verify, then archive. Archived repos are never automatic routing targets.
