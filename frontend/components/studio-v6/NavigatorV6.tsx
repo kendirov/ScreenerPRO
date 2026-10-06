@@ -4,6 +4,8 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import {FileText,FolderTree,LayoutDashboard,PenLine,Plug,Plus,Search,Settings} from "lucide-react";
 import type {StudioActivity,StudioDocument,StudioObject} from "@/lib/studio-v5/types";
 import {roomRole} from "@/lib/studio-v6/workstation";
+import {roomPortal} from "@/lib/studio-v6/room-preview";
+import {RoomPreview} from "./RoomPreview";
 
 type Surface="world"|"documents";
 type Props={
@@ -92,18 +94,11 @@ function countLabel(node:Node){
   return `${rooms.length} ${word}`;
 }
 function RoomThumb({frame,objects}:{frame:StudioObject;objects:StudioObject[]}){
-  const kids=objects.filter(object=>!object.hidden&&object.parent_id===frame.id&&(object.kind==="frame"||object.kind==="image"||object.kind==="chart"||object.kind==="text")).slice(0,14);
-  const items=kids.length?kids:[frame];
-  const minX=Math.min(...items.map(object=>object.x)),minY=Math.min(...items.map(object=>object.y));
-  const maxX=Math.max(...items.map(object=>object.x+object.w)),maxY=Math.max(...items.map(object=>object.y+object.h));
-  const scale=Math.min(64/Math.max(1,maxX-minX),40/Math.max(1,maxY-minY));
-  return <svg viewBox="0 0 72 48" aria-hidden="true">
-    <rect width="72" height="48" rx="6" fill="rgba(255,255,255,.04)"/>
-    {items.map(object=>{
-      const fill=object.kind==="image"?"#8d74c8":object.kind==="chart"?"#3f8f9e":object.kind==="frame"?"rgba(224,177,90,.72)":"rgba(243,239,232,.55)";
-      return <rect key={object.id} x={4+(object.x-minX)*scale} y={4+(object.y-minY)*scale} width={Math.max(4,object.w*scale)} height={Math.max(3,object.h*scale)} rx="1.5" fill={fill}/>;
-    })}
-  </svg>;
+  const byId=new Map(objects.map(object=>[object.id,object]));
+  let depth=0,parent=frame.parent_id,guard=0;
+  while(parent&&guard++<12){depth+=1;parent=byId.get(parent)?.parent_id||null}
+  const portal=roomPortal(frame,depth,objects);
+  return <RoomPreview marks={portal.marks} title={portal.name}/>;
 }
 
 export function NavigatorV6({objects,documents,activity,selectedId,surface,onWorld,onDocuments,onFocus,onOpenDocument,onSettings,onCreate,onTool}:Props){

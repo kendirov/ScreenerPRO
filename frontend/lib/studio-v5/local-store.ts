@@ -2,6 +2,8 @@
 import type {DocumentBundle,StudioActivity,StudioDocument,StudioDocumentBlock,StudioObject,WorldOverview} from "./types";
 import {applyDocumentMutations,documentAuthoringContext,type DocumentBlockMutation} from "../studio-v6/document-model";
 import {activityForMutation,applyWorldMutations,buildStudioContext} from "../studio-v6/studio-context";
+import {causeMapObjects} from "../studio-v6/diagram";
+import {upgradeLessonShowcase} from "../studio-v6/lesson-showcase";
 
 const KEY="tqs-studio-v5-local-state-v4";
 const now=()=>new Date().toISOString();
@@ -145,13 +147,22 @@ function initialState():LocalState{
  ];
  return {overview:{world:{world_key:"tqs-studio-world",revision:1,title:"TQS Studio World",metadata:{schema_version:"tqs-studio-world/v5-local-recovery"}},objects,activity:[]},documents,blocks,assets:{},documentRuns:[]};
 }
+function applyPortalStudio(s:LocalState){
+ const created=causeMapObjects(s.overview.objects);
+ const lesson=upgradeLessonShowcase(s.documents,s.blocks);
+ if(!created.length&&!lesson.changed)return false;
+ if(created.length){s.overview.objects.push(...created);s.overview.world.revision=Number(s.overview.world.revision||0)+1}
+ if(lesson.changed){s.documents=lesson.documents;s.blocks=lesson.blocks}
+ save(s);
+ return true;
+}
 function load():LocalState{
  if(typeof window==="undefined")return initialState();
  try{
   const raw=localStorage.getItem(KEY);
-  if(raw){const x=JSON.parse(raw) as LocalState;if(!Array.isArray(x.documentRuns))x.documentRuns=[];if(!Array.isArray(x.aiRuns))x.aiRuns=[];if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){let changed=false;const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;changed=true}const lesson=x.documents?.find(d=>d.id==="doc-lesson-workspace");if(lesson&&lesson.frame_id!=="lesson-miro-scene"){lesson.frame_id="lesson-miro-scene";lesson.metadata={...(lesson.metadata||{}),ownerScene:true};changed=true}const sources=x.blocks?.find(b=>b.block_id==="lesson-sources");if(sources?.content?.items?.[0]?.entityId==="lesson-free-1"){sources.content.items[0].entityId="lesson-miro-scene";changed=true}if(changed)save(x);migrateWorkspaceCardLayout(x);return x}}
+  if(raw){const x=JSON.parse(raw) as LocalState;if(!Array.isArray(x.documentRuns))x.documentRuns=[];if(!Array.isArray(x.aiRuns))x.aiRuns=[];if(x?.overview?.objects?.some(o=>o.id==="lesson-free-1")&&x?.blocks?.some(b=>b.block_id==="lesson-replay")){let changed=false;const known=new Set(x.overview.objects.map(o=>o.id)),missing=ownerSceneObjects().filter(o=>!known.has(o.id));if(missing.length){x.overview.objects.push(...missing);x.overview.world.revision=Number(x.overview.world.revision||0)+1;changed=true}const lesson=x.documents?.find(d=>d.id==="doc-lesson-workspace");if(lesson&&lesson.frame_id!=="lesson-miro-scene"){lesson.frame_id="lesson-miro-scene";lesson.metadata={...(lesson.metadata||{}),ownerScene:true};changed=true}const sources=x.blocks?.find(b=>b.block_id==="lesson-sources");if(sources?.content?.items?.[0]?.entityId==="lesson-free-1"){sources.content.items[0].entityId="lesson-miro-scene";changed=true}if(changed)save(x);migrateWorkspaceCardLayout(x);applyPortalStudio(x);return x}}
  }catch{}
- const s=initialState();migrateWorkspaceCardLayout(s);save(s);return s;
+ const s=initialState();migrateWorkspaceCardLayout(s);applyPortalStudio(s);save(s);return s;
 }
 function save(s:LocalState){if(typeof window!=="undefined")localStorage.setItem(KEY,JSON.stringify(s))}
 function activity(s:LocalState,entity_id:string|null,semantic_path:string,event_type:string,summary:string,payload:any={}){
@@ -171,7 +182,9 @@ export function readLocalStudio(){return clone(load())}
 export function adoptSharedStudio(shared:{overview:WorldOverview;documents:StudioDocument[];blocks:StudioDocumentBlock[]}){
  const current=load();
  const next:LocalState={overview:clone(shared.overview),documents:clone(shared.documents),blocks:clone(shared.blocks),assets:current.assets,documentRuns:current.documentRuns||[],aiRuns:current.aiRuns||[]};
- save(next);return clone(next);
+ save(next);
+ applyPortalStudio(next);
+ return clone(load());
 }
 export function resetLocalStudio(){const s=initialState();save(s);return clone(s)}
 export function getLocalSeed(){return clone(initialState())}
@@ -257,7 +270,7 @@ export async function localStudioAction<T=any>(name:string,p:any={}):Promise<T>{
   activity(s,p.documentId,doc?.semantic_path||"", "ai_document_authoring", String(p.summary||"AI изменил документ"),{actor,generation_run_id:runId,operation:"document_authoring",document_id:p.documentId,target:p.target||null,applied:result.applied,before_blocks:before});
   save(s);const fresh=documentBundle(s,p.documentId);return {generation_run_id:runId,document:fresh.document,blocks:fresh.blocks,applied:result.applied,canonical_readback:true} as T;
  }
- if(name==="getStudioContext")return buildStudioContext({overview:s.overview,documents:s.documents},p) as T;
+ if(name==="getStudioContext")return buildStudioContext({overview:s.overview,documents:s.documents,blocks:s.blocks},p) as T;
  if(name==="aiApplyMutation"){
   const mutations=Array.isArray(p.mutations)?p.mutations:[];if(!mutations.length)throw new Error("AI_MUTATIONS_REQUIRED");
   const runId=String(p.generationRunId||crypto.randomUUID()),actor=String(p.actor||"cursor");
@@ -269,7 +282,7 @@ export async function localStudioAction<T=any>(name:string,p:any={}):Promise<T>{
   s.overview.activity=s.overview.activity.slice(0,200);
   s.aiRuns=[{runId,at:now(),actor,summary:String(p.summary||"AI изменил доску"),before,mutations,applied:true},...(s.aiRuns||[])].slice(0,40);
   save(s);
-  const readback=buildStudioContext({overview:s.overview,documents:s.documents},{...p.context,objectIds:applied.changed.map(o=>o.id),frameId:p.context?.frameId||applied.changed[0]?.parent_id||null});
+  const readback=buildStudioContext({overview:s.overview,documents:s.documents,blocks:s.blocks},{...p.context,objectIds:applied.changed.map(o=>o.id),frameId:p.context?.frameId||applied.changed[0]?.parent_id||null});
   return {generation_run_id:runId,changed:applied.changed.map(o=>readback.entities.find(x=>x.object_id===o.id)||o),activity_ids:events.map(x=>x.id),world_revision:s.overview.world.revision,focus_target_id:applied.changed[0]?.id||null,canonical_readback:true,context:readback} as T;
  }
  if(name==="undoAiRun"||name==="redoAiRun"){
@@ -277,7 +290,7 @@ export async function localStudioAction<T=any>(name:string,p:any={}):Promise<T>{
   const applied=run.applied!==false;if(name==="undoAiRun"&&!applied)throw new Error("ALREADY_UNDONE");if(name==="redoAiRun"&&applied)throw new Error("NOTHING_TO_REDO");
   const current=clone(s.overview.objects);s.overview.objects=clone(run.before);run.before=current;run.applied=name==="redoAiRun";
   bumpWorld(s);activity(s,null,"TQS Studio",name==="undoAiRun"?"ai_undo":"ai_redo",name==="undoAiRun"?"Отмена AI":"Повтор AI",{actor:String(p.actor||run.actor),generation_run_id:runId,operation:name==="undoAiRun"?"undo":"redo"});save(s);
-  return {generation_run_id:runId,world_revision:s.overview.world.revision,canonical_readback:true,context:buildStudioContext({overview:s.overview,documents:s.documents},{objectIds:(p.context?.objectIds)||[]})} as T;
+  return {generation_run_id:runId,world_revision:s.overview.world.revision,canonical_readback:true,context:buildStudioContext({overview:s.overview,documents:s.documents,blocks:s.blocks},{objectIds:(p.context?.objectIds)||[]})} as T;
  }
  if(name==="getChangeHistory"){
   let rows=s.overview.activity;if(p.entityId)rows=rows.filter(x=>x.entity_id===p.entityId);if(p.generationRunId)rows=rows.filter(x=>x.payload?.generation_run_id===p.generationRunId);return clone(rows.slice(0,Math.min(Number(p.limit||50),200))) as T;

@@ -26,9 +26,12 @@ assert.match(model.resolveVideoEmbed("https://vimeo.com/123456"), /player\.vimeo
 assert.match(model.resolveVideoEmbed("https://vk.com/video-100_200"), /video_ext\.php\?oid=-100&id=200/);
 assert.match(model.resolveVideoEmbed("https://vkvideo.ru/video-100_200"), /video_ext\.php\?oid=-100&id=200/);
 
-const context = await store.localStudioAction("getDocumentAuthoringContext", {documentId:"doc-lesson-workspace", ordinal:4, insert:"after"});
+const before = await store.localStudioAction("getDocument", {documentId:"doc-lesson-workspace"});
+const table = before.blocks.find((block: {block_id: string; ordinal: number}) => block.block_id === "lesson-table");
+const end = before.blocks.find((block: {block_id: string; ordinal: number}) => block.block_id === "lesson-end");
+const context = await store.localStudioAction("getDocumentAuthoringContext", {documentId:"doc-lesson-workspace", ordinal:table.ordinal, insert:"after"});
 assert.equal(context.target.block_id, "lesson-table");
-assert.equal(context.target.ordinal, 4);
+assert.equal(context.target.ordinal, table.ordinal);
 assert.equal(context.target.after_block_id, "lesson-table");
 assert.equal(context.document_id, "doc-lesson-workspace");
 
@@ -36,20 +39,20 @@ const created = await store.localStudioAction("applyDocumentAuthoring", {
   documentId:"doc-lesson-workspace",
   generationRunId:"run-doc-1",
   actor:"chatgpt",
-  summary:"после блока 4",
-  mutations:[{operation:"insert", blockType:"image", blockId:"qa-image", content:{title:"После блока 4", url:""}, target:{ordinal:4, insert:"after"}}],
+  summary:"после блока занятия",
+  mutations:[{operation:"insert", blockType:"image", blockId:"qa-image", content:{title:"После таблицы", url:""}, target:{ordinal:table.ordinal, insert:"after"}}],
 });
 const image = created.blocks.find((block: {block_id: string}) => block.block_id === "qa-image");
 const shifted = created.blocks.find((block: {block_id: string}) => block.block_id === "lesson-end");
-assert.equal(image.ordinal, 5);
+assert.equal(image.ordinal, table.ordinal + 1);
 assert.equal(image.block_type, "image");
-assert.equal(shifted.ordinal, 6);
-assert.equal(created.blocks.find((block: {block_id: string}) => block.block_id === "lesson-table").ordinal, 4);
+assert.equal(shifted.ordinal, end.ordinal + 1);
+assert.equal(created.blocks.find((block: {block_id: string}) => block.block_id === "lesson-table").ordinal, table.ordinal);
 assert.equal(image.content.provenance.runId, "run-doc-1");
 
 const undone = await store.localStudioAction("undoDocumentAuthoring", {generationRunId:"run-doc-1"});
 assert.equal(undone.blocks.some((block: {block_id: string}) => block.block_id === "qa-image"), false);
-assert.equal(undone.blocks.find((block: {block_id: string}) => block.block_id === "lesson-end").ordinal, 5);
+assert.equal(undone.blocks.find((block: {block_id: string}) => block.block_id === "lesson-end").ordinal, end.ordinal);
 
 const docs = [
   {id:"doc-lesson-workspace", world_key:"tqs-studio-world", slug:"lesson", kind:"lesson", title:"Занятие 1", semantic_path:"Обучение/Бесплатный курс/Занятие 1", frame_id:null, revision:1, status:"DRAFT", share_mode:"private", metadata:{}},

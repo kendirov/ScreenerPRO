@@ -1,4 +1,6 @@
-import type {StudioActivity,StudioDocument,StudioObject,WorldOverview} from "@/lib/studio-v5/types";
+import type {StudioActivity,StudioDocument,StudioDocumentBlock,StudioObject,WorldOverview} from "@/lib/studio-v5/types";
+import {roomPortal} from "@/lib/studio-v6/room-preview";
+import {diagramRole} from "@/lib/studio-v6/diagram";
 
 export type StudioContextInput={
   objectIds?:string[];
@@ -13,6 +15,7 @@ export type StudioContextInput={
 type WorldState={
   overview:WorldOverview;
   documents:StudioDocument[];
+  blocks?:StudioDocumentBlock[];
 };
 
 function boundsOf(items:StudioObject[]){
@@ -50,6 +53,9 @@ export function canonicalObject(o:StudioObject,all:StudioObject[],documents:Stud
     generation_run_id:o.body?.provenance?.generation_run_id||null,
     hidden:o.hidden,
     revision:o.revision,
+    portal:o.kind==="frame"?roomPortal(o,(()=>{let depth=0,parent=o.parent_id,guard=0;while(parent&&guard++<20){depth+=1;parent=all.find(item=>item.id===parent)?.parent_id||null}return depth})(),all):null,
+    diagram_role:o.kind==="diagram"?diagramRole(o.body?.role):null,
+    connector:o.kind==="annotation"&&o.body?.fromId?{from_id:o.body.fromId,to_id:o.body.toId||null,label:o.body.label||null,relation:(o.relations||[]).some((relation:any)=>relation.type==="leads_to")?"leads_to":null}:null,
   };
 }
 
@@ -75,6 +81,11 @@ export function buildStudioContext(state:WorldState,input:StudioContextInput={})
   const activity=(state.overview.activity||[]).filter(a=>!prefix||String(a.semantic_path||"").startsWith(prefix)).slice(0,40);
   const unresolved=objects.filter(o=>!o.hidden&&(o.kind==="task"||o.kind==="voice"||o.kind==="text")&&(o.status==="NEW"||o.status==="WAITING_RECORDING")&&(!prefix||o.semantic_path.startsWith(prefix))).map(o=>o.id);
   const linked=input.documentId?documents.filter(d=>d.id===input.documentId):frameId?documents.filter(d=>d.frame_id===frameId):[];
+  const blocks=state.blocks||[];
+  const linkedIds=new Set(input.documentId?[input.documentId]:linked.map(document=>document.id));
+  const documentBlocks=blocks.filter(block=>linkedIds.has(block.document_id)&&!block.content?.hidden).sort((a,b)=>a.ordinal-b.ordinal);
+  const diagramNodes=objects.filter(object=>!object.hidden&&object.kind==="diagram").map(object=>canonicalObject(object,objects,documents));
+  const connectors=objects.filter(object=>!object.hidden&&object.kind==="annotation"&&object.body?.fromId&&object.body?.toId).map(object=>({id:object.id,from_id:object.body.fromId,to_id:object.body.toId,label:object.body.label||null,relation:(object.relations||[]).some((relation:any)=>relation.type==="leads_to")?"leads_to":"connects"}));
   return {
     context_version:"tqs-studio-context/v1",
     world_id:state.overview.world?.world_key||"tqs-studio-world",
@@ -91,6 +102,10 @@ export function buildStudioContext(state:WorldState,input:StudioContextInput={})
     unresolved_ids:unresolved,
     selected_nodes:selected.filter(o=>o.body?.selectedNodeId).map(o=>({object_id:o.id,node_id:String(o.body.selectedNodeId),title:o.body?.scene?.nodes?.find((node:any)=>node.id===o.body.selectedNodeId)?.title||null})),
     voice_notes:objects.filter(o=>!o.hidden&&o.kind==="voice"&&(!prefix||o.semantic_path.startsWith(prefix))).map(o=>({id:o.id,semantic_path:o.semantic_path,title:o.title,duration:o.body?.duration||null,transcript:o.body?.transcript||"",updated_at:o.updated_at||null})),
+    portals:(frame?[frame]:objects.filter(object=>object.kind==="frame"&&!object.hidden)).slice(0,12).map(object=>canonicalObject(object,objects,documents).portal),
+    diagram:{nodes:diagramNodes,connectors},
+    document_sections:documentBlocks.map(block=>({document_id:block.document_id,block_id:block.block_id,ordinal:block.ordinal,block_type:block.block_type,layout:block.content?.layout||"reading",section_id:block.content?.sectionId||null,view:block.content?.view||null,interactive:Boolean(block.content?.view==="reveal"||block.block_type==="steps"||block.block_type==="interactive"||block.content?.hotspots)})),
+    interactive_blocks:documentBlocks.filter(block=>block.block_type==="interactive"||block.block_type==="steps"||block.content?.view==="reveal"||block.content?.hotspots).map(block=>block.block_id),
   };
 }
 

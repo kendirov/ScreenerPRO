@@ -16,7 +16,7 @@ import {deepestFrame,snap,titleForKind} from "./world-model";
 type Surface="world"|"documents";
 type PublishState={url:string;revision:number;publishedAt:string;policy:"LIVE"|"SNAPSHOT"|"MIXED";transport?:"upstream"|"stateless_signed_snapshot"|string};
 const PUBLISH_KEY="tqs-studio-v6-publish-state",SURFACE_KEY="tqs-studio-v6-surface",THEME_KEY="tqs-studio-v6-theme";
-function dims(kind:string){return kind==="text"?{w:300,h:130}:kind==="task"?{w:310,h:92}:kind==="voice"?{w:330,h:92}:kind==="link"?{w:340,h:108}:kind==="image"?{w:500,h:340}:kind==="video"?{w:500,h:300}:kind==="frame"?{w:1200,h:760}:kind==="chart"?{w:660,h:410}:kind==="artifact"?{w:1180,h:680}:kind==="deck"?{w:980,h:560}:{w:360,h:120}}
+function dims(kind:string){return kind==="text"?{w:300,h:130}:kind==="task"?{w:310,h:92}:kind==="voice"?{w:330,h:92}:kind==="link"?{w:340,h:108}:kind==="image"?{w:500,h:340}:kind==="video"?{w:500,h:300}:kind==="frame"?{w:1200,h:760}:kind==="chart"?{w:660,h:410}:kind==="diagram"?{w:210,h:78}:kind==="artifact"?{w:1180,h:680}:kind==="deck"?{w:980,h:560}:{w:360,h:120}}
 function publicationPolicy(bundle:DocumentBundle|null):"LIVE"|"SNAPSHOT"|"MIXED"{if(!bundle)return"SNAPSHOT";const p=bundle.blocks.map(b=>b.data_spec?.updatePolicy).filter(Boolean) as string[];if(!p.length)return"SNAPSHOT";const live=p.some(x=>x==="LIVE"||x==="MIXED"),snap=p.some(x=>x==="AS_OF"||x==="PUBLICATION_SNAPSHOT"||x==="MIXED");return live&&snap?"MIXED":live?"LIVE":"SNAPSHOT"}
 function readPublish():Record<string,PublishState>{try{return JSON.parse(localStorage.getItem(PUBLISH_KEY)||"{}")||{}}catch{return{}}}
 function writePublish(x:Record<string,PublishState>){try{localStorage.setItem(PUBLISH_KEY,JSON.stringify(x))}catch{}}

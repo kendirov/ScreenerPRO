@@ -1,6 +1,6 @@
 import type {DataSpec,StudioDocument,StudioDocumentBlock} from "@/lib/studio-v5/types";
 
-export type InteractiveView="chart"|"table"|"timeline"|"visual"|"embed";
+export type InteractiveView="chart"|"table"|"timeline"|"visual"|"embed"|"reveal";
 export type NoteAccent="blue"|"slate"|"green"|"amber"|"rose";
 export type InsertPosition="before"|"after"|"replace"|"end";
 
@@ -25,6 +25,7 @@ export const INTERACTIVE_VIEWS:{id:InteractiveView;label:string}[]=[
   {id:"timeline",label:"Таймлайн"},
   {id:"visual",label:"Визуал"},
   {id:"embed",label:"Вставка"},
+  {id:"reveal",label:"Открыть ответ"},
 ];
 export const INSERT_TYPES:[string,string][]=[
   ["heading","Заголовок"],
@@ -33,6 +34,27 @@ export const INSERT_TYPES:[string,string][]=[
   ["image","Изображение"],
   ["video","Видео"],
   ["interactive","Интерактив"],
+];
+export const LAYOUT_PRESETS:[string,string][]=[
+  ["reading","Чтение"],
+  ["wide","Широко"],
+  ["bleed","На всю ширину"],
+  ["split","50/50"],
+  ["aside","2/3 + 1/3"],
+  ["columns","3 колонки"],
+  ["compare","Сравнение"],
+  ["steps","Шаги"],
+  ["media","Медиа + пояснение"],
+  ["lab","Лаборатория"],
+];
+export const BLOCK_FAMILIES:{id:string;label:string;blocks:[string,string][]}[]=[
+  {id:"narrative",label:"Текст",blocks:[["heading","Заголовок"],["rich_text","Текст"],["quote","Цитата"],["callout","Заметка"],["definition","Определение"],["example","Пример"],["divider","Разделитель"]]},
+  {id:"media",label:"Медиа",blocks:[["image","Изображение"],["gallery","Галерея"],["video","Видео"],["audio","Аудио"]]},
+  {id:"data",label:"Данные",blocks:[["interactive","График"],["live_data","Живые данные"],["table","Таблица"],["comparison","Сравнение"]]},
+  {id:"learning",label:"Обучение",blocks:[["steps","Шаги"],["timeline","Таймлайн"],["checklist","Чеклист"],["homework","Задание"],["warning","Предупреждение"],["quiz","Проверка"],["poll","Опрос"]]},
+  {id:"interactive",label:"Интерактив",blocks:[["tabs","Вкладки"],["reveal","Открыть ответ"],["slider","Слайдер"],["toggle","Переключатель"],["hotspot","Точки на изображении"],["before_after","До / после"],["filters","Фильтр"],["market_replay","Проигрывание"],["calculator","Калькулятор"]]},
+  {id:"sources",label:"Источники",blocks:[["citation","Ссылка на источник"],["source_card","Карточка источника"],["link","Ссылка"],["file","Файл"],["drive_ref","Диск"]]},
+  {id:"visual",label:"Визуал",blocks:[["diagram","Схема"],["roadmap","Дорожная карта"],["infographic","Схема-карточка"],["artifact","Вставка с доски"]]},
 ];
 
 export function chartSpec(family="SI"):DataSpec{
@@ -82,7 +104,7 @@ export function embedSrc(raw:string){
 export function interactiveView(block:StudioDocumentBlock):InteractiveView|null{
   if(block.block_type==="interactive"){
     const view=String(block.content?.view||block.data_spec?.display?.kind||"chart");
-    return (["chart","table","timeline","visual","embed"] as string[]).includes(view)?view as InteractiveView:"chart";
+    return (["chart","table","timeline","visual","embed","reveal"] as string[]).includes(view)?view as InteractiveView:"chart";
   }
   if(block.block_type==="interactive_chart"||block.block_type==="live_data")return "chart";
   if(block.block_type==="market_replay")return "timeline";
@@ -93,7 +115,9 @@ export function interactiveView(block:StudioDocumentBlock):InteractiveView|null{
 export function blockHasPublicationBody(block:StudioDocumentBlock){
   const c=block.content||{};
   if(c.hidden)return false;
-  if(block.block_type==="heading"||block.block_type==="callout")return Boolean(plainText(c.text));
+  if(["heading","callout","quote","definition","example","warning","homework"].includes(block.block_type))return Boolean(plainText(c.text)||plainText(c.title));
+  if(["steps","checklist","tabs","timeline","quiz","poll","roadmap","diagram"].includes(block.block_type))return Array.isArray(c.items)&&c.items.some((item:any)=>plainText(item?.text)||plainText(item?.label)||plainText(item?.title));
+  if(block.block_type==="calculator"||block.block_type==="slider"||block.block_type==="toggle"||block.block_type==="before_after"||block.block_type==="filters")return Boolean(plainText(c.title)||plainText(c.prompt)||plainText(c.text));
   if(block.block_type==="rich_text")return Boolean(plainText(c.html));
   if(block.block_type==="image")return Boolean(c.url||c.previewUrl||c.svg);
   if(block.block_type==="video")return Boolean(String(c.url||"").trim());
@@ -106,6 +130,7 @@ export function blockHasPublicationBody(block:StudioDocumentBlock){
   if(view==="timeline")return Boolean(block.data_spec)||(Array.isArray(c.items)&&c.items.some((item:any)=>plainText(item?.text)||plainText(item?.label)));
   if(view==="visual")return Boolean(c.url||c.previewUrl||c.svg);
   if(view==="embed")return Boolean(embedSrc(c.url||""));
+  if(view==="reveal")return Boolean(plainText(c.prompt)||plainText(c.answer));
   return Boolean(plainText(c.text)||plainText(c.title)||plainText(c.html));
 }
 
@@ -114,23 +139,47 @@ function tableHasText(c:any){
   return cells.some((cell)=>plainText(cell));
 }
 
+export function groupDocumentSections(blocks:StudioDocumentBlock[]){
+  const groups:{id:string;layout:string;blocks:StudioDocumentBlock[]}[]=[];
+  for(const block of [...blocks].sort((a,b)=>a.ordinal-b.ordinal)){
+    const sectionId=String(block.content?.sectionId||"");
+    const layout=String(block.content?.layout||"reading");
+    const last=groups[groups.length-1];
+    if(sectionId&&last&&last.id===sectionId){last.blocks.push(block);continue}
+    groups.push({id:sectionId||block.block_id,layout,blocks:[block]});
+  }
+  return groups;
+}
+
 export function publicationBlocks(blocks:StudioDocumentBlock[]){
   return [...blocks].filter(blockHasPublicationBody).sort((a,b)=>a.ordinal-b.ordinal);
 }
 
 export function defaultBlockContent(type:string){
-  if(type==="heading")return {text:"Новый заголовок"};
-  if(type==="rich_text")return {html:"<p>Новый текст</p>"};
-  if(type==="callout")return {text:"Новая заметка",accent:"blue" as NoteAccent};
-  if(type==="image")return {title:"Изображение",url:""};
-  if(type==="video")return {title:"Видео",url:""};
-  if(type==="interactive")return {title:"Интерактив",view:"chart" as InteractiveView};
-  return {title:type};
+  if(type==="heading")return {text:"Новый заголовок",layout:"reading"};
+  if(type==="rich_text")return {html:"<p>Новый текст</p>",layout:"reading"};
+  if(type==="callout"||type==="quote"||type==="definition"||type==="example"||type==="warning"||type==="homework")return {text:type==="warning"?"На что смотреть осторожно":"Новая заметка",tone:type==="callout"?"practice":type,layout:"reading"};
+  if(type==="image"||type==="gallery"||type==="hotspot")return {title:"Изображение",url:"",layout:type==="hotspot"?"media":"wide",hotspots:type==="hotspot"?[{id:"point",x:50,y:46,title:"Точка",text:"Пояснение к месту на изображении."}]:undefined};
+  if(type==="video"||type==="audio")return {title:type==="audio"?"Аудио":"Видео",url:"",layout:"wide"};
+  if(type==="interactive"||type==="live_data")return {title:"Si — график",view:"chart" as InteractiveView,instrument:"SI",layout:"lab"};
+  if(type==="table"||type==="comparison")return {title:"Сравнение",view:"table",columns:[""," "],rows:[["",""]],layout:"compare"};
+  if(type==="steps"||type==="timeline"||type==="roadmap")return {title:type==="roadmap"?"Дорожная карта":"Шаги",layout:type==="roadmap"?"steps":"steps",items:[{label:"Первый",text:"Что происходит."},{label:"Дальше",text:"Что из этого следует."}]};
+  if(type==="checklist"||type==="quiz"||type==="poll")return {title:type==="quiz"?"Проверка":type==="poll"?"Опрос":"Список",layout:"reading",items:[{label:"Первый пункт",text:"",done:false},{label:"Второй пункт",text:"",done:false}]};
+  if(type==="reveal")return {title:"Проверка",view:"reveal",prompt:"Вопрос",answer:"Ответ и пояснение.",layout:"reading"};
+  if(type==="tabs")return {title:"Вкладки",layout:"wide",items:[{label:"Цена",text:"Что видно по цене."},{label:"Объём",text:"Что подтверждает объём."}]};
+  if(type==="slider"||type==="toggle"||type==="before_after"||type==="filters")return {title:type==="before_after"?"До и после":"Переключение",layout:"wide",before:"Было",after:"Стало",prompt:"Что меняется"};
+  if(type==="market_replay")return {title:"Проигрывание сессии",layout:"lab"};
+  if(type==="calculator")return {title:"Размер позиции",layout:"reading",prompt:"Цена × объём"};
+  if(type==="divider")return {layout:"bleed"};
+  if(type==="citation"||type==="source_card"||type==="link"||type==="file"||type==="drive_ref")return {title:"Источник",text:"",url:"",layout:"reading"};
+  if(type==="diagram"||type==="infographic"||type==="artifact")return {title:"Схема",layout:"wide",items:[{label:"Причина",text:""},{label:"Следствие",text:""}]};
+  return {title:type,layout:"reading"};
 }
 
 export function defaultBlockData(type:string,content?:any):DataSpec|null{
-  if(type==="interactive"&&(content?.view||"chart")==="chart")return chartSpec(content?.instrument||"SI");
+  if((type==="interactive"||type==="live_data")&&(content?.view||"chart")==="chart")return chartSpec(content?.instrument||"SI");
   if(type==="interactive_chart"||type==="live_data")return chartSpec();
+  if(type==="market_replay")return {...chartSpec(),metric:"ohlcv",relativeRange:{tradingSessions:1},transforms:["chronological"],display:{renderer:"studio_market_replay",targetDurationSeconds:30,crosshair:true}};
   return null;
 }
 
@@ -218,7 +267,7 @@ export function documentAuthoringContext(document:StudioDocument,blocks:StudioDo
     context_version:"tqs-studio-document-authoring/v1",
     document_id:document.id,
     revision:document.revision,
-    blocks:list.map(block=>({block_id:block.block_id,ordinal:block.ordinal,block_type:block.block_type,hidden:Boolean(block.content?.hidden)})),
+    blocks:list.map(block=>({block_id:block.block_id,ordinal:block.ordinal,block_type:block.block_type,hidden:Boolean(block.content?.hidden),layout:block.content?.layout||"reading",section_id:block.content?.sectionId||null,view:block.content?.view||null,interactive:block.block_type==="interactive"||block.block_type==="steps"||block.block_type==="reveal"||block.content?.view==="reveal"})),
     target:{
       document_id:document.id,
       block_id:selected?.block_id??null,

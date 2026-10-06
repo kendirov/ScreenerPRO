@@ -4,7 +4,7 @@ import {Copy,Eye,GripVertical,MoreHorizontal,Plus,Trash2} from "lucide-react";
 import type {DataSpec,DocumentBundle,StudioDocumentBlock} from "@/lib/studio-v5/types";
 import {DocumentBlocksView} from "@/components/studio-v5/DocumentView";
 import {studioAction} from "@/lib/studio-v6/api";
-import {chartSpec,defaultBlockContent,defaultBlockData,INSERT_TYPES,INTERACTIVE_VIEWS,NOTE_ACCENTS,type InteractiveView} from "@/lib/studio-v6/document-model";
+import {BLOCK_FAMILIES,LAYOUT_PRESETS,chartSpec,defaultBlockContent,defaultBlockData,groupDocumentSections,INTERACTIVE_VIEWS,type InteractiveView} from "@/lib/studio-v6/document-model";
 import {RichEditor} from "./RichEditor";
 
 export type DocumentMode="edit"|"preview";
@@ -24,7 +24,7 @@ export function DocumentEditorV6({bundle,onBundle,mode,onFocus}:{bundle:Document
  const save=async(block:StudioDocumentBlock,content:any,blockType=block.block_type,dataSpec=block.data_spec)=>{await studioAction("upsertDocumentBlock",{documentId:bundle.document.id,blockId:block.block_id,blockType,content,dataSpec,semanticPath:bundle.document.semantic_path});await refresh()};
  const duplicate=async(block:StudioDocumentBlock)=>{await studioAction("upsertDocumentBlock",{documentId:bundle.document.id,blockId:"block-"+crypto.randomUUID(),blockType:block.block_type,content:{...block.content,hidden:false},dataSpec:block.data_spec,afterBlockId:block.block_id,semanticPath:bundle.document.semantic_path});setMenu(null);await refresh()};
  const hide=async(block:StudioDocumentBlock)=>{await save(block,{...block.content,hidden:!block.content?.hidden});setMenu(null)};
- const convert=async(block:StudioDocumentBlock,type:string)=>{let content=block.content||{};if(type==="rich_text"&&!content.html)content={html:`<p>${content.text||content.title||""}</p>`};if(type==="callout")content={text:String(content.text||content.title||stripHtml(content.html||"")),accent:content.accent||"blue"};if(type==="heading")content={text:String(content.text||stripHtml(content.html||""))};await save(block,content,type);setMenu(null)};
+ const convert=async(block:StudioDocumentBlock,type:string)=>{let content={...(block.content||{})};const fresh=defaultBlockContent(type) as any;if(type==="rich_text"&&!content.html)content={html:`<p>${content.text||content.title||""}</p>`};else if(type==="callout")content={text:String(content.text||content.title||stripHtml(content.html||"")),accent:content.accent||"blue"};else if(type==="heading")content={text:String(content.text||stripHtml(content.html||""))};else if(type==="steps")content={...fresh,items:Array.isArray(content.items)&&content.items.length?content.items:fresh.items};else if(type==="comparison")content={...fresh,columns:content.columns||fresh.columns,rows:content.rows||fresh.rows,view:"table",layout:"compare"};else content={...fresh,...content};const blockType=type==="comparison"||type==="reveal"?"interactive":type;await save(block,content,blockType,defaultBlockData(blockType,content)??block.data_spec);setMenu(null)};
  const focusBlock=(block:StudioDocumentBlock)=>{const next={blockId:block.block_id,ordinal:block.ordinal,blockType:block.block_type};setFocus(next);onFocus?.(next)};
  const startDrag=(event:React.PointerEvent,block:StudioDocumentBlock)=>{if(event.button!==0)return;event.preventDefault();event.stopPropagation();(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);dragRef.current={id:block.block_id,target:block.ordinal,y:event.clientY};setDraggingId(block.block_id)};
  useEffect(()=>{
@@ -62,15 +62,36 @@ export function DocumentEditorV6({bundle,onBundle,mode,onFocus}:{bundle:Document
   window.addEventListener("pointerup",up);
   return()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up)};
  },[]);
+ const applyLayout=async(block:StudioDocumentBlock,layout:string)=>{
+  const multi=["split","aside","columns","compare","media"].includes(layout);
+  const sectionId=multi?String(block.content?.sectionId||"sec-"+block.block_id):block.block_id;
+  await save(block,{...block.content,layout,sectionId});
+  if(!multi)return;
+  const index=visible.findIndex(item=>item.block_id===block.block_id);
+  const next=visible[index+1];
+  if(next&&next.content?.sectionId!==sectionId)await save(next,{...next.content,layout,sectionId});
+ };
  if(mode!=="edit")return <div className="studio-publication v6-doc-preview" data-testid="document-preview"><DocumentBlocksView blocks={visible} clean/></div>;
- return <div ref={root} className="v6-doc-editor" data-testid="ordered-block-editor-v6" data-authoring-document={bundle.document.id} data-authoring-block={focus?.blockId||""} data-authoring-ordinal={focus?.ordinal||""} data-authoring-type={focus?.blockType||""}>
+ const groups=groupDocumentSections(visible);
+ return <div ref={root} className="v6-doc-editor studio-publication" data-testid="ordered-block-editor-v6" data-authoring-document={bundle.document.id} data-authoring-block={focus?.blockId||""} data-authoring-ordinal={focus?.ordinal||""} data-authoring-type={focus?.blockType||""}>
   <InsertLine open={insertAfter==="__FIRST__"} onToggle={()=>setInsertAfter(insertAfter==="__FIRST__"?undefined:"__FIRST__")} onInsert={type=>insert(type,"__FIRST__")}/>
-  {visible.map((block,index)=><div key={block.block_id} data-doc-block data-block-id={block.block_id} data-ordinal={block.ordinal} data-block-type={block.block_type} className={["v6-doc-block",draggingId===block.block_id?"is-dragging":"",focus?.blockId===block.block_id?"is-focused":""].join(" ")} onContextMenu={event=>{event.preventDefault();focusBlock(block);setMenu({id:block.block_id,x:event.clientX,y:event.clientY})}} onPointerDown={()=>focusBlock(block)}>
+  {groups.map(group=><section key={group.blocks[0]?.block_id||group.id} className="studio-doc-section" data-layout={group.layout} data-section-id={group.id}>{group.blocks.map(block=>{
+    const index=visible.findIndex(item=>item.block_id===block.block_id);
+    return <div key={block.block_id} data-doc-block data-block-id={block.block_id} data-ordinal={block.ordinal} data-block-type={block.block_type} className={["v6-doc-block",draggingId===block.block_id?"is-dragging":"",focus?.blockId===block.block_id?"is-focused":""].join(" ")} onContextMenu={event=>{event.preventDefault();focusBlock(block);setMenu({id:block.block_id,x:event.clientX,y:event.clientY})}} onPointerDown={()=>focusBlock(block)}>
+    {focus?.blockId===block.block_id&&<div className="v6-block-toolbar" data-studio-ui>
+      <select aria-label="Макет секции" value={String(block.content?.layout||"reading")} onChange={event=>void applyLayout(block,event.target.value)}>{LAYOUT_PRESETS.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>
+      <button type="button" onClick={()=>void duplicate(block)}>Дублировать</button>
+      <button type="button" onClick={()=>void convert(block,"steps")}>В шаги</button>
+      <button type="button" onClick={()=>void convert(block,"comparison")}>Сравнение</button>
+      <button type="button" onClick={()=>{try{localStorage.setItem("tqs-studio-v6-operator",JSON.stringify({intent:"document_block",document_id:bundle.document.id,block_id:block.block_id,ordinal:block.ordinal,block_type:block.block_type,at:new Date().toISOString()}))}catch{} }}>AI</button>
+      <button type="button" onClick={()=>void hide(block)}>Удалить</button>
+    </div>}
     <div className="v6-doc-block-handle" data-studio-ui onPointerDown={event=>startDrag(event,block)} title="Перетащить блок"><span className="v6-doc-ordinal">{index+1}</span><GripVertical size={15}/></div>
     <button className="v6-doc-block-more" data-studio-ui aria-label="Меню блока" onClick={event=>{const rect=event.currentTarget.getBoundingClientRect();setMenu({id:block.block_id,x:rect.right,y:rect.bottom})}}><MoreHorizontal size={15}/></button>
     <EditableBlock block={block} onSave={(content,blockType,dataSpec)=>save(block,content,blockType,dataSpec)}/>
     <InsertLine open={insertAfter===block.block_id} onToggle={()=>setInsertAfter(insertAfter===block.block_id?undefined:block.block_id)} onInsert={type=>insert(type,block.block_id)}/>
-   </div>)}
+   </div>;
+  })}</section>)}
   {menu&&(()=>{const block=sorted.find(item=>item.block_id===menu.id);if(!block)return null;return <div className="v6-doc-menu" style={{left:menu.x,top:menu.y}} data-studio-ui>
     <button onClick={()=>duplicate(block)}><Copy size={13}/>Дублировать</button>
     <button onClick={()=>hide(block)}><Eye size={13}/>Скрыть из документа</button>
@@ -93,14 +114,17 @@ function reorderCopy(blocks:StudioDocumentBlock[],blockId:string,targetOrdinal:n
 }
 
 function InsertLine({open,onToggle,onInsert}:{open:boolean;onToggle:()=>void;onInsert:(type:string)=>void}){
- return <div className="v6-insert-line" data-studio-ui><button aria-label="Вставить блок" onClick={onToggle}><Plus size={13}/></button>{open&&<div className="v6-insert-types">{INSERT_TYPES.map(([type,label])=><button key={type} onClick={()=>onInsert(type)}>{label}</button>)}</div>}</div>
+ const [query,setQuery]=useState("");
+ const q=query.trim().toLowerCase();
+ const families=BLOCK_FAMILIES.map(family=>({...family,blocks:family.blocks.filter(([,label])=>!q||label.toLowerCase().includes(q)||family.label.toLowerCase().includes(q))})).filter(family=>family.blocks.length);
+ return <div className="v6-insert-line" data-studio-ui><button aria-label="Вставить блок" onClick={onToggle}><Plus size={13}/></button>{open&&<div className="v6-insert-panel" data-testid="document-add-menu"><input autoFocus aria-label="Найти блок" placeholder="Найти блок" value={query} onChange={event=>setQuery(event.target.value)}/>{families.map(family=><div key={family.id}><p>{family.label}</p>{family.blocks.map(([type,label])=><button key={type} type="button" onClick={()=>onInsert(type)}>{label}</button>)}</div>)}</div>}</div>
 }
 
 function EditableBlock({block,onSave}:{block:StudioDocumentBlock;onSave:(content:any,blockType?:string,dataSpec?:DataSpec|null)=>void}){
  const content=block.content||{};
  if(block.block_type==="rich_text")return <RichEditor html={content.html||"<p></p>"} onBlur={html=>{if(html!==content.html)void onSave({...content,html})}}/>;
  if(block.block_type==="heading")return <RichEditor html={`<h2>${escapeHtml(content.text||"")}</h2>`} onBlur={html=>void onSave({...content,text:stripHtml(html)})}/>;
- if(block.block_type==="callout")return <div className="v6-note-edit" data-accent={content.accent||"blue"}><div className="v6-note-accents">{NOTE_ACCENTS.map(accent=><button key={accent} aria-label={"Акцент "+accent} className={content.accent===accent||(!content.accent&&accent==="blue")?"is-on accent-"+accent:"accent-"+accent} onClick={()=>void onSave({...content,accent})}/>)}</div><RichEditor html={`<p>${escapeHtml(content.text||"")}</p>`} onBlur={html=>void onSave({...content,text:stripHtml(html),accent:content.accent||"blue"})}/></div>;
+ if(block.block_type==="callout")return <div className="v6-note-edit" data-accent={content.tone||content.accent||"amber"}><RichEditor html={`<p>${escapeHtml(content.text||"")}</p>`} onBlur={html=>void onSave({...content,text:stripHtml(html),accent:content.accent||"amber"})}/></div>;
  if(block.block_type==="image")return <MediaFields block={block} kind="image" onSave={onSave}/>;
  if(block.block_type==="video")return <MediaFields block={block} kind="video" onSave={onSave}/>;
  if(block.block_type==="interactive"||block.block_type==="interactive_chart"||block.block_type==="live_data"||block.block_type==="market_replay"||block.block_type==="table")return <InteractiveFields block={block} onSave={onSave}/>;
@@ -144,7 +168,7 @@ function TableEditor({content,onSave}:{content:any;onSave:(content:any,blockType
  const columns:string[]=content.columns||["Колонка 1","Колонка 2"];
  const rows:string[][]=content.rows||[["",""]];
  const write=(nextColumns:string[],nextRows:string[][])=>void onSave({...content,view:"table",columns:nextColumns,rows:nextRows},"interactive");
- return <div className="v6-table-edit">{columns.map((column,index)=><input key={index} aria-label={"Колонка "+(index+1)} defaultValue={column} onBlur={event=>{const next=[...columns];next[index]=event.target.value;write(next,rows)}}/>)}{rows.map((row,rowIndex)=><div key={rowIndex}>{row.map((cell,cellIndex)=><input key={cellIndex} aria-label={"Ячейка "+(rowIndex+1)+"."+(cellIndex+1)} defaultValue={cell} onBlur={event=>{const next=rows.map(item=>[...item]);next[rowIndex][cellIndex]=event.target.value;write(columns,next)}}/>)}</div>)}</div>
+ return <div className="v6-table-edit"><div>{columns.map((column,index)=><input key={index} aria-label={"Колонка "+(index+1)} defaultValue={column} onBlur={event=>{const next=[...columns];next[index]=event.target.value;write(next,rows)}}/>)}</div>{rows.map((row,rowIndex)=><div key={rowIndex}>{row.map((cell,cellIndex)=><input key={cellIndex} aria-label={"Ячейка "+(rowIndex+1)+"."+(cellIndex+1)} defaultValue={cell} onBlur={event=>{const next=rows.map(item=>[...item]);next[rowIndex][cellIndex]=event.target.value;write(columns,next)}}/>)}</div>)}</div>
 }
 
 function stripHtml(value:string){return value.replace(/<br\s*\/?>/gi,"\n").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()}

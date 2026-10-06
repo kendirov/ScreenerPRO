@@ -52,7 +52,7 @@ export async function GET(request: Request) {
   }
   if (format === "context" && isSharedStudio(state)) {
     const url = new URL(request.url);
-    return Response.json(buildStudioContext({ overview: state.overview, documents: state.documents }, {
+    return Response.json(buildStudioContext({ overview: state.overview, documents: state.documents, blocks: state.blocks }, {
       frameId: url.searchParams.get("frame"),
       objectIds: (url.searchParams.get("objects") || "").split(",").filter(Boolean),
     }), { headers: { "cache-control": "no-store" } });

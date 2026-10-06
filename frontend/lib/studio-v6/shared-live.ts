@@ -88,7 +88,9 @@ function objectExcerpt(object:StudioObject){
   const transcript=body.transcript?` · голос: ${plainText(String(body.transcript)).slice(0,240)}`:"";
   const scene=body.scene?.thesis?` · ${plainText(String(body.scene.thesis)).slice(0,180)}`:"";
   const text=plainText(String(body.html||body.title||body.caption||body.url||""));
-  return `${text?` — ${text.slice(0,180)}`:""}${transcript}${scene}`;
+  const diagram=object.kind==="diagram"?` · ${body.role||"step"}`:"";
+  const link=body.label&&body.fromId?` · ${body.fromId} → ${body.toId} (${body.label})`:"";
+  return `${text?` — ${text.slice(0,180)}`:""}${diagram}${link}${transcript}${scene}`;
 }
 
 function knowledgeLines(objects:StudioObject[]){
@@ -247,7 +249,7 @@ export function applySharedAction(state:SharedStudio,body:any){
     return {state:next,objectId:body.id,nodeId:body.nodeId,node:nodes[nodeIndex],unchanged:nodes.filter((node:any)=>node.id!==body.nodeId).map((node:any)=>({id:node.id,title:node.title,text:node.text}))};
   }
   if(action==="getStudioContext"){
-    return {state,context:buildStudioContext({overview:next.overview,documents:next.documents},body)};
+    return {state,context:buildStudioContext({overview:next.overview,documents:next.documents,blocks:next.blocks},body)};
   }
   if(action==="aiApplyMutation"){
     const mutations=Array.isArray(body.mutations)?body.mutations:[];
@@ -261,7 +263,7 @@ export function applySharedAction(state:SharedStudio,body:any){
       next.overview.activity.unshift(activityForMutation(object.id,object.semantic_path,String(body.summary||`AI: ${object.title}`),{actor,generation_run_id:runId,operation:mutations.some((item:any)=>item.object?.id===object.id)?"create":"update",source_object_ids:body.context?.objectIds||[],source_refs:body.sourceRefs||[]}));
     }
     next.overview.activity=next.overview.activity.slice(0,200);
-    const context=buildStudioContext({overview:next.overview,documents:next.documents},{...(body.context||{}),objectIds:applied.changed.map((object:StudioObject)=>object.id)});
+    const context=buildStudioContext({overview:next.overview,documents:next.documents,blocks:next.blocks},{...(body.context||{}),objectIds:applied.changed.map((object:StudioObject)=>object.id)});
     return {state:next,runId,focus_target_id:applied.changed[0]?.id||null,canonical_readback:true,context};
   }
   throw new Error("SHARED_ACTION_UNSUPPORTED");

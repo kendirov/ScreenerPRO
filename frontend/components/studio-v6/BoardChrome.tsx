@@ -47,6 +47,7 @@ export function BoardPalette({ tool, more, onTool, onMore, onCreate, onVoice }: 
       <button type="button" onClick={() => onTool("shape")}><Square size={14} />Область</button>
       <button type="button" onClick={() => onTool("erase")}><Minus size={14} />Ластик</button>
       <button type="button" onClick={() => onCreate("frame")}><Shapes size={14} />Комната</button>
+      <button type="button" onClick={() => onCreate("diagram")}><Shapes size={14} />Схема</button>
       <button type="button" onClick={() => onCreate("link")}><Link2 size={14} />Вставка</button>
       <button type="button" onClick={() => onCreate("chart")}>График</button>
       <button type="button" onClick={() => onCreate("file")}>Файл</button>
