@@ -1,48 +1,35 @@
-# START_HERE_FOR_AI — ScreenerPRO migration source
+# START HERE FOR AI — ScreenerPRO migration source
 
-This repository is a **migration source**, not the default TQS repository.
+This repository is a **legacy mixed migration source**. It is not an active project identity.
 
-## Mandatory routing
+Active projects are only:
 
-Before changing code, identify the actual product:
+- **System** -> target `kendirov/System`; Drive: `System / 00_START HERE — SYSTEM`
+- **Studio** -> target `kendirov/Studio`; Drive: `Studio / 00_START HERE — STUDIO`
+- **Intelligence** -> target `kendirov/Intelligence`; Drive: `Intelligence / 00_START HERE — INTELLIGENCE`
+- **Screener** -> target `kendirov/Screener`; Drive: `Screener / 00_START HERE — SCREENER`
+- **Academy** -> target `kendirov/Academy`; Drive: `Academy / 00_START HERE — ACADEMY`
+- **Trading** -> target `kendirov/Trading`; Drive: `Trading / 00_START HERE — TRADING`
+- **Family** -> target `kendirov/Family`; Drive: `Family / 00_START HERE — FAMILY`
 
-- **TQS Studio** -> target repository: `kendirov/tqs-studio` (private, to be created during migration). Drive canon: `Trading QS / 02_TQS STUDIO`.
-- **TQS Intelligence** -> target repository: `kendirov/tqs-intelligence` (private, clean-slate implementation; old code is reference only). Drive canon: `Trading QS / 03_TQS INTELLIGENCE`.
-- **TQS Cockpit** -> target repository: `kendirov/tqs-cockpit` (private, to be extracted from the current ScreenerPRO code). Drive canon: `Trading QS / 05_TQS COCKPIT`.
-- **TQS Academy** -> Drive-first content project: `Trading QS / 04_TQS ACADEMY`; no standalone code repo unless a real deployment/toolchain boundary appears.
-- **Trading** -> Drive-first knowledge/operations project: `Trading QS / 01_TRADING`.
-- **Artem OS / Node Agent** -> current source `kendirov/tqs-development-factory`, target name `kendirov/artem-os`. Never implement generic device automation here.
+## What ScreenerPRO is for now
 
-## ScreenerPRO status
-
-`kendirov/ScreenerPRO` is retained temporarily because current Studio and Cockpit code/deployments still originate here.
-
-New cross-product work is **not allowed** here.
-
-Use this repository only for:
-1. migration/extraction to the correct target project;
-2. urgent production fixes that cannot wait for migration;
+Allowed:
+1. migration/extraction;
+2. urgent repair of a runtime that still depends on this repository;
 3. read-only archaeology/reference.
 
-Do not add new Intelligence implementations here.
+Not allowed:
+- new cross-project product work;
+- new Intelligence implementation;
+- new System / Agent work;
+- treating ScreenerPRO as the default home for Studio or Screener.
 
-## Current migration order
+## Migration direction
 
-1. Create private target repos: `tqs-studio`, `tqs-intelligence`, `tqs-cockpit`.
-2. Extract Studio with history/evidence and repoint its deployment.
-3. Extract Cockpit and repoint its deployment.
-4. Start Intelligence cleanly in its own repo; selectively import only proven reusable components.
-5. Verify target repos and deployments.
-6. Archive ScreenerPRO. Do not delete it during migration.
+- extract current Studio code/runtime into `Studio`;
+- extract trader-facing market display/search/briefing surfaces into `Screener`;
+- start Intelligence as its own project and reuse old code only after explicit review;
+- archive ScreenerPRO only after cutover and verification.
 
-## Draft/prototype rule
-
-There is no global "draft repo". Each product uses its own `experiment/*` or feature branches plus preview deployments. Once accepted, merge inside that product repository.
-
-## Read next
-
-- `TQS_PLATFORM.md`
-- `AI_SESSION_STATE.md`
-- affected product Drive START/CURRENT_STATE
-
-Legacy `PROJECT_CONTEXT.md` is reference only.
+Legacy names such as TQS Studio, TQS Intelligence and Cockpit are retired.
