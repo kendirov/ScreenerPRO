@@ -1,88 +1,48 @@
-# START_HERE_FOR_AI — TQS / ScreenerPRO
+# START_HERE_FOR_AI — ScreenerPRO migration source
 
-This is the public-safe technical front door for AI agents working in this repository.
+This repository is a **migration source**, not the default TQS repository.
 
-> **Important:** `ScreenerPRO` is the historical repository name. The product is part of the broader **Trading QS / TQS** platform. Never choose this repo merely because it is familiar.
+## Mandatory routing
 
-## Read first
+Before changing code, identify the actual product:
 
-1. **`AGENTS.md`** — execution and routing rules.
-2. **`TQS_PLATFORM.md`** — platform/module boundaries and sources of truth.
-3. **`AI_SESSION_STATE.md`** — compact current repository checkpoint.
-4. **`PRODUCT_VISION.md`** — product/UX intent when relevant.
-5. **`PROJECT_CONTEXT.md`** — deeper legacy technical context only when needed.
-6. Module-specific docs for the affected surface.
+- **TQS Studio** -> target repository: `kendirov/tqs-studio` (private, to be created during migration). Drive canon: `Trading QS / 02_TQS STUDIO`.
+- **TQS Intelligence** -> target repository: `kendirov/tqs-intelligence` (private, clean-slate implementation; old code is reference only). Drive canon: `Trading QS / 03_TQS INTELLIGENCE`.
+- **TQS Cockpit** -> target repository: `kendirov/tqs-cockpit` (private, to be extracted from the current ScreenerPRO code). Drive canon: `Trading QS / 05_TQS COCKPIT`.
+- **TQS Academy** -> Drive-first content project: `Trading QS / 04_TQS ACADEMY`; no standalone code repo unless a real deployment/toolchain boundary appears.
+- **Trading** -> Drive-first knowledge/operations project: `Trading QS / 01_TRADING`.
+- **Artem OS / Node Agent** -> current source `kendirov/tqs-development-factory`, target name `kendirov/artem-os`. Never implement generic device automation here.
 
-For Screener/Cockpit UX:
-- `docs/INTRADAY_SCREENER_TERMINAL_VISION.md`
-- `docs/UI_NUMBERS_MINIMALISM.md`
-- `docs/MARKET_RADAR_FORMULAS.md`
+## ScreenerPRO status
 
-For Strategy Lab:
-- `docs/STRATEGY_LAB_TARGET.md`
-- `docs/ROUND_LEVELS_STRATEGY.md`
-- `docs/STRATEGY_SCANNER_ARCHITECTURE.md`
+`kendirov/ScreenerPRO` is retained temporarily because current Studio and Cockpit code/deployments still originate here.
 
-## Roles
+New cross-product work is **not allowed** here.
 
-- **Owner**: product intent and trader logic.
-- **Current ChatGPT/AI agent**: architect + researcher + default executor when connected tools can implement and verify the task.
-- **Cursor/Codex/other workers**: optional execution/escalation tools, never mandatory memory or routing layers.
+Use this repository only for:
+1. migration/extraction to the correct target project;
+2. urgent production fixes that cannot wait for migration;
+3. read-only archaeology/reference.
 
-Do not end a normal development task by merely writing a prompt for another worker when the current connected agent can implement and verify it.
+Do not add new Intelligence implementations here.
 
-## Repository ownership
+## Current migration order
 
-This repo currently owns:
-- TQS Screener/Cockpit code;
-- Strategy Lab surfaces implemented here;
-- Academy/material surfaces implemented here.
+1. Create private target repos: `tqs-studio`, `tqs-intelligence`, `tqs-cockpit`.
+2. Extract Studio with history/evidence and repoint its deployment.
+3. Extract Cockpit and repoint its deployment.
+4. Start Intelligence cleanly in its own repo; selectively import only proven reusable components.
+5. Verify target repos and deployments.
+6. Archive ScreenerPRO. Do not delete it during migration.
 
-This repo does **not** own generic device/computer automation. Historical TQS Desktop Agent material is reference only; current generic persistent execution is Artem OS in `kendirov/tqs-development-factory`.
+## Draft/prototype rule
 
-## Before changing code
+There is no global "draft repo". Each product uses its own `experiment/*` or feature branches plus preview deployments. Once accepted, merge inside that product repository.
 
-1. Confirm current branch/HEAD.
-2. Read `AI_SESSION_STATE.md`.
-3. Identify the owning TQS module in `TQS_PLATFORM.md`.
-4. Reuse an existing code path before creating a new app/service.
-5. Define observable acceptance.
-6. If the task depends on live market/runtime state, inspect that state instead of trusting old docs.
+## Read next
 
-## Verification
+- `TQS_PLATFORM.md`
+- `AI_SESSION_STATE.md`
+- affected product Drive START/CURRENT_STATE
 
-Never equate "commit/build succeeded" with product PASS.
-
-Minimum code gate:
-```
-pnpm -C frontend build
-```
-
-Also run targeted verification relevant to the affected module, then inspect actual runtime/UI for user-visible changes.
-
-## Important routes to protect
-
-- `/screener`
-- `/screener/stocks`
-- `/screener/futures`
-- `/screener/strategies`
-- Academy/material routes currently linked from the product
-- MOEX live/fallback behavior
-- shared layout/navigation
-
-## Local development
-
-```
-pnpm install
-pnpm -C frontend dev
-```
-
-Full setup and legacy cross-platform helpers remain documented in `PROJECT_CONTEXT.md` and `docs/WORKFLOW.md`. Load them only when the current task needs them.
-
-## Persistence
-
-After a meaningful change:
-- commit the technical delta;
-- run verification;
-- update `AI_SESSION_STATE.md` with only durable current state;
-- keep private Drive content/secrets out of this public repository.
+Legacy `PROJECT_CONTEXT.md` is reference only.
