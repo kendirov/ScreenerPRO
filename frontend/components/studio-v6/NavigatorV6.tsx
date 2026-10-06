@@ -74,6 +74,7 @@ function kindLabel(node:Node){
 function recentLine(summary:string){
   const text=String(summary||"").replace(/\s+/g," ").trim();
   if(!text||/\.(png|jpe?g|webp|gif)|блок lesson|lesson-chart|lesson-table/i.test(text))return "";
+  if(/:\s*\S{0,2}$/.test(text))return "";
   return text.length>78?text.slice(0,78)+"…":text;
 }
 function plural(count:number,one:string,few:string,many:string){
