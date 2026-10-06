@@ -72,3 +72,20 @@ After a substantial run:
 - if a verified Google Drive MCP connection exists, update the existing relevant CURRENT_STATE/DECISIONS/LESSONS and read it back;
 - otherwise emit a compact `PERSISTENCE_PACKET` for ChatGPT to verify against GitHub/runtime and sync to Drive;
 - never claim persistence or product PASS from self-report/build/deploy READY alone.
+
+
+## Studio owner-rejection hard gate — 2026-10-06
+
+The current Portal Rooms / Interactive Documents implementation has been explicitly rejected by the owner as far below the required product quality. It is a technical checkpoint, not a visual baseline to defend.
+
+Before any Studio work, restore the current private Studio canon and read the latest Product Contract / Execution rules, especially the active owner-rejection quality-reset and owner-review hard-gate sections. Do not ask the owner to restate the same product goals and do not require a new hand-written prompt for each iteration.
+
+Studio priorities are now ordered:
+1. **P0 canonical persistence** — production shared World/Documents must read/write from the real canonical store. `/api/studio/live` 404, blob 403, local-only truth or visible `Не записалось` are automatic FAIL.
+2. **Reference-first visual system** — Board and Documents major visual work must be implemented against explicit reference screens grounded in the accepted Trading Workspace design language, not another prose-only interpretation.
+3. **Coherent system implementation** — one design-token/component system for Board, Portal Rooms, Navigator/Search/Add/tools, Documents Editor/Handout and light/dark states.
+4. **Independent audit before owner** — fix meaningful self-fixable P0/P1 defects before any `OWNER REVIEW REQUIRED` handoff.
+
+Do not send the owner an `OWNER REVIEW REQUIRED` checkpoint while canonical persistence is broken, the result is localhost-only, visual target comparison has not been done, or major UX/visual defects remain. Build green, tests green, deployment READY and developer screenshots are necessary evidence but never sufficient acceptance.
+
+The visual layer may be substantially rewritten inside the existing Studio/repo if needed. Preserve proven semantic architecture and data contracts (One World, Rooms, Documents, stable IDs, AI context, history, structured voice/annotations) where they are sound; do not preserve weak presentation merely because it already exists.
