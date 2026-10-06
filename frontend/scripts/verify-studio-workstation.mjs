@@ -42,10 +42,11 @@ try {
   await page.locator(".v6-nav-overlay").waitFor();
   const after = await page.getByTestId("world-canvas-v6").boundingBox();
   if (!before || !after || Math.abs(before.width - after.width) > 1 || Math.abs(before.x - after.x) > 1) fail("navigator moved the canvas");
-  const row = page.locator(".v6-nav-line", { hasText: "ЗАНЯТИЕ 1" }).first();
-  await row.hover();
+  await page.locator(".v6-nav-card", { hasText: "Обучение" }).first().getByRole("button").first().click();
+  await page.locator(".v6-nav-card", { hasText: "Бесплатный курс" }).first().getByRole("button").first().click();
+  const row = page.locator(".v6-nav-card", { hasText: "Занятие 1" }).first();
   if (!(await row.getByRole("button", { name: "На доске" }).count())) fail("focus action missing");
-  if (!(await row.getByRole("button", { name: "Открыть документ" }).count())) fail("document action missing");
+  if (!(await row.getByRole("button", { name: "Документ" }).count())) fail("document action missing");
   await row.getByRole("button", { name: "На доске" }).click();
   await page.waitForFunction(() => !document.querySelector(".v6-nav-overlay"));
   console.log("PASS navigator");

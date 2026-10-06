@@ -121,10 +121,9 @@ try{
  const textBlock=p.locator('[data-block-id="lesson-t1"] .tiptap');
  await textBlock.click();await textBlock.fill(docMarker);await p.locator(".v6-doc-title").click();await wait(400);
  await p.locator(".v6-nav-rail").getByRole("button",{name:"Документы"}).click();
- await p.locator(".v6-nav-overlay").getByRole("button",{name:/Статья — Si/}).click();
+ await p.locator(".v6-doc-library").getByRole("button",{name:/Статья — Si/}).click();
  await p.getByRole("heading",{name:/Si: история ликвидности/}).first().waitFor();
- await p.locator(".v6-nav-rail").getByRole("button",{name:"Документы"}).click();
- await p.locator(".v6-nav-overlay").getByRole("button",{name:/Занятие 1 — Настройка/}).click();
+ await p.locator(".v6-doc-library").getByRole("button",{name:/Занятие 1 — Настройка/}).click();
  await p.getByText(docMarker,{exact:true}).waitFor();
  ok(await p.locator('[data-empty-media="image"]').count()>=1,"empty image is visible while editing");
  ok(await p.locator('[data-empty-media="video"]').count()>=1,"empty video is visible while editing");
@@ -141,7 +140,7 @@ try{
  await p.mouse.move(hb.x+8,hb.y+8);await p.mouse.down();await p.mouse.move(hb.x+8,hb.y+220,{steps:8});await p.mouse.up();await wait(500);
  const orderAfter=await p.locator("[data-block-id]").evaluateAll(nodes=>nodes.map(node=>node.getAttribute("data-block-id")));
  ok(orderBefore.join()!=orderAfter.join(),"blocks did not reorder");
- await p.getByRole("tab",{name:"Просмотреть"}).click();
+ await p.getByRole("tab",{name:"Раздатка"}).click();
  await p.getByTestId("document-preview").waitFor();
  ok(await p.locator(".v6-insert-line").count()===0,"preview still shows insertion");
  ok(await p.locator(".v6-doc-block-handle").count()===0,"preview still shows drag handles");
@@ -154,11 +153,12 @@ try{
  await share.getByRole("button",{name:"Сохранить PDF"}).waitFor();
  await share.getByRole("button",{name:"Опубликовать"}).waitFor();
  ok((await share.locator("strong").innerText()).includes("не опубликованы")||(await share.locator("strong").innerText()).includes("Черновик"),"publication state missing");
- await p.getByRole("button",{name:"Светлая тема"}).click();
+ await p.getByRole("button",{name:"Ещё"}).click();
+ await p.getByRole("button",{name:"Тёмная тема"}).click();
  await p.waitForFunction(()=>document.querySelector('[data-testid="tqs-studio-v6"]')?.getAttribute("data-theme")==="dark");
  await p.reload({waitUntil:"domcontentloaded"});
  await p.waitForFunction(()=>document.querySelector('[data-testid="tqs-studio-v6"]')?.getAttribute("data-theme")==="dark");
- await p.locator(".v6-nav-rail").getByRole("button",{name:"Мир"}).click();
+ await p.locator(".v6-nav-rail").getByRole("button",{name:"Доска"}).click();
  await p.getByTestId("world-canvas-v6").waitFor();
  console.log("PASS RF-F documents");
 

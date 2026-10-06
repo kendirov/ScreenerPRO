@@ -39,6 +39,7 @@ export function isSharedStudio(value:unknown):value is SharedStudio{
 }
 
 function slim(value:unknown,depth=0):unknown{
+  if(typeof value==="string"&&value.startsWith("data:audio")&&value.length<1500000)return value;
   if(typeof value==="string")return value.startsWith("data:")&&value.length>8000?"":value.length>12000?value.slice(0,12000):value;
   if(typeof value!=="object"||!value||depth>8)return value;
   if(Array.isArray(value))return value.slice(0,500).map(item=>slim(item,depth+1));

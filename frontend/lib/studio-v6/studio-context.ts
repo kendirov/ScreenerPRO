@@ -42,6 +42,7 @@ export function canonicalObject(o:StudioObject,all:StudioObject[],documents:Stud
     source_refs:o.relations||[],
     relations:o.relations||[],
     annotations:all.filter(x=>!x.hidden&&x.kind==="annotation"&&(x.body?.annotates===o.id||x.relations?.some((r:any)=>r.type==="annotates"&&r.targetId===o.id))).map(x=>x.id),
+    annotation_marks:all.filter(x=>!x.hidden&&x.kind==="annotation"&&(x.body?.annotates===o.id||x.relations?.some((r:any)=>r.type==="annotates"&&r.targetId===o.id))).map(x=>({id:x.id,kind:x.body?.annotationKind||"pen",points:x.body?.points||[],style:x.body?.style||null,bounds:{x:x.x,y:x.y,w:x.w,h:x.h},semantic_path:x.semantic_path,target_id:x.body?.annotates||o.id})),
     created_at:o.created_at||null,
     updated_at:o.updated_at||null,
     created_by:o.body?.provenance?.created_by||o.body?.created_by||null,

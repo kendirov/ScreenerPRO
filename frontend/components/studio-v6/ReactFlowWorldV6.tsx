@@ -2,7 +2,7 @@
 
 import {createContext,useCallback,useContext,useEffect,useMemo,useRef,useState} from "react";
 import {
- Background,BackgroundVariant,ConnectionLineType,Handle,MiniMap,NodeResizer,Position,ReactFlow,ReactFlowProvider,
+ Background,BackgroundVariant,ConnectionLineType,Handle,MiniMap,NodeResizer,Position,ReactFlow,ReactFlowProvider,ViewportPortal,
  applyNodeChanges,type Connection,type Edge,type Node,type NodeChange,type NodeProps,type ReactFlowInstance
 } from "@xyflow/react";
 import {BookOpen,Image as ImageIcon,Mic,Video as VideoIcon} from "lucide-react";
@@ -14,13 +14,15 @@ import {lodFromZoom,roomRole,type CreateKind} from "@/lib/studio-v6/workstation"
 import {RichEditor} from "./RichEditor";
 import {VisualScene} from "./VisualScene";
 import {classifyUrl,deepestFrame,descendants,escapeHtml} from "./world-model";
+import {annotationStyle,annotationTitle,relativePoints,strokeBounds} from "@/lib/studio-v6/annotations";
+import {AnnotationLayer,BoardPalette,VoiceCapture,type BoardTool} from "./BoardChrome";
 
 type Lod="far"|"mid"|"near";
 type InputProfile="mouse"|"trackpad";
 type FlowData={object:StudioObject;lod:Lod;depth:number;signatures:Array<{kind:string;title:string}>;childCount:number;zoom:number};
 type StudioNode=Node<FlowData,"workspace"|"content">;
 type ObjectPatch={id:string;patch:any;eventType?:string;summary?:string};
-type Props={objects:StudioObject[];selected:Set<string>;setSelected:(ids:Set<string>)=>void;focusId?:string|null;onObjectsLocal:(fn:(x:StudioObject[])=>StudioObject[])=>void;onPatch:(id:string,patch:any,eventType?:string,summary?:string)=>Promise<void>;onCommit?:(patches:ObjectPatch[])=>Promise<void>;onCreate:(kind:string,opts?:any)=>Promise<StudioObject>;onOpenDocument:(id:string)=>void;onAssemble?:(id:string)=>void;onRestore:(snapshot:StudioObject[])=>Promise<void>;notice:(s:string)=>void};
+type Props={objects:StudioObject[];selected:Set<string>;setSelected:(ids:Set<string>)=>void;focusId?:string|null;focusNonce?:number;onObjectsLocal:(fn:(x:StudioObject[])=>StudioObject[])=>void;onPatch:(id:string,patch:any,eventType?:string,summary?:string)=>Promise<void>;onCommit?:(patches:ObjectPatch[])=>Promise<void>;onCreate:(kind:string,opts?:any)=>Promise<StudioObject>;onOpenDocument:(id:string)=>void;onAssemble?:(id:string)=>void;onRestore:(snapshot:StudioObject[])=>Promise<void>;notice:(s:string)=>void};
 type MenuState={x:number;y:number;point:{x:number;y:number};id?:string;more?:boolean};
 
 type CanvasActions={
@@ -37,7 +39,7 @@ type CanvasActions={
 };
 const CanvasContext=createContext<CanvasActions|null>(null);
 const nodeTypes:any={workspace:WorkspaceNode,content:ContentNode};
-const VIEW_KEY="tqs-studio-v6-reactflow-viewport",PROFILE_KEY="tqs-studio-v6-rf-input-profile",CLIP_KEY="tqs-studio-clipboard";
+const VIEW_KEY="tqs-studio-v6-reactflow-viewport",PROFILE_KEY="tqs-studio-v6-rf-input-profile",CLIP_KEY="tqs-studio-clipboard",FOCUS_APPLIED="tqs-studio-v6-focus-nonce";
 
 function depthOf(o:StudioObject,byId:Map<string,StudioObject>){let d=0,p=o.parent_id,guard=0;while(p&&guard++<20){d++;p=byId.get(p)?.parent_id||null}return d}
 function flowPosition(o:StudioObject,byId:Map<string,StudioObject>){const p=o.parent_id?byId.get(o.parent_id):null;return p?{x:o.x-p.x,y:o.y-p.y}:{x:o.x,y:o.y}}
@@ -54,12 +56,12 @@ export function ReactFlowWorldV6(props:Props){
  return <ReactFlowProvider><ReactFlowWorldInner {...props}/></ReactFlowProvider>
 }
 
-function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCommit,onCreate,onOpenDocument,onAssemble,onRestore,notice}:Props){
- const [nodes,setNodes]=useState<StudioNode[]>([]),[zoom,setZoom]=useState(.65),[lod,setLod]=useState<Lod>("mid"),[profile,setProfileState]=useState<InputProfile>(()=>typeof window==="undefined"?"trackpad":inputProfile()),[arm,setArm]=useState<null|"text">(null),[menu,setMenu]=useState<MenuState|null>(null),[dragging,setDragging]=useState(false),[mapOpen,setMapOpen]=useState(false),[linking,setLinking]=useState(false);
- const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video";point?:{x:number;y:number}}|null>(null),focusSeen=useRef<string|null>(null),focusIdRef=useRef<string|null>(focusId||null),byIdRef=useRef<Map<string,StudioObject>>(new Map()),lastNativePaste=useRef(0),rightDrag=useRef<{x:number;y:number;vx:number;vy:number;z:number;moved:boolean;nodeId:string|null}|null>(null),draggingRef=useRef(false),zoomRef=useRef(zoom),objectsRef=useRef(objects),undoStack=useRef<StudioObject[][]>([]),redoStack=useRef<StudioObject[][]>([]),selectedRef=useRef(selected);
+function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,onPatch,onCommit,onCreate,onOpenDocument,onAssemble,onRestore,notice}:Props){
+ const [nodes,setNodes]=useState<StudioNode[]>([]),[zoom,setZoom]=useState(.65),[lod,setLod]=useState<Lod>("mid"),[profile,setProfileState]=useState<InputProfile>(()=>typeof window==="undefined"?"trackpad":inputProfile()),[arm,setArm]=useState<null|"text">(null),[menu,setMenu]=useState<MenuState|null>(null),[dragging,setDragging]=useState(false),[mapOpen,setMapOpen]=useState(false),[linking,setLinking]=useState(false),[tool,setTool]=useState<BoardTool>("select"),[moreTools,setMoreTools]=useState(false),[voiceAt,setVoiceAt]=useState<{x:number;y:number}|null>(null),[draft,setDraft]=useState<{kind:string;points:{x:number;y:number}[]}|null>(null);
+ const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video"|"file";point?:{x:number;y:number}}|null>(null),focusIdRef=useRef<string|null>(focusId||null),focusNonceRef=useRef(focusNonce),byIdRef=useRef<Map<string,StudioObject>>(new Map()),lastNativePaste=useRef(0),rightDrag=useRef<{x:number;y:number;vx:number;vy:number;z:number;moved:boolean;nodeId:string|null}|null>(null),draggingRef=useRef(false),zoomRef=useRef(zoom),objectsRef=useRef(objects),undoStack=useRef<StudioObject[][]>([]),redoStack=useRef<StudioObject[][]>([]),selectedRef=useRef(selected),toolRef=useRef(tool);
  const visibleObjects=useMemo(()=>objects.filter(o=>!o.hidden&&o.kind!=="annotation"),[objects]),byId=useMemo(()=>new Map(objects.map(o=>[o.id,o])),[objects]);
- focusIdRef.current=focusId||null;byIdRef.current=byId;objectsRef.current=objects;selectedRef.current=selected;
- const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-140)/Math.max(1,o.w),(r.height-150)/Math.max(1,o.h));const z=Math.min(.92,o.w<=1800&&o.h<=1300?Math.max(.66,fit):Math.max(.16,fit));focusSeen.current=id;void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height+56)/2-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
+ focusIdRef.current=focusId||null;focusNonceRef.current=focusNonce;byIdRef.current=byId;objectsRef.current=objects;selectedRef.current=selected;toolRef.current=tool;
+ const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-140)/Math.max(1,o.w),(r.height-150)/Math.max(1,o.h));const z=Math.min(.92,o.w<=1800&&o.h<=1300?Math.max(.66,fit):Math.max(.16,fit));void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height+56)/2-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
  const directChildren=useMemo(()=>{const m=new Map<string,StudioObject[]>();for(const o of visibleObjects){if(!o.parent_id)continue;const a=m.get(o.parent_id)||[];a.push(o);m.set(o.parent_id,a)}return m},[visibleObjects]);
  const remember=useCallback(()=>{undoStack.current.push(structuredClone(objectsRef.current));if(undoStack.current.length>40)undoStack.current.shift();redoStack.current=[]},[]);
  const restoreSnap=useCallback(async(stack:StudioObject[][],other:StudioObject[][])=>{const snap=stack.pop();if(!snap)return;other.push(structuredClone(objectsRef.current));await onRestore(snap);setMenu(null)},[onRestore]);
@@ -84,14 +86,14 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCom
  }),[objects,byId]);
 
  useEffect(()=>{const f=(e:Event)=>{const p=(e as CustomEvent).detail;if(p==="mouse"||p==="trackpad")setProfileState(p)};window.addEventListener("tqs-studio-input-profile",f);return()=>window.removeEventListener("tqs-studio-input-profile",f)},[]);
- const publishPlace=useCallback((viewport?:{x:number;y:number;zoom:number})=>{
-  const instance=rf.current;if(!instance)return;
-  const host=document.querySelector(".rf-studio-canvas") as HTMLElement|null,rect=host?.getBoundingClientRect();if(!rect)return;
-  const center=instance.screenToFlowPosition({x:rect.left+rect.width/2,y:rect.top+rect.height/2});
-  const frame=deepestFrame(center.x,center.y,objectsRef.current.filter(o=>!o.hidden));
-  const path=frame?.semantic_path||"Мир";
-  window.dispatchEvent(new CustomEvent("tqs-studio-place",{detail:{path,id:frame?.id||null,zoom:viewport?.zoom??zoomRef.current}}));
- },[]);
+ const applyExplicitFocus=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,nonce:number)=>{
+  const applied=Number(sessionStorage.getItem(FOCUS_APPLIED)||"0");
+  const id=focusIdRef.current;
+  if(!id||nonce<=applied)return false;
+  if(!focusCanonical(instance,id))return false;
+  sessionStorage.setItem(FOCUS_APPLIED,String(nonce));
+  return true;
+ },[focusCanonical]);
  const persistResize=useCallback((id:string,p:{x:number;y:number;width:number;height:number})=>{const n=nodesRef.current.find(x=>x.id===id);if(!n)return;let base={x:0,y:0};if(n.parentId)base=absoluteFor(n.parentId,nodesRef.current);remember();void onPatch(id,{x:base.x+p.x,y:base.y+p.y,w:p.width,h:p.height},"resize","Размер изменён")},[onPatch,remember]);
  const quickAdd=useCallback((frameId:string,kind:string)=>{
   const frame=byId.get(frameId);if(!frame)return;
@@ -114,6 +116,8 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCom
   }
   const parentObj=parentId?byId.get(parentId):null,newPath=parentObj?parentObj.semantic_path+"/"+o.title:o.title;
   const patches:ObjectPatch[]=[{id:o.id,patch:{x:abs.x,y:abs.y,parent_id:parentId,semantic_path:newPath,relations:[...(o.relations||[]).filter((r:any)=>r.type!=="contains"),...(parentId?[{type:"contains",targetId:parentId}]:[])]},eventType:"semantic_move",summary:"Объект перемещён"}];
+  const dx=abs.x-o.x,dy=abs.y-o.y;
+  if(dx||dy){for(const mark of objectsRef.current){if(mark.hidden||mark.kind!=="annotation")continue;const target=mark.body?.annotates||mark.relations?.find((relation:any)=>relation.type==="annotates")?.targetId;if(target===o.id)patches.push({id:mark.id,patch:{x:mark.x+dx,y:mark.y+dy},eventType:"semantic_move",summary:"Пометка переехала вместе с объектом"})}}
   if(o.kind==="frame"){
    for(const id of descendants(o.id,objects)){const child=byId.get(id);if(!child)continue;const p=absoluteFor(id,now);patches.push({id,patch:{x:p.x,y:p.y},eventType:"semantic_move",summary:"Перемещено вместе с комнатой"})}
   }
@@ -125,7 +129,9 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCom
   const p=point||rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600};
   if(kind==="note"){remember();await onCreate("text",{point:p,title:"Заметка",body:{html:"<p></p>",accent:"amber",autoEdit:true}});setMenu(null);return}
   if(kind==="arrow"){setLinking(true);setMenu(null);return}
-  const extra=kind==="frame"?{title:"Новая комната",w:1320,h:820,body:{workspaceCard:true}}:kind==="text"?{body:{html:"<p></p>",autoEdit:true}}:kind==="chart"?{title:"Si",body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:kind==="voice"?{w:280,h:52,title:"Голосовая заметка",body:{title:"Голосовая заметка",duration:"0:00"}}:kind==="task"?{w:320,h:44,title:"Новая задача",body:{title:"Новая задача",done:false}}:{};
+  if(kind==="voice"){setVoiceAt(p);setMenu(null);return}
+  if(kind==="image"||kind==="video"||kind==="file"){fileTarget.current={kind:kind==="video"?"video":kind==="file"?"file":"image",point:p};const el=fileInput.current;if(el){el.accept=kind==="image"?"image/*":kind==="video"?"video/*":"*/*";el.value="";el.click()}setMenu(null);return}
+  const extra=kind==="frame"?{title:"Новая комната",w:1320,h:820,body:{workspaceCard:true}}:kind==="text"?{body:{html:"<p></p>",autoEdit:true}}:kind==="chart"?{title:"Si",body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:kind==="task"?{w:320,h:44,title:"Новая задача",body:{title:"Новая задача",done:false}}:{};
   remember();await onCreate(kind,{point:p,...extra});setMenu(null)
  },[onCreate,remember]);
 
@@ -167,17 +173,17 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCom
  };const history=(e:Event)=>{const dir=(e as CustomEvent).detail;void restoreSnap(dir==="redo"?redoStack.current:undoStack.current,dir==="redo"?undoStack.current:redoStack.current)};
  const fit=()=>fitWorld();
  const create=(e:Event)=>{const kind=String((e as CustomEvent).detail||"text") as CreateKind;void addAt(kind)};
+ const toolEvent=(e:Event)=>{const name=String((e as CustomEvent).detail||"");if(name==="select"||name==="hand"||name==="text"||name==="pen"||name==="marker"||name==="arrow"||name==="shape"||name==="erase"){setTool(name as BoardTool);setArm(name==="text"?"text":null)}if(name==="voice")setVoiceAt(rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600})};
  const board={canUndo:()=>undoStack.current.length>0,canRedo:()=>redoStack.current.length>0,undo:()=>void restoreSnap(undoStack.current,redoStack.current),redo:()=>void restoreSnap(redoStack.current,undoStack.current)};
  (window as any).__tqsBoardHistory=board;
- window.addEventListener("keydown",key,true);window.addEventListener("tqs-studio-history",history);window.addEventListener("tqs-studio-fit",fit);window.addEventListener("tqs-studio-create",create);
- return()=>{delete (window as any).__tqsBoardHistory;window.removeEventListener("keydown",key,true);window.removeEventListener("tqs-studio-history",history);window.removeEventListener("tqs-studio-fit",fit);window.removeEventListener("tqs-studio-create",create)}
+ window.addEventListener("keydown",key,true);window.addEventListener("tqs-studio-history",history);window.addEventListener("tqs-studio-fit",fit);window.addEventListener("tqs-studio-create",create);window.addEventListener("tqs-studio-tool",toolEvent);
+ return()=>{delete (window as any).__tqsBoardHistory;window.removeEventListener("keydown",key,true);window.removeEventListener("tqs-studio-history",history);window.removeEventListener("tqs-studio-fit",fit);window.removeEventListener("tqs-studio-create",create);window.removeEventListener("tqs-studio-tool",toolEvent)}
  },[selected,byId,onPatch,copySelection,restoreSnap,addAt]);
  const consumeClipboard=useCallback((data:DataTransfer|null)=>{if(!data)return false;const files=Array.from(data.files);if(files.length){lastNativePaste.current=performance.now();void handleClipboardFiles(files);return true}const text=data.getData("text/plain")||"";if(text){lastNativePaste.current=performance.now();void classify(text);return true}try{const stored=localStorage.getItem(CLIP_KEY);if(stored){lastNativePaste.current=performance.now();void classify(stored);return true}}catch{}return false},[classify,handleClipboardFiles]);
  useEffect(()=>{const handler=(e:ClipboardEvent)=>{if(editableTarget(e.target))return;if(consumeClipboard(e.clipboardData)){e.preventDefault();e.stopPropagation()}};const keydown=(e:KeyboardEvent)=>{if(editableTarget(e.target)||!(e.ctrlKey||e.metaKey)||e.key.toLowerCase()!=="v")return;setTimeout(()=>{if(performance.now()-lastNativePaste.current<180)return;void navigator.clipboard?.readText().then(text=>{if(text)void classify(text)}).catch(()=>{try{const stored=localStorage.getItem(CLIP_KEY);if(stored)void classify(stored)}catch{}})},0)};window.addEventListener("paste",handler,true);window.addEventListener("keydown",keydown,true);return()=>{window.removeEventListener("paste",handler,true);window.removeEventListener("keydown",keydown,true)}},[classify,consumeClipboard]);
  useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.key==="Alt")setLinking(true)};const up=(e:KeyboardEvent)=>{if(e.key==="Alt")setLinking(false)};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up)}},[]);
 
- useEffect(()=>{if(!focusId||!rf.current||focusSeen.current===focusId)return;focusCanonical(rf.current,focusId)},[focusId,nodes,focusCanonical]);
- useEffect(()=>{if(!focusId)focusSeen.current=null},[focusId]);
+ useEffect(()=>{if(!rf.current)return;applyExplicitFocus(rf.current,focusNonce)},[focusNonce,focusId,nodes,applyExplicitFocus]);
 
  const publishOperator=(intent:string,point:{x:number;y:number}|null,objectId?:string)=>{
   const o=objectId?byId.get(objectId):undefined,frame=o?.kind==="frame"?o:o?.parent_id?byId.get(o.parent_id):undefined,doc=objects.find(x=>x.kind==="documentRef"&&(x.id===objectId||x.parent_id===frame?.id)),vp=rf.current?.getViewport();
@@ -214,11 +220,32 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCom
   });
  };
 
+ const drawing=tool==="pen"||tool==="marker"||tool==="arrow"||tool==="shape";
+ const commitStroke=async(kind:string,points:{x:number;y:number}[])=>{
+  if(points.length<2)return;
+  const box=strokeBounds(points),rel=relativePoints(points,box),cx=box.x+box.w/2,cy=box.y+box.h/2;
+  const parent=deepestFrame(cx,cy,objectsRef.current.filter(object=>!object.hidden));
+  const target=objectsRef.current.filter(object=>!object.hidden&&object.kind==="image"&&cx>=object.x&&cx<=object.x+object.w&&cy>=object.y&&cy<=object.y+object.h).sort((a,b)=>a.w*a.h-b.w*b.h)[0];
+  const style=annotationStyle(kind);
+  remember();
+  await onCreate("annotation",{point:{x:box.x,y:box.y},w:Math.max(box.w,12),h:Math.max(box.h,12),title:annotationTitle(kind),parent_id:parent?.id??null,semantic_path:(parent?.semantic_path||"Мир")+"/"+annotationTitle(kind),body:{annotationKind:kind==="shape"?"shape":kind,shape:kind==="shape"?"rect":undefined,points:kind==="shape"?[{x:0,y:0},{x:box.w,y:box.h}]:rel,style,annotates:target?.id||null,provenance:{created_by:"owner",operation:"annotate",at:new Date().toISOString()}},relations:[...(parent?[{type:"contains",targetId:parent.id}]:[]),...(target?[{type:"annotates",targetId:target.id}]:[])],status:null});
+ };
+ const draftRef=useRef<{kind:string;points:{x:number;y:number}[]}|null>(null);
+ const drawPoint=(event:React.PointerEvent)=>rf.current?.screenToFlowPosition({x:event.clientX,y:event.clientY})||{x:event.clientX,y:event.clientY};
+ const startDraw=(event:React.PointerEvent<HTMLDivElement>)=>{if(!drawing)return;event.preventDefault();event.currentTarget.setPointerCapture(event.pointerId);const next={kind:tool,points:[drawPoint(event)]};draftRef.current=next;setDraft(next)};
+ const moveDraw=(event:React.PointerEvent<HTMLDivElement>)=>{const current=draftRef.current;if(!current)return;const next={...current,points:[...current.points,drawPoint(event)]};draftRef.current=next;setDraft(next)};
+ const endDraw=()=>{const stroke=draftRef.current;draftRef.current=null;setDraft(null);if(stroke)void commitStroke(stroke.kind,stroke.points)};
+ const saveVoice=async(payload:{dataUrl:string;filename:string;mimeType:string;durationSec:number;durationLabel:string;transcript:string;waveform:number[]})=>{
+  const asset=await studioAction<any>("attachAsset",{dataUrl:payload.dataUrl,filename:payload.filename});
+  remember();
+  await onCreate("voice",{point:voiceAt||{x:900,y:600},w:340,h:payload.transcript?128:72,title:"Голосовая заметка",body:{title:"Голосовая заметка",duration:payload.durationLabel,durationSec:payload.durationSec,transcript:payload.transcript,transcriptStatus:payload.transcript?"ready":"unavailable",waveform:payload.waveform,assetId:asset.asset.id,previewUrl:asset.signedUrl||payload.dataUrl,mimeType:payload.mimeType,provenance:{created_by:"owner",operation:"voice_record",at:new Date().toISOString()}},status:payload.transcript?"NEW":"TRANSCRIPT_UNAVAILABLE"});
+  setVoiceAt(null);
+ };
  const selectedObject=menu?.id?byId.get(menu.id):undefined;
  const multi=menu?.id?selected.size>1&&selected.has(menu.id):false;
 
  return <CanvasContext.Provider value={actions}>
-  <section className={["rf-studio-canvas",arm==="text"?"is-text-arm":"",linking?"is-linking":""].filter(Boolean).join(" ")} data-testid="world-canvas-v6" data-lod={lod} tabIndex={0} onDoubleClick={e=>{const target=e.target as HTMLElement;if(target.classList.contains("react-flow__pane")){setArm(null);void addAt("text",rf.current?.screenToFlowPosition({x:e.clientX,y:e.clientY}))}}} onPointerDown={e=>{if(e.currentTarget===e.target)e.currentTarget.focus()}} onPointerDownCapture={e=>{if(e.button!==2)return;const vp=rf.current?.getViewport();if(!vp)return;rightDrag.current={x:e.clientX,y:e.clientY,vx:vp.x,vy:vp.y,z:vp.zoom,moved:false,nodeId:(e.target as HTMLElement).closest?.(".react-flow__node")?.getAttribute("data-id")||null}}} onPointerUpCapture={e=>{if(e.button!==2)return;const g=rightDrag.current;rightDrag.current=null;if(!g||g.moved)return;const host=(e.currentTarget as HTMLElement).getBoundingClientRect(),x=e.clientX-host.left,y=e.clientY-host.top;if(g.nodeId){if(!selected.has(g.nodeId))setSelected(new Set([g.nodeId]));setMenu({x,y,point:absoluteFor(g.nodeId,nodesRef.current),id:g.nodeId});return}setMenu({x,y,point:rf.current?.screenToFlowPosition({x:e.clientX,y:e.clientY})||{x:0,y:0}})}} onPointerMove={e=>{pointer.current={x:e.clientX,y:e.clientY}}} onPointerMoveCapture={e=>{const g=rightDrag.current;if(!g)return;const dx=e.clientX-g.x,dy=e.clientY-g.y;if(!g.moved&&Math.hypot(dx,dy)<=5)return;g.moved=true;void rf.current?.setViewport({x:g.vx+dx,y:g.vy+dy,zoom:g.z})}} onPasteCapture={e=>{if(consumeClipboard(e.clipboardData)){e.preventDefault();e.stopPropagation()}}} onDragOver={e=>{if(Array.from(e.dataTransfer?.types||[]).includes("Files"))e.preventDefault()}} onDrop={e=>{if(e.dataTransfer?.files?.length){e.preventDefault();pointer.current={x:e.clientX,y:e.clientY};void handleClipboardFiles(Array.from(e.dataTransfer.files))}}}>
+  <section className={["rf-studio-canvas",arm==="text"?"is-text-arm":"",linking?"is-linking":"",tool==="hand"?"is-hand":"",drawing?"is-draw":""].filter(Boolean).join(" ")} data-testid="world-canvas-v6" data-lod={lod} data-tool={tool} tabIndex={0} onDoubleClick={e=>{const target=e.target as HTMLElement;if(target.classList.contains("react-flow__pane")){setArm(null);void addAt("text",rf.current?.screenToFlowPosition({x:e.clientX,y:e.clientY}))}}} onPointerDown={e=>{if(e.currentTarget===e.target)e.currentTarget.focus()}} onPointerDownCapture={e=>{if(e.button!==2)return;const vp=rf.current?.getViewport();if(!vp)return;rightDrag.current={x:e.clientX,y:e.clientY,vx:vp.x,vy:vp.y,z:vp.zoom,moved:false,nodeId:(e.target as HTMLElement).closest?.(".react-flow__node")?.getAttribute("data-id")||null}}} onPointerUpCapture={e=>{if(e.button!==2)return;const g=rightDrag.current;rightDrag.current=null;if(!g||g.moved)return;const host=(e.currentTarget as HTMLElement).getBoundingClientRect(),x=e.clientX-host.left,y=e.clientY-host.top;if(g.nodeId){if(!selected.has(g.nodeId))setSelected(new Set([g.nodeId]));setMenu({x,y,point:absoluteFor(g.nodeId,nodesRef.current),id:g.nodeId});return}setMenu({x,y,point:rf.current?.screenToFlowPosition({x:e.clientX,y:e.clientY})||{x:0,y:0}})}} onPointerMove={e=>{pointer.current={x:e.clientX,y:e.clientY}}} onPointerMoveCapture={e=>{const g=rightDrag.current;if(!g)return;const dx=e.clientX-g.x,dy=e.clientY-g.y;if(!g.moved&&Math.hypot(dx,dy)<=5)return;g.moved=true;void rf.current?.setViewport({x:g.vx+dx,y:g.vy+dy,zoom:g.z})}} onPasteCapture={e=>{if(consumeClipboard(e.clipboardData)){e.preventDefault();e.stopPropagation()}}} onDragOver={e=>{if(Array.from(e.dataTransfer?.types||[]).includes("Files"))e.preventDefault()}} onDrop={e=>{if(e.dataTransfer?.files?.length){e.preventDefault();pointer.current={x:e.clientX,y:e.clientY};void handleClipboardFiles(Array.from(e.dataTransfer.files))}}}>
    <input ref={fileInput} className="v6-file-picker" type="file" tabIndex={-1} onChange={e=>{const file=e.currentTarget.files?.[0],target=fileTarget.current;fileTarget.current=null;if(!file||!target)return;void (async()=>{const dataUrl=await fileToDataUrl(file),a=await studioAction<any>("attachAsset",{dataUrl,filename:file.name}),frame=target.frameId?byId.get(target.frameId):null,p=target.point||(frame?{x:frame.x+140,y:frame.y+180}:rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600});remember();await onCreate(target.kind,{point:p,title:file.name,body:{assetId:a.asset.id,previewUrl:a.signedUrl||dataUrl,mimeType:file.type,filename:file.name}})})()}}/>
    <ReactFlow<StudioNode,Edge>
     nodes={nodes} edges={edges} nodeTypes={nodeTypes}
@@ -228,22 +255,26 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,onPatch,onCom
     onNodeClick={(_,node)=>{setArm(null);const active=document.activeElement as HTMLElement|null;if(active&&active.closest?.(".react-flow__node")?.getAttribute("data-id")!==node.id)active.blur();setSelected(new Set([node.id]))}}
     onConnect={c=>void connect(c)}
     onNodesDelete={ns=>{for(const n of ns)void remove(n.id)}}
-    onInit={instance=>{rf.current=instance;const id=focusIdRef.current;if(id)requestAnimationFrame(()=>{if(!focusCanonical(instance,id))instance.setViewport(initialViewport())});else instance.setViewport(initialViewport());requestAnimationFrame(()=>publishPlace())}}
+    onInit={instance=>{rf.current=instance;const saved=initialViewport();if(!applyExplicitFocus(instance,focusNonceRef.current))instance.setViewport(saved)}}
     onMove={(_,v)=>{zoomRef.current=v.zoom;const next=lodFromZoom(v.zoom);setLod(prev=>prev===next?prev:next);const pct=Math.round(v.zoom*100);setZoom(z=>Math.round(z*100)===pct?z:v.zoom)}}
-    onMoveEnd={(_,v)=>{zoomRef.current=v.zoom;setZoom(v.zoom);setLod(lodFromZoom(v.zoom));publishPlace(v);try{localStorage.setItem(VIEW_KEY,JSON.stringify(v))}catch{}}}
+    onMoveEnd={(_,v)=>{zoomRef.current=v.zoom;setZoom(v.zoom);setLod(lodFromZoom(v.zoom));try{localStorage.setItem(VIEW_KEY,JSON.stringify(v))}catch{}}}
     onPaneContextMenu={e=>{e.preventDefault()}}
     onNodeContextMenu={e=>{e.preventDefault()}}
     onPaneClick={e=>{setMenu(null);const active=document.activeElement as HTMLElement|null;if(active&&active!==e.target&&typeof active.blur==="function")active.blur();if(arm!=="text")return;const p=rf.current?.screenToFlowPosition({x:e.clientX,y:e.clientY})||{x:900,y:600};setArm(null);publishOperator("create_here",p);void addAt("text",p)}}
     minZoom={.08} maxZoom={2.4}
     zoomOnScroll={profile==="mouse"} zoomOnPinch zoomOnDoubleClick={false} panOnScroll={profile==="trackpad"} panOnScrollSpeed={.75}
-    panOnDrag={[1]} panActivationKeyCode="Space" selectionOnDrag selectionMode={"partial" as any}
+    panOnDrag={tool==="hand"?[0,1]:drawing?false:[1]} panActivationKeyCode="Space" selectionOnDrag={tool==="select"&&!drawing} nodesDraggable={tool==="select"||tool==="hand"} selectionMode={"partial" as any}
     multiSelectionKeyCode={["Control","Meta"]} deleteKeyCode={["Delete","Backspace"]}
     connectionLineType={ConnectionLineType.SmoothStep}
     fitViewOptions={{padding:.12,maxZoom:.24}}
    >
     <Background variant={BackgroundVariant.Dots} gap={28} size={1}/>
+    <ViewportPortal><AnnotationLayer objects={objects} selectedId={[...selected][0]||null} draft={draft} erasing={tool==="erase"} onSelect={id=>setSelected(new Set([id]))} onErase={id=>{if(toolRef.current==="erase")void remove(id)}}/></ViewportPortal>
     {mapOpen&&<MiniMap pannable zoomable position="bottom-left" maskColor="rgba(20,22,24,.55)" nodeColor={n=>n.type==="workspace"?"#e0b15a":"#c8c2b6"}/>}
    </ReactFlow>
+   {drawing&&<div className="rf-draw-capture" onPointerDown={startDraw} onPointerMove={moveDraw} onPointerUp={endDraw}/>}
+   <BoardPalette tool={tool} more={moreTools} onTool={next=>{setTool(next);setArm(next==="text"?"text":null);setMoreTools(false)}} onMore={setMoreTools} onCreate={kind=>void addAt(kind)} onVoice={()=>setVoiceAt(rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600})}/>
+   {voiceAt&&<VoiceCapture onCancel={()=>setVoiceAt(null)} onSave={saveVoice}/>}
    <div className="rf-zoombar" data-studio-ui data-testid="studio-zoombar">
     <button aria-label="Отдалить" onClick={()=>void rf.current?.zoomOut({duration:160})}>−</button>
     <span>{Math.round(zoom*100)}%</span>
@@ -390,15 +421,20 @@ function Task({object:o}:{object:StudioObject}){
 }
 
 function Voice({object:o}:{object:StudioObject}){
- const [open,setOpen]=useState(false),[playing,setPlaying]=useState(false);
- const bars=Array.from({length:18},(_,i)=>8+((o.title.charCodeAt(i%o.title.length)||12)%18));
- return <div className="rf-voice">
-  <button className="nodrag nopan" aria-label={playing?"Пауза":"Слушать"} onClick={()=>setPlaying(v=>!v)}>{playing?"❚❚":"▶"}</button>
-  <span className="rf-wave" aria-hidden>{bars.map((h,i)=><i key={i} style={{height:h}}/>)}</span>
-  <b>{o.body?.duration||"0:12"}</b>
+ const audio=useRef<HTMLAudioElement|null>(null);
+ const [url,setUrl]=useState(o.body?.previewUrl||"");
+ const [playing,setPlaying]=useState(false);
+ useEffect(()=>{if(!url&&o.body?.assetId)void studioAction<any>("getAssetUrl",{assetId:o.body.assetId}).then(result=>setUrl(result.signedUrl||"")).catch(()=>{})},[url,o.body?.assetId]);
+ const bars=Array.isArray(o.body?.waveform)&&o.body.waveform.length?o.body.waveform.slice(0,24):Array.from({length:18},(_,index)=>8+((o.title.charCodeAt(index%o.title.length)||12)%18));
+ const transcript=String(o.body?.transcript||"");
+ const toggle=()=>{const node=audio.current;if(!node)return;if(node.paused)void node.play().then(()=>setPlaying(true)).catch(()=>setPlaying(false));else{node.pause();setPlaying(false)}};
+ return <div className="rf-voice" data-voice-id={o.id}>
+  {url&&<audio ref={audio} src={url} preload="metadata" onEnded={()=>setPlaying(false)}/>}
+  <button className="nodrag nopan" aria-label={playing?"Пауза":"Слушать"} onClick={toggle} disabled={!url}>{playing?"❚❚":"▶"}</button>
+  <span className="rf-wave" aria-hidden>{bars.map((height:number,index:number)=><i key={index} style={{height}}/>)}</span>
+  <b>{o.body?.duration||"—"}</b>
   <strong>{o.body?.title||o.title}</strong>
-  <button className="nodrag nopan rf-voice-more" onClick={()=>setOpen(v=>!v)}>{open?"Скрыть":"Текст"}</button>
-  {open&&<p>{o.body?.transcript||o.body?.status||"Расшифровка появится после записи."}</p>}
+  <p>{transcript||(o.body?.transcriptStatus==="unavailable"?"Расшифровка недоступна в этом браузере.":"Расшифровка появится после записи.")}</p>
  </div>
 }
 
