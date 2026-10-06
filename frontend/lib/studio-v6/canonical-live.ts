@@ -164,12 +164,12 @@ async function loadModel(): Promise<Model> {
     studioCall<any>("getWorldOverview"),
     studioCall<any[]>("listDocuments"),
   ]);
-  const documents = (documentsRaw || []).map(shapeDocument);
+  const documents: StudioDocument[] = (documentsRaw || []).map(shapeDocument);
   const bundles = await Promise.all(documents.map(async document => {
     const bundle = await studioCall<any>("getDocument", { documentId: document.id });
     return (bundle?.blocks || []).map(shapeBlock);
   }));
-  const objects = (overviewRaw?.objects || []).map(shapeObject);
+  const objects: StudioObject[] = (overviewRaw?.objects || []).map(shapeObject);
   const envelope = objects.find(object => object.id === ENVELOPE_ID) || null;
   return {
     overview: {
