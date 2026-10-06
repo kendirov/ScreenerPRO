@@ -1,70 +1,75 @@
 # AI_SESSION_STATE — TQS / ScreenerPRO
 
-## Canonical status
+## Active development method
 
-- Default branch: `main`
-- TQS Studio owner-review prototype branch: `chatgpt/tqs-studio-prototype-si-2026-10-02`
-- Prototype runtime commit verified before this checkpoint: `6c3023355ad06858888f96900c4f1d449cba85a5`
-- Prototype route: `/studio-prototype`
-- Status: **TECHNICAL PASS / OWNER REVIEW REQUIRED**
-- Production Studio implementation remains blocked until the owner reviews this prototype.
+Owner experiment active since 2026-10-05:
+- ChatGPT = product architect / researcher / critic / independent verifier / Cursor-prompt compressor.
+- Cursor = primary implementation executor inside this repository.
+- Durable continuity = Google Drive canon + GitHub repo state + runtime evidence + repo-level `.cursor/rules` / `AGENTS.md`.
+- Cursor User Rules / old chat history are not canonical memory.
 
-## TQS Studio prototype scope now implemented
+See `AGENTS.md` and `.cursor/rules/artem-cursor-first.mdc`.
 
-This is deliberately an isolated prototype inside the existing TQS/ScreenerPRO frontend. It does **not** introduce production Studio DB schema, AI connector, publishing backend, Academy integration, or a second repo/backend.
+## Current TQS Studio mission
 
-The Si demo page currently supports:
-- add block;
-- inline text editing;
-- drag/reorder;
-- block widths Full / 2/3 / 1/2 / 1/3 and multi-column composition;
-- hide from Preview;
-- Edit / Preview modes;
-- local browser persistence after reload;
-- Reset demo;
-- responsive narrow layout with vertical stacking.
+- Existing mission/version: **TQS Studio V6**. Do not create V7/new repo/new DB for the current outcome.
+- Active branch: `chatgpt/tqs-studio-v6-productization-2026-10-04`.
+- Last verified owner-facing code commit before Cursor-rule/docs updates: `880312abaca941c96163620159ffeac8a22010ff`.
+- Canonical runtime URL: `https://tqs-studio.vercel.app/studio`.
+- Verified Vercel deployment for that code: `dpl_8eEb7dFXNWL7WaadtHufwmDm4LB4`, READY.
+- Current branch also contains docs/rules-only commits that do not change Studio runtime behavior; fresh-read exact HEAD before implementation.
 
-Visual direction is a quiet monochrome editorial workspace, intentionally avoiding dashboard/card-grid/AI-look patterns.
+## Product direction
 
-## Verification evidence
+Keep:
+- one World + Documents product model;
+- React Flow spatial World;
+- nested Project -> Course -> Lesson workspaces;
+- Documents as linear authored/publication surface;
+- Supabase as canonical shared Studio state, local cache/outbox for resilience;
+- stable block/object IDs and real browser/runtime acceptance.
 
-Exact prototype source was built in an isolated WORK worktree with:
+Current owner priority:
+- polish Documents navigation/library, explicit Edit vs Preview, coherent Share/Publish/PDF, cooler blue-neutral visual direction;
+- preserve useful block editor mechanics;
+- add/prepare first-class Interactive/Data blocks;
+- make GPT a structured co-author through document/block APIs rather than a permanent wide sidebar.
 
+Google Drive `08_CURRENT STATE — DECISIONS — LESSONS` is the owner/product canon for the latest accepted decisions.
+
+## Cursor execution contract
+
+Before editing:
+1. read `AGENTS.md`, applicable `.cursor/rules`, `START_HERE_FOR_AI.md`, `TQS_PLATFORM.md`, this file;
+2. verify exact branch/HEAD and dirty state;
+3. inspect affected implementation/tests/runtime before choosing internals;
+4. reuse existing architecture/components and mature maintained solutions.
+
+After implementation:
+1. run targeted tests/build and real browser/runtime checks for user-visible behavior;
+2. self-repair real failures;
+3. record exact branch/SHA + verification here;
+4. update existing Google Drive CURRENT_STATE/LESSONS only with a verified Drive connector and readback;
+5. if Drive is unavailable, emit `PERSISTENCE_PACKET` for ChatGPT to verify and sync.
+
+## PERSISTENCE_PACKET fallback
+
+```text
+PERSISTENCE_PACKET
+project:
+repo:
+branch:
+exact_sha:
+outcome:
+implemented:
+verified_evidence:
+product_decisions:
+known_defects_or_blockers:
+positive_practice:
+negative_practice:
+next_action:
 ```
-pnpm -C frontend build
-```
 
-Build completed successfully and emitted `/studio-prototype` as a static route.
+## Verification rule
 
-Real Playwright browser interaction QA on WORK passed the complete acceptance flow:
-- default 10-block workspace;
-- Inspector selection;
-- width change to 1/2;
-- drag/reorder with DOM-order readback;
-- two half-width blocks side-by-side;
-- add block + inline edit;
-- hide image from Preview;
-- Preview without Inspector/add/drag editor chrome;
-- reload persistence of added block, edited text, width, hidden state and order;
-- Reset demo back to default state;
-- 390px viewport with zero horizontal overflow and vertical block stacking.
-
-QA process exit code: `0`.
-Screenshots captured for desktop Edit, desktop Preview and 390px narrow state.
-
-## Boundary / next step
-
-Stop here. Do not build the production TQS Studio architecture or backend yet.
-
-Next allowed action is owner review of the prototype. After review, record one of:
-- KEEP;
-- KEEP WITH CHANGES;
-- REJECT / REWORK.
-
-Only then may the production Studio roadmap be unblocked.
-
-## Platform boundary
-
-TQS is broader than this repository. See `TQS_PLATFORM.md`.
-
-Generic desktop/device automation is owned by Artem OS, not this repo.
+Build success, self-report, click success, HTTP 200 or deployment READY alone are not product PASS. Require observable owner-facing acceptance and exact runtime/source identity.
