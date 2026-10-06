@@ -11,7 +11,9 @@ Read in this order:
 3. `AI_SESSION_STATE.md`
 4. only the affected module docs/files
 
-If connected to Artem's private workspace, also restore the current Trading QS and development canon from Google Drive before making product-level decisions. Do not copy private Drive content, IDs, secrets, account payloads or raw diagnostics into this public repository.
+If connected to Artem's private workspace, restore memory from Google Drive before a product decision. Search for the document named `00_ПАМЯТЬ РАЗРАБОТКИ — ЛЮБОЙ КОМПЬЮТЕР` and read it first, including how the owner wants the work to look, what already worked, and what must not be repeated. It is the memory shared by MacBook, home Windows, and work Windows. Chat history is not memory.
+
+When an owner task starts, replace «Сейчас делаем» in that Drive document with the live assignment and read it back. Wins go to «Получилось». Dead ends go to «Не повторять». Standing taste goes to «Как хочет владелец». Do this without waiting for a separate reminder. Do not copy private Drive content, IDs, secrets, account payloads, or raw diagnostics into this public repository.
 
 ## Routing
 
@@ -23,6 +25,16 @@ If connected to Artem's private workspace, also restore the current Trading QS a
 ## Execution
 
 During the active owner experiment, ChatGPT is the product architect/researcher/critic/independent verifier and **Cursor is the primary implementation executor**. Cursor is not the product memory: durable truth remains in Google Drive + this repo + runtime evidence. If the owner explicitly supersedes the experiment, follow the newer canon.
+
+The chat that is already open is the executor when its machine can change the repo and show the result. Do not send the owner to another computer, another chat, or another agent while this one can finish the outcome.
+
+One chat owns one owner outcome. Keep going inside that chat until the outcome is verified. A new chat resumes from Drive, git, and the live site.
+
+## Studio
+
+Owner site: https://tqs-studio.vercel.app. Route: `/studio`.
+
+Before changing the board or handout, read the Drive document `28_STUDIO LIVE — читать перед работой` and the live page it names. Do not start a new Studio board or a new engine version while the current one can be improved.
 
 Before code changes:
 - confirm current HEAD/branch and `AI_SESSION_STATE.md`;

@@ -12,19 +12,21 @@ export async function studioSession(){const {data,error}=await studioSupabase().
 
 type SyncJob={key:string;action:string;payload:any;createdAt:number;attempts:number};
 let flushing=false,syncTimer:number|null=null;
-const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","aiCreateDocumentFromFrame","redoAiRun"]);
-const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
-const LOCAL_FIRST_MUTATIONS=new Set(["createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","markActivityDone"]);
+const LOCAL_WORLD_AI=new Set(["getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun"]);
+const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","driveDisconnect","aiCreateDocumentFromFrame"]);
+const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","updateObjects","markActivityDone","getDocumentAuthoringContext","applyDocumentAuthoring","undoDocumentAuthoring"]);
+const LOCAL_FIRST_MUTATIONS=new Set(["createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","updateObjects","markActivityDone"]);
 function productionServer(){return typeof window!=="undefined"&&!["localhost","127.0.0.1"].includes(window.location.hostname)}
+export function sharedStudioHost(){return typeof window!=="undefined"&&(location.hostname==="tqs-studio.vercel.app"||/\.vercel\.app$/.test(location.hostname))}
 function readOutbox():SyncJob[]{try{const x=JSON.parse(localStorage.getItem(OUTBOX_KEY)||"[]");return Array.isArray(x)?x:[]}catch{return[]}}
 function writeOutbox(j:SyncJob[]){try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(j.slice(-250)))}catch{}}
 function syncKey(action:string,p:any){return action+":"+String(p?.object?.id||p?.id||p?.documentId||"")+":"+String(p?.blockId||"")}
-function enqueue(action:string,payload:any){if(!productionServer())return;const key=syncKey(action,payload),jobs=readOutbox(),i=jobs.findIndex(j=>j.key===key),next={key,action,payload,createdAt:Date.now(),attempts:0};if(i>=0)jobs[i]={...jobs[i],payload,createdAt:Date.now()};else jobs.push(next);writeOutbox(jobs)}
+function enqueue(action:string,payload:any){if(!productionServer()||sharedStudioHost())return;const key=syncKey(action,payload),jobs=readOutbox(),i=jobs.findIndex(j=>j.key===key),next={key,action,payload,createdAt:Date.now(),attempts:0};if(i>=0)jobs[i]={...jobs[i],payload,createdAt:Date.now()};else jobs.push(next);writeOutbox(jobs)}
 async function serverAction<T=any>(action:string,payload:any={}):Promise<T>{const ctrl=new AbortController(),fastRead=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus"]).has(action),timeout=action==="createShare"?35000:fastRead?4200:10000,timer=window.setTimeout(()=>ctrl.abort(),timeout);try{const session=await studioSession().catch(()=>null),headers:Record<string,string>={"Content-Type":"application/json"};if(session?.access_token)headers.Authorization=`Bearer ${session.access_token}`;const r=await fetch("/api/studio/action",{method:"POST",headers,body:JSON.stringify({action,payload}),cache:"no-store",signal:ctrl.signal});const x=await r.json();if(!r.ok||!x.ok)throw Object.assign(new Error(x.error||`Studio API ${r.status}`),{details:x,status:r.status});return x.data as T}finally{window.clearTimeout(timer)}}
 async function materialize(job:SyncJob){if(job.action!=="attachAsset")return job.payload;const a=getLocalAssetPayload(String(job.payload?.assetId||""));if(!a)throw new Error("LOCAL_ASSET_MISSING");return{dataUrl:a.dataUrl,filename:job.payload?.filename||a.filename,assetId:a.assetId}}
-export function studioSyncStatus(){const jobs=typeof window==="undefined"?[]:readOutbox();return{pending:jobs.length,oldestAt:jobs[0]?.createdAt||null,flushing}}
-export async function flushStudioSync(){if(flushing||!productionServer())return studioSyncStatus();flushing=true;try{let jobs=readOutbox(),processed=0;while(jobs.length&&processed<25){const job=jobs[0];try{await serverAction(job.action,await materialize(job));jobs.shift();writeOutbox(jobs);processed++}catch{job.attempts++;jobs[0]=job;writeOutbox(jobs);break}}return{pending:jobs.length,processed}}finally{flushing=false}}
-function schedule(delay=250){if(typeof window==="undefined"||!productionServer()||syncTimer!==null)return;syncTimer=window.setTimeout(()=>{syncTimer=null;void flushStudioSync()},delay)}
+export function studioSyncStatus(){if(typeof window!=="undefined"&&sharedStudioHost()){try{localStorage.removeItem(OUTBOX_KEY)}catch{}return{pending:0,oldestAt:null,flushing:false}}const jobs=typeof window==="undefined"?[]:readOutbox();return{pending:jobs.length,oldestAt:jobs[0]?.createdAt||null,flushing}}
+export async function flushStudioSync(){if(flushing||!productionServer()||sharedStudioHost())return studioSyncStatus();flushing=true;try{let jobs=readOutbox(),processed=0;while(jobs.length&&processed<25){const job=jobs[0];try{await serverAction(job.action,await materialize(job));jobs.shift();writeOutbox(jobs);processed++}catch{job.attempts++;jobs[0]=job;writeOutbox(jobs);break}}return{pending:jobs.length,processed}}finally{flushing=false}}
+function schedule(delay=250){if(typeof window==="undefined"||!productionServer()||sharedStudioHost()||syncTimer!==null)return;syncTimer=window.setTimeout(()=>{syncTimer=null;void flushStudioSync()},delay)}
 
 export async function studioAction<T=any>(action:string,payload:any={}):Promise<T>{
  schedule();
@@ -34,7 +36,9 @@ export async function studioAction<T=any>(action:string,payload:any={}):Promise<
   if(productionServer()){enqueue(action,{assetId:local?.asset?.id,filename:payload?.filename});schedule(20)}
   return local as T;
  }
+ if(LOCAL_WORLD_AI.has(action)&&(sharedStudioHost()||!productionServer()))return localStudioAction<T>(action,payload);
  if(SERVER_ONLY.has(action))return serverAction<T>(action,payload);
+ if(sharedStudioHost()&&LOCAL_CAPABLE.has(action))return localStudioAction<T>(action,payload);
  if(!LOCAL_CAPABLE.has(action))return serverAction<T>(action,payload);
  if(productionServer()){
   if(LOCAL_FIRST_MUTATIONS.has(action)){
@@ -64,11 +68,13 @@ export async function secureStudioAction<T=any>(action:string,payload:any={}):Pr
  }finally{window.clearTimeout(timer)}
 }
 export async function driveOAuthStart(returnTo:string){const session=await studioSession();if(!session)throw new Error("AUTH_REQUIRED");const r=await fetch(`${FN}/oauth/start?return_to=${encodeURIComponent(returnTo)}`,{headers:{Authorization:`Bearer ${session.access_token}`}});const x=await r.json();if(!r.ok)throw Object.assign(new Error(x.code||x.error||"OAUTH_START_FAILED"),{details:x,status:r.status});return x as{url:string;redirectUri:string;scopes:string[]}}
+export async function driveDisconnect(){return secureStudioAction("driveDisconnect")}
 export async function ownerMagicLink(email:string){return studioSupabase().auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href,shouldCreateUser:false}})}
 export async function studioSignOut(){return studioSupabase().auth.signOut()}
 
 
-export type StudioContextRequest={objectIds?:string[];blockIds?:string[];frameId?:string|null;documentId?:string|null;selectionBounds?:any;pointer?:{x:number;y:number}|null;viewport?:{x:number;y:number;zoom:number;width?:number;height?:number}|null};
+export type StudioContextRequest={objectIds?:string[];blockIds?:string[];frameId?:string|null;documentId?:string|null;selectionBounds?:any;pointer?:{x:number;y:number}|null;viewport?:{x:number;y:number;zoom:number;width?:number;height?:number}|null;blockId?:string|null;ordinal?:number|null;afterBlockId?:string|null;insert?: "before"|"after"|"replace"|"end";blockType?:string|null;selection?:{blockId?:string|null;text?:string}|null};
+export type DocumentAuthoringRequest={documentId:string;actor?:string;generationRunId?:string;summary?:string;target?:{blockId?:string|null;ordinal?:number|null;afterBlockId?:string|null;insert?:"before"|"after"|"replace"|"end";blockType?:string|null;selection?:{blockId?:string|null;text?:string}|null};mutations:any[]};
 export async function studioStructuredContext(context:StudioContextRequest){return studioAction("getStudioContext",context)}
 export async function studioAiMutate(args:{context:StudioContextRequest;scope?:"selection"|"world";generationRunId?:string;actor?:string;sourceRefs?:any[];mutations:Array<{operation:"create";object:any;summary?:string}|{operation:"update";id:string;patch:any;summary?:string}>}){return studioAction("aiApplyMutation",args)}
 export async function studioAiUndo(generationRunId:string){return studioAction("undoAiRun",{generationRunId,actor:"chatgpt"})}
@@ -76,4 +82,11 @@ export async function studioChangeHistory(args:{entityId?:string;generationRunId
 
 export async function studioAiRedo(generationRunId:string){return studioAction("redoAiRun",{generationRunId,actor:"chatgpt"})}
 
+if(typeof window!=="undefined"){
+ (window as any).tqsStudio={action:studioAction,context:studioStructuredContext,mutate:studioAiMutate,undo:studioAiUndo,redo:studioAiRedo,history:studioChangeHistory};
+}
+
 export async function studioAiDocumentFromFrame(args:{frameId:string;title?:string;kind?:string;generationRunId?:string;actor?:string;sourceRefs?:any[]}){return studioAction("aiCreateDocumentFromFrame",{actor:"chatgpt",...args})}
+export async function studioDocumentContext(args:{documentId:string;blockId?:string|null;ordinal?:number|null;afterBlockId?:string|null;insert?:"before"|"after"|"replace"|"end";selection?:{blockId?:string|null;text?:string}|null}){return studioAction("getDocumentAuthoringContext",args)}
+export async function studioDocumentAuthor(args:DocumentAuthoringRequest){return studioAction("applyDocumentAuthoring",{actor:"chatgpt",...args})}
+export async function studioDocumentUndo(generationRunId:string){return studioAction("undoDocumentAuthoring",{generationRunId,actor:"chatgpt"})}

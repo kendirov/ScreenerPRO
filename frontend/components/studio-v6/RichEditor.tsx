@@ -24,8 +24,9 @@ const Alignment=Extension.create({name:"tqsAlignment",addGlobalAttributes(){retu
 
 type Props={html:string;editable?:boolean;className?:string;compact?:boolean;autofocus?:boolean;onChange?:(html:string)=>void;onBlur?:(html:string)=>void};
 export function RichEditor({html,editable=true,className,compact=false,autofocus=false,onChange,onBlur}:Props){
- const lastExternal=useRef(html),[toolbarOpen,setToolbarOpen]=useState(false),extensions=useMemo(()=>[StarterKit,TextStyle,LinkMark,Alignment],[]);
- const editor=useEditor({extensions,content:html||"<p></p>",editable,immediatelyRender:false,autofocus,onUpdate:({editor})=>onChange?.(editor.getHTML()),onFocus:({editor})=>setToolbarOpen(!editor.state.selection.empty),onSelectionUpdate:({editor})=>setToolbarOpen(editable&&!editor.state.selection.empty),onBlur:({editor})=>{setToolbarOpen(false);onBlur?.(editor.getHTML())}});
+ const lastExternal=useRef(html),alive=useRef(true),[toolbarOpen,setToolbarOpen]=useState(false),extensions=useMemo(()=>[StarterKit,TextStyle,LinkMark,Alignment],[]);
+ const editor=useEditor({extensions,content:html||"<p></p>",editable,immediatelyRender:false,autofocus,onUpdate:({editor})=>{if(alive.current)onChange?.(editor.getHTML())},onFocus:({editor})=>setToolbarOpen(!editor.state.selection.empty),onSelectionUpdate:({editor})=>setToolbarOpen(editable&&!editor.state.selection.empty),onBlur:({editor})=>{setToolbarOpen(false);onBlur?.(editor.getHTML())}});
+ useEffect(()=>()=>{alive.current=false},[]);
  useEffect(()=>{editor?.setEditable(editable)},[editor,editable]);
  useEffect(()=>{if(!editor||html===lastExternal.current)return;lastExternal.current=html;if(editor.getHTML()!==html)editor.commands.setContent(html||"<p></p>",{emitUpdate:false})},[editor,html]);
  if(!editor)return <div className={className}/>;

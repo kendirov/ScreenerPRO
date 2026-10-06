@@ -10,6 +10,11 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession:f
 const OWNER_WORLD = "tqs-studio-world";
 const DRIVE_ROOT = "1NSPF-zrrM1RAqniRR4FHL56VvGDcBXWl";
 const DRIVE_EXPORTS = "1Qf7C_3xP5OtxUfWhjkuMZ0NNLpn1gqW8";
+// Least privilege that still works: Google has no folder-scoped OAuth scope.
+// drive.file cannot read the pre-existing TQS STUDIO — WORLD tree.
+// drive.readonly cannot write checkpoints or exports into that tree.
+// The drive scope is therefore the minimum that can read and write the designated root.
+// Every Drive call below stays inside DRIVE_ROOT and its known child folders.
 const DRIVE_SCOPES = ["openid","email","https://www.googleapis.com/auth/drive"];
 const enc = new TextEncoder();
 
@@ -416,6 +421,45 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
     const [{data:world,error:we},{data:activity,error:ae}]=await Promise.all([admin.from("studio_worlds").select("*").eq("owner_id",owner.id).eq("world_key",OWNER_WORLD).single(),aq]);if(we)throw we;if(ae)throw ae;
     return{context_version:"tqs-studio-context/v1",world_id:OWNER_WORLD,world,selection:{object_ids:input.objectIds,block_ids:input.blockIds,bounds},pointer:input.pointer,viewport:input.viewport,entities,frame,linked_documents:linkedDocuments,selected_blocks:blocks,recent_activity:activity||[],source_data_refs:[...entities.flatMap(x=>Array.isArray(x.relations)?x.relations:[]),...blocks.map(x=>x.data_spec).filter(Boolean)]};
   }
+  if(name==="getDocumentAuthoringContext"){
+    const bundle=await loadDocument(owner.id,String(p.documentId||""));
+    const blocks=[...(bundle.blocks||[])].sort((a:any,b:any)=>a.ordinal-b.ordinal);
+    const selected=p.blockId?blocks.find((block:any)=>block.block_id===p.blockId):p.ordinal!=null?blocks.find((block:any)=>block.ordinal===Number(p.ordinal)):null;
+    return {context_version:"tqs-studio-document-authoring/v1",document_id:bundle.document.id,revision:bundle.document.revision,blocks:blocks.map((block:any)=>({block_id:block.block_id,ordinal:block.ordinal,block_type:block.block_type,hidden:Boolean(block.content?.hidden)})),target:{document_id:bundle.document.id,block_id:selected?.block_id||null,ordinal:selected?.ordinal??null,block_type:selected?.block_type||null,after_block_id:p.afterBlockId||selected?.block_id||null,insert:p.insert||"after",selection:p.selection||null}};
+  }
+  if(name==="applyDocumentAuthoring"){
+    const documentId=String(p.documentId||"");if(!documentId)throw Object.assign(new Error("DOCUMENT_ID_REQUIRED"),{status:400});
+    const before=await loadDocument(owner.id,documentId);
+    const mutations=Array.isArray(p.mutations)?p.mutations.slice(0,40):[];if(!mutations.length)throw Object.assign(new Error("AI_MUTATIONS_REQUIRED"),{status:400});
+    const runId=String(p.generationRunId||crypto.randomUUID()),actor=String(p.actor||"chatgpt");
+    for(const mutation of mutations){
+      const operation=String(mutation?.operation||"");
+      if(operation==="reorder"){const {error}=await admin.rpc("studio_reorder_document_block",{p_owner_id:owner.id,p_document_id:documentId,p_block_id:String(mutation.blockId||""),p_target_ordinal:Number(mutation.targetOrdinal)});if(error)throw error;continue}
+      const target=mutation.target||{};
+      const existing=operation==="update"||operation==="hide"?String(mutation.blockId||""):operation==="insert"&&target.insert==="replace"?String(target.blockId||""):"";
+      const source=(before.blocks||[]).find((block:any)=>block.block_id===existing);
+      const content=operation==="hide"?{...(source?.content||{}),hidden:!(source?.content?.hidden)}:{...(mutation.content||{}),provenance:{actor,runId,operation}};
+      const blockId=existing||String(mutation.blockId||("block-"+crypto.randomUUID()));
+      const blockType=String(mutation.blockType||source?.block_type||"rich_text");
+      const afterBlockId=operation==="insert"&&!existing?(target.afterBlockId||null):null;
+      const {error}=await admin.rpc("studio_upsert_document_block",{p_owner_id:owner.id,p_document_id:documentId,p_block_id:blockId,p_block_type:blockType,p_content:content,p_data_spec:mutation.dataSpec===undefined?source?.data_spec||null:mutation.dataSpec,p_after_block_id:afterBlockId});if(error)throw error;
+    }
+    const after=await loadDocument(owner.id,documentId);
+    const evt=await logActivity(owner.id,documentId,after.document?.semantic_path||"Документы","ai_document_authoring",String(p.summary||"AI изменил документ"),{actor,generation_run_id:runId,operation:"document_authoring",document_id:documentId,target:p.target||null,before_blocks:before.blocks||[]});
+    return {generation_run_id:runId,document:after.document,blocks:after.blocks,activity_id:evt.id,canonical_readback:true};
+  }
+  if(name==="undoDocumentAuthoring"){
+    const runId=String(p.generationRunId||"");if(!runId)throw Object.assign(new Error("GENERATION_RUN_ID_REQUIRED"),{status:400});
+    const {data:events,error}=await admin.from("studio_activity").select("*").eq("owner_id",owner.id).contains("payload",{generation_run_id:runId}).order("occurred_at",{ascending:false});if(error)throw error;
+    const evt=(events||[]).find((item:any)=>item.payload?.operation==="document_authoring");if(!evt)throw Object.assign(new Error("GENERATION_RUN_NOT_FOUND"),{status:404});
+    const documentId=String(evt.payload.document_id||""),beforeBlocks=Array.isArray(evt.payload.before_blocks)?evt.payload.before_blocks:[];
+    const current=await loadDocument(owner.id,documentId);
+    for(const block of current.blocks||[]){if(!beforeBlocks.some((item:any)=>item.block_id===block.block_id)){const {error:he}=await admin.rpc("studio_upsert_document_block",{p_owner_id:owner.id,p_document_id:documentId,p_block_id:block.block_id,p_block_type:block.block_type,p_content:{...(block.content||{}),hidden:true},p_data_spec:block.data_spec||null,p_after_block_id:null});if(he)throw he}}
+    for(const block of beforeBlocks){const {error:ue}=await admin.rpc("studio_upsert_document_block",{p_owner_id:owner.id,p_document_id:documentId,p_block_id:block.block_id,p_block_type:block.block_type,p_content:block.content||{},p_data_spec:block.data_spec||null,p_after_block_id:null});if(ue)throw ue;const {error:re}=await admin.rpc("studio_reorder_document_block",{p_owner_id:owner.id,p_document_id:documentId,p_block_id:block.block_id,p_target_ordinal:Number(block.ordinal)});if(re)throw re}
+    const restored=await loadDocument(owner.id,documentId);
+    await logActivity(owner.id,documentId,restored.document?.semantic_path||"Документы","ai_undo",`Undo document run ${runId}`,{actor:String(p.actor||"chatgpt"),generation_run_id:runId,operation:"undo",document_id:documentId});
+    return {generation_run_id:runId,document:restored.document,blocks:restored.blocks,canonical_readback:true};
+  }
   if(name==="getChangeHistory"){
     let q=admin.from("studio_activity").select("*").eq("owner_id",owner.id).order("occurred_at",{ascending:false}).limit(Math.min(Number(p.limit||100),200));
     if(p.entityId)q=q.eq("entity_id",String(p.entityId));
@@ -562,6 +606,16 @@ async function action(owner:{id:string;email:string},name:string,p:any,origin:st
   if(name==="driveSyncCheckpoint"){
     const overview=await action(owner,"getWorldOverview",{},origin);const content=enc.encode(JSON.stringify({schemaVersion:"tqs-studio-world/v5",exportedAt:new Date().toISOString(),...overview},null,2));
     return upsertDriveContent(owner.id,{entityType:"world_snapshot",entityId:OWNER_WORLD,studioRevision:Number(overview.world.revision),name:"tqs-studio-world-v5.snapshot.json",mimeType:"application/json",content,parentId:DRIVE_ROOT,expectedDriveVersion:p.expectedDriveVersion||null});
+  }
+  if(name==="driveDisconnect"){
+    const refreshName=`studio_google_refresh_${owner.id}`;
+    const refresh=await vaultGet(refreshName);
+    if(refresh){
+      await fetch("https://oauth2.googleapis.com/revoke",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({token:refresh})}).catch(()=>null);
+      await vaultPut(refreshName,"","revoked TQS Studio Google refresh token");
+    }
+    await admin.from("studio_drive_connections").update({status:"DISCONNECTED",connected_email:null,oauth_secret_name:null,scopes:[],last_error:null,updated_at:new Date().toISOString()}).eq("owner_id",owner.id);
+    return {disconnected:true};
   }
   if(name==="driveConflictProbe"){
     const content=enc.encode("{}");return upsertDriveContent(owner.id,{entityType:p.entityType||"world_snapshot",entityId:p.entityId||OWNER_WORLD,studioRevision:Number(p.studioRevision||1),name:"probe.json",mimeType:"application/json",content,parentId:DRIVE_ROOT,expectedDriveVersion:String(p.expectedDriveVersion||"__STALE__"),testConflict:true});
@@ -774,7 +828,7 @@ Deno.serve(async(req:Request)=>{
     }
     if(path==="/public/action"&&req.method==="POST"){
       const body=await req.json();
-      const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun","aiCreateDocumentFromFrame","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","disableShare","driveStatus"]);
+      const allowed=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getStudioContext","getDocumentAuthoringContext","applyDocumentAuthoring","undoDocumentAuthoring","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun","aiCreateDocumentFromFrame","getDocument","listDocuments","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","getAssetUrl","attachAsset","markActivityDone","createShare","disableShare","driveStatus"]);
       if(!allowed.has(body.action)) return json({ok:false,error:"PUBLIC_ACTION_FORBIDDEN"},403,origin);
       const o=await publicOwner();
       return json({ok:true,data:await action({id:o.id,email:o.email},body.action,body.payload||{},origin||"")},200,origin);

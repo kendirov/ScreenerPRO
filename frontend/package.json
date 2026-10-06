@@ -46,7 +46,8 @@
     "verify:moex-instrument-resolver": "tsx scripts/verify-moex-instrument-resolver.ts",
     "verify:fetch-moex-candles": "tsx scripts/verify-fetch-moex-candles.ts",
     "verify:moex-data-mode": "tsx scripts/verify-moex-data-mode.ts",
-    "verify:calculate-cbr-reaction": "tsx scripts/verify-calculate-cbr-reaction.ts"
+    "verify:calculate-cbr-reaction": "tsx scripts/verify-calculate-cbr-reaction.ts",
+    "verify:studio-board": "tsx scripts/verify-studio-board.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
@@ -64,6 +65,7 @@
     "@tiptap/core": "^3.6.6",
     "@tiptap/react": "^3.6.6",
     "@tiptap/starter-kit": "^3.6.6",
+    "@vercel/blob": "^2.8.0",
     "@xyflow/react": "12.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
