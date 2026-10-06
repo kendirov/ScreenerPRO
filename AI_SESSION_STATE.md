@@ -11,7 +11,7 @@ See `AGENTS.md` and `.cursor/rules/artem-cursor-first.mdc`.
 
 ## Studio
 
-- Ветка `chatgpt/tqs-studio-v6-productization-2026-10-04`. Воспроизводимый checkpoint живой рабочей станции: `6a4eea98451379bc23864a8ab91b75a7a921fb1e`. Поверх него — owner UX correction 2026-10-06. Нового repo, V7, базы и второй Studio нет.
+- Ветка `chatgpt/tqs-studio-v6-productization-2026-10-04`. Checkpoint живой рабочей станции: `6a4eea98451379bc23864a8ab91b75a7a921fb1e`. Owner UX correction: `c66eb8b5c054ee0273e42b3e5fd40e10111fa7c6`. Нового repo, V7, базы и второй Studio нет.
 - Сайт: https://tqs-studio.vercel.app/studio. До этой правки production был `dpl_71ePNgsBnAezkptxKygETcuWE5ZM` с metadata SHA `880312abaca941c96163620159ffeac8a22010ff`, source=CLI.
 - Модель та же: One World + Documents. Режимы на экране: Доска и Документы. Камера доски не сбрасывается в Whole World. Header стабильный: `TQS Studio`, Undo, Redo, More, компактное сохранение.
 - Поиск только ищет. Навигатор — карточки с миниатюрой, Недавние, «На доске» и «Документ». Палитра доски: выбор, рука, текст, заметка, задача, голос, изображение, карандаш, маркер, стрелка, ещё.
