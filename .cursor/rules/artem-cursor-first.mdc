@@ -14,3 +14,13 @@ alwaysApply: true
 - Persist exact branch/SHA/evidence in repo technical state.
 - Update Google Drive only with a verified connector+readback; otherwise emit PERSISTENCE_PACKET for ChatGPT to sync.
 - Never store private Drive content, account payloads or secrets in this repository.
+
+
+## Studio quality reset
+
+- If the task touches Studio, read the latest private Studio Product Contract and Execution gate before design decisions. The owner must not be asked to re-explain recurring Studio goals.
+- Treat the current owner-rejected Portal Rooms/Documents visuals as disposable presentation, not as a style baseline.
+- Fix canonical persistence before further visual celebration: production live-state read/write and fresh-session readback are P0.
+- Major visual work is reference-first: compare actual runtime screenshots against explicit Board and Document target screens using the accepted Trading Workspace visual DNA.
+- Do not return `OWNER REVIEW REQUIRED` with any known self-fixable P0/P1 issue, local-only truth, `Не записалось`, live-state 404/403, or unresolved major visual-quality defect.
+- Keep iterating inside the same outcome until runtime, persistence, visual QA and regression gates pass.
