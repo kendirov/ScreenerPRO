@@ -1,0 +1,15 @@
+---
+description: Artem Cursor-first development contract
+alwaysApply: true
+---
+
+- During the active owner experiment, ChatGPT owns product/research/review and Cursor is the primary implementation executor.
+- Recover AGENTS.md -> START_HERE_FOR_AI.md -> TQS_PLATFORM.md -> AI_SESSION_STATE.md -> current branch+HEAD before editing.
+- Optimize for owner-facing outcome, not literal micro-instructions.
+- Reuse existing architecture/components/data paths and mature maintained libraries before custom replacements.
+- Improve reversible implementation details autonomously if MUST/MUST NOT and acceptance remain satisfied.
+- Verify targeted tests/build and real browser/runtime behavior for user-visible work.
+- Do not call self-report/build/deploy READY a product PASS without observable acceptance.
+- Persist exact branch/SHA/evidence in repo technical state.
+- Update Google Drive only through a verified connector + readback; otherwise emit PERSISTENCE_PACKET for ChatGPT to verify and sync.
+- Never store private Drive content, account payloads or secrets in this repository.
