@@ -22,7 +22,7 @@ If connected to Artem's private workspace, also restore the current Trading QS a
 
 ## Execution
 
-Current ChatGPT/AI agent is the default architect + executor when available tools permit. Cursor/Codex/other workers are optional executors, not the product memory or mandatory route.
+During the active owner experiment, ChatGPT is the product architect/researcher/critic/independent verifier and **Cursor is the primary implementation executor**. Cursor is not the product memory: durable truth remains in Google Drive + this repo + runtime evidence. If the owner explicitly supersedes the experiment, follow the newer canon.
 
 Before code changes:
 - confirm current HEAD/branch and `AI_SESSION_STATE.md`;
@@ -44,3 +44,19 @@ pnpm -C frontend build
 ```
 
 Use narrower verification scripts relevant to the changed module before the full build.
+
+
+## Cursor-first handoff
+
+Before implementation:
+- read applicable `.cursor/rules/*.mdc` in addition to this file;
+- recover exact branch/HEAD and current technical state;
+- inspect affected implementation/tests before choosing internals;
+- treat ChatGPT prompts as outcome/constraints/acceptance plus advisory options, not brittle micro-specs;
+- prefer existing architecture/components and mature maintained libraries.
+
+After a substantial run:
+- record exact branch/SHA and objective verification in `AI_SESSION_STATE.md` or the current repo state surface;
+- if a verified Google Drive MCP connection exists, update the existing relevant CURRENT_STATE/DECISIONS/LESSONS and read it back;
+- otherwise emit a compact `PERSISTENCE_PACKET` for ChatGPT to verify against GitHub/runtime and sync to Drive;
+- never claim persistence or product PASS from self-report/build/deploy READY alone.
