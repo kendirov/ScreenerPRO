@@ -4,8 +4,6 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import {FileText,FolderTree,LayoutDashboard,PenLine,Plug,Plus,Search,Settings} from "lucide-react";
 import type {StudioActivity,StudioDocument,StudioObject} from "@/lib/studio-v5/types";
 import {roomRole} from "@/lib/studio-v6/workstation";
-import {roomPortal} from "@/lib/studio-v6/room-preview";
-import {RoomPreview} from "./RoomPreview";
 
 type Surface="world"|"documents";
 type Props={
@@ -93,16 +91,8 @@ function countLabel(node:Node){
   const word=next==="course"?plural(rooms.length,"курс","курса","курсов"):next==="lesson"?plural(rooms.length,"занятие","занятия","занятий"):plural(rooms.length,"комната","комнаты","комнат");
   return `${rooms.length} ${word}`;
 }
-function RoomThumb({frame,objects}:{frame:StudioObject;objects:StudioObject[]}){
-  const byId=new Map(objects.map(object=>[object.id,object]));
-  let depth=0,parent=frame.parent_id,guard=0;
-  while(parent&&guard++<12){depth+=1;parent=byId.get(parent)?.parent_id||null}
-  const portal=roomPortal(frame,depth,objects);
-  return <RoomPreview marks={portal.marks} title={portal.name}/>;
-}
-
 export function NavigatorV6({objects,documents,activity,selectedId,surface,onWorld,onDocuments,onFocus,onOpenDocument,onSettings,onCreate,onTool}:Props){
-  const [open,setOpen]=useState(false),[mode,setMode]=useState<NavMode>("map"),[query,setQuery]=useState(""),[stack,setStack]=useState<string[]>([]),[listMode,setListMode]=useState(false);
+  const [open,setOpen]=useState(false),[mode,setMode]=useState<NavMode>("map"),[query,setQuery]=useState(""),[stack,setStack]=useState<string[]>([]);
   const input=useRef<HTMLInputElement>(null);
   useEffect(()=>{const onKey=(event:KeyboardEvent)=>{const target=event.target as HTMLElement|null;if(target?.isContentEditable||["INPUT","TEXTAREA"].includes(target?.tagName||""))return;if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){event.preventDefault();setMode("search");setOpen(true);requestAnimationFrame(()=>input.current?.focus())}};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey)},[]);
   const tree=useMemo(()=>buildTree(objects),[objects]);
@@ -144,15 +134,14 @@ export function NavigatorV6({objects,documents,activity,selectedId,surface,onWor
         {mode==="map"&&<section className="v6-nav-map">
           <div className="v6-nav-browse-bar">
             {stack.length>0&&<button type="button" onClick={()=>setStack(value=>value.slice(0,-1))}>Назад</button>}
-            <button type="button" onClick={()=>setListMode(value=>!value)}>{listMode?"Карточки":"Списком"}</button>
           </div>
           {!stack.length&&<div className="v6-nav-recent"><p>Недавние</p>{activity.filter(item=>recentLine(item.summary)).slice(0,4).map(item=><button key={item.id} type="button" onClick={()=>{if(item.entity_id){closeNav();onFocus(item.entity_id)}}}><span>{recentLine(item.summary)}</span><small>{item.semantic_path.split("/").filter(Boolean).slice(-2).join(" / ")}</small></button>)}{!activity.filter(item=>recentLine(item.summary)).length&&<small>Здесь появятся последние действия.</small>}</div>}
           {level.map(node=>{
             const document=docFor(node);
             return <article className={selectedId===node.object?.id?"v6-nav-card is-active":"v6-nav-card"} key={node.id}>
               <button type="button" className="v6-nav-card-main" onClick={()=>drill(node)}>
-                {node.object?.kind==="frame"&&!listMode?<span className="v6-nav-thumb"><RoomThumb frame={node.object} objects={objects}/></span>:<span className="v6-nav-glyph">{kindLabel(node).slice(0,1)}</span>}
-                <span><strong>{node.title}</strong><small>{kindLabel(node)} · {countLabel(node)}</small></span>
+                <span className="v6-nav-glyph">{kindLabel(node).slice(0,1)}</span>
+                <span><strong>{node.title}</strong><small>{kindLabel(node)} · {node.object?.id||countLabel(node)}</small></span>
               </button>
               <div className="v6-nav-card-actions">
                 {node.object&&<button type="button" onClick={()=>focusNode(node)}>На доске</button>}

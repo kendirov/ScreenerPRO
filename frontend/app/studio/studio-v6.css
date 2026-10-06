@@ -1029,4 +1029,36 @@
   .v6-shell .v6-insert-panel{grid-template-columns:1fr}
 }
 
+/* Spatial board: regions and object marks, not portal posters. */
+.v6-shell .rf-workspace-card.is-region{
+  background:transparent!important;
+  border:1px solid color-mix(in srgb,var(--text) 32%,transparent)!important;
+  border-radius:10px!important;
+  box-shadow:none!important;
+  overflow:visible;
+}
+.v6-shell .rf-region-label{
+  position:absolute;left:10px;top:8px;z-index:2;
+  display:flex;align-items:center;gap:8px;
+  max-width:calc(100% - 20px);
+  height:auto;padding:0;border:0;background:transparent;box-shadow:none;
+}
+.v6-shell .rf-region-label strong{
+  font-size:12px!important;font-weight:650;letter-spacing:.06em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--text) 70%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.v6-shell .rf-mark{
+  height:100%;display:flex;align-items:center;gap:6px;padding:0 8px;overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--text) 24%,transparent);border-radius:6px;
+  background:color-mix(in srgb,var(--panel) 90%,transparent);font-size:11px;
+}
+.v6-shell .rf-mark strong{font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v6-shell .rf-mark.is-selected{outline:1px solid var(--accent)}
+.v6-shell .rf-instrument{gap:2px;max-width:min(560px,calc(100vw - 120px))}
+.v6-shell .rf-instrument code{
+  margin-left:6px;padding-left:8px;border-left:1px solid var(--chrome-line);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--chrome-muted);
+  max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
 

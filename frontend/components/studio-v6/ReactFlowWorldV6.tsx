@@ -5,7 +5,7 @@ import {
  Background,BackgroundVariant,ConnectionLineType,Handle,MiniMap,NodeResizer,Position,ReactFlow,ReactFlowProvider,useViewport,ViewportPortal,
  applyNodeChanges,type Connection,type Edge,type Node,type NodeChange,type NodeProps,type ReactFlowInstance
 } from "@xyflow/react";
-import {Bookmark,BookOpen,Boxes,GraduationCap,Image as ImageIcon,Mic,Video as VideoIcon} from "lucide-react";
+import {BookOpen,Image as ImageIcon,Mic,Video as VideoIcon} from "lucide-react";
 import type {DataSpec,StudioObject} from "@/lib/studio-v5/types";
 import {StudioMarketChart} from "@/components/studio-v5/MarketChart";
 import {studioAction} from "@/lib/studio-v6/api";
@@ -13,7 +13,6 @@ import {localStudioAction,saveLocalObjectDraft} from "@/lib/studio-v5/local-stor
 import {lodFromZoom,roomRole,type CreateKind} from "@/lib/studio-v6/workstation";
 import {pinnedHeaderLeft,pinnedHeaderTop,roomPortal} from "@/lib/studio-v6/room-preview";
 import {diagramComponent,diagramRole,diagramRoleLabel,layoutDiagram,nextDiagramRole,type DiagramLayout} from "@/lib/studio-v6/diagram";
-import {RoomPreview} from "./RoomPreview";
 import {RichEditor} from "./RichEditor";
 import {VisualScene} from "./VisualScene";
 import {classifyUrl,deepestFrame,descendants,escapeHtml} from "./world-model";
@@ -66,7 +65,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
  const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video"|"file";point?:{x:number;y:number}}|null>(null),focusIdRef=useRef<string|null>(focusId||null),focusNonceRef=useRef(focusNonce),byIdRef=useRef<Map<string,StudioObject>>(new Map()),lastNativePaste=useRef(0),rightDrag=useRef<{x:number;y:number;vx:number;vy:number;z:number;moved:boolean;nodeId:string|null}|null>(null),draggingRef=useRef(false),zoomRef=useRef(zoom),objectsRef=useRef(objects),undoStack=useRef<StudioObject[][]>([]),redoStack=useRef<StudioObject[][]>([]),selectedRef=useRef(selected),toolRef=useRef(tool);
  const visibleObjects=useMemo(()=>objects.filter(o=>!o.hidden&&o.kind!=="annotation"),[objects]),byId=useMemo(()=>new Map(objects.map(o=>[o.id,o])),[objects]);
  focusIdRef.current=focusId||null;focusNonceRef.current=focusNonce;byIdRef.current=byId;objectsRef.current=objects;selectedRef.current=selected;toolRef.current=tool;
- const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-140)/Math.max(1,o.w),(r.height-150)/Math.max(1,o.h));const z=Math.min(.92,o.w<=1800&&o.h<=1300?Math.max(.66,fit):Math.max(.16,fit));void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height+56)/2-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
+ const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-140)/Math.max(1,o.w),(r.height-150)/Math.max(1,o.h));const z=Math.min(.92,Math.max(.52,fit));void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height+56)/2-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
  const directChildren=useMemo(()=>{const m=new Map<string,StudioObject[]>();for(const o of visibleObjects){if(!o.parent_id)continue;const a=m.get(o.parent_id)||[];a.push(o);m.set(o.parent_id,a)}return m},[visibleObjects]);
  const remember=useCallback(()=>{undoStack.current.push(structuredClone(objectsRef.current));if(undoStack.current.length>40)undoStack.current.shift();redoStack.current=[]},[]);
  const restoreSnap=useCallback(async(stack:StudioObject[][],other:StudioObject[][])=>{const snap=stack.pop();if(!snap)return;other.push(structuredClone(objectsRef.current));await onRestore(snap);setMenu(null)},[onRestore]);
@@ -78,7 +77,6 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
    const depth=depthOf(o,byId),isWorkspace=o.kind==="frame",children=directChildren.get(o.id)||[],signatures=[...children].filter(x=>x.kind==="frame"||x.kind==="text").sort((a,b)=>(a.kind==="frame"?0:1)-(b.kind==="frame"?0:1)).slice(0,4).map(x=>({kind:x.kind,title:titleText(x)}));
    const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,zIndex:o.z,draggable:o.body?.locked?false:undefined,data:{object:o,lod,depth,signatures,childCount:children.length,zoom:zoomRef.current,portal:isWorkspace?roomPortal(o,depth,visibleObjects):null}};
    if(isWorkspace)n.dragHandle=".tqs-drag-handle";
-   if(lod==="far"&&!isWorkspace)n.hidden=true;
    return n
   }),[visibleObjects,byId,directChildren,lod]);
 
@@ -296,12 +294,13 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
    {drawing&&<div className="rf-draw-capture" onPointerDown={startDraw} onPointerMove={moveDraw} onPointerUp={endDraw}/>}
    <BoardPalette tool={tool} more={moreTools} onTool={next=>{setTool(next);setArm(next==="text"?"text":null);setMoreTools(false)}} onMore={setMoreTools} onCreate={kind=>void addAt(kind)} onVoice={()=>setVoiceAt(rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600})}/>
    {voiceAt&&<VoiceCapture onCancel={()=>setVoiceAt(null)} onSave={saveVoice}/>}
-   <div className="rf-zoombar" data-studio-ui data-testid="studio-zoombar">
+   <div className="rf-zoombar rf-instrument" data-studio-ui data-testid="studio-instrument">
     <button aria-label="Отдалить" onClick={()=>void rf.current?.zoomOut({duration:160})}>−</button>
     <span>{Math.round(zoom*100)}%</span>
     <button aria-label="Приблизить" onClick={()=>void rf.current?.zoomIn({duration:160})}>+</button>
     <button aria-label="Вписать мир" onClick={fitWorld}>Вписать</button>
     <button aria-label="Карта" className={mapOpen?"is-on":""} onClick={()=>setMapOpen(v=>!v)}>Карта</button>
+    <code data-testid="studio-selected-id">{[...selected][0]||"нет выбора"}</code>
    </div>
 
    {menu&&<div className="rf-context" style={{left:menu.x,top:menu.y}} data-studio-ui data-testid="board-menu">
@@ -353,14 +352,12 @@ function ObjectToolbar({kind,on}:{kind:string;on:(action:string)=>void}){
 }
 
 function WorkspaceNode({id,data,selected,positionAbsoluteX,positionAbsoluteY}:NodeProps<StudioNode>){
- const ctx=useContext(CanvasContext)!,o=data.object,role=roomRole(data.depth),portal=data.portal,viewport=useViewport();
+ const ctx=useContext(CanvasContext)!,o=data.object,role=roomRole(data.depth),viewport=useViewport();
  const [renaming,setRenaming]=useState(false),[title,setTitle]=useState(titleText(o));
  const zoom=viewport.zoom||data.zoom;
- const roomHeight=Math.max(88,(portal?.contentTop||o.h));
- const pinned=data.lod==="near"?pinnedHeaderTop({viewportY:viewport.y,zoom,absoluteY:positionAbsoluteY||o.y,roomHeight}):undefined;
+ const pinned=data.lod==="near"?pinnedHeaderTop({viewportY:viewport.y,zoom,absoluteY:positionAbsoluteY||o.y,roomHeight:o.h}):undefined;
  const pinnedLeft=data.lod==="near"?pinnedHeaderLeft({viewportX:viewport.x,zoom,absoluteX:positionAbsoluteX||o.x,roomWidth:o.w}):undefined;
- const Icon=role==="project"?Boxes:role==="course"?BookOpen:role==="lesson"?GraduationCap:Bookmark;
- return <div className={`rf-workspace-card lod-${data.lod} level-${data.depth} room-${role}${data.lod==="near"?" is-near":" is-portal"}${selected?" is-selected":""}${portal?.fresh?" is-fresh":""}`} data-studio-id={id} data-testid="world-frame" data-portal-role={role} data-room-lod={data.lod} style={{["--board-zoom" as any]:Math.max(data.zoom,.08)}}>
+ return <div className={`rf-workspace-card is-region lod-${data.lod} level-${data.depth} room-${role}${data.lod==="near"?" is-near":""}${selected?" is-selected":""}`} data-studio-id={id} data-testid="world-frame" data-region-role={role} data-room-lod={data.lod} style={{["--board-zoom" as any]:Math.max(data.zoom,.08)}}>
   <NodeResizer isVisible={selected&&data.lod==="near"} minWidth={280} minHeight={160} onResizeEnd={(_,p)=>ctx.resize(id,p)}/>
   <Handle type="target" position={Position.Left} className="rf-handle"/><Handle type="source" position={Position.Right} className="rf-handle"/>
   {selected&&data.lod!=="far"&&<ObjectToolbar kind="frame" on={action=>{
@@ -369,18 +366,8 @@ function WorkspaceNode({id,data,selected,positionAbsoluteX,positionAbsoluteY}:No
    if(action==="Документ")ctx.assemble(id);
    if(action==="AI")ctx.ask("redesign",id);
   }}/>}
-  <header className="rf-workspace-head tqs-drag-handle portal-face" style={pinned!=null?{top:pinned,left:pinnedLeft}:{}}>
-   <Icon size={data.lod==="near"?14:16} aria-hidden/>
-   <div>
-    {data.lod!=="near"&&<small>{portal?.kicker}</small>}
-    {renaming?<input className="nodrag nopan rf-rename" value={title} autoFocus onChange={e=>setTitle(e.target.value)} onBlur={()=>{setRenaming(false);if(title.trim()&&title!==o.title)void ctx.patch(id,{title:title.trim()},"rename","Комната переименована")}} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur()}}/>:<strong>{data.lod==="near"?titleText(o):portal?.name||titleText(o)}</strong>}
-    {data.lod!=="near"&&portal?.descriptor&&<em>{portal.descriptor}</em>}
-   </div>
-   {data.lod!=="near"&&<aside>
-    {portal?.countLabel&&<span>{portal.countLabel}</span>}
-    {portal?.fresh&&<b>новое</b>}
-    {portal&&<RoomPreview marks={portal.marks} title={portal.name}/>}
-   </aside>}
+  <header className="rf-region-label tqs-drag-handle" style={pinned!=null?{top:pinned,left:pinnedLeft}:{}}>
+   {renaming?<input className="nodrag nopan rf-rename" value={title} autoFocus onChange={e=>setTitle(e.target.value)} onBlur={()=>{setRenaming(false);if(title.trim()&&title!==o.title)void ctx.patch(id,{title:title.trim()},"rename","Область переименована")}} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur()}}/>:<strong>{titleText(o)}</strong>}
   </header>
  </div>
 }
@@ -390,7 +377,7 @@ function ContentNode({id,data,selected}:NodeProps<StudioNode>){
  const [editing,setEditing]=useState(()=>Boolean(isText&&o.body?.autoEdit)),saveTimer=useRef<number|null>(null),autoEditSeen=useRef(Boolean(isText&&o.body?.autoEdit));
  useEffect(()=>()=>{if(saveTimer.current!==null)window.clearTimeout(saveTimer.current)},[]);
  useEffect(()=>{const auto=Boolean(isText&&o.body?.autoEdit);if(auto&&!autoEditSeen.current)setEditing(true);autoEditSeen.current=auto},[isText,o.body?.autoEdit]);
-  if(data.lod==="far")return null;
+  if(data.lod==="far")return <div className={`rf-mark kind-${o.kind}${selected?" is-selected":""}`} data-studio-id={id} data-testid={`world-${o.kind}`}><span>{iconFor(o.kind)}</span><strong>{o.title}</strong></div>;
   if(ctx.dragging&&(o.kind==="chart"||o.kind==="image"||o.kind==="video"||o.kind==="file"))return <div className="rf-drag-lite">{o.title}</div>;
  const persistText=(html:string,immediate=false)=>{
   const body={...o.body,html,autoEdit:false};
