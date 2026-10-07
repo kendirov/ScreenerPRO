@@ -198,6 +198,10 @@ export function editorBlocks(blocks:StudioDocumentBlock[]){
     const c=block.content||{};
     const type=block.block_type;
     const blob=`${c.title||""} ${c.text||""} ${c.html||""} ${c.caption||""}`;
+    if(type==="interactive_gpt"||(type==="heading"&&Number(c.level)===2)){
+      out.push(block);
+      continue;
+    }
     if(type==="image"&&(String(c.url||"").trim()||String(c.previewUrl||"").trim())){
       out.push(block);
       continue;

@@ -42,6 +42,11 @@ const pictured = model.editorBlocks([
   {block_id:"shot", document_id:"doc", ordinal:1, block_type:"image", content:{caption:"Сюда можно вставить скрин", previewUrl:"data:image/svg+xml,abc"}, data_spec:null, asset_id:null, revision:1},
 ]);
 assert.deepEqual(pictured.map((block: {block_id: string}) => block.block_id), ["shot"]);
+const gpt = model.editorBlocks([
+  {block_id:"gpt-lesson", document_id:"doc", ordinal:1, block_type:"interactive_gpt", content:{title:"Interactive GPT", kind:"note", address:"gpt-lesson"}, data_spec:null, asset_id:null, revision:1},
+  {block_id:"sub", document_id:"doc", ordinal:2, block_type:"heading", content:{text:"Раздел", level:2}, data_spec:null, asset_id:null, revision:1},
+]);
+assert.deepEqual(gpt.map((block: {block_id: string}) => block.block_id), ["gpt-lesson", "sub"]);
 
 assert.match(model.resolveVideoEmbed("https://www.youtube.com/watch?v=abcdefghijk"), /youtube\.com\/embed\/abcdefghijk/);
 assert.match(model.resolveVideoEmbed("https://rutube.ru/video/sample-id/"), /rutube\.ru\/play\/embed\/sample-id/);
@@ -125,6 +130,10 @@ const kept = shared.keepLocalFiles({previewUrl:"data:image/png;base64,AAAA"}, {p
 assert.equal(kept.previewUrl, "data:image/png;base64,AAAA");
 assert.equal(shared.keepLocalFiles({previewUrl:"data:image/png;base64,AAAA"}, {previewUrl:"https://example.com/a.png"}).previewUrl, "https://example.com/a.png");
 
+const reordered = await store.localStudioAction("reorderDocumentBlock", {documentId:"doc-lesson-workspace", blockId:"lesson-t1", targetOrdinal:1});
+assert.equal(reordered.blocks[0].block_id, "lesson-t1");
+assert.equal(reordered.blocks[1].block_id, "lesson-h1");
+await store.localStudioAction("reorderDocumentBlock", {documentId:"doc-lesson-workspace", blockId:"lesson-t1", targetOrdinal:2});
 const lesson = await store.localStudioAction("getDocument", {documentId:"doc-lesson-workspace"});
 const originalBlocks = lesson.blocks.map((block: {block_id: string; content: {html?: string}}) => ({...block}));
 const heading = originalBlocks.find((block: {block_id: string}) => block.block_id === "lesson-h1");

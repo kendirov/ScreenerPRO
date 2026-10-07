@@ -69,7 +69,16 @@ export async function secureStudioAction<T=any>(action:string,payload:any={}):Pr
 }
 export async function driveOAuthStart(returnTo:string){const session=await studioSession();if(!session)throw new Error("AUTH_REQUIRED");const r=await fetch(`${FN}/oauth/start?return_to=${encodeURIComponent(returnTo)}`,{headers:{Authorization:`Bearer ${session.access_token}`}});const x=await r.json();if(!r.ok)throw Object.assign(new Error(x.code||x.error||"OAUTH_START_FAILED"),{details:x,status:r.status});return x as{url:string;redirectUri:string;scopes:string[]}}
 export async function driveDisconnect(){return secureStudioAction("driveDisconnect")}
-export async function ownerMagicLink(email:string){return studioSupabase().auth.signInWithOtp({email,options:{emailRedirectTo:window.location.href,shouldCreateUser:false}})}
+export async function ownerMagicLink(email:string){
+ const redirect=typeof window==="undefined"?undefined:window.location.href;
+ const result=await studioSupabase().auth.signInWithOtp({email,options:{emailRedirectTo:redirect,shouldCreateUser:false}});
+ const message=String(result.error?.message||"").trim();
+ if(result.error&&(!message||message==="{}"||message==="[object Object]")){
+  const status=Number((result.error as {status?:number}).status||0);
+  return {data:result.data,error:new Error(status?`Сервер входа ответил ${status} и не прислал причину.`:"Сервер входа не прислал причину. Ссылку на занятие можно скопировать без почты.")};
+ }
+ return result;
+}
 export async function studioSignOut(){return studioSupabase().auth.signOut()}
 
 

@@ -9,7 +9,7 @@ export function PublicationMenu({open,status,url,publishing,pdfing,onToggle,onPu
   <button aria-expanded={open} aria-haspopup="dialog" onClick={onToggle}><Share2 size={14}/>Публикация</button>
   {open&&<div className="v6-share-popover" role="dialog" aria-label="Публикация" data-testid="v6-share-popover">
    <strong>{label}</strong>
-   <p>{status==="STALE"?"Ссылка всё ещё открывает прошлую версию.":status==="PUBLISHED"?"Ссылка открывает опубликованную версию.":"Документ ещё не опубликован."}</p>
+   <p>{status==="STALE"?"Ссылка всё ещё открывает прошлую версию.":status==="PUBLISHED"?"Ссылка открывает опубликованную версию.":"Эта ссылка открывает это занятие."}</p>
    {url?<input aria-label="Публичная ссылка" readOnly value={url}/>:null}
    <div>
     <button onClick={onOpen} disabled={!url}><ExternalLink size={13}/>Открыть</button>
