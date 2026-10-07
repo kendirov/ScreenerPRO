@@ -207,7 +207,7 @@ function VideoBlock({content, study, passed, onPass, onChange}: {content: any; s
   return <section className="v6-video" data-testid="document-video">
     <strong>{content.title || "Видео"}</strong>
     {embed ? <iframe title={content.title || "Видео"} src={embed} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen/> : content.url ? <video controls src={content.url}/> : <div className="v6-figure-empty">Видео появится по адресу</div>}
-    {!study && <label>Адрес видео<input aria-label="Адрес видео" value={content.url || ""} placeholder="https://" onChange={event => onChange({...content, url: event.target.value})}/>}</label>}
+    {!study && <label>Адрес видео<input aria-label="Адрес видео" value={content.url || ""} placeholder="https://" onChange={event => onChange({...content, url: event.target.value})} /></label>}
     {checkpoint && <div className="v6-checkpoint" data-testid="video-checkpoint">
       <small>{checkpoint.at ? `Метка ${checkpoint.at}` : "Проверка"}</small>
       {study ? <>
