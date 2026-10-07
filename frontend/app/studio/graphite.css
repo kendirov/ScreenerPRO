@@ -196,7 +196,25 @@
 .v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-lesson .rf-region-summary,
 .v6-shell[data-visual=graphite] .rf-workspace-card.lod-far .rf-region-signs{display:none!important}
 .v6-shell[data-visual=graphite] .react-flow__node:has(> .rf-mark){opacity:0!important;pointer-events:none!important}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-near .rf-region-label,
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-near .rf-region-summary{display:none!important}
 .v6-shell[data-visual=graphite] .rf-region-label{left:16px;top:14px;background:transparent!important}
+.v6-shell[data-visual=graphite] .rf-content-node.lod-near.kind-text .rf-rich-text,
+.v6-shell[data-visual=graphite] .rf-content-node.lod-near.kind-text .rf-rich-text p,
+.v6-shell[data-visual=graphite] .rf-content-node.lod-near.kind-text .rf-rich-text-view{
+  font-size:calc(22px / var(--board-zoom,.72))!important;
+  line-height:1.28;
+  padding:calc(6px / var(--board-zoom,.72)) 0;
+}
+.v6-shell[data-visual=graphite] .rf-content-node.lod-near.kind-text .rf-rich-text b,
+.v6-shell[data-visual=graphite] .rf-content-node.lod-near.kind-text .rf-rich-text strong{
+  display:block;
+  font-size:1.45em;
+  font-weight:650;
+  letter-spacing:-.03em;
+  line-height:1.15;
+  margin-bottom:.2em;
+}
 .v6-shell[data-visual=graphite] .rf-region-label strong{
   font-size:13px!important;font-weight:600;letter-spacing:-.02em;text-transform:none!important;color:var(--ink)!important;
 }
@@ -256,6 +274,10 @@
 .v6-shell[data-visual=graphite] .react-flow__node.selected .rf-content-node.kind-image .rf-asset{
   outline-color:#3B82F6!important;
 }
+.v6-shell[data-visual=graphite] .rf-content-node.kind-image .rf-asset{background:#1B1D20!important}
+.v6-shell[data-visual=graphite] .rf-content-node.kind-image .rf-asset img{
+  width:100%;height:100%;object-fit:contain;background:#1B1D20;
+}
 .v6-shell[data-visual=graphite] .rf-content-node.kind-chart{
   background:#16181B!important;color:#F4F6F8!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:6px!important;
 }
@@ -267,13 +289,33 @@
 .v6-shell[data-visual=graphite] .rf-content-node.kind-video{
   background:#16181B!important;border-color:rgba(255,255,255,.08)!important;border-radius:6px!important;
 }
-.v6-shell[data-visual=graphite] .rf-task button{border-color:var(--ink-soft);border-radius:4px}
+.v6-shell[data-visual=graphite] .rf-task{height:100%;align-items:center}
+.v6-shell[data-visual=graphite] .rf-task button{border-color:var(--ink-soft);border-radius:4px;width:18px;height:18px}
 .v6-shell[data-visual=graphite] .rf-task input,
-.v6-shell[data-visual=graphite][data-theme=dark] .rf-task input{color:var(--ink)!important;background:transparent}
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-task input{
+  color:var(--ink)!important;background:transparent;
+  font-size:calc(18px / var(--board-zoom,.72))!important;
+}
+.v6-shell[data-visual=graphite] .rf-voice{
+  height:100%;min-height:0;display:flex;flex-wrap:wrap;align-items:center;align-content:center;
+  gap:8px;padding:10px 12px;border-radius:6px;
+  background:color-mix(in srgb,var(--violet) 14%,var(--paper));
+  border:1px solid color-mix(in srgb,var(--violet) 28%,transparent);
+}
+.v6-shell[data-visual=graphite] .rf-voice strong{font-size:calc(15px / var(--board-zoom,.72))}
+.v6-shell[data-visual=graphite] .rf-voice p{
+  flex:1 0 100%;margin:0;color:var(--ink);
+  font-size:calc(15px / var(--board-zoom,.72));line-height:1.35;
+}
 .v6-shell[data-visual=graphite] .rf-document{
-  display:flex;align-items:center;gap:10px;width:100%;height:100%;padding:8px 10px;
+  display:flex;align-items:flex-start;gap:12px;width:100%;height:100%;
+  padding:calc(16px / var(--board-zoom,.72));
   border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);text-align:left;cursor:pointer;
 }
+.v6-shell[data-visual=graphite] .rf-document strong{
+  font-size:calc(22px / var(--board-zoom,.72))!important;font-weight:640;white-space:normal;letter-spacing:-.02em;
+}
+.v6-shell[data-visual=graphite] .rf-document span{font-size:calc(14px / var(--board-zoom,.72))!important}
 .v6-shell[data-visual=graphite] .rf-object-toolbar{
   height:32px;border-radius:6px;background:var(--chrome);border:1px solid var(--chrome-line);box-shadow:none;
 }
@@ -303,6 +345,7 @@
   position:fixed;left:48px;top:46px;bottom:0;width:300px;border-radius:0;
   background:var(--chrome);color:var(--chrome-text);border-right:1px solid var(--chrome-line);box-shadow:none;
 }
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-toolbar{display:none!important}
 .v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-main{
   overflow:auto;background:var(--canvas);
 }
