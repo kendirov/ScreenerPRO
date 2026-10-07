@@ -1061,4 +1061,115 @@
   max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 
+/* Instrument board: one desk, no app rail, warm ink, hairline regions. */
+.v6-shell[data-board=instrument]{
+  --bg:#14120e;--panel:#1c1914;--surface:#262119;--text:#f4f0e6;--muted:#a89b88;
+  --line:#3d362c;--accent:#e4c27a;--ink:#f4f0e6;--ink-soft:#a89b88;
+  --canvas:#14120e;--chrome:#1a1713;--chrome-2:#2a241c;--chrome-text:#f4f0e6;
+  --chrome-muted:#a89b88;--chrome-line:#3d362c;--live:#9dbe86;--note:#2a2418;
+  background:#14120e;color:#f4f0e6;
+}
+.v6-shell[data-board=instrument][data-theme=light]{
+  --bg:#e6e0d4;--panel:#f7f3ea;--surface:#efe8db;--text:#1c1914;--muted:#6e6558;
+  --line:#d4cbbd;--accent:#8a5a28;--ink:#1c1914;--ink-soft:#6e6558;
+  --canvas:#e6e0d4;--chrome:#f7f3ea;--chrome-2:#efe8db;--chrome-text:#1c1914;
+  --chrome-muted:#6e6558;--chrome-line:#d4cbbd;--live:#3f6b45;--note:#f3ead4;
+  background:#e6e0d4;color:#1c1914;color-scheme:light;
+}
+.v6-shell[data-board=instrument]::after{
+  content:"";position:fixed;left:0;right:0;bottom:0;height:44px;z-index:500;
+  background:var(--chrome);border-top:1px solid var(--chrome-line);pointer-events:none;
+}
+.v6-shell[data-board=instrument] .v6-topbar{
+  position:fixed;top:auto;bottom:4px;right:8px;left:auto;height:36px;z-index:560;
+  max-width:none;padding:0 4px;border:0;border-radius:0;background:transparent;box-shadow:none;
+}
+.v6-shell[data-board=instrument] .v6-brand{display:none}
+.v6-shell[data-board=instrument] .v6-more-menu,
+.v6-shell[data-board=instrument] .v6-status-popover{top:auto;bottom:40px}
+.v6-shell[data-board=instrument] .v6-settings{top:auto;bottom:56px;right:12px}
+.v6-shell[data-board=instrument] .v6-navigator{
+  position:fixed;left:8px;top:auto;bottom:4px;width:auto;height:36px;z-index:560;pointer-events:none;
+}
+.v6-shell[data-board=instrument] .v6-nav-rail{
+  pointer-events:auto;width:auto;min-width:0;height:36px;padding:0;gap:0;border:0;border-radius:0;
+  background:transparent;box-shadow:none;flex-direction:row;align-items:center;
+}
+.v6-shell[data-board=instrument] .v6-nav-rail button{
+  width:auto;min-width:0;height:28px;min-height:28px;padding:0 8px;border-radius:2px;
+  font-size:12px;font-weight:560;letter-spacing:.01em;display:flex;align-items:center;
+}
+.v6-shell[data-board=instrument] .v6-nav-rail button svg{display:none}
+.v6-shell[data-board=instrument] .v6-nav-rail button::before{content:attr(data-label);font-size:12px}
+.v6-shell[data-board=instrument] .v6-nav-rail button:hover::after{content:none}
+.v6-shell[data-board=instrument] .v6-nav-rail button[aria-label="Добавить"],
+.v6-shell[data-board=instrument] .v6-nav-rail button[aria-label="Рисование"],
+.v6-shell[data-board=instrument] .v6-nav-rail button[aria-label="Интеграции"]{display:none}
+.v6-shell[data-board=instrument] .v6-nav-divider{width:1px;height:14px;margin:0 4px;background:var(--chrome-line)}
+.v6-shell[data-board=instrument] .v6-nav-spacer{flex:0 0 8px;width:8px}
+.v6-shell[data-board=instrument] .v6-nav-overlay{
+  position:fixed;left:12px;bottom:52px;top:auto;width:340px;max-height:min(68vh,640px);
+  border-radius:2px;background:var(--chrome);box-shadow:0 16px 40px rgba(0,0,0,.28);
+}
+.v6-shell[data-board=instrument] .v6-nav-card{border-radius:2px;background:transparent;margin:2px 6px;padding:4px 6px}
+.v6-shell[data-board=instrument] .v6-nav-card-main{grid-template-columns:22px 1fr;gap:8px}
+.v6-shell[data-board=instrument] .v6-nav-glyph{
+  width:18px;height:18px;border-radius:2px;background:transparent;border:1px solid var(--chrome-line);font-size:10px;
+}
+.v6-shell[data-board=instrument] .rf-tool-palette{
+  left:46%;bottom:6px;transform:translateX(-50%);z-index:560;
+  padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;
+}
+.v6-shell[data-board=instrument] .rf-tool-palette>button{width:28px;height:28px;border-radius:2px}
+.v6-shell[data-board=instrument] .rf-zoombar{
+  right:200px;bottom:6px;z-index:560;height:32px;padding:0;border:0;border-radius:0;
+  background:transparent;box-shadow:none;
+}
+.v6-shell[data-board=instrument] .rf-instrument code{max-width:140px}
+.v6-shell[data-board=instrument] .rf-desk-name{
+  margin-right:8px;padding-right:8px;border-right:1px solid var(--chrome-line);
+  font-style:normal;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+}
+.v6-shell[data-board=instrument] .rf-studio-canvas,
+.v6-shell[data-board=instrument] .react-flow,
+.v6-shell[data-board=instrument] .react-flow__renderer,
+.v6-shell[data-board=instrument] .v6-canvas{
+  background:var(--canvas)!important;background-image:none!important;
+}
+.v6-shell[data-board=instrument] .react-flow__background{opacity:1}
+.v6-shell[data-board=instrument] .rf-workspace-card.is-region,
+.v6-shell[data-board=instrument] .rf-workspace-card.room-project,
+.v6-shell[data-board=instrument] .rf-workspace-card.room-course,
+.v6-shell[data-board=instrument] .rf-workspace-card.room-lesson,
+.v6-shell[data-board=instrument] .rf-workspace-card.room-topic{
+  background:transparent!important;border:1px solid color-mix(in srgb,var(--accent) 55%,transparent)!important;
+  border-radius:0!important;box-shadow:none!important;
+}
+.v6-shell[data-board=instrument] .rf-region-label strong{
+  font-size:11px!important;font-weight:560;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)!important;
+}
+.v6-shell[data-board=instrument] .rf-content-node{
+  border-radius:2px!important;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--line))!important;
+  background:color-mix(in srgb,var(--panel) 92%,#000)!important;box-shadow:none!important;color:var(--ink);
+}
+.v6-shell[data-board=instrument] .rf-content-node.kind-text{
+  background:transparent!important;border-color:transparent!important;
+}
+.v6-shell[data-board=instrument] .rf-content-node.kind-text.is-selected:not(.is-editing){
+  border-color:var(--accent)!important;background:color-mix(in srgb,var(--accent) 8%,transparent)!important;
+}
+.v6-shell[data-board=instrument] .rf-content-node.is-selected{outline:1px solid var(--accent);outline-offset:1px}
+.v6-shell[data-board=instrument] .rf-mark{
+  background:transparent!important;border:0!important;border-radius:0!important;
+  border-bottom:1px solid var(--accent)!important;font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+}
+.v6-shell[data-board=instrument] .react-flow__edge-path{stroke:#c4a15a!important;stroke-width:1.25px!important}
+.v6-shell[data-board=instrument] .react-flow__node.selected{box-shadow:none}
+.v6-shell[data-board=instrument] .react-flow__selection{background:rgba(228,194,122,.08);border:1px solid #e4c27a}
+.v6-shell[data-board=instrument] .react-flow__attribution{opacity:.35}
+.v6-shell[data-board=instrument][data-surface=documents] .v6-doc-shell{
+  height:100vh;padding:12px 0 52px;background:var(--canvas);
+}
+.v6-shell[data-board=instrument][data-surface=documents] .v6-doc-library{background:var(--chrome)}
+
 

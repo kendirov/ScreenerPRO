@@ -82,11 +82,26 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
 
  useEffect(()=>{if(draggingRef.current)return;const next=buildNodes();setNodes(current=>{const selectedIds=new Set(current.filter(node=>node.selected).map(node=>node.id));const merged=next.map(node=>({...node,selected:selectedIds.has(node.id)}));nodesRef.current=merged;return merged});},[buildNodes,dragging]);
  useEffect(()=>{nodesRef.current=nodes},[nodes]);
- const edges=useMemo<Edge[]>(()=>objects.filter(o=>!o.hidden&&o.kind==="annotation"&&o.body?.annotationKind==="arrow").flatMap(o=>{
-  const from=o.body?.fromId||o.relations?.find((r:any)=>r.type==="connects_from")?.targetId,to=o.body?.toId||o.relations?.find((r:any)=>r.type==="connects_to")?.targetId;
-  if(!from||!to||!byId.has(from)||!byId.has(to))return[];
-  return[{id:o.id,source:from,target:to,type:"smoothstep",animated:false,selectable:true,label:o.body?.label||undefined,style:{strokeWidth:1.5}}]
- }),[objects,byId]);
+ const edges=useMemo<Edge[]>(()=>{
+  const list:Edge[]=[];
+  const seen=new Set<string>();
+  const add=(id:string,source?:string|null,target?:string|null)=>{
+   if(!source||!target||source===target||!byId.has(source)||!byId.has(target)||byId.get(source)?.hidden||byId.get(target)?.hidden||seen.has(source+"→"+target))return;
+   seen.add(source+"→"+target);
+   list.push({id,source,target,type:"smoothstep",animated:false,selectable:false,style:{stroke:"#c4a15a",strokeWidth:1.25}});
+  };
+  for(const o of objects){
+   if(o.hidden)continue;
+   if(o.kind==="annotation"&&o.body?.annotationKind==="arrow"){
+    add(o.id,o.body?.fromId||o.relations?.find((r:any)=>r.type==="connects_from")?.targetId,o.body?.toId||o.relations?.find((r:any)=>r.type==="connects_to")?.targetId);
+   }
+   for(const rel of o.relations||[]){
+    const type=String(rel?.type||"");
+    if(type==="connects_to"||type==="annotates"||type==="relates"||type==="next")add(`rel-${o.id}-${rel.targetId}`,o.id,rel.targetId);
+   }
+  }
+  return list;
+ },[objects,byId]);
 
  useEffect(()=>{const f=(e:Event)=>{const p=(e as CustomEvent).detail;if(p==="mouse"||p==="trackpad")setProfileState(p)};window.addEventListener("tqs-studio-input-profile",f);return()=>window.removeEventListener("tqs-studio-input-profile",f)},[]);
  const applyExplicitFocus=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,nonce:number)=>{
@@ -287,7 +302,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
     connectionLineType={ConnectionLineType.SmoothStep}
     fitViewOptions={{padding:.12,maxZoom:.24}}
    >
-    <Background variant={BackgroundVariant.Dots} gap={28} size={1}/>
+    <Background variant={BackgroundVariant.Lines} gap={96} color="rgba(196,161,90,.14)" lineWidth={1}/>
     <ViewportPortal><AnnotationLayer objects={objects} selectedId={[...selected][0]||null} draft={draft} erasing={tool==="erase"} onSelect={id=>setSelected(new Set([id]))} onErase={id=>{if(toolRef.current==="erase")void remove(id)}}/></ViewportPortal>
     {mapOpen&&<MiniMap pannable zoomable position="bottom-left" maskColor="rgba(20,22,24,.55)" nodeColor={n=>n.type==="workspace"?"#e0b15a":"#c8c2b6"}/>}
    </ReactFlow>
@@ -295,6 +310,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
    <BoardPalette tool={tool} more={moreTools} onTool={next=>{setTool(next);setArm(next==="text"?"text":null);setMoreTools(false)}} onMore={setMoreTools} onCreate={kind=>void addAt(kind)} onVoice={()=>setVoiceAt(rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600})}/>
    {voiceAt&&<VoiceCapture onCancel={()=>setVoiceAt(null)} onSave={saveVoice}/>}
    <div className="rf-zoombar rf-instrument" data-studio-ui data-testid="studio-instrument">
+    <em className="rf-desk-name">Доска</em>
     <button aria-label="Отдалить" onClick={()=>void rf.current?.zoomOut({duration:160})}>−</button>
     <span>{Math.round(zoom*100)}%</span>
     <button aria-label="Приблизить" onClick={()=>void rf.current?.zoomIn({duration:160})}>+</button>
