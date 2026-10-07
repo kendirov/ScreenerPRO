@@ -65,7 +65,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
  const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video"|"file";point?:{x:number;y:number}}|null>(null),focusIdRef=useRef<string|null>(focusId||null),focusNonceRef=useRef(focusNonce),byIdRef=useRef<Map<string,StudioObject>>(new Map()),lastNativePaste=useRef(0),rightDrag=useRef<{x:number;y:number;vx:number;vy:number;z:number;moved:boolean;nodeId:string|null}|null>(null),draggingRef=useRef(false),zoomRef=useRef(zoom),objectsRef=useRef(objects),undoStack=useRef<StudioObject[][]>([]),redoStack=useRef<StudioObject[][]>([]),selectedRef=useRef(selected),toolRef=useRef(tool);
  const visibleObjects=useMemo(()=>objects.filter(o=>!o.hidden&&o.kind!=="annotation"),[objects]),byId=useMemo(()=>new Map(objects.map(o=>[o.id,o])),[objects]);
  focusIdRef.current=focusId||null;focusNonceRef.current=focusNonce;byIdRef.current=byId;objectsRef.current=objects;selectedRef.current=selected;toolRef.current=tool;
- const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-140)/Math.max(1,o.w),(r.height-150)/Math.max(1,o.h));const z=Math.min(.92,Math.max(.64,fit));void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height/2)-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
+ const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-56)/Math.max(1,o.w),(r.height-40)/Math.max(1,o.h));const z=Math.min(.92,Math.max(.62,fit));void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height/2)-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
  const directChildren=useMemo(()=>{const m=new Map<string,StudioObject[]>();for(const o of visibleObjects){if(!o.parent_id)continue;const a=m.get(o.parent_id)||[];a.push(o);m.set(o.parent_id,a)}return m},[visibleObjects]);
  const remember=useCallback(()=>{undoStack.current.push(structuredClone(objectsRef.current));if(undoStack.current.length>40)undoStack.current.shift();redoStack.current=[]},[]);
  const restoreSnap=useCallback(async(stack:StudioObject[][],other:StudioObject[][])=>{const snap=stack.pop();if(!snap)return;other.push(structuredClone(objectsRef.current));await onRestore(snap);setMenu(null)},[onRestore]);
@@ -256,11 +256,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
  };
  const fitWorld=()=>{
   const roots=objectsRef.current.filter(o=>o.kind==="frame"&&!o.parent_id&&!o.hidden);
-  void rf.current?.fitView({nodes:roots.map(o=>({id:o.id})),padding:.16,duration:420,maxZoom:.24}).then(()=>{
-   const vp=rf.current?.getViewport();
-   if(!vp)return;
-   void rf.current?.setViewport({x:vp.x+42,y:vp.y+8,zoom:vp.zoom},{duration:160});
-  });
+  void rf.current?.fitView({nodes:roots.map(o=>({id:o.id})),padding:.05,duration:420,maxZoom:.27});
  };
 
  const drawing=tool==="pen"||tool==="marker"||tool==="arrow"||tool==="shape";
@@ -309,7 +305,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
     panOnDrag={tool==="hand"?[0,1]:drawing?false:[1]} panActivationKeyCode="Space" selectionOnDrag={tool==="select"&&!drawing} nodesDraggable={tool==="select"||tool==="hand"} selectionMode={"partial" as any}
     multiSelectionKeyCode={["Control","Meta"]} deleteKeyCode={["Delete","Backspace"]}
     connectionLineType={ConnectionLineType.SmoothStep}
-    fitViewOptions={{padding:.12,maxZoom:.24}}
+    fitViewOptions={{padding:.06,maxZoom:.27}}
    >
     <Background variant={BackgroundVariant.Dots} gap={28} size={1.1} color="rgba(92,101,112,.38)"/>
     <ViewportPortal><AnnotationLayer objects={objects} selectedId={[...selected][0]||null} draft={draft} erasing={tool==="erase"} onSelect={id=>setSelected(new Set([id]))} onErase={id=>{if(toolRef.current==="erase")void remove(id)}}/></ViewportPortal>
@@ -391,8 +387,9 @@ function WorkspaceNode({id,data,selected}:NodeProps<StudioNode>){
   <header className="rf-region-label tqs-drag-handle">
    {renaming?<input className="nodrag nopan rf-rename" value={title} autoFocus onChange={e=>setTitle(e.target.value)} onBlur={()=>{setRenaming(false);if(title.trim()&&title!==o.title)void ctx.patch(id,{title:title.trim()},"rename","Область переименована")}} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur()}}/>:<strong onDoubleClick={()=>setRenaming(true)}>{titleText(o)}</strong>}
   </header>
-  {data.lod!=="near"&&summary&&<p className="rf-region-summary">{summary}</p>}
-  {data.lod!=="near"&&data.signatures.length>0&&<ul className="rf-region-signs">{data.signatures.slice(0,4).map(item=><li key={item.title}>{item.title}</li>)}</ul>}
+  {data.lod==="far"&&summary&&<p className="rf-region-summary">{summary}</p>}
+  {data.lod==="mid"&&summary&&<p className="rf-region-summary">{summary}</p>}
+  {data.lod==="mid"&&data.signatures.length>0&&<ul className="rf-region-signs">{data.signatures.slice(0,3).map(item=><li key={item.title}>{item.title}</li>)}</ul>}
  </div>
 }
 

@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useRef,useState} from "react";
 import {Bot,ChevronRight,Crosshair,FileText,FolderTree,GraduationCap,LineChart,Plus,Search,Settings} from "lucide-react";
 import type {StudioActivity,StudioDocument,StudioObject} from "@/lib/studio-v5/types";
+import {isFixtureDocument} from "@/lib/studio-v6/document-model";
 import {roomRole} from "@/lib/studio-v6/workstation";
 
 type Surface="world"|"documents";
@@ -101,7 +102,7 @@ export function NavigatorV6({objects,documents,activity,selectedId,surface,onWor
   const searchable=useMemo(()=>{
     const seen=new Set(flat.map(node=>node.object?.id).filter(Boolean));
     const extra=objects.filter(object=>!object.hidden&&!seen.has(object.id)&&object.kind!=="annotation").map(object=>({id:object.id,title:object.title,path:object.semantic_path,kind:object.kind,depth:0,object,children:[]} as Node));
-    const docs=documents.map(document=>({id:"doc:"+document.id,title:document.title,path:document.semantic_path,kind:"document",depth:0,document,children:[]} as Node));
+    const docs=documents.filter(document=>!isFixtureDocument(document)).map(document=>({id:"doc:"+document.id,title:document.title,path:document.semantic_path,kind:"document",depth:0,document,children:[]} as Node));
     return [...flat,...extra,...docs];
   },[flat,objects,documents]);
   const matches=query.trim()?searchable.filter(node=>node.title.toLowerCase().includes(query.trim().toLowerCase())).slice(0,24):[];

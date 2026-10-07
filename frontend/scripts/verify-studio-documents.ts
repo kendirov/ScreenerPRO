@@ -20,6 +20,19 @@ const empty = [
 ];
 assert.deepEqual(model.publicationBlocks(empty).map((block: {block_id: string}) => block.block_id), ["text"]);
 
+const handout = model.handoutBlocks([
+  {block_id:"h", document_id:"doc", ordinal:1, block_type:"heading", content:{text:"Занятие"}, data_spec:null, asset_id:null, revision:1},
+  {block_id:"embed", document_id:"doc", ordinal:2, block_type:"interactive", content:{view:"embed", url:"", title:"График", columns:["Элемент","Зачем"], rows:[["График","Контекст"]]}, data_spec:null, asset_id:null, revision:1},
+  {block_id:"chart", document_id:"doc", ordinal:3, block_type:"interactive_chart", content:{title:"Si"}, data_spec:null, asset_id:null, revision:1},
+  {block_id:"live", document_id:"doc", ordinal:4, block_type:"live_data", content:{title:"Si"}, data_spec:null, asset_id:null, revision:1},
+  {block_id:"qa", document_id:"doc", ordinal:5, block_type:"rich_text", content:{html:"<p>Проверь: вставку между блоками, drag reorder, share и PDF.</p>"}, data_spec:null, asset_id:null, revision:1},
+  {block_id:"body", document_id:"doc", ordinal:6, block_type:"rich_text", content:{html:"<p>График, стакан и лента.</p>"}, data_spec:null, asset_id:null, revision:1},
+]);
+assert.deepEqual(handout.map((block: {block_id: string}) => block.block_id), ["h", "embed", "body"]);
+assert.equal(handout.find((block: {block_id: string; content?: {view?: string}}) => block.block_id === "embed")?.content?.view, "table");
+assert.equal(model.isFixtureDocument({id:"qa-doc-1", title:"QA V5 temporary document", semantic_path:"QA/V5"}), true);
+assert.equal(model.isFixtureDocument({id:"doc-lesson-workspace", title:"Занятие 1 — Рабочее пространство", semantic_path:"Обучение/Бесплатный курс/Занятие 1"}), false);
+
 assert.match(model.resolveVideoEmbed("https://www.youtube.com/watch?v=abcdefghijk"), /youtube\.com\/embed\/abcdefghijk/);
 assert.match(model.resolveVideoEmbed("https://rutube.ru/video/sample-id/"), /rutube\.ru\/play\/embed\/sample-id/);
 assert.match(model.resolveVideoEmbed("https://vimeo.com/123456"), /player\.vimeo\.com\/video\/123456/);

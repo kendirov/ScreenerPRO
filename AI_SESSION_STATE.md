@@ -12,7 +12,7 @@ See `AGENTS.md` and `.cursor/rules/artem-cursor-first.mdc`.
 ## Studio
 
 - Ветка `chatgpt/tqs-studio-v6-productization-2026-10-04`. Канон: Supabase `turbo-family` / `hppbuzbrjoyrwpdinlxk`, маршрут `/api/studio/live`. Нового repo, базы и второго Studio нет.
-- Сайт: https://tqs-studio.vercel.app/studio. Оболочка `data-visual=graphite`: холодный холст, тёмный хром, верхняя панель и левая рейка. Тёплая бумага и нижнее меню сняты. На доске один прототип занятия. Портальные комнаты не являются видом.
+- Сайт: https://tqs-studio.vercel.app/studio. Оболочка `data-visual=graphite`. Дальняя карта — три отдельные территории. Занятие заполняет рабочее поле. Тёмная тема без карточки-прямоугольника. Раздатка занятия — одна страница, без служебных полей QA.
 - Владелец этот экран ещё не принимал. Это не PASS.
 
 ## Memory

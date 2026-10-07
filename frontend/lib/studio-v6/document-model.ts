@@ -155,6 +155,42 @@ export function publicationBlocks(blocks:StudioDocumentBlock[]){
   return [...blocks].filter(blockHasPublicationBody).sort((a,b)=>a.ordinal-b.ordinal);
 }
 
+function developerCopy(value:string){
+  return /вставку между блоками|drag reorder|share и PDF|stable block_id|сюда можно вставить|тестовый/i.test(value);
+}
+
+export function handoutBlocks(blocks:StudioDocumentBlock[]){
+  const out:StudioDocumentBlock[]=[];
+  for(const block of [...blocks].sort((a,b)=>a.ordinal-b.ordinal)){
+    if(block.content?.hidden)continue;
+    const c=block.content||{};
+    const type=block.block_type;
+    if(type==="interactive_chart"||type==="live_data"||type==="market_replay"||type==="divider")continue;
+    if((type==="video"||type==="audio")&&!String(c.url||"").trim())continue;
+    if((type==="pdf_excerpt"||type==="file"||type==="citation")&&developerCopy(`${c.title||""} ${c.text||""}`))continue;
+    if((type==="image"||type==="gallery"||type==="hotspot"||type==="infographic")&&developerCopy(`${c.caption||""} ${c.title||""}`))continue;
+    if(type==="rich_text"&&developerCopy(String(c.html||"")))continue;
+    const view=interactiveView(block);
+    if(view==="chart"||view==="timeline"||view==="embed"){
+      if(!tableHasText(c))continue;
+      out.push({...block,block_type:"interactive",content:{...c,view:"table"}});
+      continue;
+    }
+    if(type==="sources"){
+      const items=(Array.isArray(c.items)?c.items:[]).filter((item:any)=>{
+        const label=String(item?.label||"").trim();
+        return Boolean(label)&&!item?.entityId&&!/world frame|entity/i.test(label);
+      });
+      if(!items.length)continue;
+      out.push({...block,content:{...c,title:c.title||"Источники",items}});
+      continue;
+    }
+    if(!blockHasPublicationBody(block))continue;
+    out.push(block);
+  }
+  return out;
+}
+
 export function defaultBlockContent(type:string){
   if(type==="heading")return {text:"Новый заголовок",layout:"reading"};
   if(type==="rich_text")return {html:"<p>Новый текст</p>",layout:"reading"};
@@ -225,10 +261,18 @@ export function uniqueDocuments(documents:StudioDocument[],ids?:string[]){
   return source.filter(doc=>{if(seen.has(doc.id))return false;seen.add(doc.id);return true});
 }
 
+export function isFixtureDocument(doc:{id?:string;title?:string;semantic_path?:string}){
+  const id=String(doc.id||"");
+  const title=String(doc.title||"");
+  const path=String(doc.semantic_path||"");
+  return id.startsWith("qa-doc")||path.startsWith("QA/")||/^QA\b/i.test(title)||/temporary document/i.test(title);
+}
+
 export function filterDocuments(documents:StudioDocument[],query:string){
   const q=query.trim().toLowerCase();
-  if(!q)return uniqueDocuments(documents);
-  return uniqueDocuments(documents).filter(doc=>(doc.title+" "+doc.semantic_path+" "+doc.kind).toLowerCase().includes(q));
+  const source=uniqueDocuments(documents).filter(doc=>!isFixtureDocument(doc));
+  if(!q)return source;
+  return source.filter(doc=>(doc.title+" "+doc.semantic_path+" "+doc.kind).toLowerCase().includes(q));
 }
 
 function sortedBlocks(blocks:StudioDocumentBlock[]){
