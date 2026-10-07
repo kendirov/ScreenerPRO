@@ -304,6 +304,31 @@ function blockSignature(block: StudioDocumentBlock) {
   };
 }
 
+type RankedBlock = { block_id: string; ordinal: number };
+
+function reorderRanks(blocks: RankedBlock[], blockId: string, targetOrdinal: number) {
+  const target = Math.max(1, Math.min(targetOrdinal, blocks.length));
+  return blocks
+    .map(block => ({
+      ...block,
+      sortKey: block.block_id === blockId ? target : block.ordinal >= target ? block.ordinal + 0.5 : block.ordinal,
+    }))
+    .sort((a, b) => a.sortKey - b.sortKey || a.ordinal - b.ordinal || (a.block_id < b.block_id ? -1 : a.block_id > b.block_id ? 1 : 0))
+    .map((block, index) => ({ block_id: block.block_id, ordinal: index + 1 }));
+}
+
+async function alignOrdinals(documentId: string, current: RankedBlock[], desired: RankedBlock[]) {
+  let ranks = [...current].sort((a, b) => a.ordinal - b.ordinal || (a.block_id < b.block_id ? -1 : 1));
+  const order = [...desired].sort((a, b) => a.ordinal - b.ordinal || (a.block_id < b.block_id ? -1 : 1));
+  if (ranks.length !== order.length || ranks.some(block => !order.some(item => item.block_id === block.block_id))) return;
+  for (let index = 0; index < order.length; index += 1) {
+    if (ranks[index]?.block_id === order[index].block_id) continue;
+    const blockId = order[index].block_id;
+    await studioCall("reorderDocumentBlock", { documentId, blockId, targetOrdinal: index + 1 });
+    ranks = reorderRanks(ranks, blockId, index + 1);
+  }
+}
+
 async function writeDocuments(model: Model, state: SharedStudio) {
   const storedDocs = new Map(model.documents.map(document => [document.id, document]));
   for (const document of state.documents) {
@@ -334,14 +359,15 @@ async function writeDocuments(model: Model, state: SharedStudio) {
           semanticPath: document.semantic_path,
         });
       }
-      if (!stored || num(stored.ordinal) !== num(block.ordinal)) {
-        await studioCall("reorderDocumentBlock", {
-          documentId: document.id,
-          blockId: block.block_id,
-          targetOrdinal: num(block.ordinal),
-        });
-      }
     }
+    let ranks: RankedBlock[] = storedBlocks.map(block => ({ block_id: block.block_id, ordinal: num(block.ordinal) }));
+    let nextOrdinal = ranks.reduce((max, block) => Math.max(max, block.ordinal), 0) + 1;
+    for (const block of incomingBlocks) {
+      if (ranks.some(item => item.block_id === block.block_id)) continue;
+      ranks.push({ block_id: block.block_id, ordinal: nextOrdinal });
+      nextOrdinal += 1;
+    }
+    await alignOrdinals(document.id, ranks, incomingBlocks.map(block => ({ block_id: block.block_id, ordinal: num(block.ordinal) })));
     for (const block of storedBlocks) {
       if (incomingBlocks.some(item => item.block_id === block.block_id) || block.content?.hidden) continue;
       await studioCall("upsertDocumentBlock", {

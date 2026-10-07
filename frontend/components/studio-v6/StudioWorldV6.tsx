@@ -25,6 +25,20 @@ function writePublish(x:Record<string,PublishState>){try{localStorage.setItem(PU
 function sharedHost(){return typeof window!=="undefined"&&(window.location.hostname==="tqs-studio.vercel.app"||/\.vercel\.app$/.test(window.location.hostname))}
 async function pullShared(){try{const response=await fetch("/api/studio/live",{cache:"no-store"});if(!response.ok)return null;const body=await response.json();return isSharedStudio(body)?body:null}catch{return null}}
 async function pushShared(state:SharedStudio,baseUpdatedAt:string){const response=await fetch("/api/studio/live",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({...state,baseUpdatedAt})});if(response.status===409){const current=await response.json().catch(()=>null);throw Object.assign(new Error("SHARED_CONFLICT"),{current:current?.state})}if(!response.ok)throw new Error("SHARED_SAVE_FAILED");const body=await response.json().catch(()=>null);if(!body?.remote)throw new Error("SHARED_REMOTE_DISABLED");const check=await fetch("/api/studio/live",{cache:"no-store"});if(!check.ok)throw new Error("SHARED_READBACK_FAILED");const saved=await check.json();if(saved?.updatedAt!==state.updatedAt)throw new Error("SHARED_READBACK_MISMATCH");return true}
+let sharedPushQueue:Promise<void>=Promise.resolve();
+function queueSharedPush(read:()=>SharedStudio){
+ const job=sharedPushQueue.then(async()=>{
+  let last:unknown=null;
+  for(let attempt=0;attempt<3;attempt+=1){
+   const state=read();
+   try{await pushShared(state,readStamp());writeStamp(state.updatedAt);return}
+   catch(error){last=error;const current=(error as {current?:unknown})?.current;if(isSharedStudio(current)){writeStamp(current.updatedAt);continue}throw error}
+  }
+  throw last instanceof Error?last:new Error("SHARED_SAVE_FAILED");
+ });
+ sharedPushQueue=job.then(()=>undefined,()=>undefined);
+ return job;
+}
 const SHARED_STAMP="tqs-studio-v6-shared-stamp";
 function readStamp(){try{return localStorage.getItem(SHARED_STAMP)||""}catch{return""}}
 function writeStamp(value:string){try{localStorage.setItem(SHARED_STAMP,value)}catch{}}
@@ -77,10 +91,9 @@ export default function StudioWorldV6(){
   pendingPush.current=true;
   const seq=++pushSeq.current;
   const timer=window.setTimeout(()=>{
-   const local=readLocalStudio();
-   const state=makeSharedStudio({theme,activeDocumentId:bundle?.document.id||null,overview:local.overview,documents:local.documents,blocks:local.blocks,operator:readOperator()});
    setSharedStatus("saving");
-   void pushShared(state,readStamp()).then(()=>{if(seq!==pushSeq.current)return;saveTries.current=0;writeStamp(state.updatedAt);setSharedStatus("saved")}).catch((error)=>{if(seq!==pushSeq.current)return;const current=error?.current;if(isSharedStudio(current)){adoptSharedStudio({overview:current.overview,documents:current.documents,blocks:current.blocks});writeStamp(current.updatedAt);heldSync.current=current.overview.world.revision+"|"+current.documents.map((item:StudioDocument)=>item.id+":"+item.revision).join(",");setOverview(current.overview);setDocuments(current.documents);setSharedStatus("saved");return}setSharedStatus("local");if(saveTries.current<3){saveTries.current+=1;window.setTimeout(()=>setSharedBoot(value=>value+1),2500)}}).finally(()=>{if(seq===pushSeq.current)pendingPush.current=false});
+   const readState=()=>{const local=readLocalStudio();return makeSharedStudio({theme,activeDocumentId:bundle?.document.id||null,overview:local.overview,documents:local.documents,blocks:local.blocks,operator:readOperator()})};
+   void queueSharedPush(readState).then(()=>{if(seq!==pushSeq.current)return;saveTries.current=0;setSharedStatus("saved")}).catch((error)=>{if(seq!==pushSeq.current)return;const current=error?.current;if(isSharedStudio(current)){adoptSharedStudio({overview:current.overview,documents:current.documents,blocks:current.blocks});writeStamp(current.updatedAt);heldSync.current=current.overview.world.revision+"|"+current.documents.map((item:StudioDocument)=>item.id+":"+item.revision).join(",");setOverview(current.overview);setDocuments(current.documents);setSharedStatus("saved");return}setSharedStatus("local");if(saveTries.current<3){saveTries.current+=1;window.setTimeout(()=>setSharedBoot(value=>value+1),2500)}}).finally(()=>{if(seq===pushSeq.current)pendingPush.current=false});
   },700);
   return()=>window.clearTimeout(timer);
  },[loading,overview,documents,bundle?.document.id,bundle?.document.revision,theme,sharedBoot]);
