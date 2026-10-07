@@ -480,7 +480,7 @@ function ChartBlock({object:o}:{object:StudioObject}){
 
 function Task({object:o}:{object:StudioObject}){
  const ctx=useContext(CanvasContext)!, [v,setV]=useState(o.body?.title||o.title);
- return <div className="rf-task"><button className={"nodrag nopan"+(o.status==="DONE"?" is-done":"")} aria-pressed={o.status==="DONE"} onClick={()=>void ctx.patch(o.id,{status:o.status==="DONE"?"NEW":"DONE",body:{...o.body,done:o.status!=="DONE"}},"task","Статус задачи изменён")}>{o.status==="DONE"?"✓":""}</button><input className="nodrag nopan" value={v} aria-label="Задача" onChange={e=>setV(e.target.value)} onBlur={()=>{if(v!==(o.body?.title||o.title))void ctx.patch(o.id,{title:v,body:{...o.body,title:v}},"task","Задача обновлена")}}/></div>
+ return <div className="rf-task"><button className={"nodrag nopan"+(o.status==="DONE"?" is-done":"")} aria-pressed={o.status==="DONE"} onClick={()=>{ctx.remember();void ctx.patch(o.id,{status:o.status==="DONE"?"NEW":"DONE",body:{...o.body,done:o.status!=="DONE"}},"task","Статус задачи изменён")}}>{o.status==="DONE"?"✓":""}</button><input className="nodrag nopan" value={v} aria-label="Задача" onChange={e=>setV(e.target.value)} onBlur={()=>{if(v!==(o.body?.title||o.title))void ctx.patch(o.id,{title:v,body:{...o.body,title:v}},"task","Задача обновлена")}}/></div>
 }
 
 function Voice({object:o}:{object:StudioObject}){
