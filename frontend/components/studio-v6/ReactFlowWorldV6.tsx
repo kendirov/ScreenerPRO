@@ -349,7 +349,6 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
      <button onClick={()=>void pasteAt(menu.point)}>Вставить</button>
      <button onClick={()=>void pasteAt(menu.point,true)}>Вставить объект</button>
      <button onClick={()=>void addAt("text",menu.point)}>Текст</button>
-     <button onClick={()=>void addAt("note",menu.point)}>Заметка</button>
      <button onClick={()=>void addAt("task",menu.point)}>Задача</button>
      <button onClick={()=>{fileTarget.current={kind:"image",point:menu.point};const el=fileInput.current;if(el){el.accept="image/*";el.value="";el.click()}setMenu(null)}}>Изображение</button>
      <button onClick={()=>void addAt("video",menu.point)}>Видео</button>

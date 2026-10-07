@@ -55,7 +55,8 @@ try {
   const box = await pane.boundingBox();
   await page.mouse.click(box.x + 40, box.y + box.height - 40, { button: "right" });
   const menu = await page.getByTestId("board-menu").innerText();
-  for (const label of ["Текст", "Заметка", "Задача", "Голос", "Изображение", "Ещё"]) if (!menu.includes(label)) fail("menu missing " + label);
+  for (const label of ["Текст", "Задача", "Голос", "Изображение", "Ещё"]) if (!menu.includes(label)) fail("menu missing " + label);
+  if (menu.includes("Заметка")) fail("sticky note is still a create action");
   await page.keyboard.press("Escape");
   console.log("PASS create menu");
 

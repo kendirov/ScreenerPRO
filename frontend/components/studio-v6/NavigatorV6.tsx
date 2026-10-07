@@ -149,7 +149,7 @@ export function NavigatorV6({objects,documents,activity,selectedId,surface,onWor
           {query?matches.length?matches.map(node=><button className="v6-nav-result" key={node.id} onClick={()=>activate(node)}><span>{node.title}</span></button>):<p className="v6-nav-empty">Ничего не найдено</p>:<p className="v6-nav-empty">Введите название занятия или документа.</p>}
         </section>}
         {mode==="create"&&<section className="v6-nav-create">
-          {[["text","Текст"],["note","Заметка"],["task","Задача"],["voice","Голос"],["image","Изображение"],["frame","Комната"]].map(([kind,label])=><button key={kind} type="button" onClick={()=>{closeNav();onWorld();onCreate(kind)}}>{label}</button>)}
+          {[["text","Текст"],["task","Задача"],["voice","Голос"],["image","Изображение"],["frame","Комната"]].map(([kind,label])=><button key={kind} type="button" onClick={()=>{closeNav();onWorld();onCreate(kind)}}>{label}</button>)}
         </section>}
         {mode==="integrations"&&<section className="v6-nav-create">
           <button type="button" onClick={()=>{closeNav();onWorld();onCreate("chart")}}>График</button>

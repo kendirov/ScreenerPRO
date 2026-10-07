@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, Hand, Highlighter, Image as ImageIcon, Link2, Mic, Minus, MoreHorizontal, MousePointer2, PenLine, Shapes, Square, SquareCheck, StickyNote, Type } from "lucide-react";
+import { ArrowUpRight, Hand, Highlighter, Image as ImageIcon, Link2, Mic, Minus, MoreHorizontal, MousePointer2, PenLine, Shapes, Square, SquareCheck, Type } from "lucide-react";
 import type { StudioObject } from "@/lib/studio-v5/types";
 import { formatDuration } from "@/lib/studio-v6/annotations";
 
@@ -17,11 +17,10 @@ export function BoardPalette({ tool, more, onTool, onMore, onCreate, onVoice }: 
   onCreate: (kind: string) => void;
   onVoice: () => void;
 }) {
-  const primary: Array<{ id: BoardTool | "note" | "task" | "voice" | "image"; label: string; icon: ReactNode }> = [
+  const primary: Array<{ id: BoardTool | "task" | "voice" | "image"; label: string; icon: ReactNode }> = [
     { id: "select", label: "Выбор", icon: <MousePointer2 size={15} /> },
     { id: "hand", label: "Рука", icon: <Hand size={15} /> },
     { id: "text", label: "Текст", icon: <Type size={15} /> },
-    { id: "note", label: "Заметка", icon: <StickyNote size={15} /> },
     { id: "task", label: "Задача", icon: <SquareCheck size={15} /> },
     { id: "voice", label: "Голос", icon: <Mic size={15} /> },
     { id: "image", label: "Изображение", icon: <ImageIcon size={15} /> },
@@ -37,7 +36,7 @@ export function BoardPalette({ tool, more, onTool, onMore, onCreate, onVoice }: 
       aria-label={item.label}
       title={item.label}
       onClick={() => {
-        if (item.id === "note" || item.id === "task" || item.id === "image") { onCreate(item.id); return; }
+        if (item.id === "task" || item.id === "image") { onCreate(item.id); return; }
         if (item.id === "voice") { onVoice(); return; }
         onTool(item.id);
       }}

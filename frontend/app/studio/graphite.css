@@ -345,7 +345,12 @@
   position:fixed;left:48px;top:46px;bottom:0;width:300px;border-radius:0;
   background:var(--chrome);color:var(--chrome-text);border-right:1px solid var(--chrome-line);box-shadow:none;
 }
-.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-toolbar{display:none!important}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-title{display:none!important}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-toolbar{
+  position:sticky;top:0;z-index:5;height:44px;margin:0;padding:0 28px;
+  display:flex;align-items:center;justify-content:flex-end;gap:12px;
+  background:var(--canvas);border:0;box-shadow:none;
+}
 .v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-main{
   overflow:auto;background:var(--canvas);
 }
@@ -389,9 +394,81 @@
 .v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-title h1,
 .v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-title small{color:var(--ink)}
 .v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-title small{color:var(--accent)!important}
-.v6-shell[data-visual=graphite] .v6-settings,
 .v6-shell[data-visual=graphite] .v6-status-popover,
 .v6-shell[data-visual=graphite] .v6-more-menu{
   border-radius:6px;background:var(--chrome);box-shadow:none;
 }
+.v6-shell[data-visual=graphite] .v6-settings{
+  position:fixed;left:48px;top:46px;right:0;bottom:0;width:auto;max-height:none;
+  padding:56px 24px 80px;overflow:auto;border:0;border-radius:0;
+  background:var(--canvas);color:var(--ink);box-shadow:none;
+}
+.v6-shell[data-visual=graphite] .v6-settings>header,
+.v6-shell[data-visual=graphite] .v6-settings>section,
+.v6-shell[data-visual=graphite] .v6-settings-card{
+  width:min(640px,100%);margin-left:auto;margin-right:auto;
+}
+.v6-shell[data-visual=graphite] .v6-settings>header{font-size:28px;color:var(--ink)}
+.v6-shell[data-visual=graphite] .v6-settings>header strong{font-weight:640;letter-spacing:-.03em}
+.v6-shell[data-visual=graphite] .v6-settings section{border-top:1px solid var(--line);color:var(--ink);padding:18px 0}
+.v6-shell[data-visual=graphite] .v6-settings section span,
+.v6-shell[data-visual=graphite] .v6-settings-card span{color:var(--ink-soft)}
+.v6-shell[data-visual=graphite] .v6-settings section button,
+.v6-shell[data-visual=graphite] .v6-settings>header button{
+  height:36px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);
+}
+.v6-shell[data-visual=graphite] .v6-settings section button.is-on{background:#2A3138;color:#F4F6F8;border-color:#2A3138}
+.v6-shell[data-visual=graphite] .v6-block{position:relative;margin:0 0 8px}
+.v6-shell[data-visual=graphite] .v6-block-gutter{
+  display:flex;align-items:center;gap:8px;min-height:22px;opacity:0;
+  color:var(--ink-soft);font-size:12px;
+}
+.v6-shell[data-visual=graphite] .v6-block:hover .v6-block-gutter,
+.v6-shell[data-visual=graphite] .v6-block.is-selected .v6-block-gutter{opacity:1}
+.v6-shell[data-visual=graphite] .v6-block-gutter button,
+.v6-shell[data-visual=graphite] .v6-insert>button,
+.v6-shell[data-visual=graphite] .v6-insert-menu button,
+.v6-shell[data-visual=graphite] .v6-figure figcaption button,
+.v6-shell[data-visual=graphite] .v6-checkpoint button{
+  height:28px;border:0;border-radius:6px;background:transparent;color:var(--ink-soft);cursor:pointer;padding:0 8px;
+}
+.v6-shell[data-visual=graphite] .v6-block h2 input,
+.v6-shell[data-visual=graphite] .v6-figure figcaption input,
+.v6-shell[data-visual=graphite] .v6-video input,
+.v6-shell[data-visual=graphite] .v6-checkpoint input,
+.v6-shell[data-visual=graphite] .v6-checkpoint textarea,
+.v6-shell[data-visual=graphite] .studio-callout textarea{
+  width:100%;border:0;background:transparent;color:var(--ink);font:inherit;resize:vertical;
+}
+.v6-shell[data-visual=graphite] .v6-block h2 input{font-size:34px;font-weight:640;letter-spacing:-.03em}
+.v6-shell[data-visual=graphite] .v6-insert{display:flex;justify-content:center;position:relative;height:28px}
+.v6-shell[data-visual=graphite] .v6-insert>button{
+  width:28px;height:28px;border:1px solid transparent;border-radius:50%;font-size:18px;line-height:1;
+}
+.v6-shell[data-visual=graphite] .v6-block:hover .v6-insert>button,
+.v6-shell[data-visual=graphite] .v6-insert>button[aria-expanded=true]{border-color:var(--line);background:var(--paper);color:var(--ink)}
+.v6-shell[data-visual=graphite] .v6-insert-menu{
+  position:absolute;top:32px;z-index:6;display:flex;flex-direction:column;min-width:180px;
+  padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--paper);
+}
+.v6-shell[data-visual=graphite] .v6-insert-menu button{text-align:left;color:var(--ink);height:34px}
+.v6-shell[data-visual=graphite] .v6-insert-menu button:hover{background:var(--note)}
+.v6-shell[data-visual=graphite] .v6-figure{margin:18px 0}
+.v6-shell[data-visual=graphite] .v6-figure[data-align=center] img,
+.v6-shell[data-visual=graphite] .v6-figure[data-align=wide] img{width:100%;height:auto;border-radius:6px}
+.v6-shell[data-visual=graphite] .v6-figure[data-align=left]{display:grid;grid-template-columns:46% 1fr;gap:16px;align-items:start}
+.v6-shell[data-visual=graphite] .v6-figure[data-align=left] img{width:100%;border-radius:6px}
+.v6-shell[data-visual=graphite] .v6-figure-empty{
+  min-height:160px;display:grid;place-items:center;border:1px dashed var(--line);border-radius:6px;color:var(--ink-soft);
+}
+.v6-shell[data-visual=graphite] .v6-video iframe,
+.v6-shell[data-visual=graphite] .v6-video video{width:100%;aspect-ratio:16/9;border:0;border-radius:6px;background:#16181B;margin:12px 0}
+.v6-shell[data-visual=graphite] .v6-checkpoint{margin-top:12px;padding:14px 16px;border-radius:6px;background:var(--note)}
+.v6-shell[data-visual=graphite] .v6-checkpoint small{color:var(--violet);font-weight:650}
+.v6-shell[data-visual=graphite] .v6-study-progress{margin:0 0 18px;color:var(--ink-soft);font-size:13px}
+.v6-shell[data-visual=graphite] .v6-block[data-locked=true]{opacity:.45}
+.v6-shell[data-visual=graphite] .v6-locked{color:var(--ink-soft)}
+.v6-shell[data-visual=graphite] .v6-figure figcaption button.is-on{color:var(--accent)}
+.v6-shell[data-visual=graphite] .v6-figure figcaption label{font-size:12px;color:var(--ink-soft)}
+.v6-shell[data-visual=graphite] .v6-figure figcaption input[type=file]{font-size:12px}
 .v6-shell[data-visual=graphite] .v6-auth-card>.primary{background:#3B82F6;color:#F4F6F8}

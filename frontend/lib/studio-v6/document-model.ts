@@ -191,6 +191,35 @@ export function handoutBlocks(blocks:StudioDocumentBlock[]){
   return out;
 }
 
+export function editorBlocks(blocks:StudioDocumentBlock[]){
+  const out:StudioDocumentBlock[]=[];
+  for(const block of [...blocks].sort((a,b)=>a.ordinal-b.ordinal)){
+    if(block.content?.hidden)continue;
+    const c=block.content||{};
+    const type=block.block_type;
+    const blob=`${c.title||""} ${c.text||""} ${c.html||""} ${c.caption||""}`;
+    if(developerCopy(blob))continue;
+    if(type==="interactive_chart"||type==="live_data"||type==="market_replay"||type==="divider")continue;
+    const view=interactiveView(block);
+    if(view==="chart"||view==="timeline"||view==="embed"){
+      if(!tableHasText(c))continue;
+      out.push({...block,block_type:"interactive",content:{...c,view:"table"}});
+      continue;
+    }
+    if(type==="sources"){
+      const items=(Array.isArray(c.items)?c.items:[]).filter((item:any)=>{
+        const label=String(item?.label||"").trim();
+        return Boolean(label)&&!item?.entityId&&!/world frame|entity/i.test(label);
+      });
+      if(!items.length)continue;
+      out.push({...block,content:{...c,title:c.title||"Источники",items}});
+      continue;
+    }
+    if(type==="heading"||type==="rich_text"||type==="callout"||type==="quote"||type==="image"||type==="video"||type==="table"||blockHasPublicationBody(block))out.push(block);
+  }
+  return out;
+}
+
 export function defaultBlockContent(type:string){
   if(type==="heading")return {text:"Новый заголовок",layout:"reading"};
   if(type==="rich_text")return {html:"<p>Новый текст</p>",layout:"reading"};
