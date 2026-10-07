@@ -14,8 +14,8 @@ type SyncJob={key:string;action:string;payload:any;createdAt:number;attempts:num
 let flushing=false,syncTimer:number|null=null;
 const LOCAL_WORLD_AI=new Set(["getStudioContext","getChangeHistory","aiApplyMutation","undoAiRun","redoAiRun"]);
 const SERVER_ONLY=new Set(["createShare","configureDriveOAuth","driveListRoot","driveSyncCheckpoint","driveConflictProbe","driveDisconnect","aiCreateDocumentFromFrame"]);
-const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","updateObjects","markActivityDone","getDocumentAuthoringContext","applyDocumentAuthoring","undoDocumentAuthoring"]);
-const LOCAL_FIRST_MUTATIONS=new Set(["createDocument","upsertDocumentBlock","reorderDocumentBlock","createWorldObject","updateObject","updateObjects","markActivityDone"]);
+const LOCAL_CAPABLE=new Set(["ensureSeed","getWorldOverview","getEntityContext","getRecentActivity","getDocument","listDocuments","driveStatus","createDocument","upsertDocumentBlock","reorderDocumentBlock","restoreDocumentBlocks","createWorldObject","updateObject","updateObjects","markActivityDone","getDocumentAuthoringContext","applyDocumentAuthoring","undoDocumentAuthoring"]);
+const LOCAL_FIRST_MUTATIONS=new Set(["createDocument","upsertDocumentBlock","reorderDocumentBlock","restoreDocumentBlocks","createWorldObject","updateObject","updateObjects","markActivityDone"]);
 function productionServer(){return typeof window!=="undefined"&&!["localhost","127.0.0.1"].includes(window.location.hostname)}
 export function sharedStudioHost(){return typeof window!=="undefined"&&(location.hostname==="tqs-studio.vercel.app"||/\.vercel\.app$/.test(location.hostname))}
 function readOutbox():SyncJob[]{try{const x=JSON.parse(localStorage.getItem(OUTBOX_KEY)||"[]");return Array.isArray(x)?x:[]}catch{return[]}}

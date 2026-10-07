@@ -198,6 +198,10 @@ export function editorBlocks(blocks:StudioDocumentBlock[]){
     const c=block.content||{};
     const type=block.block_type;
     const blob=`${c.title||""} ${c.text||""} ${c.html||""} ${c.caption||""}`;
+    if(type==="image"&&(String(c.url||"").trim()||String(c.previewUrl||"").trim())){
+      out.push(block);
+      continue;
+    }
     if(developerCopy(blob))continue;
     if(type==="interactive_chart"||type==="live_data"||type==="market_replay"||type==="divider")continue;
     const view=interactiveView(block);

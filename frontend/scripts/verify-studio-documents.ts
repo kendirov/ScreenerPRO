@@ -38,6 +38,10 @@ const editable = model.editorBlocks([
   {block_id:"chart", document_id:"doc", ordinal:3, block_type:"interactive_chart", content:{title:"Si"}, data_spec:null, asset_id:null, revision:1},
 ]);
 assert.deepEqual(editable.map((block: {block_id: string}) => block.block_id), ["clip"]);
+const pictured = model.editorBlocks([
+  {block_id:"shot", document_id:"doc", ordinal:1, block_type:"image", content:{caption:"Сюда можно вставить скрин", previewUrl:"data:image/svg+xml,abc"}, data_spec:null, asset_id:null, revision:1},
+]);
+assert.deepEqual(pictured.map((block: {block_id: string}) => block.block_id), ["shot"]);
 
 assert.match(model.resolveVideoEmbed("https://www.youtube.com/watch?v=abcdefghijk"), /youtube\.com\/embed\/abcdefghijk/);
 assert.match(model.resolveVideoEmbed("https://rutube.ru/video/sample-id/"), /rutube\.ru\/play\/embed\/sample-id/);
@@ -120,6 +124,13 @@ assert.match(shared.sharedToMarkdown(revised.state), /голос:|artifact-qa|П
 const kept = shared.keepLocalFiles({previewUrl:"data:image/png;base64,AAAA"}, {previewUrl:""});
 assert.equal(kept.previewUrl, "data:image/png;base64,AAAA");
 assert.equal(shared.keepLocalFiles({previewUrl:"data:image/png;base64,AAAA"}, {previewUrl:"https://example.com/a.png"}).previewUrl, "https://example.com/a.png");
+
+const lesson = await store.localStudioAction("getDocument", {documentId:"doc-lesson-workspace"});
+const originalBlocks = lesson.blocks.map((block: {block_id: string; content: {html?: string}}) => ({...block}));
+const heading = originalBlocks.find((block: {block_id: string}) => block.block_id === "lesson-h1");
+await store.localStudioAction("upsertDocumentBlock", {documentId:"doc-lesson-workspace", blockId:"lesson-h1", blockType:"heading", content:{...(heading?.content || {}), text:"Временный заголовок"}});
+const restored = await store.localStudioAction("restoreDocumentBlocks", {documentId:"doc-lesson-workspace", blocks:originalBlocks});
+assert.equal(restored.blocks.find((block: {block_id: string; content?: {text?: string}}) => block.block_id === "lesson-h1")?.content?.text, heading?.content?.text);
 
 console.log("PASS studio documents");
 }

@@ -88,6 +88,11 @@ export default function StudioWorldV6(){
  const sendOwnerLink=async()=>{const email=authEmail.trim();if(!email||authSending)return;setAuthSending(true);try{const {error}=await ownerMagicLink(email);if(error)throw error;setNotice("Ссылка для входа отправлена. Откройте её на этом устройстве.");setAuthOpen(false)}catch(e){setNotice("Вход не отправлен: "+(e instanceof Error?e.message:String(e)))}finally{setAuthSending(false)}};
  const signOut=async()=>{await studioSignOut();setSessionUser(null);setNotice("Вы вышли из сессии Studio. Доска остаётся общей.")};
  const runHistory=async(dir:"undo"|"redo")=>{
+  const doc=(window as any).__tqsDocumentHistory;
+  if(surface==="documents"&&doc){
+   if(dir==="undo"&&doc.canUndo()){doc.undo();return}
+   if(dir==="redo"&&doc.canRedo()){doc.redo();return}
+  }
   const board=(window as any).__tqsBoardHistory;
   if(dir==="undo"&&board?.canUndo()){board.undo();return}
   if(dir==="redo"&&board?.canRedo()){board.redo();return}

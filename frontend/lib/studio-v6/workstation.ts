@@ -22,4 +22,4 @@ export function creationMatches(query:string){
 
 export function roomRole(depth:number){return depth<=0?"project":depth===1?"course":depth===2?"lesson":"topic"}
 
-export function lodFromZoom(zoom:number){return zoom<.28?"far":zoom<.6?"mid":"near"}
+export function lodFromZoom(zoom:number){return zoom<.34?"far":zoom<.6?"mid":"near"}

@@ -240,6 +240,12 @@ export async function localStudioAction<T=any>(name:string,p:any={}):Promise<T>{
    for(const x of s.blocks.filter(x=>x.document_id===p.documentId&&x.ordinal>=pos))x.ordinal+=1;b=block({block_id:p.blockId,document_id:p.documentId,ordinal:pos,block_type:p.blockType,content:p.content||{},data_spec:p.dataSpec||null});s.blocks.push(b);
   }d.revision+=1;activity(s,p.documentId,p.semanticPath||d.semantic_path,"text_update","Обновлён блок "+p.blockId,{blockType:p.blockType});save(s);return {block:clone(b),documentRevision:d.revision} as T;
  }
+ if(name==="restoreDocumentBlocks"){
+  const d=s.documents.find(x=>x.id===p.documentId);if(!d)throw new Error("DOCUMENT_NOT_FOUND");
+  const incoming=Array.isArray(p.blocks)?p.blocks:[];
+  s.blocks=s.blocks.filter(x=>x.document_id!==p.documentId).concat(incoming.map((item:any)=>({...item,document_id:p.documentId})));
+  d.revision+=1;save(s);return documentBundle(s,p.documentId) as T;
+ }
  if(name==="reorderDocumentBlock"){
   const arr=s.blocks.filter(x=>x.document_id===p.documentId).sort((a,b)=>a.ordinal-b.ordinal),idx=arr.findIndex(x=>x.block_id===p.blockId);if(idx<0)throw new Error("BLOCK_NOT_FOUND");const [m]=arr.splice(idx,1),target=Math.max(0,Math.min(arr.length,Number(p.targetOrdinal)-1));arr.splice(target,0,m);arr.forEach((x,i)=>x.ordinal=i+1);const d=s.documents.find(x=>x.id===p.documentId);if(d)d.revision+=1;save(s);return {blocks:clone(arr),documentRevision:d?.revision||1} as T;
  }

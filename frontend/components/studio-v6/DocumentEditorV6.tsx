@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import type {DocumentBundle, StudioDocumentBlock} from "@/lib/studio-v5/types";
 import {studioAction} from "@/lib/studio-v6/api";
 import {editorBlocks, resolveVideoEmbed} from "@/lib/studio-v6/document-model";
@@ -36,6 +36,28 @@ function studyKey(documentId: string) {
   return "tqs-studio-study-v1:" + documentId;
 }
 
+function cloneBlocks(blocks: StudioDocumentBlock[], documentId: string) {
+  return structuredClone(blocks.filter(block => block.document_id === documentId));
+}
+
+function clockLabel(total: number) {
+  const seconds = Math.max(0, Math.floor(total));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function clockSeconds(value: string) {
+  const parts = String(value || "0:00").split(":").map(part => Number(part) || 0);
+  return parts.length > 1 ? parts[0] * 60 + parts[1] : parts[0];
+}
+
+const LESSON_CHAPTERS = [
+  {id: "ch-desk", at: "0:00", title: "Рабочее место", text: "На экране остаются график, стакан и лента."},
+  {id: "ch-chart", at: "0:30", title: "График", text: "График задаёт контекст цены."},
+  {id: "ch-tape", at: "1:00", title: "Стакан и лента", text: "Стакан показывает ликвидность, лента показывает темп."},
+];
+
+const LESSON_POSTER = "data:image/svg+xml," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 440'><rect width='800' height='440' fill='#1B1D20'/><polyline points='40,300 180,220 300,250 460,120 620,160 760,80' fill='none' stroke='#3B82F6' stroke-width='4'/><rect x='48' y='48' width='220' height='120' fill='none' stroke='#8B939C'/><rect x='290' y='48' width='180' height='120' fill='none' stroke='#8B939C'/></svg>");
+
 export function DocumentEditorV6({bundle, mode, onBundle, onFocus}: {bundle: DocumentBundle; onBundle?: (value: DocumentBundle) => void; mode: DocumentMode; onFocus?: (focus: AuthoringFocus | null) => void}) {
   const study = mode === "preview";
   const blocks = editorBlocks(bundle.blocks);
@@ -43,6 +65,11 @@ export function DocumentEditorV6({bundle, mode, onBundle, onFocus}: {bundle: Doc
   const [menuAt, setMenuAt] = useState<string | null>(null);
   const [passed, setPassed] = useState<Record<string, boolean>>({});
   const documentId = bundle.document.id;
+  const blocksRef = useRef(bundle.blocks);
+  const undoStack = useRef<StudioDocumentBlock[][]>([]);
+  const redoStack = useRef<StudioDocumentBlock[][]>([]);
+  const snapFor = useRef("");
+  blocksRef.current = bundle.blocks;
 
   useEffect(() => {
     try {
@@ -58,24 +85,47 @@ export function DocumentEditorV6({bundle, mode, onBundle, onFocus}: {bundle: Doc
     onBundle?.(fresh);
     return fresh;
   };
-  const write = async (blockId: string, blockType: string, content: Record<string, unknown>, afterBlockId?: string) => {
+  const remember = (key: string) => {
+    if (snapFor.current === key) return;
+    undoStack.current.push(cloneBlocks(blocksRef.current, documentId));
+    if (undoStack.current.length > 40) undoStack.current.shift();
+    redoStack.current = [];
+    snapFor.current = key;
+    window.setTimeout(() => { if (snapFor.current === key) snapFor.current = ""; }, 700);
+  };
+  const restore = async (stack: StudioDocumentBlock[][], other: StudioDocumentBlock[][]) => {
+    const snap = stack.pop();
+    if (!snap) return;
+    other.push(cloneBlocks(blocksRef.current, documentId));
+    snapFor.current = "";
+    await studioAction("restoreDocumentBlocks", {documentId, blocks: snap});
+    await refresh();
+  };
+  const persist = async (blockId: string, blockType: string, content: Record<string, unknown>, afterBlockId?: string) => {
     await studioAction("upsertDocumentBlock", {documentId, blockId, blockType, content, afterBlockId});
     await refresh();
   };
+  const write = async (blockId: string, blockType: string, content: Record<string, unknown>, afterBlockId?: string) => {
+    remember(blockId);
+    await persist(blockId, blockType, content, afterBlockId);
+  };
   const insert = async (afterBlockId: string | null, kind: InsertKind) => {
+    remember("insert-" + crypto.randomUUID());
     const blockId = "block-" + crypto.randomUUID();
     setMenuAt(null);
     setSelected(blockId);
-    await write(blockId, kind, freshContent(kind), afterBlockId || undefined);
+    await persist(blockId, kind, freshContent(kind), afterBlockId || undefined);
     const ordinal = editorBlocks((await studioAction<DocumentBundle>("getDocument", {documentId})).blocks).findIndex(block => block.block_id === blockId) + 1;
     onFocus?.({blockId, ordinal, blockType: kind});
   };
   const reorder = async (blockId: string, targetOrdinal: number) => {
+    remember("reorder-" + blockId + "-" + targetOrdinal);
     await studioAction("reorderDocumentBlock", {documentId, blockId, targetOrdinal});
     await refresh();
   };
   const hide = async (block: StudioDocumentBlock) => {
-    await write(block.block_id, block.block_type, {...(block.content || {}), hidden: true});
+    remember("hide-" + block.block_id);
+    await persist(block.block_id, block.block_type, {...(block.content || {}), hidden: true});
   };
   const copyBlock = async (block: StudioDocumentBlock) => {
     const payload = JSON.stringify({block_type: block.block_type, content: block.content || {}});
@@ -96,10 +146,35 @@ export function DocumentEditorV6({bundle, mode, onBundle, onFocus}: {bundle: Doc
     await insertRaw(afterBlockId, blockType, content);
   };
   const insertRaw = async (afterBlockId: string | null, blockType: string, content: Record<string, unknown>) => {
+    remember("paste-" + crypto.randomUUID());
     const blockId = "block-" + crypto.randomUUID();
     setSelected(blockId);
-    await write(blockId, blockType, content, afterBlockId || undefined);
+    await persist(blockId, blockType, content, afterBlockId || undefined);
   };
+
+  useEffect(() => {
+    const api = {
+      canUndo: () => undoStack.current.length > 0,
+      canRedo: () => redoStack.current.length > 0,
+      undo: () => void restore(undoStack.current, redoStack.current),
+      redo: () => void restore(redoStack.current, undoStack.current),
+    };
+    (window as any).__tqsDocumentHistory = api;
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+      if (document.querySelector(".v6-shell")?.getAttribute("data-surface") !== "documents") return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, .tiptap, .tqs-rich-editor")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      void restore(event.shiftKey ? redoStack.current : undoStack.current, event.shiftKey ? undoStack.current : redoStack.current);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      if ((window as any).__tqsDocumentHistory === api) delete (window as any).__tqsDocumentHistory;
+    };
+  }, [documentId]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -171,20 +246,25 @@ function BlockBody({block, study, locked, passed, onPass, onChange}: {block: Stu
 }
 
 function ImageBlock({content, study, onChange}: {content: any; study: boolean; onChange: (content: Record<string, unknown>) => void}) {
-  const align = content.align === "left" || content.align === "wide" ? content.align : "center";
+  const align = content.align === "left" || content.align === "right" || content.align === "wide" ? content.align : "wide";
+  const scale = Number(content.scale) > 0 ? Number(content.scale) : 1;
+  const rotate = Number(content.rotate) || 0;
+  const src = String(content.url || content.previewUrl || "");
   const pick = async (file: File) => {
     const url = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || "")); reader.onerror = () => reject(reader.error); reader.readAsDataURL(file); });
     const asset = await studioAction<any>("attachAsset", {dataUrl: url, filename: file.name});
     onChange({...content, url: asset.signedUrl || url, assetId: asset.asset?.id, title: content.title || file.name});
   };
-  return <figure className="v6-figure" data-align={align}>
-    {content.url ? <img src={content.url} alt={content.caption || content.title || ""}/> : <div className="v6-figure-empty">Изображение</div>}
+  return <figure className="v6-figure" data-align={align} data-scale={scale} data-rotate={rotate} style={{["--fig-scale" as string]: String(scale), ["--fig-rotate" as string]: `${rotate}deg`}}>
+    {src ? <img src={src} alt={content.caption || content.title || "Изображение"}/> : <div className="v6-figure-empty">Изображение</div>}
     {study ? content.caption && <figcaption>{content.caption}</figcaption> : <figcaption>
       <input aria-label="Подпись" value={content.caption || ""} placeholder="Подпись" onChange={event => onChange({...content, caption: event.target.value})}/>
       <span>
         <button type="button" className={align === "left" ? "is-on" : ""} onClick={() => onChange({...content, align: "left"})}>Слева</button>
-        <button type="button" className={align === "center" ? "is-on" : ""} onClick={() => onChange({...content, align: "center"})}>Центр</button>
+        <button type="button" className={align === "right" ? "is-on" : ""} onClick={() => onChange({...content, align: "right"})}>Справа</button>
         <button type="button" className={align === "wide" ? "is-on" : ""} onClick={() => onChange({...content, align: "wide"})}>Шире</button>
+        <button type="button" onClick={() => onChange({...content, scale: scale <= 0.8 ? 1 : scale < 1.2 ? 1.35 : 0.75})}>{scale < 0.9 ? "Мелко" : scale > 1.15 ? "Крупно" : "Масштаб"}</button>
+        <button type="button" onClick={() => onChange({...content, rotate: (rotate + 90) % 360})}>Повернуть</button>
         <label>Файл<input aria-label="Выбрать изображение" type="file" accept="image/*" onChange={event => { const file = event.target.files?.[0]; if (file) void pick(file); }}/></label>
       </span>
     </figcaption>}
@@ -193,9 +273,19 @@ function ImageBlock({content, study, onChange}: {content: any; study: boolean; o
 
 function VideoBlock({content, study, passed, onPass, onChange}: {content: any; study: boolean; passed: boolean; onPass: () => void; onChange: (content: Record<string, unknown>) => void}) {
   const checkpoint = Array.isArray(content.checkpoints) ? content.checkpoints[0] : null;
+  const chapters = Array.isArray(content.chapters) && content.chapters.length ? content.chapters : LESSON_CHAPTERS;
   const embed = resolveVideoEmbed(String(content.url || ""));
   const [answer, setAnswer] = useState("");
   const [wrong, setWrong] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const end = Math.max(...chapters.map((chapter: {at?: string}) => clockSeconds(chapter.at || "0:00")), 60);
+  useEffect(() => {
+    if (!playing) return;
+    const id = window.setInterval(() => setSeconds(value => value >= end ? end : value + 1), 700);
+    return () => window.clearInterval(id);
+  }, [playing, end]);
+  const active = [...chapters].reverse().find((chapter: {at?: string}) => clockSeconds(chapter.at || "0:00") <= seconds) || chapters[0];
   const check = () => {
     const expected = String(checkpoint?.answer || "").trim().toLowerCase();
     const given = answer.trim().toLowerCase();
@@ -206,8 +296,18 @@ function VideoBlock({content, study, passed, onPass, onChange}: {content: any; s
   };
   return <section className="v6-video" data-testid="document-video">
     <strong>{content.title || "Видео"}</strong>
-    {embed ? <iframe title={content.title || "Видео"} src={embed} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen/> : content.url ? <video controls src={content.url}/> : <div className="v6-figure-empty">Видео появится по адресу</div>}
-    {!study && <label>Адрес видео<input aria-label="Адрес видео" value={content.url || ""} placeholder="https://" onChange={event => onChange({...content, url: event.target.value})} /></label>}
+    <div className="v6-player-stage" data-playing={playing ? "true" : "false"}>
+      {embed ? <iframe title={content.title || "Видео"} src={embed} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen/> : content.url ? <video controls src={content.url}/> : <img src={content.poster || LESSON_POSTER} alt=""/>}
+      <p className="v6-player-caption" data-testid="video-subtitle">{active?.text || content.transcript || ""}</p>
+      <div className="v6-player-bar">
+        <button type="button" aria-label={playing ? "Пауза" : "Слушать"} onClick={() => setPlaying(value => !value)}>{playing ? "II" : "▶"}</button>
+        <span>{clockLabel(seconds)}</span>
+        <span>{active?.title}</span>
+      </div>
+    </div>
+    <ol className="v6-chapters" data-testid="video-chapters">{chapters.map((chapter: {id?: string; at?: string; title?: string}) => <li key={chapter.id || chapter.at}><button type="button" className={chapter === active ? "is-on" : ""} onClick={() => { setSeconds(clockSeconds(chapter.at || "0:00")); setPlaying(false); }}><small>{chapter.at}</small><span>{chapter.title}</span></button></li>)}</ol>
+    {!study && <label>Адрес видео<input aria-label="Адрес видео" value={content.url || ""} placeholder="https://" onChange={event => onChange({...content, url: event.target.value, chapters})} /></label>}
+    {!study && <textarea aria-label="Текст видео" value={content.transcript || chapters.map((chapter: {text?: string}) => chapter.text).filter(Boolean).join(" ")} onChange={event => onChange({...content, transcript: event.target.value, chapters})}/>}
     {checkpoint && <div className="v6-checkpoint" data-testid="video-checkpoint">
       <small>{checkpoint.at ? `Метка ${checkpoint.at}` : "Проверка"}</small>
       {study ? <>

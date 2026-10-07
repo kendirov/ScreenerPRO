@@ -21,7 +21,7 @@ import {AnnotationLayer,BoardPalette,VoiceCapture,type BoardTool} from "./BoardC
 
 type Lod="far"|"mid"|"near";
 type InputProfile="mouse"|"trackpad";
-type FlowData={object:StudioObject;lod:Lod;depth:number;signatures:Array<{kind:string;title:string}>;childCount:number;zoom:number;portal:ReturnType<typeof roomPortal>|null};
+type FlowData={object:StudioObject;lod:Lod;depth:number;signatures:Array<{kind:string;title:string}>;lines:string[];childCount:number;zoom:number;portal:ReturnType<typeof roomPortal>|null};
 type StudioNode=Node<FlowData,"workspace"|"content">;
 type ObjectPatch={id:string;patch:any;eventType?:string;summary?:string};
 type Props={objects:StudioObject[];selected:Set<string>;setSelected:(ids:Set<string>)=>void;focusId?:string|null;focusNonce?:number;onObjectsLocal:(fn:(x:StudioObject[])=>StudioObject[])=>void;onPatch:(id:string,patch:any,eventType?:string,summary?:string)=>Promise<void>;onCommit?:(patches:ObjectPatch[])=>Promise<void>;onCreate:(kind:string,opts?:any)=>Promise<StudioObject>;onOpenDocument:(id:string)=>void;onAssemble?:(id:string)=>void;onRestore:(snapshot:StudioObject[])=>Promise<void>;notice:(s:string)=>void};
@@ -48,6 +48,19 @@ const VIEW_KEY="tqs-studio-v6-graphite-viewport",PROFILE_KEY="tqs-studio-v6-rf-i
 function depthOf(o:StudioObject,byId:Map<string,StudioObject>){let d=0,p=o.parent_id,guard=0;while(p&&guard++<20){d++;p=byId.get(p)?.parent_id||null}return d}
 function flowPosition(o:StudioObject,byId:Map<string,StudioObject>){const p=o.parent_id?byId.get(o.parent_id):null;return p?{x:o.x-p.x,y:o.y-p.y}:{x:o.x,y:o.y}}
 function titleText(o:StudioObject){if(o.id==="lesson-miro-scene")return"Занятие 1";if(o.id==="frame-learning")return"Обучение";if(o.id==="frame-agent")return"Агент";if(o.id==="frame-tqs")return"Торговля";return o.title}
+function territoryLines(frame:StudioObject,objects:StudioObject[]){
+ const lines:string[]=[];
+ const visit=(parentId:string,depth:number)=>{
+  for(const child of objects){
+   if(lines.length>=4||child.hidden||child.parent_id!==parentId||child.kind==="annotation")continue;
+   if(child.kind==="frame"||child.kind==="text"||child.kind==="task"||child.kind==="documentRef")lines.push(titleText(child));
+   if(depth<1)visit(child.id,depth+1);
+  }
+ };
+ visit(frame.id,0);
+ return lines.slice(0,4);
+}
+function farTerritorySize(frame:StudioObject,objects:StudioObject[]){const lines=territoryLines(frame,objects);return{w:980,h:560+lines.length*96,lines}}
 function iconFor(kind:string){return kind==="frame"?"▣":kind==="text"?"T":kind==="task"?"✓":kind==="voice"?"◉":kind==="image"?"▧":kind==="video"?"▶":kind==="chart"?"⌁":kind==="documentRef"?"D":kind==="link"?"↗":kind==="file"?"F":"•"}
 function inputProfile(){try{const x=localStorage.getItem(PROFILE_KEY);if(x==="mouse"||x==="trackpad")return x}catch{}return (typeof navigator!=="undefined"&&/Mac|iPhone|iPad/.test(navigator.platform||""))?"trackpad":"mouse" as InputProfile}
 function initialViewport(){try{const x=JSON.parse(localStorage.getItem(VIEW_KEY)||"null");if(x&&Number.isFinite(x.x)&&Number.isFinite(x.y)&&Number.isFinite(x.zoom))return x}catch{}return null}
@@ -75,7 +88,8 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
   .sort((a,b)=>depthOf(a,byId)-depthOf(b,byId)||a.z-b.z)
   .map(o=>{
    const depth=depthOf(o,byId),isWorkspace=o.kind==="frame",children=directChildren.get(o.id)||[],signatures=[...children].filter(x=>x.kind==="frame"||x.kind==="text").sort((a,b)=>(a.kind==="frame"?0:1)-(b.kind==="frame"?0:1)).slice(0,4).map(x=>({kind:x.kind,title:titleText(x)}));
-   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:o.w,height:o.h,parentId:o.parent_id||undefined,zIndex:o.z,draggable:o.body?.locked?false:undefined,data:{object:o,lod,depth,signatures,childCount:children.length,zoom:zoomRef.current,portal:isWorkspace?roomPortal(o,depth,visibleObjects):null}};
+   const farRoot=lod==="far"&&isWorkspace&&!o.parent_id,farBox=farRoot?farTerritorySize(o,visibleObjects):null;
+   const n:StudioNode={id:o.id,type:isWorkspace?"workspace":"content",position:flowPosition(o,byId),width:farBox?.w||o.w,height:farBox?.h||o.h,parentId:o.parent_id||undefined,zIndex:o.z,draggable:o.body?.locked?false:undefined,data:{object:o,lod,depth,signatures,lines:farBox?.lines||[],childCount:children.length,zoom:zoomRef.current,portal:isWorkspace?roomPortal(o,depth,visibleObjects):null}};
    if(isWorkspace)n.dragHandle=".tqs-drag-handle";
    return n
   }),[visibleObjects,byId,directChildren,lod]);
@@ -197,7 +211,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
   void navigator.clipboard?.writeText(payload).catch(()=>{});
  },[]);
  useEffect(()=>{const key=(e:KeyboardEvent)=>{
-  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();void restoreSnap(e.shiftKey?redoStack.current:undoStack.current,e.shiftKey?undoStack.current:redoStack.current);return}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){if(document.querySelector(".v6-shell")?.getAttribute("data-surface")==="documents")return;e.preventDefault();void restoreSnap(e.shiftKey?redoStack.current:undoStack.current,e.shiftKey?undoStack.current:redoStack.current);return}
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="c"&&!editableTarget(e.target)){copySelection();return}
   if(editableTarget(e.target)||e.ctrlKey||e.metaKey||e.altKey)return;
   const k=e.key.toLowerCase();
@@ -256,7 +270,15 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
  };
  const fitWorld=()=>{
   const roots=objectsRef.current.filter(o=>o.kind==="frame"&&!o.parent_id&&!o.hidden);
-  void rf.current?.fitView({nodes:roots.map(o=>({id:o.id})),padding:.05,duration:420,maxZoom:.27});
+  const visible=objectsRef.current.filter(o=>!o.hidden);
+  if(!roots.length||!rf.current)return;
+  const boxes=roots.map(o=>{const size=farTerritorySize(o,visible);return{x:o.x,y:o.y,w:size.w,h:size.h}});
+  const minX=Math.min(...boxes.map(b=>b.x)),minY=Math.min(...boxes.map(b=>b.y)),maxX=Math.max(...boxes.map(b=>b.x+b.w)),maxY=Math.max(...boxes.map(b=>b.y+b.h));
+  const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();
+  if(!r)return;
+  const z=Math.min((r.width-180)/Math.max(1,maxX-minX),(r.height-160)/Math.max(1,maxY-minY),.3);
+  setLod("far");
+  void rf.current.setViewport({x:90-minX*z,y:78-minY*z,zoom:z},{duration:420});
  };
 
  const drawing=tool==="pen"||tool==="marker"||tool==="arrow"||tool==="shape";
@@ -305,7 +327,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
     panOnDrag={tool==="hand"?[0,1]:drawing?false:[1]} panActivationKeyCode="Space" selectionOnDrag={tool==="select"&&!drawing} nodesDraggable={tool==="select"||tool==="hand"} selectionMode={"partial" as any}
     multiSelectionKeyCode={["Control","Meta"]} deleteKeyCode={["Delete","Backspace"]}
     connectionLineType={ConnectionLineType.SmoothStep}
-    fitViewOptions={{padding:.06,maxZoom:.27}}
+    fitViewOptions={{padding:.12,maxZoom:.3}}
    >
     <Background variant={BackgroundVariant.Dots} gap={28} size={1.1} color="rgba(92,101,112,.38)"/>
     <ViewportPortal><AnnotationLayer objects={objects} selectedId={[...selected][0]||null} draft={draft} erasing={tool==="erase"} onSelect={id=>setSelected(new Set([id]))} onErase={id=>{if(toolRef.current==="erase")void remove(id)}}/></ViewportPortal>
@@ -387,6 +409,7 @@ function WorkspaceNode({id,data,selected}:NodeProps<StudioNode>){
    {renaming?<input className="nodrag nopan rf-rename" value={title} autoFocus onChange={e=>setTitle(e.target.value)} onBlur={()=>{setRenaming(false);if(title.trim()&&title!==o.title)void ctx.patch(id,{title:title.trim()},"rename","Область переименована")}} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur()}}/>:<strong onDoubleClick={()=>setRenaming(true)}>{titleText(o)}</strong>}
   </header>
   {data.lod==="far"&&summary&&<p className="rf-region-summary">{summary}</p>}
+  {data.lod==="far"&&data.lines.length>0&&<ul className="rf-region-lines">{data.lines.map(line=><li key={line}>{line}</li>)}</ul>}
   {data.lod==="mid"&&summary&&<p className="rf-region-summary">{summary}</p>}
   {data.lod==="mid"&&data.signatures.length>0&&<ul className="rf-region-signs">{data.signatures.slice(0,3).map(item=><li key={item.title}>{item.title}</li>)}</ul>}
  </div>
