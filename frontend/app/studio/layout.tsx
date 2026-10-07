@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import {Inter} from "next/font/google";
 import "@xyflow/react/dist/style.css";
 import "./studio-v6.css";
+import "./graphite.css";
 import "./publication.css";
 
 const studioSans = Inter({

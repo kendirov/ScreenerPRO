@@ -2,7 +2,7 @@
 
 import {createContext,useCallback,useContext,useEffect,useMemo,useRef,useState} from "react";
 import {
- Background,BackgroundVariant,ConnectionLineType,Handle,MiniMap,NodeResizer,Position,ReactFlow,ReactFlowProvider,useViewport,ViewportPortal,
+ Background,BackgroundVariant,ConnectionLineType,Handle,MiniMap,NodeResizer,Position,ReactFlow,ReactFlowProvider,ViewportPortal,
  applyNodeChanges,type Connection,type Edge,type Node,type NodeChange,type NodeProps,type ReactFlowInstance
 } from "@xyflow/react";
 import {BookOpen,Image as ImageIcon,Mic,Video as VideoIcon} from "lucide-react";
@@ -11,7 +11,7 @@ import {StudioMarketChart} from "@/components/studio-v5/MarketChart";
 import {studioAction} from "@/lib/studio-v6/api";
 import {localStudioAction,saveLocalObjectDraft} from "@/lib/studio-v5/local-store";
 import {lodFromZoom,roomRole,type CreateKind} from "@/lib/studio-v6/workstation";
-import {pinnedHeaderLeft,pinnedHeaderTop,roomPortal} from "@/lib/studio-v6/room-preview";
+import {roomPortal} from "@/lib/studio-v6/room-preview";
 import {diagramComponent,diagramRole,diagramRoleLabel,layoutDiagram,nextDiagramRole,type DiagramLayout} from "@/lib/studio-v6/diagram";
 import {RichEditor} from "./RichEditor";
 import {VisualScene} from "./VisualScene";
@@ -43,14 +43,14 @@ type CanvasActions={
 };
 const CanvasContext=createContext<CanvasActions|null>(null);
 const nodeTypes:any={workspace:WorkspaceNode,content:ContentNode};
-const VIEW_KEY="tqs-studio-v6-reactflow-viewport",PROFILE_KEY="tqs-studio-v6-rf-input-profile",CLIP_KEY="tqs-studio-clipboard",FOCUS_APPLIED="tqs-studio-v6-focus-nonce";
+const VIEW_KEY="tqs-studio-v6-graphite-viewport",PROFILE_KEY="tqs-studio-v6-rf-input-profile",CLIP_KEY="tqs-studio-clipboard",FOCUS_APPLIED="tqs-studio-v6-focus-nonce";
 
 function depthOf(o:StudioObject,byId:Map<string,StudioObject>){let d=0,p=o.parent_id,guard=0;while(p&&guard++<20){d++;p=byId.get(p)?.parent_id||null}return d}
 function flowPosition(o:StudioObject,byId:Map<string,StudioObject>){const p=o.parent_id?byId.get(o.parent_id):null;return p?{x:o.x-p.x,y:o.y-p.y}:{x:o.x,y:o.y}}
-function titleText(o:StudioObject){if(o.id==="lesson-miro-scene")return"ЗАНЯТИЕ 1 · РАБОЧЕЕ ПРОСТРАНСТВО";if(o.id==="frame-learning")return"Обучение";return o.title}
+function titleText(o:StudioObject){if(o.id==="lesson-miro-scene")return"Занятие 1";if(o.id==="frame-learning")return"Обучение";if(o.id==="frame-agent")return"Агент";if(o.id==="frame-tqs")return"Торговля";return o.title}
 function iconFor(kind:string){return kind==="frame"?"▣":kind==="text"?"T":kind==="task"?"✓":kind==="voice"?"◉":kind==="image"?"▧":kind==="video"?"▶":kind==="chart"?"⌁":kind==="documentRef"?"D":kind==="link"?"↗":kind==="file"?"F":"•"}
 function inputProfile(){try{const x=localStorage.getItem(PROFILE_KEY);if(x==="mouse"||x==="trackpad")return x}catch{}return (typeof navigator!=="undefined"&&/Mac|iPhone|iPad/.test(navigator.platform||""))?"trackpad":"mouse" as InputProfile}
-function initialViewport(){try{const x=JSON.parse(localStorage.getItem(VIEW_KEY)||"null");if(x&&Number.isFinite(x.x)&&Number.isFinite(x.y)&&Number.isFinite(x.zoom))return x}catch{}return{x:-3400,y:-1160,zoom:.65}}
+function initialViewport(){try{const x=JSON.parse(localStorage.getItem(VIEW_KEY)||"null");if(x&&Number.isFinite(x.x)&&Number.isFinite(x.y)&&Number.isFinite(x.zoom))return x}catch{}return null}
 function absoluteFor(id:string,nodes:StudioNode[]){const m=new Map(nodes.map(n=>[n.id,n]));let n=m.get(id),x=0,y=0,guard=0;if(!n)return{x:0,y:0};x+=n.position.x;y+=n.position.y;let p=n.parentId;while(p&&guard++<30){const q=m.get(p);if(!q)break;x+=q.position.x;y+=q.position.y;p=q.parentId}return{x,y}}
 function fileToDataUrl(file:File){return new Promise<string>((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result||""));r.onerror=()=>reject(r.error);r.readAsDataURL(file)})}
 function editableTarget(target:EventTarget|null){const el=target as HTMLElement|null,tag=el?.tagName||"";return Boolean(el?.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(tag))}
@@ -65,7 +65,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
  const rf=useRef<ReactFlowInstance<StudioNode,Edge>|null>(null),nodesRef=useRef<StudioNode[]>([]),pointer=useRef({x:900,y:500}),fileInput=useRef<HTMLInputElement|null>(null),fileTarget=useRef<{frameId?:string;kind:"image"|"video"|"file";point?:{x:number;y:number}}|null>(null),focusIdRef=useRef<string|null>(focusId||null),focusNonceRef=useRef(focusNonce),byIdRef=useRef<Map<string,StudioObject>>(new Map()),lastNativePaste=useRef(0),rightDrag=useRef<{x:number;y:number;vx:number;vy:number;z:number;moved:boolean;nodeId:string|null}|null>(null),draggingRef=useRef(false),zoomRef=useRef(zoom),objectsRef=useRef(objects),undoStack=useRef<StudioObject[][]>([]),redoStack=useRef<StudioObject[][]>([]),selectedRef=useRef(selected),toolRef=useRef(tool);
  const visibleObjects=useMemo(()=>objects.filter(o=>!o.hidden&&o.kind!=="annotation"),[objects]),byId=useMemo(()=>new Map(objects.map(o=>[o.id,o])),[objects]);
  focusIdRef.current=focusId||null;focusNonceRef.current=focusNonce;byIdRef.current=byId;objectsRef.current=objects;selectedRef.current=selected;toolRef.current=tool;
- const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-140)/Math.max(1,o.w),(r.height-150)/Math.max(1,o.h));const z=Math.min(.92,Math.max(.52,fit));void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height+56)/2-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
+ const focusCanonical=useCallback((instance:ReactFlowInstance<StudioNode,Edge>,id:string)=>{const o=byIdRef.current.get(id);if(!o)return false;const el=document.querySelector(".rf-studio-canvas") as HTMLElement|null,r=el?.getBoundingClientRect();if(!r)return false;const fit=Math.min((r.width-140)/Math.max(1,o.w),(r.height-150)/Math.max(1,o.h));const z=Math.min(.92,Math.max(.64,fit));void instance.setViewport({x:r.width/2-(o.x+o.w/2)*z,y:(r.height/2)-(o.y+o.h/2)*z,zoom:z},{duration:420});return true},[]);
  const directChildren=useMemo(()=>{const m=new Map<string,StudioObject[]>();for(const o of visibleObjects){if(!o.parent_id)continue;const a=m.get(o.parent_id)||[];a.push(o);m.set(o.parent_id,a)}return m},[visibleObjects]);
  const remember=useCallback(()=>{undoStack.current.push(structuredClone(objectsRef.current));if(undoStack.current.length>40)undoStack.current.shift();redoStack.current=[]},[]);
  const restoreSnap=useCallback(async(stack:StudioObject[][],other:StudioObject[][])=>{const snap=stack.pop();if(!snap)return;other.push(structuredClone(objectsRef.current));await onRestore(snap);setMenu(null)},[onRestore]);
@@ -88,7 +88,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
   const add=(id:string,source?:string|null,target?:string|null)=>{
    if(!source||!target||source===target||!byId.has(source)||!byId.has(target)||byId.get(source)?.hidden||byId.get(target)?.hidden||seen.has(source+"→"+target))return;
    seen.add(source+"→"+target);
-   list.push({id,source,target,type:"smoothstep",animated:false,selectable:false,style:{stroke:"#c4a15a",strokeWidth:1.25}});
+   list.push({id,source,target,type:"smoothstep",animated:false,selectable:false,style:{stroke:"#3B82F6",strokeWidth:1.25}});
   };
   for(const o of objects){
    if(o.hidden)continue;
@@ -117,7 +117,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
   const frame=byId.get(frameId);if(!frame)return;
   if(kind==="image"||kind==="video"){fileTarget.current={frameId,kind:kind as"image"|"video"};const el=fileInput.current;if(el){el.accept=kind==="image"?"image/*":"video/*";el.value="";el.click()}return}
   const kids=directChildren.get(frameId)||[],p={x:frame.x+110+(kids.length%3)*48,y:frame.y+150+(kids.length%4)*38};
-  const extra=kind==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:kind==="text"?{body:{html:"<p></p>",autoEdit:true}}:kind==="note"?{title:"Заметка",body:{html:"<p></p>",accent:"amber",autoEdit:true}}:{};
+  const extra=kind==="chart"?{body:{dataSpec:{provider:"MOEX_ISS",instrument:{family:"SI",resolver:"front_active_contract"},metric:"ohlcv_session",relativeRange:{tradingSessions:2},fixedRange:null,transforms:["group_by_session","cumulative_volume"],display:{renderer:"studio_market_chart"},updatePolicy:"LIVE",asOf:null}}}:kind==="text"?{body:{html:"<p></p>",autoEdit:true}}:kind==="note"?{title:"Заметка",body:{html:"<p></p>",accent:"slate",autoEdit:true}}:{};
   remember();void onCreate(kind==="note"?"text":kind,{point:p,...extra})
  },[byId,directChildren,onCreate,remember]);
  const focusObject=useCallback((id:string)=>{if(rf.current)focusCanonical(rf.current,id);setSelected(new Set([id]))},[focusCanonical]);
@@ -161,7 +161,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
 
  const addAt=useCallback(async(kind:string,point?:{x:number;y:number})=>{
   const p=point||rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600};
-  if(kind==="note"){remember();await onCreate("text",{point:p,title:"Заметка",body:{html:"<p></p>",accent:"amber",autoEdit:true}});setMenu(null);return}
+  if(kind==="note"){remember();await onCreate("text",{point:p,title:"Заметка",body:{html:"<p></p>",accent:"slate",autoEdit:true}});setMenu(null);return}
   if(kind==="arrow"){setLinking(true);setMenu(null);return}
   if(kind==="voice"){setVoiceAt(p);setMenu(null);return}
   if(kind==="image"||kind==="video"||kind==="file"){fileTarget.current={kind:kind==="video"?"video":kind==="file"?"file":"image",point:p};const el=fileInput.current;if(el){el.accept=kind==="image"?"image/*":kind==="video"?"video/*":"*/*";el.value="";el.click()}setMenu(null);return}
@@ -226,6 +226,15 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
   void localStudioAction("recordOperator",{entityId:objectId||frame?.id||null,semanticPath:payload.semantic_path,eventType:"ai_request",summary:intent==="redesign"?"Переделать выделенное":intent==="create_here"?"Создать здесь":intent==="assemble_document"?"Собрать документ":"Продолжить работу",payload});
  };
  const duplicate=async(id:string)=>{const o=byId.get(id);if(!o)return;remember();await onCreate(o.kind,{point:{x:o.x+48,y:o.y+48},w:o.w,h:o.h,title:o.title,body:structuredClone(o.body),status:o.status,relations:structuredClone(o.relations||[])});setMenu(null)};
+ const pasteAt=async(point:{x:number;y:number},objectsOnly=false)=>{
+  setMenu(null);
+  let text="";
+  try{text=await navigator.clipboard.readText()}catch{}
+  if(!text){try{text=localStorage.getItem(CLIP_KEY)||""}catch{}}
+  const copied=studioPayload(text);
+  if(objectsOnly&&!copied){notice("В буфере нет объекта доски");return}
+  if(text)await classify(text,point);else notice("Буфер пуст");
+ };
  const remove=async(id:string)=>{const o=byId.get(id);if(!o)return;remember();const ids=o.kind==="frame"?[id,...descendants(id,objects)]:[id];for(const x of ids)await onPatch(x,{hidden:true},"hide","Скрыто");setMenu(null)};
  const connect=async(c:Connection)=>{if(!c.source||!c.target)return;const a=byId.get(c.source),b=byId.get(c.target);if(!a||!b)return;remember();const ax=a.x+a.w/2,ay=a.y+a.h/2,bx=b.x+b.w/2,by=b.y+b.h/2;await onCreate("annotation",{point:{x:Math.min(ax,bx),y:Math.min(ay,by)},w:Math.max(20,Math.abs(bx-ax)),h:Math.max(20,Math.abs(by-ay)),title:"Связь",body:{annotationKind:"arrow",fromId:a.id,toId:b.id,points:[{x:0,y:0},{x:Math.abs(bx-ax),y:Math.abs(by-ay)}]},relations:[{type:"connects_from",targetId:a.id},{type:"connects_to",targetId:b.id}]});setLinking(false)};
  const align=(axis:"x"|"y")=>{
@@ -289,7 +298,7 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
     onNodeClick={(_,node)=>{setArm(null);const active=document.activeElement as HTMLElement|null;if(active&&active.closest?.(".react-flow__node")?.getAttribute("data-id")!==node.id)active.blur();setSelected(new Set([node.id]))}}
     onConnect={c=>void connect(c)}
     onNodesDelete={ns=>{for(const n of ns)void remove(n.id)}}
-    onInit={instance=>{rf.current=instance;const saved=initialViewport();if(!applyExplicitFocus(instance,focusNonceRef.current))instance.setViewport(saved)}}
+    onInit={instance=>{rf.current=instance;const saved=initialViewport();if(!applyExplicitFocus(instance,focusNonceRef.current)&&saved)instance.setViewport(saved)}}
     onMove={(_,v)=>{zoomRef.current=v.zoom;const next=lodFromZoom(v.zoom);setLod(prev=>prev===next?prev:next);const pct=Math.round(v.zoom*100);setZoom(z=>Math.round(z*100)===pct?z:v.zoom)}}
     onMoveEnd={(_,v)=>{zoomRef.current=v.zoom;setZoom(v.zoom);setLod(lodFromZoom(v.zoom));try{localStorage.setItem(VIEW_KEY,JSON.stringify(v))}catch{}}}
     onPaneContextMenu={e=>{e.preventDefault()}}
@@ -302,21 +311,20 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
     connectionLineType={ConnectionLineType.SmoothStep}
     fitViewOptions={{padding:.12,maxZoom:.24}}
    >
-    <Background variant={BackgroundVariant.Lines} gap={96} color="rgba(196,161,90,.14)" lineWidth={1}/>
+    <Background variant={BackgroundVariant.Dots} gap={28} size={1.1} color="rgba(92,101,112,.38)"/>
     <ViewportPortal><AnnotationLayer objects={objects} selectedId={[...selected][0]||null} draft={draft} erasing={tool==="erase"} onSelect={id=>setSelected(new Set([id]))} onErase={id=>{if(toolRef.current==="erase")void remove(id)}}/></ViewportPortal>
-    {mapOpen&&<MiniMap pannable zoomable position="bottom-left" maskColor="rgba(20,22,24,.55)" nodeColor={n=>n.type==="workspace"?"#e0b15a":"#c8c2b6"}/>}
+    {mapOpen&&<MiniMap pannable zoomable position="bottom-left" maskColor="rgba(17,19,21,.45)" nodeColor={n=>n.type==="workspace"?"#3B82F6":"#8B939C"}/>}
    </ReactFlow>
    {drawing&&<div className="rf-draw-capture" onPointerDown={startDraw} onPointerMove={moveDraw} onPointerUp={endDraw}/>}
    <BoardPalette tool={tool} more={moreTools} onTool={next=>{setTool(next);setArm(next==="text"?"text":null);setMoreTools(false)}} onMore={setMoreTools} onCreate={kind=>void addAt(kind)} onVoice={()=>setVoiceAt(rf.current?.screenToFlowPosition(pointer.current)||{x:900,y:600})}/>
    {voiceAt&&<VoiceCapture onCancel={()=>setVoiceAt(null)} onSave={saveVoice}/>}
-   <div className="rf-zoombar rf-instrument" data-studio-ui data-testid="studio-instrument">
-    <em className="rf-desk-name">Доска</em>
+   <div className="rf-zoombar" data-studio-ui data-testid="studio-zoom">
     <button aria-label="Отдалить" onClick={()=>void rf.current?.zoomOut({duration:160})}>−</button>
     <span>{Math.round(zoom*100)}%</span>
     <button aria-label="Приблизить" onClick={()=>void rf.current?.zoomIn({duration:160})}>+</button>
     <button aria-label="Вписать мир" onClick={fitWorld}>Вписать</button>
     <button aria-label="Карта" className={mapOpen?"is-on":""} onClick={()=>setMapOpen(v=>!v)}>Карта</button>
-    <code data-testid="studio-selected-id">{[...selected][0]||"нет выбора"}</code>
+    <code className="rf-selected-probe" data-testid="studio-selected-id">{[...selected][0]||""}</code>
    </div>
 
    {menu&&<div className="rf-context" style={{left:menu.x,top:menu.y}} data-studio-ui data-testid="board-menu">
@@ -334,27 +342,28 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
      {selectedObject?.kind==="frame"&&<button onClick={()=>{publishOperator("assemble_document",menu.point,menu.id);onAssemble?.(menu.id!);setMenu(null)}}>Создать документ</button>}
      <button onClick={()=>{publishOperator("redesign",menu.point,menu.id);notice("Выделение передано");setMenu(null)}}>AI</button>
      <button onClick={()=>{copySelection();setMenu(null)}}>Копировать</button>
+     <button onClick={()=>void pasteAt(menu.point)}>Вставить</button>
+     <button onClick={()=>void pasteAt(menu.point,true)}>Вставить объект</button>
      <button onClick={()=>void duplicate(menu.id!)}>Дублировать</button>
      <button onClick={()=>{const o=byId.get(menu.id!);if(o)void onPatch(menu.id!,{body:{...o.body,locked:!o.body?.locked}},"lock",o.body?.locked?"Снята блокировка":"Закреплено");setMenu(null)}}>{selectedObject?.body?.locked?"Снять закрепление":"Закрепить"}</button>
      <button onClick={()=>{void navigator.clipboard?.writeText(`${location.origin}/studio#${menu.id}`);notice("Ссылка скопирована");setMenu(null)}}>Копировать ссылку</button>
      {!menu.more?<button onClick={()=>setMenu({...menu,more:true})}>Ещё</button>:<button onClick={()=>setLinking(true)}>Связь</button>}
      <button className="danger" onClick={()=>void remove(menu.id!)}>Удалить</button>
     </>:<>
-     <strong>Добавить сюда</strong>
+     <button onClick={()=>void pasteAt(menu.point)}>Вставить</button>
+     <button onClick={()=>void pasteAt(menu.point,true)}>Вставить объект</button>
      <button onClick={()=>void addAt("text",menu.point)}>Текст</button>
      <button onClick={()=>void addAt("note",menu.point)}>Заметка</button>
      <button onClick={()=>void addAt("task",menu.point)}>Задача</button>
-     <button onClick={()=>void addAt("voice",menu.point)}>Голос</button>
      <button onClick={()=>{fileTarget.current={kind:"image",point:menu.point};const el=fileInput.current;if(el){el.accept="image/*";el.value="";el.click()}setMenu(null)}}>Изображение</button>
+     <button onClick={()=>void addAt("video",menu.point)}>Видео</button>
+     <button onClick={()=>void addAt("chart",menu.point)}>График</button>
      {!menu.more?<button onClick={()=>setMenu({...menu,more:true})}>Ещё</button>:<>
-      <button onClick={()=>void addAt("video",menu.point)}>Видео</button>
+      <button onClick={()=>void addAt("voice",menu.point)}>Голос</button>
+      <button onClick={()=>void addAt("file",menu.point)}>Файл</button>
       <button onClick={()=>void addAt("link",menu.point)}>Ссылка</button>
-      <button onClick={()=>void addAt("file",menu.point)}>Файл / PDF</button>
-      <button onClick={()=>void addAt("chart",menu.point)}>График</button>
-      <button onClick={()=>void addAt("diagram",menu.point)}>Схема</button>
-      <button onClick={()=>void addAt("chart",menu.point)}>Живые данные</button>
       <button onClick={()=>void addAt("frame",menu.point)}>Комната</button>
-      <button onClick={()=>{setLinking(true);setMenu(null)}}>Связь</button>
+      <button onClick={()=>{setTool("pen");setMenu(null)}}>Рисование</button>
      </>}
     </>}
    </div>}
@@ -363,28 +372,27 @@ function ReactFlowWorldInner({objects,selected,setSelected,focusId,focusNonce=0,
 }
 
 function ObjectToolbar({kind,on}:{kind:string;on:(action:string)=>void}){
- const items=kind==="image"?["Кадр","Пометка","Заменить","AI","Ещё"]:kind==="frame"?["Фокус","Переименовать","Документ","AI","Ещё"]:kind==="chart"?["Таймфрейм","Данные","AI","Ещё"]:kind==="text"?["Править","AI","Ещё"]:["AI","Ещё"];
+ const items=kind==="image"?["Заменить"]:kind==="frame"?["Фокус","Документ"]:kind==="text"?["Править"]:[];
+ if(!items.length)return null;
  return <div className="rf-object-toolbar nodrag nopan" data-studio-ui onPointerDown={e=>e.stopPropagation()}>{items.map(item=><button key={item} onClick={()=>on(item)}>{item}</button>)}</div>
 }
 
-function WorkspaceNode({id,data,selected,positionAbsoluteX,positionAbsoluteY}:NodeProps<StudioNode>){
- const ctx=useContext(CanvasContext)!,o=data.object,role=roomRole(data.depth),viewport=useViewport();
+function WorkspaceNode({id,data,selected}:NodeProps<StudioNode>){
+ const ctx=useContext(CanvasContext)!,o=data.object,role=roomRole(data.depth);
  const [renaming,setRenaming]=useState(false),[title,setTitle]=useState(titleText(o));
- const zoom=viewport.zoom||data.zoom;
- const pinned=data.lod==="near"?pinnedHeaderTop({viewportY:viewport.y,zoom,absoluteY:positionAbsoluteY||o.y,roomHeight:o.h}):undefined;
- const pinnedLeft=data.lod==="near"?pinnedHeaderLeft({viewportX:viewport.x,zoom,absoluteX:positionAbsoluteX||o.x,roomWidth:o.w}):undefined;
+ const summary=String(o.body?.summary||"");
  return <div className={`rf-workspace-card is-region lod-${data.lod} level-${data.depth} room-${role}${data.lod==="near"?" is-near":""}${selected?" is-selected":""}`} data-studio-id={id} data-testid="world-frame" data-region-role={role} data-room-lod={data.lod} style={{["--board-zoom" as any]:Math.max(data.zoom,.08)}}>
   <NodeResizer isVisible={selected&&data.lod==="near"} minWidth={280} minHeight={160} onResizeEnd={(_,p)=>ctx.resize(id,p)}/>
   <Handle type="target" position={Position.Left} className="rf-handle"/><Handle type="source" position={Position.Right} className="rf-handle"/>
   {selected&&data.lod!=="far"&&<ObjectToolbar kind="frame" on={action=>{
    if(action==="Фокус")ctx.focus(id);
-   if(action==="Переименовать")setRenaming(true);
    if(action==="Документ")ctx.assemble(id);
-   if(action==="AI")ctx.ask("redesign",id);
   }}/>}
-  <header className="rf-region-label tqs-drag-handle" style={pinned!=null?{top:pinned,left:pinnedLeft}:{}}>
-   {renaming?<input className="nodrag nopan rf-rename" value={title} autoFocus onChange={e=>setTitle(e.target.value)} onBlur={()=>{setRenaming(false);if(title.trim()&&title!==o.title)void ctx.patch(id,{title:title.trim()},"rename","Область переименована")}} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur()}}/>:<strong>{titleText(o)}</strong>}
+  <header className="rf-region-label tqs-drag-handle">
+   {renaming?<input className="nodrag nopan rf-rename" value={title} autoFocus onChange={e=>setTitle(e.target.value)} onBlur={()=>{setRenaming(false);if(title.trim()&&title!==o.title)void ctx.patch(id,{title:title.trim()},"rename","Область переименована")}} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur()}}/>:<strong onDoubleClick={()=>setRenaming(true)}>{titleText(o)}</strong>}
   </header>
+  {data.lod!=="near"&&summary&&<p className="rf-region-summary">{summary}</p>}
+  {data.lod!=="near"&&data.signatures.length>0&&<ul className="rf-region-signs">{data.signatures.slice(0,4).map(item=><li key={item.title}>{item.title}</li>)}</ul>}
  </div>
 }
 
@@ -422,7 +430,7 @@ function ContentNode({id,data,selected}:NodeProps<StudioNode>){
     {o.kind==="voice"&&<Voice object={o}/>}
     {(o.kind==="artifact"||o.kind==="deck")&&<div className="nodrag nopan nowheel"><VisualScene object={o} onChange={(body,summary)=>{if(summary!=="Выбран этап")ctx.remember();void ctx.patch(o.id,{body},o.kind,summary)}}/></div>}
     {o.kind==="diagram"&&<DiagramCard object={o} selected={selected}/>}
-    {o.kind==="documentRef"&&<button className="rf-document nodrag nopan" onClick={()=>ctx.openDocument(o.body?.documentId||o.relations?.find((r:any)=>r.type==="document_of")?.targetId)}><span className="rf-doc-sheet"><i/><i/><i/></span><div><strong>{o.title}</strong><span>Открыть</span></div></button>}
+    {o.kind==="documentRef"&&<button className="rf-document nodrag nopan" onClick={()=>ctx.openDocument(o.body?.documentId||o.relations?.find((r:any)=>r.type==="document_of")?.targetId)}><span className="rf-doc-sheet"><i/><i/><i/></span><div><strong>{o.title}</strong><span>Конспект · открыть</span></div></button>}
     {o.kind==="link"&&<a className={"rf-link nodrag nopan"+(o.body?.provider==="google-drive"?" is-drive":"")} href={o.body?.url||"#"} target="_blank" rel="noreferrer"><span>{o.body?.provider==="google-drive"?"Drive":"↗"}</span><div><strong>{o.title}</strong><small>{o.body?.host||o.body?.url}</small></div></a>}
    </>}
   </div>

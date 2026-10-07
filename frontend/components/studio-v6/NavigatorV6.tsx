@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect,useMemo,useRef,useState} from "react";
-import {FileText,FolderTree,LayoutDashboard,PenLine,Plug,Plus,Search,Settings} from "lucide-react";
+import {Bot,ChevronRight,Crosshair,FileText,FolderTree,GraduationCap,LineChart,Plus,Search,Settings} from "lucide-react";
 import type {StudioActivity,StudioDocument,StudioObject} from "@/lib/studio-v5/types";
 import {roomRole} from "@/lib/studio-v6/workstation";
 
@@ -35,7 +35,8 @@ function buildTree(objects:StudioObject[]):Node[]{
   const nodes=new Map<string,Node>();
   for(const object of objects.filter(item=>!item.hidden&&(item.kind==="frame"||isTheme(item)))){
     const depth=depthOf(object,byId);
-    nodes.set(object.id,{id:object.id,title:object.id==="lesson-miro-scene"?"Занятие 1":object.id==="frame-learning"?"Обучение":isTheme(object)?themeLabel(object):object.title,path:object.semantic_path,kind:object.kind,depth,object,children:[]});
+    const known=object.id==="lesson-miro-scene"?"Занятие 1":object.id==="frame-learning"?"Обучение":object.id==="frame-agent"?"Агент":object.id==="frame-tqs"?"Торговля":"";
+    nodes.set(object.id,{id:object.id,title:known||(isTheme(object)?themeLabel(object):object.title),path:object.semantic_path,kind:object.kind,depth,object,children:[]});
   }
   const roots:Node[]=[];
   for(const node of nodes.values()){
@@ -94,7 +95,7 @@ function countLabel(node:Node){
 export function NavigatorV6({objects,documents,activity,selectedId,surface,onWorld,onDocuments,onFocus,onOpenDocument,onSettings,onCreate,onTool}:Props){
   const [open,setOpen]=useState(false),[mode,setMode]=useState<NavMode>("map"),[query,setQuery]=useState(""),[stack,setStack]=useState<string[]>([]);
   const input=useRef<HTMLInputElement>(null);
-  useEffect(()=>{const onKey=(event:KeyboardEvent)=>{const target=event.target as HTMLElement|null;if(target?.isContentEditable||["INPUT","TEXTAREA"].includes(target?.tagName||""))return;if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){event.preventDefault();setMode("search");setOpen(true);requestAnimationFrame(()=>input.current?.focus())}};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey)},[]);
+  useEffect(()=>{const onKey=(event:KeyboardEvent)=>{const target=event.target as HTMLElement|null;if(target?.isContentEditable||["INPUT","TEXTAREA"].includes(target?.tagName||""))return;if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){event.preventDefault();setMode("search");setOpen(true);requestAnimationFrame(()=>input.current?.focus())}};const onSearch=()=>{setMode("search");setOpen(true);requestAnimationFrame(()=>input.current?.focus())};window.addEventListener("keydown",onKey);window.addEventListener("tqs-studio-search",onSearch);return()=>{window.removeEventListener("keydown",onKey);window.removeEventListener("tqs-studio-search",onSearch)}},[]);
   const tree=useMemo(()=>buildTree(objects),[objects]);
   const flat=useMemo(()=>{const out:Node[]=[];const walk=(nodes:Node[])=>{for(const node of nodes){out.push(node);walk(node.children)}};walk(tree);return out},[tree]);
   const searchable=useMemo(()=>{
@@ -103,7 +104,7 @@ export function NavigatorV6({objects,documents,activity,selectedId,surface,onWor
     const docs=documents.map(document=>({id:"doc:"+document.id,title:document.title,path:document.semantic_path,kind:"document",depth:0,document,children:[]} as Node));
     return [...flat,...extra,...docs];
   },[flat,objects,documents]);
-  const matches=query.trim()?searchable.filter(node=>(node.title+" "+node.path+" "+kindLabel(node)).toLowerCase().includes(query.trim().toLowerCase())).slice(0,24):[];
+  const matches=query.trim()?searchable.filter(node=>node.title.toLowerCase().includes(query.trim().toLowerCase())).slice(0,24):[];
   const current=stack.length?findNode(tree,stack[stack.length-1]):null;
   const level=current?current.children:tree;
   const docFor=(node:Node)=>node.document||documents.find(document=>document.frame_id===node.object?.id)||null;
@@ -113,45 +114,38 @@ export function NavigatorV6({objects,documents,activity,selectedId,surface,onWor
   const openDoc=(node:Node)=>{const document=docFor(node);if(!document)return;closeNav();onOpenDocument(document.id)};
   const activate=(node:Node)=>{if(node.document){closeNav();onOpenDocument(node.document.id);return}focusNode(node)};
   const drill=(node:Node)=>{if(node.children.length)setStack(value=>[...value,node.id]);else focusNode(node)};
+  const iconFor=(node:Node)=>node.id==="frame-agent"||node.object?.id==="frame-agent"?<Bot size={14}/>:node.id==="frame-tqs"||node.object?.id==="frame-tqs"?<LineChart size={14}/>:node.id==="frame-learning"||node.id==="lesson-miro-scene"||node.object?.id==="lesson-miro-scene"?<GraduationCap size={14}/>:node.kind==="document"?<FileText size={14}/>:<FolderTree size={14}/>;
   return <aside className={["v6-navigator",open?"is-open":"is-closed"].join(" ")} data-testid="v6-navigator" data-studio-ui>
     <div className="v6-nav-rail" aria-label="Навигация студии">
-      <button className={surface==="world"&&!open?"active":""} aria-label="Доска" title="Доска" data-label="Доска" onClick={()=>{onWorld();closeNav()}}><LayoutDashboard size={16}/></button>
-      <button className={surface==="documents"?"active":""} aria-label="Документы" title="Документы" data-label="Документы" onClick={()=>{closeNav();onDocuments()}}><FileText size={16}/></button>
-      <span className="v6-nav-divider"/>
       <button className={open&&mode==="search"?"active":""} aria-label="Поиск" title="Поиск" data-label="Поиск" onClick={()=>openMode("search")}><Search size={16}/></button>
       <button className={open&&mode==="map"?"active":""} aria-label="Навигатор" title="Навигатор" data-label="Навигатор" onClick={()=>openMode("map")}><FolderTree size={16}/></button>
-      <span className="v6-nav-divider"/>
       <button className={open&&mode==="create"?"active":""} aria-label="Добавить" title="Добавить" data-label="Добавить" onClick={()=>openMode("create")}><Plus size={16}/></button>
-      <button aria-label="Рисование" title="Рисование" data-label="Рисование" onClick={()=>{closeNav();onWorld();onTool("pen")}}><PenLine size={16}/></button>
-      <button className={open&&mode==="integrations"?"active":""} aria-label="Интеграции" title="Интеграции" data-label="Интеграции" onClick={()=>openMode("integrations")}><Plug size={16}/></button>
       <span className="v6-nav-spacer"/>
       <button aria-label="Настройки" title="Настройки" data-label="Настройки" onClick={()=>{closeNav();onSettings()}}><Settings size={16}/></button>
     </div>
     {open&&<div className="v6-nav-overlay" data-testid={mode==="search"?"command-palette":"nav-overlay"}>
-      <header><div><strong>{mode==="map"?"Навигатор":mode==="search"?"Поиск":mode==="create"?"Добавить":"Интеграции"}</strong><small>{mode==="map"?(current?.path||"Проекты"):mode==="search"?"Проект, занятие, документ, объект":mode==="create"?"На доску":"Данные и вставки"}</small></div></header>
+      <header><div><strong>{mode==="map"?"Навигатор":mode==="search"?"Поиск":mode==="create"?"Добавить":"Интеграции"}</strong><small>{mode==="map"?(current?.title||"Проекты"):mode==="search"?"Занятие, документ, объект":mode==="create"?"На доску":"Данные и вставки"}</small></div></header>
       {mode==="search"&&<label className="v6-nav-search"><Search size={13}/><input ref={input} value={query} aria-label="Найти" onChange={event=>setQuery(event.target.value)} onKeyDown={event=>{if(event.key==="Enter"&&matches[0]){event.preventDefault();activate(matches[0])}}} placeholder="Найти…"/><kbd>⌘K</kbd></label>}
       <div className="v6-nav-scroll">
         {mode==="map"&&<section className="v6-nav-map">
           <div className="v6-nav-browse-bar">
             {stack.length>0&&<button type="button" onClick={()=>setStack(value=>value.slice(0,-1))}>Назад</button>}
           </div>
-          {!stack.length&&<div className="v6-nav-recent"><p>Недавние</p>{activity.filter(item=>recentLine(item.summary)).slice(0,4).map(item=><button key={item.id} type="button" onClick={()=>{if(item.entity_id){closeNav();onFocus(item.entity_id)}}}><span>{recentLine(item.summary)}</span><small>{item.semantic_path.split("/").filter(Boolean).slice(-2).join(" / ")}</small></button>)}{!activity.filter(item=>recentLine(item.summary)).length&&<small>Здесь появятся последние действия.</small>}</div>}
+          {!stack.length&&<div className="v6-nav-recent"><p>Недавние</p>{activity.filter(item=>recentLine(item.summary)).slice(0,4).map(item=><button key={item.id} type="button" onClick={()=>{if(item.entity_id){closeNav();onFocus(item.entity_id)}}}><span>{recentLine(item.summary)}</span></button>)}{!activity.filter(item=>recentLine(item.summary)).length&&<small>Здесь появятся последние действия.</small>}</div>}
           {level.map(node=>{
             const document=docFor(node);
-            return <article className={selectedId===node.object?.id?"v6-nav-card is-active":"v6-nav-card"} key={node.id}>
-              <button type="button" className="v6-nav-card-main" onClick={()=>drill(node)}>
-                <span className="v6-nav-glyph">{kindLabel(node).slice(0,1)}</span>
-                <span><strong>{node.title}</strong><small>{kindLabel(node)} · {node.object?.id||countLabel(node)}</small></span>
+            return <div className={selectedId===node.object?.id?"v6-nav-line is-active":"v6-nav-line"} key={node.id}>
+              <button type="button" className="v6-nav-row" onClick={()=>document?openDoc(node):focusNode(node)}>
+                <span className="v6-nav-glyph">{iconFor(node)}</span>
+                <span className="v6-nav-title">{node.title}</span>
               </button>
-              <div className="v6-nav-card-actions">
-                {node.object&&<button type="button" onClick={()=>focusNode(node)}>На доске</button>}
-                {document&&<button type="button" onClick={()=>openDoc(node)}>Документ</button>}
-              </div>
-            </article>;
+              {node.children.length>0&&<button type="button" className="v6-nav-jump" aria-label="Внутри" onClick={()=>drill(node)}><ChevronRight size={14}/></button>}
+              {node.object&&<button type="button" className="v6-nav-jump" aria-label="На доске" onClick={()=>focusNode(node)}><Crosshair size={14}/></button>}
+            </div>;
           })}
         </section>}
         {mode==="search"&&<section>
-          {query?matches.length?matches.map(node=><button className="v6-nav-result" key={node.id} onClick={()=>activate(node)}><span>{node.title}</span><small>{kindLabel(node)} · {node.path}</small></button>):<p className="v6-nav-empty">Ничего не найдено</p>:<p className="v6-nav-empty">Введите название проекта, курса, занятия, документа или объекта.</p>}
+          {query?matches.length?matches.map(node=><button className="v6-nav-result" key={node.id} onClick={()=>activate(node)}><span>{node.title}</span></button>):<p className="v6-nav-empty">Ничего не найдено</p>:<p className="v6-nav-empty">Введите название занятия или документа.</p>}
         </section>}
         {mode==="create"&&<section className="v6-nav-create">
           {[["text","Текст"],["note","Заметка"],["task","Задача"],["voice","Голос"],["image","Изображение"],["frame","Комната"]].map(([kind,label])=><button key={kind} type="button" onClick={()=>{closeNav();onWorld();onCreate(kind)}}>{label}</button>)}

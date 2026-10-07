@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {Clock3,Search,Star,Layers} from "lucide-react";
 import type {StudioDocument} from "@/lib/studio-v5/types";
-import {documentKindLabel,filterDocuments,libraryTree,uniqueDocuments,type LibraryNode} from "@/lib/studio-v6/document-model";
+import {filterDocuments,libraryTree,uniqueDocuments,type LibraryNode} from "@/lib/studio-v6/document-model";
 
 type View="all"|"recent"|"favorites"|"hierarchy";
 type Status="DRAFT"|"PUBLISHED"|"STALE";
@@ -63,7 +63,7 @@ function TreeNode({node,documents,activeId,statusFor,favorites,onStar,onOpen,dep
 
 function DocRow({doc,active,status,favorite,onStar,onOpen,depth=0}:{doc:StudioDocument;active:boolean;status:Status;favorite:boolean;onStar:()=>void;onOpen:()=>void;depth?:number}){
  return <div className={active?"v6-doc-row is-active":"v6-doc-row"} style={{paddingLeft:8+depth*12}}>
-  <button onClick={onOpen}><small>{documentKindLabel(doc.kind)} · {doc.semantic_path}</small><strong>{doc.title}</strong><span>{status==="PUBLISHED"?"Опубликован":status==="STALE"?"Есть правки":"Черновик"}</span></button>
+  <button onClick={onOpen}><strong>{doc.title}</strong><span>{status==="PUBLISHED"?"Опубликован":status==="STALE"?"Есть правки":"Черновик"}</span></button>
   <button aria-label={favorite?"Убрать из избранного":"В избранное"} className={favorite?"is-on":""} onClick={onStar}><Star size={13}/></button>
  </div>
 }

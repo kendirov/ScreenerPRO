@@ -67,18 +67,19 @@ export function AnnotationLayer({ objects, selectedId, draft, erasing, onSelect,
   return <svg className="rf-annotation-layer" data-testid="annotation-layer">
     <defs>
       <marker id="rf-arrow-head" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-        <path d="M0,0 L7,3 L0,6 Z" fill="#c84e48" />
+        <path d="M0,0 L7,3 L0,6 Z" fill="#3B82F6" />
       </marker>
     </defs>
     {marks.map((object) => {
       const kind = String(object.body?.annotationKind || "pen");
       const style = object.body?.style || {};
       const selected = selectedId === object.id;
-      const color = String(style.color || (kind === "marker" ? "#e0b15a" : kind === "shape" ? "#3f8f9e" : "#c84e48"));
+      const raw = String(style.color || (kind === "marker" ? "#7C6BB5" : "#3B82F6"));
+      const color = /e0b15a|c4a15a|e4c27a|d5ad5b|b0893e/i.test(raw) ? (kind === "marker" ? "#7C6BB5" : "#3B82F6") : raw;
       const width = Number(style.width || (kind === "marker" ? 16 : 2.2));
       const opacity = Number(style.opacity ?? (kind === "marker" ? 0.38 : 1));
       const common = {
-        stroke: selected ? "#e0b15a" : color,
+        stroke: selected ? "#3B82F6" : color,
         strokeWidth: selected ? width + 1 : width,
         opacity,
         fill: kind === "shape" ? "transparent" : "none",
@@ -103,7 +104,7 @@ export function AnnotationLayer({ objects, selectedId, draft, erasing, onSelect,
     {draft && draft.points.length > 1 && <path
       d={draft.points.map((point, index) => `${index ? "L" : "M"}${point.x} ${point.y}`).join(" ")}
       fill="none"
-      stroke={draft.kind === "marker" ? "#e0b15a" : "#c84e48"}
+      stroke={draft.kind === "marker" ? "#7C6BB5" : "#3B82F6"}
       strokeWidth={draft.kind === "marker" ? 16 : 2.4}
       opacity={draft.kind === "marker" ? 0.38 : 1}
       strokeLinecap="round"

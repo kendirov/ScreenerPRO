@@ -1,0 +1,305 @@
+/* Graphite presentation. One token layer. Cool light canvas, designed dark theme.
+   The warm instrument board stays in studio-v6.css and does not apply here. */
+
+.v6-shell[data-visual=graphite],
+.v6-shell[data-visual=graphite][data-theme=light],
+.v6-shell[data-visual=graphite][data-surface=documents],
+.v6-shell[data-visual=graphite][data-surface=documents][data-theme=light]{
+  --canvas:#F3F4F6;
+  --ink:#1A1D21;
+  --ink-soft:#5C6570;
+  --paper:#F6F7F8;
+  --note:#ECEEF1;
+  --chrome:#16181B;
+  --chrome-2:#202328;
+  --chrome-line:rgba(255,255,255,.08);
+  --chrome-text:#F4F6F8;
+  --chrome-muted:#9AA3AD;
+  --accent:#3B82F6;
+  --cyan:#3B82F6;
+  --live:#1F9D55;
+  --danger:#D4524A;
+  --violet:#7C6BB5;
+  --bg:#F3F4F6;
+  --panel:#F6F7F8;
+  --surface:#ECEEF1;
+  --text:#1A1D21;
+  --muted:#5C6570;
+  --line:#D5DAE1;
+  color-scheme:light;
+  background:#F3F4F6;
+  color:#1A1D21;
+}
+.v6-shell[data-visual=graphite][data-theme=dark],
+.v6-shell[data-visual=graphite][data-surface=documents][data-theme=dark]{
+  --canvas:#111315;
+  --ink:#E8EAED;
+  --ink-soft:#9AA3AD;
+  --paper:#181B1F;
+  --note:#202328;
+  --chrome:#0E1012;
+  --chrome-2:#1A1D21;
+  --chrome-line:rgba(255,255,255,.08);
+  --chrome-text:#F4F6F8;
+  --chrome-muted:#9AA3AD;
+  --accent:#3B82F6;
+  --cyan:#6EA8FF;
+  --live:#3DDC84;
+  --danger:#F07167;
+  --violet:#A898D8;
+  --bg:#111315;
+  --panel:#181B1F;
+  --surface:#202328;
+  --text:#E8EAED;
+  --muted:#9AA3AD;
+  --line:rgba(255,255,255,.10);
+  color-scheme:dark;
+  background:#111315;
+  color:#E8EAED;
+}
+
+.v6-shell[data-visual=graphite]::after{content:none!important;display:none!important}
+.v6-shell[data-visual=graphite] .v6-topbar{
+  position:relative!important;top:0!important;left:0!important;right:0!important;
+  width:100%!important;max-width:none!important;height:46px!important;
+  margin:0;padding:0 8px 0 12px;gap:10px;
+  border:0!important;border-bottom:1px solid var(--chrome-line)!important;border-radius:0!important;
+  background:var(--chrome)!important;color:var(--chrome-text)!important;
+  box-shadow:none!important;backdrop-filter:none!important;
+}
+.v6-shell[data-visual=graphite] .v6-brand strong{color:var(--chrome-text);font-size:13px;font-weight:600;letter-spacing:-.02em}
+.v6-shell[data-visual=graphite] .v6-brand strong:before{background:var(--accent);border-radius:2px;width:7px;height:7px}
+.v6-shell[data-visual=graphite] .v6-mode{
+  display:flex;align-items:center;gap:2px;padding:2px;border-radius:6px;background:var(--chrome-2);
+}
+.v6-shell[data-visual=graphite] .v6-mode button{
+  height:28px;border:0;background:transparent;color:var(--chrome-muted);
+  border-radius:5px;padding:0 10px;font-size:12px;cursor:pointer;
+}
+.v6-shell[data-visual=graphite] .v6-mode button.is-on{background:#2A3138;color:var(--chrome-text)}
+.v6-shell[data-visual=graphite] .v6-crumbs{color:var(--chrome-muted);font-size:12px}
+.v6-shell[data-visual=graphite] .v6-crumbs b{color:var(--chrome-text);font-weight:560}
+.v6-shell[data-visual=graphite] .v6-top-actions{margin-left:auto;display:flex;align-items:center;gap:2px}
+.v6-shell[data-visual=graphite] .v6-top-actions button{
+  width:36px;height:36px;border:0;border-radius:6px;background:transparent;color:var(--chrome-muted);
+  display:grid;place-items:center;padding:0;cursor:pointer;
+}
+.v6-shell[data-visual=graphite] .v6-top-actions button:hover{background:var(--chrome-2);color:var(--chrome-text)}
+.v6-shell[data-visual=graphite] .v6-top-actions .v6-save-chip{
+  width:auto;height:28px;padding:0 8px;font-size:12px;color:var(--chrome-muted);
+}
+.v6-shell[data-visual=graphite] .v6-top-actions .v6-save-chip.is-saved{color:var(--live)}
+.v6-shell[data-visual=graphite] .v6-top-actions .v6-save-chip.is-warn{color:#E2B15A}
+
+.v6-shell[data-visual=graphite] .v6-world-shell{height:calc(100vh - 46px)!important;background:var(--canvas)}
+.v6-shell[data-visual=graphite] .v6-world-main{margin-left:48px!important;height:100%}
+.v6-shell[data-visual=graphite] .v6-navigator{
+  position:fixed!important;left:0!important;top:46px!important;bottom:0!important;
+  width:48px!important;height:auto!important;z-index:30;
+}
+.v6-shell[data-visual=graphite] .v6-nav-rail{
+  width:48px!important;min-width:48px!important;height:100%!important;
+  padding:6px!important;gap:4px!important;border-radius:0!important;
+  border:0!important;border-right:1px solid var(--chrome-line)!important;
+  background:var(--chrome)!important;box-shadow:none!important;backdrop-filter:none!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+}
+.v6-shell[data-visual=graphite] .v6-nav-rail button{
+  width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;
+  padding:0!important;border-radius:6px!important;font-size:0!important;
+  display:grid!important;place-items:center!important;color:var(--chrome-muted)!important;
+  background:transparent!important;box-shadow:none!important;
+}
+.v6-shell[data-visual=graphite] .v6-nav-rail button svg{display:block!important}
+.v6-shell[data-visual=graphite] .v6-nav-rail button::before{content:none!important}
+.v6-shell[data-visual=graphite] .v6-nav-rail button:hover{background:var(--chrome-2)!important;color:var(--chrome-text)!important}
+.v6-shell[data-visual=graphite] .v6-nav-rail button.active{color:#7CB0FF!important;background:rgba(59,130,246,.16)!important;box-shadow:none!important}
+.v6-shell[data-visual=graphite] .v6-nav-rail button:hover::after{
+  content:attr(data-label);left:44px;border-radius:5px;background:#202328;color:#F4F6F8;font-size:12px;
+}
+.v6-shell[data-visual=graphite] .v6-nav-overlay{
+  position:fixed!important;left:48px!important;top:46px!important;bottom:0!important;
+  width:300px!important;max-height:none!important;height:auto!important;
+  border-radius:0!important;box-shadow:none!important;backdrop-filter:none!important;
+  background:var(--chrome)!important;border-right:1px solid var(--chrome-line)!important;
+}
+.v6-shell[data-visual=graphite] .v6-nav-card,
+.v6-shell[data-visual=graphite] .v6-nav-line{
+  display:flex;align-items:center;gap:2px;margin:0;padding:1px 6px;
+  border-radius:6px;background:transparent!important;box-shadow:none!important;
+}
+.v6-shell[data-visual=graphite] .v6-nav-line.is-active{background:rgba(59,130,246,.12)!important}
+.v6-shell[data-visual=graphite] .v6-nav-row{
+  flex:1;min-width:0;height:32px;display:flex;align-items:center;gap:8px;
+  border:0;background:transparent;color:var(--chrome-text);text-align:left;cursor:pointer;padding:0 4px;
+}
+.v6-shell[data-visual=graphite] .v6-nav-glyph{
+  width:22px;height:22px;border-radius:5px;background:transparent;color:var(--chrome-muted);
+  display:grid;place-items:center;
+}
+.v6-shell[data-visual=graphite] .v6-nav-title{font-size:13px;font-weight:560;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v6-shell[data-visual=graphite] .v6-nav-jump{
+  width:28px;height:28px;border:0;border-radius:5px;background:transparent;color:var(--chrome-muted);
+  display:grid;place-items:center;cursor:pointer;
+}
+.v6-shell[data-visual=graphite] .v6-nav-jump:hover{background:var(--chrome-2);color:var(--chrome-text)}
+.v6-shell[data-visual=graphite] .v6-nav-result{padding:8px 10px}
+.v6-shell[data-visual=graphite] .v6-nav-result span{font-size:13px;color:var(--chrome-text)}
+.v6-shell[data-visual=graphite] .v6-nav-recent small,
+.v6-shell[data-visual=graphite] .v6-nav-card-main small{display:none}
+
+.v6-shell[data-visual=graphite] .rf-studio-canvas,
+.v6-shell[data-visual=graphite][data-theme=light] .rf-studio-canvas,
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-studio-canvas{
+  background:var(--canvas)!important;color:var(--ink)!important;
+}
+.v6-shell[data-visual=graphite] .react-flow__background pattern circle{fill:rgba(92,101,112,.38)!important}
+.v6-shell[data-visual=graphite][data-theme=dark] .react-flow__background pattern circle{fill:rgba(180,188,198,.18)!important}
+.v6-shell[data-visual=graphite] .react-flow__edge-path{stroke:#3B82F6!important;stroke-width:1.25px!important}
+.v6-shell[data-visual=graphite] .react-flow__selection,
+.v6-shell[data-visual=graphite] .react-flow__nodesselection-rect{
+  background:rgba(59,130,246,.08)!important;border:1px solid #3B82F6!important;
+}
+.v6-shell[data-visual=graphite] .rf-workspace-card,
+.v6-shell[data-visual=graphite] .rf-workspace-card.is-region,
+.v6-shell[data-visual=graphite] .rf-workspace-card.room-project,
+.v6-shell[data-visual=graphite] .rf-workspace-card.room-course,
+.v6-shell[data-visual=graphite] .rf-workspace-card.room-lesson,
+.v6-shell[data-visual=graphite] .rf-workspace-card.room-topic{
+  background:transparent!important;
+  border:1px solid rgba(26,29,33,.10)!important;
+  border-radius:6px!important;
+  box-shadow:none!important;
+}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-near:not(.is-selected){border-color:transparent!important}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-course,
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-lesson{
+  border-color:transparent!important;background:transparent!important;
+}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-course .rf-region-label,
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-course .rf-region-summary,
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-course .rf-region-signs,
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-lesson .rf-region-label,
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-lesson .rf-region-summary,
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far.room-lesson .rf-region-signs{display:none!important}
+.v6-shell[data-visual=graphite] .rf-workspace-card.is-selected,
+.v6-shell[data-visual=graphite] .react-flow__node-workspace.selected .rf-workspace-card{
+  border-color:#3B82F6!important;box-shadow:none!important;
+}
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-workspace-card,
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-workspace-card.room-project,
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-workspace-card.room-course,
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-workspace-card.room-lesson{
+  background:rgba(255,255,255,.025)!important;
+  border-color:rgba(255,255,255,.10)!important;
+}
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-workspace-card.lod-near:not(.is-selected){
+  background:transparent!important;border-color:transparent!important;
+}
+.v6-shell[data-visual=graphite] .rf-region-label{left:16px;top:14px;background:transparent!important}
+.v6-shell[data-visual=graphite] .rf-region-label strong{
+  font-size:13px!important;font-weight:600;letter-spacing:-.02em;text-transform:none!important;color:var(--ink)!important;
+}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far .rf-region-label strong{
+  font-size:calc(15px / var(--board-zoom,.18))!important;
+}
+.v6-shell[data-visual=graphite] .rf-region-summary,
+.v6-shell[data-visual=graphite] .rf-region-signs{
+  position:absolute;left:16px;margin:0;padding:0;list-style:none;color:var(--ink-soft);pointer-events:none;
+}
+.v6-shell[data-visual=graphite] .rf-region-summary{top:40px;font-size:12px;max-width:calc(100% - 32px)}
+.v6-shell[data-visual=graphite] .rf-region-signs{top:62px;display:flex;flex-direction:column;gap:4px}
+.v6-shell[data-visual=graphite] .rf-region-signs li{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far .rf-region-summary{font-size:calc(12px / var(--board-zoom,.18));top:calc(36px / var(--board-zoom,.18))}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far .rf-region-signs{top:calc(58px / var(--board-zoom,.18));gap:calc(4px / var(--board-zoom,.18))}
+.v6-shell[data-visual=graphite] .rf-workspace-card.lod-far .rf-region-signs li{font-size:calc(12px / var(--board-zoom,.18));max-width:calc(240px / var(--board-zoom,.18))}
+.v6-shell[data-visual=graphite] .rf-mark{display:none!important}
+.v6-shell[data-visual=graphite] .rf-content-node{
+  border-radius:6px!important;box-shadow:none!important;background:transparent!important;border-color:transparent!important;
+}
+.v6-shell[data-visual=graphite] .rf-content-node.is-selected,
+.v6-shell[data-visual=graphite] .react-flow__node.selected .rf-content-node{
+  outline:1px solid #3B82F6;outline-offset:2px;
+}
+.v6-shell[data-visual=graphite] .rf-content-node.kind-text,
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-content-node.kind-text{
+  background:transparent!important;border-color:transparent!important;box-shadow:none!important;color:var(--ink)!important;
+}
+.v6-shell[data-visual=graphite] .rf-content-node.kind-text.has-accent{
+  background:var(--note)!important;border-radius:6px!important;box-shadow:inset 2px 0 0 var(--violet)!important;
+}
+.v6-shell[data-visual=graphite] .rf-rich-text,
+.v6-shell[data-visual=graphite] .rf-rich-text-view,
+.v6-shell[data-visual=graphite] .rf-text-edit .tiptap{color:var(--ink)!important}
+.v6-shell[data-visual=graphite] .rf-content-node.kind-image .rf-asset,
+.v6-shell[data-visual=graphite] .react-flow__node.selected .rf-content-node.kind-image .rf-asset{
+  outline-color:#3B82F6!important;
+}
+.v6-shell[data-visual=graphite] .rf-content-node.kind-chart{
+  background:#16181B!important;color:#F4F6F8!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:6px!important;
+}
+.v6-shell[data-visual=graphite] .react-flow__node.selected .rf-content-node.kind-chart{box-shadow:0 0 0 1px #3B82F6!important}
+.v6-shell[data-visual=graphite] .rf-content-node.kind-chart .studio-market-controls button.active,
+.v6-shell[data-visual=graphite] .studio-interactive .studio-market-controls button.active{
+  color:#9EC2FF!important;background:rgba(59,130,246,.16)!important;
+}
+.v6-shell[data-visual=graphite] .rf-content-node.kind-video{
+  background:#16181B!important;border-color:rgba(255,255,255,.08)!important;border-radius:6px!important;
+}
+.v6-shell[data-visual=graphite] .rf-task button{border-color:var(--ink-soft);border-radius:4px}
+.v6-shell[data-visual=graphite] .rf-task input,
+.v6-shell[data-visual=graphite][data-theme=dark] .rf-task input{color:var(--ink)!important;background:transparent}
+.v6-shell[data-visual=graphite] .rf-document{
+  display:flex;align-items:center;gap:10px;width:100%;height:100%;padding:8px 10px;
+  border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);text-align:left;cursor:pointer;
+}
+.v6-shell[data-visual=graphite] .rf-object-toolbar{
+  height:32px;border-radius:6px;background:var(--chrome);border:1px solid var(--chrome-line);box-shadow:none;
+}
+.v6-shell[data-visual=graphite] .rf-tool-palette{display:none!important}
+.v6-shell[data-visual=graphite] .rf-desk-name{display:none!important}
+.v6-shell[data-visual=graphite] .rf-zoombar{
+  right:12px!important;bottom:12px!important;left:auto!important;width:auto!important;
+  height:36px;border-radius:6px;background:var(--chrome)!important;box-shadow:none!important;
+}
+.v6-shell[data-visual=graphite] .rf-zoombar .rf-selected-probe{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;
+}
+.v6-shell[data-visual=graphite] .rf-context{width:220px;border-radius:6px;background:var(--chrome)!important}
+.v6-shell[data-visual=graphite] .react-flow__minimap{background:#16181B!important;border:1px solid rgba(255,255,255,.08);border-radius:6px}
+.v6-shell[data-visual=graphite] .react-flow__resize-control.handle{background:#3B82F6!important}
+.v6-shell[data-visual=graphite] .react-flow__node.selected .react-flow__resize-control.line{border-color:#3B82F6!important}
+
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-shell{
+  height:calc(100vh - 46px)!important;padding-top:0!important;padding-left:0!important;
+  background:var(--canvas)!important;color:var(--ink)!important;
+}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-library{
+  display:block!important;position:static!important;width:0!important;flex:0 0 0!important;overflow:visible!important;
+}
+.v6-shell[data-visual=graphite] .v6-doc-library-rail{display:none!important}
+.v6-shell[data-visual=graphite] .v6-doc-library-drawer{
+  position:fixed;left:48px;top:46px;bottom:0;width:300px;border-radius:0;
+  background:var(--chrome);color:var(--chrome-text);border-right:1px solid var(--chrome-line);box-shadow:none;
+}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-editor,
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-preview,
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-read{
+  max-width:860px!important;background:transparent;color:var(--ink);
+}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-preview{
+  background:var(--paper)!important;color:var(--ink)!important;border:1px solid var(--line);border-radius:6px;padding:48px 56px;
+}
+.v6-shell[data-visual=graphite][data-theme=dark][data-surface=documents] .v6-doc-preview{background:#181B1F!important;color:#E8EAED!important}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-modes{border-radius:6px!important;background:var(--chrome)!important}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-modes button{border-radius:5px!important}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-modes button.active{color:#7CB0FF!important}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-title h1,
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-title small{color:var(--ink)}
+.v6-shell[data-visual=graphite][data-surface=documents] .v6-doc-title small{color:var(--accent)!important}
+.v6-shell[data-visual=graphite] .v6-settings,
+.v6-shell[data-visual=graphite] .v6-status-popover,
+.v6-shell[data-visual=graphite] .v6-more-menu{
+  border-radius:6px;background:var(--chrome);box-shadow:none;
+}
+.v6-shell[data-visual=graphite] .v6-auth-card>.primary{background:#3B82F6;color:#F4F6F8}
