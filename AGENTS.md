@@ -1,3 +1,6 @@
+## P0 — VISUAL CONTINUITY FOR ALL OWNER PRODUCTS (2026-10-19)
+This is an active or legacy source for an owner's project. Load [System global visual atlas](https://github.com/kendirov/System/blob/main/registry/visual/README.md) and [project UI inventories](https://github.com/kendirov/System/blob/main/registry/visual/projects.json). Before any visual change open current real screenshots AND owning source/code/runtime; for multiple pages/tabs/states, capture each separately and verify no regression. Follow the parent project's AGENTS rules: Studio and Screener. Keep accepted UI and user data safe; never pretend the screenshot is current without deploy-SHA and live visual QA.
+
 # AGENTS.md — TQS / ScreenerPRO
 
 This repository is one technical surface of the broader **Trading QS (TQS)** platform.
