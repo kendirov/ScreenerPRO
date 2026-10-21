@@ -33,12 +33,12 @@ import {
 } from "@/lib/server/screener-env";
 import { moscowTodayKey, normalizeRequestedDateKey } from "@/lib/domain/trading-calendar";
 import { getHistoricalStockSnapshot, isHistoricalDateRequest } from "@/lib/server/services/moex-screener-history";
-import { fetchLiveMoexIndexBenchmark } from "@/lib/server/services/moex-index-benchmark";
+import { fetchLiveMoexIndexBenchmarks } from "@/lib/server/services/moex-index-benchmark";
 
 const MOEX_STOCKS_ENDPOINT =
   "/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,BOARDID,SECTYPE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVPRICE,VOLTODAY,VALTODAY,NUMTRADES,HIGH,LOW,OPEN,TRADINGSTATUS";
 const MOEX_FUTURES_ENDPOINT =
-  "/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,LOTSIZE,STATUS,LASTDELDATE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVWAPRICE,VOLTODAY,VALTODAY,NUMTRADES,OPENPOSITION,HIGH,LOW,OPEN,TRADINGSTATUS";
+  "/engines/futures/markets/forts/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,SHORTNAME,ASSETCODE,LOTSIZE,STATUS,LASTDELDATE&marketdata.columns=SECID,LAST,LASTTOPREVPRICE,PREVWAPRICE,VOLTODAY,VALTODAY,NUMTRADES,OPENPOSITION,HIGH,LOW,OPEN,TRADINGSTATUS";
 
 type TableRow = Record<string, unknown>;
 
@@ -497,6 +497,7 @@ async function fetchFuturesFromIss(nowIso: string): Promise<ScreenerRow[]> {
       tradesCount,
       openInterest: asNumber(md.OPENPOSITION),
       expiryDate: asString(sec.LASTDELDATE),
+      assetCode: asString(sec.ASSETCODE),
       stockActivityClass: "unknown",
       open: asNumber(md.OPEN),
       high,
@@ -568,8 +569,7 @@ function normalizeScreenerMetrics(row: ScreenerRow): ScreenerRow {
 
 async function fetchStockBenchmarksFromIss(nowIso: string, stocks: ScreenerRow[]): Promise<ScreenerBenchmark[]> {
   const aggregates = computeStockMarketAggregates(stocks);
-  const benchmark = await fetchLiveMoexIndexBenchmark(nowIso, aggregates);
-  return benchmark ? [benchmark] : [];
+  return fetchLiveMoexIndexBenchmarks(nowIso, aggregates);
 }
 
 async function loadIntradayBaselinesWithBudget(
@@ -792,7 +792,6 @@ export async function getScreenerResponse(
       });
     }
 
-    const rows = assetClass === "all" ? historical.stocks : historical.stocks;
     return finalizeResponse(
       assetClass,
       historical.stocks,
